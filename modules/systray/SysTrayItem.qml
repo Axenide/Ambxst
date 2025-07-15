@@ -11,12 +11,12 @@ MouseArea {
     required property var bar
     required property SystemTrayItem item
     property bool targetMenuOpen: false
-    property int trayItemWidth: 20
+    property int trayItemSize: 20
 
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     Layout.fillHeight: true
-    implicitWidth: trayItemWidth
-    implicitHeight: 20
+    implicitWidth: trayItemSize
+    implicitHeight: trayItemSize
     onClicked: event => {
         switch (event.button) {
         case Qt.LeftButton:
@@ -45,7 +45,6 @@ MouseArea {
         id: trayIcon
         source: root.item.icon
         anchors.centerIn: parent
-        anchors.margins: 0
         width: parent.width
         height: parent.height
         smooth: true

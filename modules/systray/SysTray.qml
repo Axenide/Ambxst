@@ -9,17 +9,17 @@ Rectangle {
     required property var bar
 
     height: parent.height
+    Layout.preferredWidth: rowLayout.implicitWidth
     implicitWidth: rowLayout.implicitWidth
-    implicitHeight: 32
+    implicitHeight: parent.height - 8
     color: Colors.surfaceBright
-    radius: 16
+    radius: 0
 
     RowLayout {
         id: rowLayout
 
-        anchors.fill: parent
-        spacing: 4
-        anchors.margins: 4
+        anchors.centerIn: parent
+        spacing: 8
 
         Repeater {
             model: SystemTray.items
