@@ -11,7 +11,7 @@ MouseArea {
     required property var bar
     required property SystemTrayItem item
     property bool targetMenuOpen: false
-    property int trayItemSize: 20
+    property int trayItemSize: parent.height - 4
 
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     Layout.fillHeight: true

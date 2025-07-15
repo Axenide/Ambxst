@@ -9,16 +9,17 @@ Rectangle {
     required property var bar
 
     height: parent.height
-    Layout.preferredWidth: rowLayout.implicitWidth
-    implicitWidth: rowLayout.implicitWidth
+    Layout.preferredWidth: rowLayout.implicitWidth + 8
+    implicitWidth: rowLayout.implicitWidth + 8
     implicitHeight: parent.height - 8
     color: Colors.surfaceBright
-    radius: 0
+    radius: 16
 
     RowLayout {
         id: rowLayout
 
-        anchors.centerIn: parent
+        anchors.fill: parent
+        anchors.margins: 4
         spacing: 8
 
         Repeater {
