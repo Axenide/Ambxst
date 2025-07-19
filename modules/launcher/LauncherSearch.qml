@@ -109,6 +109,40 @@ Rectangle {
                                 resultsList.currentIndex = -1;
                             }
                             event.accepted = true;
+                        } else if (event.key === Qt.Key_PageDown) {
+                            if (resultsList.count > 0) {
+                                let visibleItems = Math.floor(resultsList.height / 48);
+                                let newIndex = Math.min(root.selectedIndex + visibleItems, resultsList.count - 1);
+                                if (root.selectedIndex === -1) {
+                                    newIndex = Math.min(visibleItems - 1, resultsList.count - 1);
+                                }
+                                root.selectedIndex = newIndex;
+                                resultsList.currentIndex = root.selectedIndex;
+                            }
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_PageUp) {
+                            if (resultsList.count > 0) {
+                                let visibleItems = Math.floor(resultsList.height / 48);
+                                let newIndex = Math.max(root.selectedIndex - visibleItems, 0);
+                                if (root.selectedIndex === -1) {
+                                    newIndex = Math.max(resultsList.count - visibleItems, 0);
+                                }
+                                root.selectedIndex = newIndex;
+                                resultsList.currentIndex = root.selectedIndex;
+                            }
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_Home) {
+                            if (resultsList.count > 0) {
+                                root.selectedIndex = 0;
+                                resultsList.currentIndex = 0;
+                            }
+                            event.accepted = true;
+                        } else if (event.key === Qt.Key_End) {
+                            if (resultsList.count > 0) {
+                                root.selectedIndex = resultsList.count - 1;
+                                resultsList.currentIndex = root.selectedIndex;
+                            }
+                            event.accepted = true;
                         }
                     }
                 }
