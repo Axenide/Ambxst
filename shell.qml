@@ -5,10 +5,25 @@ import "./modules/bar/"
 import "./modules/launcher/"
 import "./modules/workspaces/"
 import "./modules/notifications/"
+import "./modules/wallpaper/"
 import "./services/"
 
 ShellRoot {
     id: root
+
+    // Wallpaper for all screens
+    Variants {
+        model: Quickshell.screens
+        
+        Loader {
+            id: wallpaperLoader
+            active: true
+            required property ShellScreen modelData
+            sourceComponent: Wallpaper {
+                screen: wallpaperLoader.modelData
+            }
+        }
+    }
 
     // Multi-monitor support - create bar for each screen
     Variants {
