@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import "."
+import "../globals"
 
 PanelWindow {
     id: screenCorners
@@ -23,7 +24,7 @@ PanelWindow {
 
     RoundCorner {
         id: topLeft
-        size: 20
+        size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
         anchors.left: parent.left
         anchors.top: parent.top
         corner: RoundCorner.CornerEnum.TopLeft
@@ -31,7 +32,7 @@ PanelWindow {
 
     RoundCorner {
         id: topRight
-        size: 20
+        size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
         anchors.right: parent.right
         anchors.top: parent.top
         corner: RoundCorner.CornerEnum.TopRight
@@ -39,7 +40,7 @@ PanelWindow {
 
     RoundCorner {
         id: bottomLeft
-        size: 20
+        size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
         anchors.left: parent.left
         anchors.bottom: parent.bottom
         corner: RoundCorner.CornerEnum.BottomLeft
@@ -47,7 +48,7 @@ PanelWindow {
 
     RoundCorner {
         id: bottomRight
-        size: 20
+        size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         corner: RoundCorner.CornerEnum.BottomRight

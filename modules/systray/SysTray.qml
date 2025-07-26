@@ -12,7 +12,6 @@ StyledContainer {
     Layout.preferredWidth: rowLayout.implicitWidth + 16
     implicitWidth: rowLayout.implicitWidth + 16
     implicitHeight: rowLayout.implicitHeight + 16
-    radius: 16
 
     RowLayout {
         id: rowLayout

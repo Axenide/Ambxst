@@ -39,7 +39,7 @@ Item {
         anchors.top: parent.top
         anchors.right: notchRect.left
         corner: RoundCorner.CornerEnum.TopRight
-        size: 20
+        size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
         color: Colors.surface
     }
 
@@ -52,8 +52,8 @@ Item {
         color: Colors.surface
         topLeftRadius: 0
         topRightRadius: 0
-        bottomLeftRadius: 36
-        bottomRightRadius: 36
+        bottomLeftRadius: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
+        bottomRightRadius: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
 
         Item {
             id: stackContainer
@@ -143,7 +143,7 @@ Item {
         anchors.top: parent.top
         anchors.left: notchRect.right
         corner: RoundCorner.CornerEnum.TopLeft
-        size: 20
+        size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
         color: Colors.surface
     }
 }

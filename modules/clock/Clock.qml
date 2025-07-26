@@ -6,7 +6,6 @@ StyledContainer {
     id: clockContainer
 
     property string currentTime: ""
-    radius: 16
 
     Layout.preferredWidth: timeDisplay.implicitWidth + 18
     Layout.preferredHeight: timeDisplay.implicitHeight + 18

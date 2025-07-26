@@ -13,7 +13,7 @@ Singleton {
     property bool dashboardOpen: false
     property bool workspaceShowNumbers: false
     property bool superReleaseMightTrigger: true
-
+    property int roundness: 16
     onSuperReleaseMightTriggerChanged: {
         workspaceShowNumbersTimer.stop();
     }

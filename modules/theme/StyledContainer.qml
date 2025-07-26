@@ -1,10 +1,11 @@
 import QtQuick
 import Qt5Compat.GraphicalEffects
 import "../theme"
+import "../globals"
 
 Rectangle {
     color: Colors.surface
-    radius: 16
+    radius: GlobalStates.roundness
     border.color: Colors.surfaceBright
     border.width: 0
 
