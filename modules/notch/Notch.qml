@@ -40,7 +40,7 @@ Item {
         anchors.right: notchRect.left
         corner: RoundCorner.CornerEnum.TopRight
         size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
-        color: Colors.surface
+        color: Colors.background
     }
 
     Rectangle {
@@ -49,7 +49,7 @@ Item {
         width: parent.implicitWidth - 40
         height: parent.implicitHeight
 
-        color: Colors.surface
+        color: Colors.background
         topLeftRadius: 0
         topRightRadius: 0
         bottomLeftRadius: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
@@ -144,6 +144,6 @@ Item {
         anchors.left: notchRect.right
         corner: RoundCorner.CornerEnum.TopLeft
         size: GlobalStates.roundness > 0 ? GlobalStates.roundness + 4 : 0
-        color: Colors.surface
+        color: Colors.background
     }
 }
