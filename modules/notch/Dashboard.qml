@@ -15,131 +15,129 @@ Item {
     readonly property real nonAnimWidth: 400 + viewWrapper.anchors.margins * 2
 
     implicitWidth: nonAnimWidth
-    implicitHeight: tabs.implicitHeight + tabs.anchors.topMargin + 300 + viewWrapper.anchors.margins * 2
+    implicitHeight: mainLayout.implicitHeight
 
-    // Tab buttons
-    Row {
-        id: tabs
-
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        // anchors.topMargin: 16
-        anchors.margins: 16
-
+    Column {
+        id: mainLayout
+        anchors.fill: parent
         spacing: 8
 
-        Repeater {
-            model: ["Widgets", "Pins", "Kanban", "Wallpapers"]
+        // Tab buttons
+        Row {
+            id: tabs
 
-            Button {
-                required property int index
-                required property string modelData
+            width: parent.width
+            spacing: 8
 
-                text: modelData
-                flat: true
+            Repeater {
+                model: ["Widgets", "Pins", "Kanban", "Wallpapers"]
 
-                background: Rectangle {
-                    color: root.state.currentTab === index ? Colors.adapter.primary : "transparent"
-                    opacity: 0.1
-                    radius: Configuration.roundness
+                Button {
+                    required property int index
+                    required property string modelData
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: 200
+                    text: modelData
+                    flat: true
+                    implicitWidth: (tabs.width - tabs.spacing * 3) / 4
+
+                    background: Rectangle {
+                        color: root.state.currentTab === index ? Colors.adapter.primary : "transparent"
+                        opacity: 0.1
+                        radius: Configuration.roundness
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: 200
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
+
+                    contentItem: Text {
+                        text: parent.text
+                        color: root.state.currentTab === index ? Colors.adapter.primary : Colors.adapter.overBackground
+                        font.family: Styling.defaultFont
+                        font.pixelSize: 14
+                        font.weight: Font.Medium
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: 200
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
+
+                    onClicked: root.state.currentTab = index
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: 100
                             easing.type: Easing.OutCubic
                         }
                     }
-                }
 
-                contentItem: Text {
-                    text: parent.text
-                    color: root.state.currentTab === index ? Colors.adapter.primary : Colors.adapter.overBackground
-                    font.family: Styling.defaultFont
-                    font.pixelSize: 14
-                    font.weight: Font.Medium
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: 200
-                            easing.type: Easing.OutCubic
+                    states: State {
+                        name: "pressed"
+                        when: parent.pressed
+                        PropertyChanges {
+                            target: parent
+                            scale: 0.95
                         }
-                    }
-                }
-
-                onClicked: root.state.currentTab = index
-
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: 100
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                states: State {
-                    name: "pressed"
-                    when: parent.pressed
-                    PropertyChanges {
-                        target: parent
-                        scale: 0.95
                     }
                 }
             }
         }
-    }
 
-    // Content area
-    Rectangle {
-        id: viewWrapper
+        // Content area
+        Rectangle {
+            id: viewWrapper
 
-        anchors.top: tabs.bottom
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.margins: 20
-        anchors.topMargin: 12
+            width: parent.width
+            height: 300
 
-        radius: 12
-        color: Colors.adapter.surfaceContainer
-        clip: true
+            radius: Configuration.roundness
+            color: Colors.adapter.surfaceContainer
+            clip: true
 
-        layer.enabled: true
-        layer.samples: 4
+            layer.enabled: true
+            layer.samples: 4
 
-        SwipeView {
-            id: view
+            SwipeView {
+                id: view
 
-            anchors.fill: parent
+                anchors.fill: parent
 
-            currentIndex: root.state.currentTab
+                currentIndex: root.state.currentTab
 
-            implicitWidth: 400
-            implicitHeight: 300
+                implicitWidth: 400
+                implicitHeight: 300
 
-            onCurrentIndexChanged: {
-                root.state.currentTab = currentIndex;
-            }
+                onCurrentIndexChanged: {
+                    root.state.currentTab = currentIndex;
+                }
 
-            // Overview Tab
-            DashboardPane {
-                sourceComponent: overviewComponent
-            }
+                // Overview Tab
+                DashboardPane {
+                    sourceComponent: overviewComponent
+                }
 
-            // System Tab
-            DashboardPane {
-                sourceComponent: systemComponent
-            }
+                // System Tab
+                DashboardPane {
+                    sourceComponent: systemComponent
+                }
 
-            // Quick Settings Tab
-            DashboardPane {
-                sourceComponent: quickSettingsComponent
-            }
+                // Quick Settings Tab
+                DashboardPane {
+                    sourceComponent: quickSettingsComponent
+                }
 
-            // Wallpapers Tab
-            DashboardPane {
-                sourceComponent: wallpapersComponent
+                // Wallpapers Tab
+                DashboardPane {
+                    sourceComponent: wallpapersComponent
+                }
             }
         }
     }

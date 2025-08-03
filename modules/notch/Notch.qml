@@ -58,13 +58,13 @@ Item {
         Item {
             id: stackContainer
             anchors.centerIn: parent
-            anchors.margins: 16
-            width: stackViewInternal.currentItem ? stackViewInternal.currentItem.width : 0
-            height: stackViewInternal.currentItem ? stackViewInternal.currentItem.height : 0
+            width: stackViewInternal.currentItem ? stackViewInternal.currentItem.width + 32 : 32
+            height: stackViewInternal.currentItem ? stackViewInternal.currentItem.height + 32 : 32
 
             StackView {
                 id: stackViewInternal
                 anchors.fill: parent
+                anchors.margins: 16
                 initialItem: defaultViewComponent
 
                 pushEnter: Transition {
