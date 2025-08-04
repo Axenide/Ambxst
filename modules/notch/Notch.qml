@@ -20,7 +20,7 @@ Item {
 
     Behavior on implicitWidth {
         NumberAnimation {
-            duration: 250
+            duration: Configuration.animDuration - 50
             easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
             easing.overshoot: isExpanded ? 1.2 : 1.0
         }
@@ -28,7 +28,7 @@ Item {
 
     Behavior on implicitHeight {
         NumberAnimation {
-            duration: 250
+            duration: Configuration.animDuration - 50
             easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
             easing.overshoot: isExpanded ? 1.2 : 1.0
         }
@@ -57,7 +57,7 @@ Item {
 
         Behavior on bottomLeftRadius {
             NumberAnimation {
-                duration: 250
+                duration: Configuration.animDuration - 50
                 easing.type: GlobalStates.notchOpen ? Easing.OutBack : Easing.OutQuart
                 easing.overshoot: GlobalStates.notchOpen ? 1.2 : 1.0
             }
@@ -65,7 +65,7 @@ Item {
 
         Behavior on bottomRightRadius {
             NumberAnimation {
-                duration: 250
+                duration: Configuration.animDuration - 50
                 easing.type: GlobalStates.notchOpen ? Easing.OutBack : Easing.OutQuart
                 easing.overshoot: GlobalStates.notchOpen ? 1.2 : 1.0
             }
@@ -88,14 +88,14 @@ Item {
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: 250
+                        duration: Configuration.animDuration - 50
                         easing.type: Easing.OutQuart
                     }
                     PropertyAnimation {
                         property: "scale"
                         from: 0.8
                         to: 1
-                        duration: 250
+                        duration: Configuration.animDuration - 50
                         easing.type: Easing.OutBack
                         easing.overshoot: 1.2
                     }
@@ -106,14 +106,14 @@ Item {
                         property: "opacity"
                         from: 1
                         to: 0
-                        duration: 250
+                        duration: Configuration.animDuration - 50
                         easing.type: Easing.OutQuart
                     }
                     PropertyAnimation {
                         property: "scale"
                         from: 1
                         to: 1.05
-                        duration: 250
+                        duration: Configuration.animDuration - 50
                         easing.type: Easing.OutQuart
                     }
                 }
@@ -123,14 +123,14 @@ Item {
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: 250
+                        duration: Configuration.animDuration - 50
                         easing.type: Easing.OutQuart
                     }
                     PropertyAnimation {
                         property: "scale"
                         from: 1.05
                         to: 1
-                        duration: 250
+                        duration: Configuration.animDuration - 50
                         easing.type: Easing.OutQuart
                     }
                 }
@@ -140,14 +140,14 @@ Item {
                         property: "opacity"
                         from: 1
                         to: 0
-                        duration: 200
+                        duration: Configuration.animDuration - 100
                         easing.type: Easing.OutQuart
                     }
                     PropertyAnimation {
                         property: "scale"
                         from: 1
                         to: 0.95
-                        duration: 200
+                        duration: Configuration.animDuration - 100
                         easing.type: Easing.OutQuart
                     }
                 }

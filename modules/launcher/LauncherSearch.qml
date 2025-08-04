@@ -31,7 +31,7 @@ Rectangle {
 
     Behavior on height {
         NumberAnimation {
-            duration: 250
+            duration: Configuration.animDuration - 50
             easing.type: Easing.OutQuart
         }
     }

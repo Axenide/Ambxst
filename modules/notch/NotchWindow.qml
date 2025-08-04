@@ -7,6 +7,7 @@ import Quickshell.Hyprland
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.launcher
+import qs.config
 
 PanelWindow {
     id: notchPanel
@@ -82,7 +83,7 @@ PanelWindow {
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: 150
+                            duration: Configuration.animDuration / 2
                         }
                     }
                 }
@@ -99,7 +100,7 @@ PanelWindow {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: 150
+                        duration: Configuration.animDuration / 2
                     }
                 }
             }
@@ -182,14 +183,14 @@ PanelWindow {
 
             Behavior on shadowBlur {
                 NumberAnimation {
-                    duration: 250
+                    duration: Configuration.animDuration - 50
                     easing.type: GlobalStates.notchOpen ? Easing.OutBack : Easing.OutQuart
                 }
             }
 
             Behavior on shadowOpacity {
                 NumberAnimation {
-                    duration: 250
+                    duration: Configuration.animDuration - 50
                     easing.type: GlobalStates.notchOpen ? Easing.OutBack : Easing.OutQuart
                 }
             }

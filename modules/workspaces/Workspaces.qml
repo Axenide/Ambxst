@@ -117,20 +117,20 @@ Item {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: 200
+                        duration: Configuration.animDuration - 100
                         easing.type: Easing.OutQuad
                     }
                 }
                 Behavior on radiusLeft {
                     NumberAnimation {
-                        duration: 200
+                        duration: Configuration.animDuration - 100
                         easing.type: Easing.OutQuad
                     }
                 }
 
                 Behavior on radiusRight {
                     NumberAnimation {
-                        duration: 200
+                        duration: Configuration.animDuration - 100
                         easing.type: Easing.OutQuad
                     }
                 }
@@ -157,7 +157,7 @@ Item {
         
         Behavior on radius {
             NumberAnimation {
-                duration: 200
+                duration: Configuration.animDuration - 100
                 easing.type: Easing.OutQuad
             }
         }
@@ -171,19 +171,19 @@ Item {
 
         Behavior on activeWorkspaceMargin {
             NumberAnimation {
-                duration: 150
+                duration: Configuration.animDuration / 2
                 easing.type: Easing.OutQuad
             }
         }
         Behavior on idx1 {
             NumberAnimation {
-                duration: 100
+                duration: Configuration.animDuration / 3
                 easing.type: Easing.OutSine
             }
         }
         Behavior on idx2 {
             NumberAnimation {
-                duration: 300
+                duration: Configuration.animDuration
                 easing.type: Easing.OutSine
             }
         }

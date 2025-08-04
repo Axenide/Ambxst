@@ -46,7 +46,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: 200
+                                duration: Configuration.animDuration - 100
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -63,7 +63,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: 200
+                                duration: Configuration.animDuration - 100
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -73,7 +73,7 @@ Item {
 
                     Behavior on scale {
                         NumberAnimation {
-                            duration: 100
+                            duration: Configuration.animDuration / 3
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -151,7 +151,7 @@ Item {
 
     Behavior on animatedWidth {
         NumberAnimation {
-            duration: 400
+            duration: Configuration.animDuration + 100
             easing.type: Easing.OutBack
             easing.overshoot: 1.1
         }
@@ -159,7 +159,7 @@ Item {
 
     Behavior on animatedHeight {
         NumberAnimation {
-            duration: 400
+            duration: Configuration.animDuration + 100
             easing.type: Easing.OutBack
             easing.overshoot: 1.1
         }
@@ -284,7 +284,7 @@ Item {
 
                         Behavior on border.color {
                             ColorAnimation {
-                                duration: 200
+                                duration: Configuration.animDuration - 100
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -334,14 +334,14 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: 150
+                                duration: Configuration.animDuration / 2
                                 easing.type: Easing.OutCubic
                             }
                         }
 
                         Behavior on scale {
                             NumberAnimation {
-                                duration: 100
+                                duration: Configuration.animDuration / 3
                                 easing.type: Easing.OutCubic
                             }
                         }

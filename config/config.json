@@ -3,7 +3,8 @@
     "oledMode": false,
     "roundness": 16,
     "iconFont": "nerd",
-    "defaultFont": "Roboto Condensed"
+    "defaultFont": "Roboto Condensed",
+    "animDuration": 300
   },
   "bar": {
     "bottom": false,

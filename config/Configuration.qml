@@ -20,6 +20,7 @@ Singleton {
                 property int roundness: 16
                 property string iconFont: "nerd"
                 property string defaultFont: "Roboto Condensed"
+                property int animDuration: 300
             }
 
             property JsonObject bar: JsonObject {
@@ -47,6 +48,7 @@ Singleton {
     property int roundness: loader.adapter.theme.roundness
     property string iconFont: loader.adapter.theme.iconFont
     property string defaultFont: loader.adapter.theme.defaultFont
+    property int animDuration: loader.adapter.theme.animDuration
 
     // Bar configuration
     property QtObject bar: loader.adapter.bar
