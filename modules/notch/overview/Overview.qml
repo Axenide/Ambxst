@@ -77,7 +77,7 @@ Item {
                             id: workspace
                             property int colIndex: index
                             property int workspaceValue: overviewRoot.workspaceGroup * workspacesShown + rowIndex * overviewRoot.columns + colIndex + 1
-                            property color defaultWorkspaceColor: Colors.adapter.surface
+                            property color defaultWorkspaceColor: Colors.background
                             property color hoveredWorkspaceColor: Colors.adapter.surfaceContainer
                             property color hoveredBorderColor: Colors.adapter.outline
                             property bool hoveredWhileDragging: false
