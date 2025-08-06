@@ -7,6 +7,7 @@ import Quickshell.Hyprland
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.launcher
+import qs.modules.services
 import qs.config
 import "./overview"
 
@@ -24,18 +25,19 @@ PanelWindow {
 
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.OnDemand
 
-    // Monitor this screen's focus status
+    // Get this screen's visibility state
+    readonly property var screenVisibilities: Visibilities.getForScreen(screen.name)
     readonly property bool isScreenFocused: Hyprland.focusedMonitor && Hyprland.focusedMonitor.name === screen.name
 
     HyprlandFocusGrab {
         id: focusGrab
         windows: [notchPanel]
-        active: isScreenFocused && (GlobalStates.launcherOpen || GlobalStates.dashboardOpen || GlobalStates.overviewOpen)
+        active: isScreenFocused && (screenVisibilities.launcher || screenVisibilities.dashboard || screenVisibilities.overview)
 
         onCleared: {
-            GlobalStates.launcherOpen = false;
-            GlobalStates.dashboardOpen = false;
-            GlobalStates.overviewOpen = false;
+            screenVisibilities.launcher = false;
+            screenVisibilities.dashboard = false;
+            screenVisibilities.overview = false;
         }
     }
 
@@ -43,6 +45,14 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Top
     mask: Region {
         item: notchContainer
+    }
+
+    Component.onCompleted: {
+        Visibilities.registerPanel(screen.name, notchPanel);
+    }
+
+    Component.onDestruction: {
+        Visibilities.unregisterPanel(screen.name);
     }
 
     // Default view component - user@host text
@@ -72,16 +82,16 @@ PanelWindow {
 
                 onClicked: {
                     // Cycle through views: default -> dashboard -> overview -> launcher -> default
-                    if (GlobalStates.dashboardOpen) {
-                        GlobalStates.dashboardOpen = false;
-                        GlobalStates.overviewOpen = true;
-                    } else if (GlobalStates.overviewOpen) {
-                        GlobalStates.overviewOpen = false;
-                        GlobalStates.launcherOpen = true;
-                    } else if (GlobalStates.launcherOpen) {
-                        GlobalStates.launcherOpen = false;
+                    if (screenVisibilities.dashboard) {
+                        screenVisibilities.dashboard = false;
+                        screenVisibilities.overview = true;
+                    } else if (screenVisibilities.overview) {
+                        screenVisibilities.overview = false;
+                        screenVisibilities.launcher = true;
+                    } else if (screenVisibilities.launcher) {
+                        screenVisibilities.launcher = false;
                     } else {
-                        GlobalStates.dashboardOpen = true;
+                        screenVisibilities.dashboard = true;
                     }
                 }
 
@@ -128,12 +138,12 @@ PanelWindow {
                 anchors.fill: parent
 
                 onItemSelected: {
-                    GlobalStates.launcherOpen = false;
+                    screenVisibilities.launcher = false;
                 }
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
-                        GlobalStates.launcherOpen = false;
+                        screenVisibilities.launcher = false;
                         event.accepted = true;
                     }
                 }
@@ -161,7 +171,7 @@ PanelWindow {
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
-                        GlobalStates.overviewOpen = false;
+                        screenVisibilities.overview = false;
                         event.accepted = true;
                     }
                 }
@@ -188,7 +198,7 @@ PanelWindow {
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
-                        GlobalStates.dashboardOpen = false;
+                        screenVisibilities.dashboard = false;
                         event.accepted = true;
                     }
                 }
@@ -213,21 +223,21 @@ PanelWindow {
             shadowEnabled: true
             shadowHorizontalOffset: 0
             shadowVerticalOffset: 0
-            shadowBlur: GlobalStates.notchOpen ? 2.0 : 1.0
+            shadowBlur: GlobalStates.getNotchOpen(screen.name) ? 2.0 : 1.0
             shadowColor: Colors.adapter.shadow
-            shadowOpacity: GlobalStates.notchOpen ? 0.75 : 0.5
+            shadowOpacity: GlobalStates.getNotchOpen(screen.name) ? 0.75 : 0.5
 
             Behavior on shadowBlur {
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: GlobalStates.notchOpen ? Easing.OutBack : Easing.OutQuart
+                    easing.type: GlobalStates.getNotchOpen(screen.name) ? Easing.OutBack : Easing.OutQuart
                 }
             }
 
             Behavior on shadowOpacity {
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: GlobalStates.notchOpen ? Easing.OutBack : Easing.OutQuart
+                    easing.type: GlobalStates.getNotchOpen(screen.name) ? Easing.OutBack : Easing.OutQuart
                 }
             }
         }
@@ -239,10 +249,10 @@ PanelWindow {
 
         // Handle global keyboard events
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_Escape && (GlobalStates.launcherOpen || GlobalStates.dashboardOpen || GlobalStates.overviewOpen)) {
-                GlobalStates.launcherOpen = false;
-                GlobalStates.dashboardOpen = false;
-                GlobalStates.overviewOpen = false;
+            if (event.key === Qt.Key_Escape && (screenVisibilities.launcher || screenVisibilities.dashboard || screenVisibilities.overview)) {
+                screenVisibilities.launcher = false;
+                screenVisibilities.dashboard = false;
+                screenVisibilities.overview = false;
                 event.accepted = true;
             }
         }
@@ -250,12 +260,12 @@ PanelWindow {
 
     // Listen for launcher, dashboard and overview state changes
     Connections {
-        target: GlobalStates
-        function onLauncherOpenChanged() {
-            if (GlobalStates.launcherOpen && isScreenFocused) {
+        target: screenVisibilities
+        function onLauncherChanged() {
+            if (screenVisibilities.launcher) {
                 notchContainer.stackView.push(launcherViewComponent);
                 Qt.callLater(() => {
-                    notchPanel.requestActivate();
+                    notchPanel.activate();
                     notchPanel.forceActiveFocus();
                     // Additional focus to ensure search input gets focus
                     let currentItem = notchContainer.stackView.currentItem;
@@ -263,35 +273,35 @@ PanelWindow {
                         currentItem.children[0].focusSearchInput();
                     }
                 });
-            } else if (!GlobalStates.launcherOpen) {
+            } else {
                 if (notchContainer.stackView.depth > 1) {
                     notchContainer.stackView.pop();
                 }
             }
         }
 
-        function onDashboardOpenChanged() {
-            if (GlobalStates.dashboardOpen && isScreenFocused) {
+        function onDashboardChanged() {
+            if (screenVisibilities.dashboard) {
                 notchContainer.stackView.push(dashboardViewComponent);
                 Qt.callLater(() => {
                     notchPanel.requestActivate();
                     notchPanel.forceActiveFocus();
                 });
-            } else if (!GlobalStates.dashboardOpen) {
+            } else {
                 if (notchContainer.stackView.depth > 1) {
                     notchContainer.stackView.pop();
                 }
             }
         }
 
-        function onOverviewOpenChanged() {
-            if (GlobalStates.overviewOpen && isScreenFocused) {
+        function onOverviewChanged() {
+            if (screenVisibilities.overview) {
                 notchContainer.stackView.push(overviewViewComponent);
                 Qt.callLater(() => {
                     notchPanel.requestActivate();
                     notchPanel.forceActiveFocus();
                 });
-            } else if (!GlobalStates.overviewOpen) {
+            } else {
                 if (notchContainer.stackView.depth > 1) {
                     notchContainer.stackView.pop();
                 }
