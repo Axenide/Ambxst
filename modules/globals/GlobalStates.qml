@@ -10,6 +10,15 @@ Singleton {
 
     property var wallpaperManager: null
 
+    // Persistent launcher state across monitors
+    property string launcherSearchText: ""
+    property int launcherSelectedIndex: -1
+
+    function clearLauncherState() {
+        launcherSearchText = "";
+        launcherSelectedIndex = -1;
+    }
+
     function getNotchOpen(screenName) {
         let visibilities = Visibilities.getForScreen(screenName);
         return visibilities.launcher || visibilities.dashboard || visibilities.overview;

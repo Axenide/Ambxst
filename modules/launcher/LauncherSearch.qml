@@ -9,15 +9,13 @@ import qs.config
 Rectangle {
     id: root
 
-    property string searchText: ""
+    property string searchText: GlobalStates.launcherSearchText
     property bool showResults: searchText.length > 0
-    property int selectedIndex: -1
+    property int selectedIndex: GlobalStates.launcherSelectedIndex
     signal itemSelected
 
     function clearSearch() {
-        searchInput.text = "";
-        searchText = "";
-        selectedIndex = -1;
+        GlobalStates.clearLauncherState();
         searchInput.forceActiveFocus();
     }
 
@@ -66,6 +64,7 @@ Rectangle {
                 TextField {
                     id: searchInput
                     Layout.fillWidth: true
+                    text: GlobalStates.launcherSearchText
                     placeholderText: "Search applications..."
                     placeholderTextColor: Colors.adapter.outline
                     font.family: Styling.defaultFont
@@ -74,12 +73,15 @@ Rectangle {
                     background: null
 
                     onTextChanged: {
+                        GlobalStates.launcherSearchText = text;
                         root.searchText = text;
                         // Auto-highlight first app when text is entered
                         if (text.length > 0) {
+                            GlobalStates.launcherSelectedIndex = 0;
                             root.selectedIndex = 0;
                             resultsList.currentIndex = 0;
                         } else {
+                            GlobalStates.launcherSelectedIndex = -1;
                             root.selectedIndex = -1;
                             resultsList.currentIndex = -1;
                         }
@@ -101,10 +103,12 @@ Rectangle {
                         } else if (event.key === Qt.Key_Down) {
                             if (resultsList.count > 0) {
                                 if (root.selectedIndex < resultsList.count - 1) {
+                                    GlobalStates.launcherSelectedIndex++;
                                     root.selectedIndex++;
                                     resultsList.currentIndex = root.selectedIndex;
                                 } else if (root.selectedIndex === -1) {
                                     // When no search text and nothing selected, start at first item
+                                    GlobalStates.launcherSelectedIndex = 0;
                                     root.selectedIndex = 0;
                                     resultsList.currentIndex = 0;
                                 }
@@ -112,10 +116,12 @@ Rectangle {
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Up) {
                             if (root.selectedIndex > 0) {
+                                GlobalStates.launcherSelectedIndex--;
                                 root.selectedIndex--;
                                 resultsList.currentIndex = root.selectedIndex;
                             } else if (root.selectedIndex === 0 && root.searchText.length === 0) {
                                 // When no search text, allow going back to no selection
+                                GlobalStates.launcherSelectedIndex = -1;
                                 root.selectedIndex = -1;
                                 resultsList.currentIndex = -1;
                             }
@@ -127,6 +133,7 @@ Rectangle {
                                 if (root.selectedIndex === -1) {
                                     newIndex = Math.min(visibleItems - 1, resultsList.count - 1);
                                 }
+                                GlobalStates.launcherSelectedIndex = newIndex;
                                 root.selectedIndex = newIndex;
                                 resultsList.currentIndex = root.selectedIndex;
                             }
@@ -138,18 +145,21 @@ Rectangle {
                                 if (root.selectedIndex === -1) {
                                     newIndex = Math.max(resultsList.count - visibleItems, 0);
                                 }
+                                GlobalStates.launcherSelectedIndex = newIndex;
                                 root.selectedIndex = newIndex;
                                 resultsList.currentIndex = root.selectedIndex;
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Home) {
                             if (resultsList.count > 0) {
+                                GlobalStates.launcherSelectedIndex = 0;
                                 root.selectedIndex = 0;
                                 resultsList.currentIndex = 0;
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_End) {
                             if (resultsList.count > 0) {
+                                GlobalStates.launcherSelectedIndex = resultsList.count - 1;
                                 root.selectedIndex = resultsList.count - 1;
                                 resultsList.currentIndex = root.selectedIndex;
                             }
@@ -174,6 +184,7 @@ Rectangle {
             // Sync currentIndex with selectedIndex
             onCurrentIndexChanged: {
                 if (currentIndex !== root.selectedIndex) {
+                    GlobalStates.launcherSelectedIndex = currentIndex;
                     root.selectedIndex = currentIndex;
                 }
             }
@@ -193,6 +204,7 @@ Rectangle {
                     hoverEnabled: true
 
                     onEntered: {
+                        GlobalStates.launcherSelectedIndex = index;
                         root.selectedIndex = index;
                         resultsList.currentIndex = index;
                     }
@@ -255,6 +267,10 @@ Rectangle {
     }
 
     Component.onCompleted: {
-        clearSearch();
+        // Only focus the input, don't clear the search on component creation
+        // This allows state to persist when moving between monitors
+        Qt.callLater(() => {
+            focusSearchInput();
+        });
     }
 }

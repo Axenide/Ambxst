@@ -134,18 +134,19 @@ PanelWindow {
                 anchors.fill: parent
 
                 onItemSelected: {
+                    GlobalStates.clearLauncherState();
                     Visibilities.setActiveModule("");
                 }
 
                 Keys.onPressed: event => {
                     if (event.key === Qt.Key_Escape) {
+                        GlobalStates.clearLauncherState();
                         Visibilities.setActiveModule("");
                         event.accepted = true;
                     }
                 }
 
                 Component.onCompleted: {
-                    clearSearch();
                     Qt.callLater(() => {
                         focusSearchInput();
                     });
