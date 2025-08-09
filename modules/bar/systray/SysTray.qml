@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.SystemTray
 import qs.modules.theme
+import qs.modules.components
 
 BgRect {
     id: root

@@ -2,6 +2,7 @@ import QtQuick
 import qs.modules.globals
 import qs.modules.services
 import qs.config
+import qs.modules.components
 
 ToggleButton {
     buttonIcon: Config.bar.overviewIcon

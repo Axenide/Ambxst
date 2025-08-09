@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import qs.modules.globals
 import qs.modules.theme
+import qs.modules.components
 import qs.modules.corners
 import qs.config
 

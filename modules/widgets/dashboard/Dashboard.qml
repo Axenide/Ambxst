@@ -3,8 +3,10 @@ import QtQuick.Controls
 import QtQuick.Effects
 import QtQuick.Layouts
 import qs.modules.theme
+import qs.modules.components
 import qs.modules.globals
 import qs.modules.services
+import qs.modules.widgets.overview
 import qs.modules.notch
 import qs.modules.widgets.wallpapers
 import qs.config
