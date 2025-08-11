@@ -16,6 +16,14 @@ Rectangle {
     readonly property int gridRows: 3
     readonly property int gridColumns: 5
     property int selectedIndex: GlobalStates.wallpaperSelectedIndex
+    property bool navigationInProgress: false
+
+    // Timer para limitar la velocidad de navegación
+    Timer {
+        id: navigationTimer
+        interval: Config.animDuration / 2
+        onTriggered: navigationInProgress = false
+    }
 
     function focusSearch() {
         wallpaperSearchInput.focusInput();
@@ -79,7 +87,10 @@ Rectangle {
                 }
 
                 onDownPressed: {
-                    if (filteredWallpapers.length > 0) {
+                    if (filteredWallpapers.length > 0 && !navigationInProgress) {
+                        navigationInProgress = true;
+                        navigationTimer.restart();
+                        
                         if (selectedIndex < filteredWallpapers.length - 1) {
                             let newIndex = selectedIndex + gridColumns;
                             if (newIndex >= filteredWallpapers.length) {
@@ -97,7 +108,10 @@ Rectangle {
                 }
 
                 onUpPressed: {
-                    if (filteredWallpapers.length > 0 && selectedIndex > 0) {
+                    if (filteredWallpapers.length > 0 && selectedIndex > 0 && !navigationInProgress) {
+                        navigationInProgress = true;
+                        navigationTimer.restart();
+                        
                         let newIndex = selectedIndex - gridColumns;
                         if (newIndex < 0) {
                             newIndex = 0;
@@ -105,7 +119,10 @@ Rectangle {
                         GlobalStates.wallpaperSelectedIndex = newIndex;
                         selectedIndex = newIndex;
                         wallpaperGrid.currentIndex = newIndex;
-                    } else if (selectedIndex === 0 && searchText.length === 0) {
+                    } else if (selectedIndex === 0 && searchText.length === 0 && !navigationInProgress) {
+                        navigationInProgress = true;
+                        navigationTimer.restart();
+                        
                         GlobalStates.wallpaperSelectedIndex = -1;
                         selectedIndex = -1;
                         wallpaperGrid.currentIndex = -1;
@@ -122,7 +139,10 @@ Rectangle {
                 }
 
                 Keys.onPressed: event => {
-                    if (event.key === Qt.Key_Left && filteredWallpapers.length > 0) {
+                    if (event.key === Qt.Key_Left && filteredWallpapers.length > 0 && !navigationInProgress) {
+                        navigationInProgress = true;
+                        navigationTimer.restart();
+                        
                         if (selectedIndex > 0) {
                             GlobalStates.wallpaperSelectedIndex = selectedIndex - 1;
                             selectedIndex = selectedIndex - 1;
@@ -133,7 +153,10 @@ Rectangle {
                             wallpaperGrid.currentIndex = 0;
                         }
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Right && filteredWallpapers.length > 0) {
+                    } else if (event.key === Qt.Key_Right && filteredWallpapers.length > 0 && !navigationInProgress) {
+                        navigationInProgress = true;
+                        navigationTimer.restart();
+                        
                         if (selectedIndex < filteredWallpapers.length - 1) {
                             GlobalStates.wallpaperSelectedIndex = selectedIndex + 1;
                             selectedIndex = selectedIndex + 1;
@@ -144,12 +167,18 @@ Rectangle {
                             wallpaperGrid.currentIndex = 0;
                         }
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_Home && filteredWallpapers.length > 0) {
+                    } else if (event.key === Qt.Key_Home && filteredWallpapers.length > 0 && !navigationInProgress) {
+                        navigationInProgress = true;
+                        navigationTimer.restart();
+                        
                         GlobalStates.wallpaperSelectedIndex = 0;
                         selectedIndex = 0;
                         wallpaperGrid.currentIndex = 0;
                         event.accepted = true;
-                    } else if (event.key === Qt.Key_End && filteredWallpapers.length > 0) {
+                    } else if (event.key === Qt.Key_End && filteredWallpapers.length > 0 && !navigationInProgress) {
+                        navigationInProgress = true;
+                        navigationTimer.restart();
+                        
                         GlobalStates.wallpaperSelectedIndex = filteredWallpapers.length - 1;
                         selectedIndex = filteredWallpapers.length - 1;
                         wallpaperGrid.currentIndex = selectedIndex;
@@ -212,15 +241,15 @@ Rectangle {
                             let currentRow = Math.floor(currentIndex / gridColumns);
                             let itemY = currentRow * cellHeight;
                             let itemCenterY = itemY + cellHeight / 2;
-                            
+
                             // Calcular posición ideal del scroll para centrar el elemento
                             let scrollViewHeight = scrollView.height;
                             let contentHeight = Math.ceil(count / gridColumns) * cellHeight;
                             let targetScrollY = itemCenterY - scrollViewHeight / 2;
-                            
+
                             // Asegurar que está dentro de los límites
                             targetScrollY = Math.max(0, Math.min(targetScrollY, contentHeight - scrollViewHeight));
-                            
+
                             // Aplicar el scroll con animación suave
                             if (contentHeight > scrollViewHeight) {
                                 let normalizedPosition = targetScrollY / (contentHeight - scrollViewHeight);
@@ -235,7 +264,7 @@ Rectangle {
                         id: scrollPositionAnimation
                         target: scrollView.ScrollBar.vertical
                         property: "position"
-                        duration: Config.animDuration / 2
+                        duration: Config.animDuration
                         easing.type: Easing.OutQuart
                     }
                     // Sincronizar currentIndex con selectedIndex
@@ -257,14 +286,14 @@ Rectangle {
 
                         Behavior on x {
                             NumberAnimation {
-                                duration: Config.animDuration / 2
+                                duration: Config.animDuration
                                 easing.type: Easing.OutQuart
                             }
                         }
 
                         Behavior on y {
                             NumberAnimation {
-                                duration: Config.animDuration / 2
+                                duration: Config.animDuration
                                 easing.type: Easing.OutQuart
                             }
                         }
@@ -314,7 +343,7 @@ Rectangle {
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Config.animDuration / 2
+                                    duration: Config.animDuration
                                     easing.type: Easing.OutQuart
                                 }
                             }
@@ -384,7 +413,7 @@ Rectangle {
 
                                 SequentialAnimation {
                                     id: scrollAnimation
-                                    running: hoverText.needsScroll && parent.visible
+                                    // running: hoverText.needsScroll && parent.visible
                                     loops: Animation.Infinite
 
                                     PauseAnimation {
@@ -467,14 +496,14 @@ Rectangle {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Config.animDuration / 2
+                                duration: Config.animDuration
                                 easing.type: Easing.OutCubic
                             }
                         }
 
                         Behavior on scale {
                             NumberAnimation {
-                                duration: Config.animDuration / 3
+                                duration: Config.animDuration
                                 easing.type: Easing.OutCubic
                             }
                         }
