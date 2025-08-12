@@ -13,16 +13,20 @@ Item {
     property var notificationObject
     property bool expanded: false
     property bool onlyNotification: false
+    property bool useGroupAnimation: false  // Nueva propiedad
     property real fontSize: 12
     property real padding: onlyNotification ? 0 : 8
 
     property real dragConfirmThreshold: 70
     property real dismissOvershoot: notificationIcon.implicitWidth + 20
     property var qmlParent: root?.parent?.parent
+    property var notificationGroup: root?.parent?.parent?.parent  // Acceso al NotificationGroup
     property var parentDragIndex: qmlParent?.dragIndex ?? -1
     property var parentDragDistance: qmlParent?.dragDistance ?? 0
     property var dragIndexDiff: Math.abs(parentDragIndex - (index ?? 0))
     property real xOffset: dragIndexDiff == 0 ? Math.max(0, parentDragDistance) : parentDragDistance > dragConfirmThreshold ? 0 : dragIndexDiff == 1 ? Math.max(0, parentDragDistance * 0.3) : dragIndexDiff == 2 ? Math.max(0, parentDragDistance * 0.1) : 0
+
+    signal destroyRequested()  // Nueva señal
 
     implicitHeight: background.implicitHeight
 
@@ -49,6 +53,13 @@ Item {
     function destroyWithAnimation() {
         if (root.qmlParent && root.qmlParent.resetDrag)
             root.qmlParent.resetDrag();
+        
+        // Si debe usar la animación del grupo, emitir señal
+        if (root.useGroupAnimation) {
+            root.destroyRequested();
+            return;
+        }
+        
         background.anchors.leftMargin = background.anchors.leftMargin;
         destroyAnimation.running = true;
     }
@@ -80,7 +91,12 @@ Item {
 
         onPressed: mouse => {
             if (mouse.button === Qt.MiddleButton) {
-                root.destroyWithAnimation();
+                // Si debe usar la animación del grupo, emitir señal
+                if (root.useGroupAnimation) {
+                    root.destroyRequested();
+                } else {
+                    root.destroyWithAnimation();
+                }
             }
         }
 
@@ -242,7 +258,12 @@ Item {
                             implicitWidth: (notificationObject.actions.length == 0) ? ((actionsFlickable.width - actionRowLayout.spacing) / 2) : (contentItem.implicitWidth + leftPadding + rightPadding)
 
                             onClicked: {
-                                root.destroyWithAnimation();
+                                // Si debe usar la animación del grupo, emitir señal
+                                if (root.useGroupAnimation) {
+                                    root.destroyRequested();
+                                } else {
+                                    root.destroyWithAnimation();
+                                }
                             }
 
                             contentItem: Text {

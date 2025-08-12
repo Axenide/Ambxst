@@ -31,17 +31,45 @@ Item {
         if (root.qmlParent && root.qmlParent.resetDrag)
             root.qmlParent.resetDrag();
         background.anchors.leftMargin = background.anchors.leftMargin;
-        destroyAnimation.running = true;
+        
+        // Para notificación única: usar deslizado, para múltiples: usar fade
+        if (!root.multipleNotifications) {
+            slideDestroyAnimation.running = true;
+        } else {
+            fadeDestroyAnimation.running = true;
+        }
     }
 
+    // Animación de deslizado para notificación única
     SequentialAnimation {
-        id: destroyAnimation
+        id: slideDestroyAnimation
         running: false
 
         NumberAnimation {
             target: background.anchors
             property: "leftMargin"
             to: root.width + root.dismissOvershoot
+            duration: 300
+            easing.type: Easing.OutCubic
+        }
+        onFinished: () => {
+            root.notifications.forEach(notif => {
+                Qt.callLater(() => {
+                    Notifications.discardNotification(notif.id);
+                });
+            });
+        }
+    }
+
+    // Animación de fade para múltiples notificaciones
+    SequentialAnimation {
+        id: fadeDestroyAnimation
+        running: false
+
+        NumberAnimation {
+            target: background
+            property: "opacity"
+            to: 0
             duration: 300
             easing.type: Easing.OutCubic
         }
@@ -227,10 +255,18 @@ Item {
                         notificationObject: modelData
                         expanded: root.expanded
                         onlyNotification: (root.notificationCount === 1)
+                        useGroupAnimation: (root.notificationCount === 1)  // Nueva propiedad
                         opacity: (!root.expanded && index == 1 && root.notificationCount > 2) ? 0.5 : 1
                         visible: root.expanded || (index < 2)
                         anchors.left: parent?.left
                         anchors.right: parent?.right
+                        
+                        // Conectar la señal de destrucción al grupo cuando es notificación única
+                        onDestroyRequested: {
+                            if (root.notificationCount === 1) {
+                                root.destroyWithAnimation();
+                            }
+                        }
                     }
                 }
             }
