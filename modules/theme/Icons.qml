@@ -13,4 +13,9 @@ QtObject {
     readonly property string logout: ""
     readonly property string reboot: ""
     readonly property string shutdown: ""
+    // Caret icons
+    readonly property string caretLeft: ""
+    readonly property string caretRight: ""
+    readonly property string caretUp: ""
+    readonly property string caretDown: ""
 }

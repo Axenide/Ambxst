@@ -7,28 +7,28 @@ Button {
     id: root
     property int count: 1
     property bool expanded: false
-    property real fontSize: 12
+    property real fontSize: 14
 
     visible: count > 1
-    width: 20
-    height: 20
+    width: 24
+    height: 24
 
     background: Rectangle {
         color: root.pressed ? Colors.adapter.primary : (root.hovered ? Colors.surfaceBright : Colors.surfaceContainerHigh)
-        radius: 10
+        radius: Config.roundness
 
         Behavior on color {
             ColorAnimation {
-                duration: 150
+                duration: Config.animDuration / 2
             }
         }
     }
 
     contentItem: Text {
-        text: root.expanded ? "−" : "+"
-        font.family: Config.theme.font
-        font.pixelSize: 20
-        color: Colors.adapter.overBackground
+        text: root.expanded ? Icons.caretUp : Icons.caretDown
+        font.family: Icons.font
+        font.pixelSize: root.fontSize
+        color: root.pressed ? Colors.adapter.overPrimary : (root.hovered ? Colors.adapter.overBackground : Colors.adapter.primary)
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
     }

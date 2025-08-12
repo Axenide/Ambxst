@@ -64,12 +64,10 @@ Item {
         
         onHoveredChanged: {
             if (hovered) {
-                console.log("HoverHandler: Mouse entered, appName:", notificationGroup?.appName);
                 if (notificationGroup?.appName) {
                     Notifications.pauseGroupTimers(notificationGroup.appName);
                 }
             } else {
-                console.log("HoverHandler: Mouse exited, appName:", notificationGroup?.appName);
                 if (notificationGroup?.appName) {
                     Notifications.resumeGroupTimers(notificationGroup.appName);
                 }

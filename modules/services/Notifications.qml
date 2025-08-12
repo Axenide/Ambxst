@@ -55,41 +55,31 @@ Singleton {
         running: !isPaused
         
         function pause() {
-            console.log("Timer.pause() llamado, running:", running, "paused:", isPaused);
             if (!isPaused) {
                 isPaused = true;
                 stop();
-                console.log("Timer pausado y reseteado a", originalInterval, "ms");
             }
         }
         
         function resume() {
-            console.log("Timer.resume() llamado, paused:", isPaused);
             if (isPaused) {
                 isPaused = false;
-                // Siempre reanudar con el tiempo completo
                 interval = originalInterval;
                 startTime = Date.now();
-                console.log("Timer reanudado con tiempo completo:", interval);
                 start();
             }
         }
         
         function triggerTimeout() {
-            console.log("Timer timeout para ID:", id);
             root.timeoutNotification(id);
             destroy();
         }
         
-        onTriggered: {
-            console.log("Timer triggered para ID:", id);
-            triggerTimeout();
-        }
+        onTriggered: triggerTimeout()
         
         onRunningChanged: {
             if (running) {
                 startTime = Date.now();
-                console.log("Timer iniciado para ID:", id, "con interval:", interval, "startTime:", startTime);
             }
         }
     }
@@ -252,22 +242,16 @@ Singleton {
     }
 
     function pauseGroupTimers(appName) {
-        console.log("Pausando timers para app:", appName);
-        console.log("PopupList length:", root.popupList.length);
         root.popupList.forEach((notif) => {
-            console.log("Checking notif:", notif.appName, "timer exists:", !!notif.timer);
             if (notif.appName === appName && notif.timer) {
-                console.log("Pausando timer para notif ID:", notif.id);
                 notif.timer.pause();
             }
         });
     }
     
     function resumeGroupTimers(appName) {
-        console.log("Reanudando timers para app:", appName);
         root.popupList.forEach((notif) => {
             if (notif.appName === appName && notif.timer) {
-                console.log("Reanudando timer para notif ID:", notif.id);
                 notif.timer.resume();
             }
         });

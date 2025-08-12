@@ -28,7 +28,7 @@ Scope {
         }
 
         color: "transparent"
-        width: 350
+        implicitWidth: 350
 
         NotificationListView {
             id: listview
