@@ -43,6 +43,12 @@ PanelWindow {
         return 'unknown';
     }
 
+    function getThumbnailPath(videoPath) {
+        var fileName = videoPath.split('/').pop();
+        var baseName = fileName.substring(0, fileName.lastIndexOf('.'));
+        return Quickshell.env("HOME") + "/.cache/quickshell/video_thumbnails/" + baseName + ".jpg";
+    }
+
     // Update directory watcher when wallpaperDir changes
     onWallpaperDirChanged: {
         console.log("Wallpaper directory changed to:", wallpaperDir);
@@ -61,44 +67,13 @@ PanelWindow {
             // Si es un video, usar su thumbnail para matugen
             if (fileType === 'video') {
                 matugenSource = getThumbnailPath(currentWallpaper);
+                console.log("Using video thumbnail for matugen:", matugenSource);
             }
 
             // Ejecutar matugen con configuración específica
             matugenProcessWithConfig.command = ["matugen", "image", matugenSource, "-c", Qt.resolvedUrl("../../../assets/matugen/config.toml").toString().replace("file://", "")];
             matugenProcessWithConfig.running = true;
         }
-    }
-
-    function generateThumbnail(sourcePath, callback) {
-        var fileType = getFileType(sourcePath);
-        if (fileType !== 'video') {
-            // Para imágenes y GIFs, no necesitamos cache
-            if (callback) callback(sourcePath);
-            return;
-        }
-        
-        // Para videos, generar thumbnail
-        var fileName = sourcePath.split('/').pop();
-        var baseName = fileName.substring(0, fileName.lastIndexOf('.'));
-        var thumbnailPath = Quickshell.cachePath("video_thumbnails/" + baseName + ".jpg");
-        
-        // Verificar si la miniatura ya existe
-        checkThumbnailExists.sourcePath = sourcePath;
-        checkThumbnailExists.thumbnailPath = thumbnailPath;
-        checkThumbnailExists.callback = callback;
-        checkThumbnailExists.command = ["test", "-f", thumbnailPath];
-        checkThumbnailExists.running = true;
-    }
-
-    function getThumbnailPath(sourcePath) {
-        var fileType = getFileType(sourcePath);
-        if (fileType !== 'video') {
-            return sourcePath;
-        }
-        
-        var fileName = sourcePath.split('/').pop();
-        var baseName = fileName.substring(0, fileName.lastIndexOf('.'));
-        return Quickshell.cachePath("video_thumbnails/" + baseName + ".jpg");
     }
 
     function setWallpaper(path) {
@@ -142,6 +117,10 @@ PanelWindow {
 
     Component.onCompleted: {
         GlobalStates.wallpaperManager = wallpaper;
+        
+        // Ejecutar script de generación de thumbnails
+        thumbnailGeneratorScript.running = true;
+        
         // Initial scan
         scanWallpapers.running = true;
         // Start directory monitoring
@@ -231,6 +210,7 @@ PanelWindow {
             // Si es un video, usar su thumbnail para matugen
             if (fileType === 'video') {
                 matugenSource = getThumbnailPath(currentWallpaper);
+                console.log("Using video thumbnail for normal matugen:", matugenSource);
             }
             
             matugenProcessNormal.command = ["matugen", "image", matugenSource];
@@ -264,66 +244,16 @@ PanelWindow {
         }
     }
 
-    // Proceso para verificar si existe una miniatura
+    // Proceso para generar thumbnails de videos
     Process {
-        id: checkThumbnailExists
+        id: thumbnailGeneratorScript
         running: false
-        command: []
-
-        property string sourcePath: ""
-        property string thumbnailPath: ""
-        property var callback: null
-
-        onExited: function(exitCode) {
-            if (exitCode === 0) {
-                // El archivo existe
-                console.log("Thumbnail exists:", thumbnailPath);
-                if (callback) callback(thumbnailPath);
-            } else {
-                // El archivo no existe, generarlo
-                console.log("Generating thumbnail for:", sourcePath);
-                generateThumbnailProcess.sourcePath = sourcePath;
-                generateThumbnailProcess.thumbnailPath = thumbnailPath;
-                generateThumbnailProcess.callback = callback;
-                
-                // Crear directorio si no existe
-                createThumbnailDir.command = ["mkdir", "-p", Quickshell.cachePath("video_thumbnails")];
-                createThumbnailDir.running = true;
-            }
-        }
-    }
-
-    // Proceso para crear el directorio de thumbnails
-    Process {
-        id: createThumbnailDir
-        running: false
-        command: []
-
-        onExited: {
-            // Generar thumbnail con FFmpeg
-            generateThumbnailProcess.command = [
-                "ffmpeg", "-i", generateThumbnailProcess.sourcePath,
-                "-vf", "thumbnail,scale=320:180",
-                "-frames:v", "1", "-update", "1", "-y", generateThumbnailProcess.thumbnailPath
-            ];
-            generateThumbnailProcess.running = true;
-        }
-    }
-
-    // Proceso para generar miniaturas con FFmpeg
-    Process {
-        id: generateThumbnailProcess
-        running: false
-        command: []
-
-        property string sourcePath: ""
-        property string thumbnailPath: ""
-        property var callback: null
+        command: ["python3", Qt.resolvedUrl("../../../scripts/generate_thumbnails.py").toString().replace("file://", ""), Qt.resolvedUrl("wallpaper_config.json").toString().replace("file://", "")]
 
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length > 0) {
-                    console.log("FFmpeg output:", text);
+                    console.log("Thumbnail Generator:", text);
                 }
             }
         }
@@ -331,19 +261,16 @@ PanelWindow {
         stderr: StdioCollector {
             onStreamFinished: {
                 if (text.length > 0) {
-                    console.log("FFmpeg stderr:", text);
+                    console.warn("Thumbnail Generator Error:", text);
                 }
             }
         }
 
         onExited: function(exitCode) {
             if (exitCode === 0) {
-                console.log("Thumbnail generated successfully:", thumbnailPath);
-                if (callback) callback(thumbnailPath);
+                console.log("✅ Video thumbnails generated successfully");
             } else {
-                console.warn("Failed to generate thumbnail for:", sourcePath);
-                // Fallback: usar el video original
-                if (callback) callback(sourcePath);
+                console.warn("⚠️ Thumbnail generation failed with code:", exitCode);
             }
         }
     }

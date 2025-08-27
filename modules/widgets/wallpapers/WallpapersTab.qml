@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Quickshell
 import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.components
@@ -430,60 +431,40 @@ Rectangle {
                             }
                         }
 
-                        // Componente para thumbnails de video.
+                        // Componente para previews de video usando thumbnails pre-generados.
                         Component {
                             id: videoThumbnailComponent
                             Item {
-                                property string thumbnailSource: ""
-                                property bool thumbnailLoaded: false
-                                property bool thumbnailError: false
-
-                                Component.onCompleted: {
-                                    if (GlobalStates.wallpaperManager) {
-                                        GlobalStates.wallpaperManager.generateThumbnail(parent.sourceFile, function(thumbnailPath) {
-                                            console.log("Thumbnail callback received:", thumbnailPath);
-                                            
-                                            // Limpiar el path para evitar duplicación de file://
-                                            var cleanPath = thumbnailPath;
-                                            if (cleanPath.startsWith("file://")) {
-                                                cleanPath = cleanPath.substring(7);
-                                            }
-                                            
-                                            thumbnailSource = cleanPath;
-                                            thumbnailLoaded = true;
-                                            console.log("Final thumbnail source:", thumbnailSource);
-                                        });
-                                    }
+                                property string thumbnailPath: {
+                                    // Construir ruta del thumbnail basado en el nombre del video
+                                    var videoName = parent.sourceFile.split('/').pop();
+                                    var baseName = videoName.substring(0, videoName.lastIndexOf('.'));
+                                    return "file://" + Quickshell.env("HOME") + "/.cache/quickshell/video_thumbnails/" + baseName + ".jpg";
                                 }
-
-                                // Placeholder mientras se carga el thumbnail
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: Colors.surfaceContainerHigh
-                                    visible: !thumbnailLoaded || thumbnailError
-
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: thumbnailError ? "❌" : "📹"
-                                        font.pixelSize: 24
-                                        color: Colors.adapter.overSurfaceVariant
-                                    }
-                                }
-
-                                // Thumbnail generado
+                                
+                                // Thumbnail pre-generado
                                 Image {
                                     anchors.fill: parent
-                                    source: thumbnailLoaded && !thumbnailError && thumbnailSource ? "file://" + thumbnailSource : ""
+                                    source: parent.thumbnailPath
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     smooth: true
-                                    visible: thumbnailLoaded && !thumbnailError && status === Image.Ready
                                     
-                                    onStatusChanged: {
-                                        console.log("Thumbnail image status:", status, "for source:", source);
-                                        if (status === Image.Error) {
-                                            console.warn("Failed to load thumbnail image:", source);
-                                            thumbnailError = true;
+                                    // Placeholder mientras carga o si falla
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        color: Colors.surfaceContainerHigh
+                                        visible: parent.status !== Image.Ready
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: {
+                                                if (parent.parent.status === Image.Loading) return "⏳";
+                                                if (parent.parent.status === Image.Error) return "❌";
+                                                return "📹";
+                                            }
+                                            font.pixelSize: 24
+                                            color: Colors.adapter.overSurfaceVariant
                                         }
                                     }
                                 }
