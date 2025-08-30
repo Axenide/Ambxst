@@ -21,6 +21,7 @@ Singleton {
                 property real shadowOpacity: 0.5
                 property int roundness: 16
                 property string font: "Roboto Condensed"
+                property int fontSize: 14
                 property int animDuration: 300
             }
 

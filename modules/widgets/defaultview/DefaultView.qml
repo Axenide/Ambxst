@@ -60,7 +60,7 @@ Item {
         text: `${Quickshell.env("USER")}@${hostnameCollector.text.trim()}`
         color: userHostArea.pressed ? Colors.adapter.overBackground : (userHostArea.containsMouse ? Colors.adapter.primary : Colors.adapter.overBackground)
         font.family: Config.theme.font
-        font.pixelSize: 14
+        font.pixelSize: Config.theme.fontSize
         font.weight: Font.Bold
 
         Behavior on color {

@@ -231,7 +231,7 @@ Rectangle {
                         text: modelData.name
                         color: Colors.adapter.overBackground
                         font.family: Config.theme.font
-                        font.pixelSize: 14
+                        font.pixelSize: Config.theme.fontSize
                         font.weight: Font.Bold
                         elide: Text.ElideRight
                     }

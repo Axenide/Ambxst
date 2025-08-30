@@ -17,7 +17,7 @@ Item {
     property bool multipleNotifications: notificationCount > 1
     property bool expanded: false
     property bool popup: false
-    property real padding: 10
+    property real padding: 16
     implicitHeight: background.implicitHeight
 
     property real dragConfirmThreshold: 70
@@ -40,7 +40,7 @@ Item {
         targetItem: background
         dismissOvershoot: root.dismissOvershoot
         parentWidth: root.width
-        
+
         onDestroyFinished: {
             root.notifications.forEach(notif => {
                 Qt.callLater(() => {
@@ -120,7 +120,9 @@ Item {
         anchors.left: parent.left
         width: parent.width
         color: Colors.background
-        radius: 16
+        radius: Config.roundness > 0 ? Config.roundness + 8 : 0
+        border.color: Colors.surfaceContainerHigh
+        border.width: 2
         anchors.leftMargin: root.xOffset
 
         Behavior on anchors.leftMargin {
@@ -147,7 +149,7 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.margins: root.padding
-            spacing: 10
+            spacing: 4
 
             NotificationAppIcon {
                 Layout.alignment: Qt.AlignTop

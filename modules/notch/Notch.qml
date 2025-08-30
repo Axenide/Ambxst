@@ -119,8 +119,8 @@ Item {
                 // Activar blur al inicio de transición y animarlo a nítido
                 onBusyChanged: {
                     if (busy) {
-                        stackContainer.transitionBlur = 1.0
-                        blurTransitionAnimation.start()
+                        stackContainer.transitionBlur = 1.0;
+                        blurTransitionAnimation.start();
                     }
                 }
 

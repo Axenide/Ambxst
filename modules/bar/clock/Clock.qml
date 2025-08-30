@@ -18,7 +18,7 @@ BgRect {
 
         text: clockContainer.currentTime
         color: Colors.adapter.overBackground
-        font.pixelSize: 14
+        font.pixelSize: Config.theme.fontSize
         font.family: Config.theme.font
         font.bold: true
     }

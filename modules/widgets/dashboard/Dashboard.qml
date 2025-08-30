@@ -86,7 +86,7 @@ NotchAnimationBehavior {
                             text: parent.text
                             color: root.state.currentTab === index ? Colors.adapter.primary : Colors.adapter.overBackground
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Config.theme.fontSize
                             font.weight: Font.Medium
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter

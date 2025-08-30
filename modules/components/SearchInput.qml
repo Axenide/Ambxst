@@ -53,7 +53,7 @@ PaneRect {
             Layout.fillWidth: true
             placeholderTextColor: Colors.adapter.outline
             font.family: Config.theme.font
-            font.pixelSize: 14
+            font.pixelSize: Config.theme.fontSize
             color: Colors.adapter.overBackground
             background: null
 

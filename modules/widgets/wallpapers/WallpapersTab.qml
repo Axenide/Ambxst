@@ -308,7 +308,7 @@ Rectangle {
                                         }
                                         color: parent.isCurrentWallpaper ? Colors.adapter.primary : Colors.adapter.overBackground
                                         font.family: Config.theme.font
-                                        font.pixelSize: 14
+                                        font.pixelSize: Config.theme.fontSize
                                         font.weight: Font.Bold
                                         horizontalAlignment: Text.AlignHCenter
 
@@ -441,7 +441,7 @@ Rectangle {
                                     var baseName = videoName.substring(0, videoName.lastIndexOf('.'));
                                     return "file://" + Quickshell.env("HOME") + "/.cache/quickshell/video_thumbnails/" + baseName + ".jpg";
                                 }
-                                
+
                                 // Thumbnail pre-generado
                                 Image {
                                     anchors.fill: parent
@@ -449,18 +449,20 @@ Rectangle {
                                     fillMode: Image.PreserveAspectCrop
                                     asynchronous: true
                                     smooth: true
-                                    
+
                                     // Placeholder mientras carga o si falla
                                     Rectangle {
                                         anchors.fill: parent
                                         color: Colors.surfaceContainerHigh
                                         visible: parent.status !== Image.Ready
-                                        
+
                                         Text {
                                             anchors.centerIn: parent
                                             text: {
-                                                if (parent.parent.status === Image.Loading) return "⏳";
-                                                if (parent.parent.status === Image.Error) return "❌";
+                                                if (parent.parent.status === Image.Loading)
+                                                    return "⏳";
+                                                if (parent.parent.status === Image.Error)
+                                                    return "❌";
                                                 return "📹";
                                             }
                                             font.pixelSize: 24
