@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Effects
+import Quickshell.Widgets
 import qs.modules.theme
 import qs.config
 
-Rectangle {
+ClippingRectangle {
     color: Colors.background
     radius: Config.roundness
     border.color: Colors.surfaceBright

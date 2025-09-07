@@ -76,9 +76,9 @@ Item {
             if (currentWorkspace) {
                 // Find a window in the current workspace
                 let windowInWorkspace = windowList.find(win => win?.workspace?.id === currentWorkspace && monitor?.id === win.monitor);
-                
+
                 Visibilities.setActiveModule("");
-                
+
                 // Use the same focus restoration pattern as double-click
                 if (windowInWorkspace) {
                     Qt.callLater(() => {
@@ -105,7 +105,7 @@ Item {
         implicitWidth: workspaceColumnLayout.implicitWidth + workspaceSpacing * 2
         implicitHeight: workspaceColumnLayout.implicitHeight + workspaceSpacing * 2
         radius: Config.roundness > 0 ? Config.roundness + 4 : 0
-        color: Colors.surfaceContainer
+        color: Colors.surface
 
         ColumnLayout {
             id: workspaceColumnLayout
@@ -142,7 +142,7 @@ Item {
                                 text: workspaceValue
                                 font.pixelSize: Math.min(parent.width, parent.height) * 0.25
                                 font.weight: Font.Bold
-                                color: Colors.surfaceContainerHigh
+                                color: Colors.surfaceBright
                                 opacity: 1
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter

@@ -177,7 +177,7 @@ Rectangle {
             Rectangle {
                 width: parent.width
                 height: parent.height - wallpaperSearchInput.height - 12
-                color: Colors.surfaceContainer
+                color: Colors.surface
                 radius: Config.roundness > 0 ? Config.roundness : 0
                 border.color: Colors.adapter.outline
                 border.width: 0
@@ -280,14 +280,14 @@ Rectangle {
                             // Borde interior original
                             Rectangle {
                                 anchors.fill: parent
-                                anchors.topMargin: -2
-                                anchors.bottomMargin: 16
-                                anchors.leftMargin: -2
-                                anchors.rightMargin: -2
+                                anchors.topMargin: -20
+                                anchors.bottomMargin: 0
+                                anchors.leftMargin: -20
+                                anchors.rightMargin: -20
                                 color: "transparent"
                                 border.color: Colors.background
-                                border.width: 8
-                                radius: Config.roundness > 0 ? Config.roundness : 0
+                                border.width: 28
+                                radius: Config.roundness > 0 ? Config.roundness + 20 : 0
                                 z: 5
 
                                 // Etiqueta unificada que se anima con el highlight
@@ -295,9 +295,10 @@ Rectangle {
                                     anchors.bottom: parent.bottom
                                     anchors.left: parent.left
                                     anchors.right: parent.right
-                                    anchors.bottomMargin: -16
-                                    height: 24
-                                    color: Colors.background
+                                    anchors.bottomMargin: 0
+                                    height: 28
+                                    // color: Colors.background
+                                    color: "transparent"
                                     z: 6
                                     clip: true
 
@@ -423,7 +424,7 @@ Rectangle {
 
                             ClippingRectangle {
                                 anchors.fill: parent
-                                color: Colors.surfaceContainer
+                                color: Colors.surface
                                 radius: Config.roundness > 0 ? Config.roundness : 0
 
                                 // Lazy loader que solo carga cuando el item está visible
@@ -436,7 +437,7 @@ Rectangle {
                                     // Placeholder mientras carga
                                     Rectangle {
                                         anchors.fill: parent
-                                        color: Colors.surfaceContainer
+                                        color: Colors.surface
                                         visible: !parent.active
 
                                         Text {
@@ -564,7 +565,7 @@ Rectangle {
                 // Placeholder mientras carga o si falla
                 Rectangle {
                     anchors.fill: parent
-                    color: Colors.surfaceContainer
+                    color: Colors.surface
                     visible: parent.status !== Image.Ready
 
                     Text {

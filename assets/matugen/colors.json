@@ -1,5 +1,5 @@
 {
-  "background": "{{colors.background.default.hex}}",
+  "background": "{{colors.background.default.hex | set_lightness: -5.0}}",
   "blue": "{{colors.blue.default.hex}}",
   "blueContainer": "{{colors.blue_container.default.hex}}",
   "blueSource": "{{colors.blue_source.default.hex}}",

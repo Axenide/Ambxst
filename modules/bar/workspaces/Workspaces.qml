@@ -112,7 +112,7 @@ Item {
                 topRightRadius: radiusRight
                 bottomRightRadius: radiusRight
 
-                color: Colors.surfaceContainerHighest
+                color: Colors.surfaceBright
                 opacity: (workspaceOccupied[index] && !(!activeWindow?.activated && monitor?.activeWorkspace?.id === index + 1)) ? Config.opacity : 0
 
                 Behavior on opacity {

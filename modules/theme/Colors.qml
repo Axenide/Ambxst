@@ -112,8 +112,9 @@ FileView {
 
     property color background: Config.oledMode ? Qt.rgba(0, 0, 0, Config.opacity) : applyOpacity(adapter.background)
 
-    property color surface: applyOpacity(adapter.surface)
-    property color surfaceBright: applyOpacity(adapter.surfaceBright)
+    property color surface: applyOpacity(Qt.tint(background, Qt.rgba(adapter.overBackground.r, adapter.overBackground.g, adapter.overBackground.b, 0.1)))
+    // property color surfaceBright: applyOpacity(adapter.surfaceBright)
+    property color surfaceBright: applyOpacity(Qt.tint(background, Qt.rgba(adapter.overBackground.r, adapter.overBackground.g, adapter.overBackground.b, 0.2)))
     property color surfaceContainer: applyOpacity(adapter.surfaceContainer)
     property color surfaceContainerHigh: applyOpacity(adapter.surfaceContainerHigh)
     property color surfaceContainerHighest: applyOpacity(adapter.surfaceContainerHighest)
