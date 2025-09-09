@@ -27,9 +27,12 @@ QtObject {
     readonly property string assistant: ""
     // Launcher
     readonly property string apps: ""
-    readonly property string terminal: ""
+    readonly property string terminal: ""
+    readonly property string terminalWindow: ""
     readonly property string clipboard: ""
     // Misc
     readonly property string accept: ""
     readonly property string cancel: ""
+    readonly property string add: ""
+    readonly property string alert: ""
 }

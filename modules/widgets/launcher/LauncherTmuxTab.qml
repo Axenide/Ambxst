@@ -563,14 +563,14 @@ Rectangle {
                         Layout.preferredHeight: 32
                         color: {
                             if (isInDeleteMode) {
-                                return Colors.adapter.error;
+                                return Colors.adapter.overError;
                             } else if (modelData.isCreateButton) {
                                 return Colors.adapter.primary;
                             } else {
                                 return Colors.adapter.surface;
                             }
                         }
-                        radius: 6
+                        radius: Config.roundness > 4 ? Config.roundness - 4 : 0
 
                         Behavior on color {
                             ColorAnimation {
@@ -581,10 +581,18 @@ Rectangle {
 
                         Text {
                             anchors.centerIn: parent
-                            text: ""  // Icono de terminal
+                            text: {
+                                if (isInDeleteMode) {
+                                    return Icons.alert;
+                                } else if (modelData.isCreateButton || modelData.isCreateSpecificButton) {
+                                    return Icons.add;
+                                } else {
+                                    return Icons.terminalWindow;
+                                }
+                            }
                             color: {
                                 if (isInDeleteMode) {
-                                    return Colors.adapter.errorContainer;
+                                    return Colors.adapter.error;
                                 } else if (modelData.isCreateButton) {
                                     return Colors.background;
                                 } else {
@@ -694,8 +702,8 @@ Rectangle {
                     id: actionContainer
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    anchors.margins: 8
-                    width: 72 // 32 + 8 + 32
+                    anchors.rightMargin: 8
+                    width: 76 // 32 + 12 + 32 (mismo spacing que el layout principal)
                     height: 32
                     color: "transparent"
                     opacity: isInDeleteMode ? 1.0 : 0.0
@@ -723,7 +731,7 @@ Rectangle {
                     Rectangle {
                         id: deleteHighlight
                         color: Colors.adapter.overError
-                        radius: Config.roundness > 0 ? Config.roundness : 0
+                        radius: Config.roundness > 4 ? Config.roundness - 4 : 0
                         visible: isInDeleteMode
                         z: 0
 
@@ -733,14 +741,14 @@ Rectangle {
 
                         // Posición y tamaño con efecto elástico
                         x: {
-                            let minX = Math.min(idx1X, idx2X) * 36 + activeButtonMargin;
+                            let minX = Math.min(idx1X, idx2X) * 44 + activeButtonMargin; // 32 + 12 spacing
                             return minX;
                         }
 
                         y: activeButtonMargin
 
                         width: {
-                            let stretchX = Math.abs(idx1X - idx2X) * 36 + 32 - activeButtonMargin * 2;
+                            let stretchX = Math.abs(idx1X - idx2X) * 44 + 32 - activeButtonMargin * 2; // 32 + 12 spacing
                             return stretchX;
                         }
 
@@ -763,7 +771,7 @@ Rectangle {
                     Row {
                         id: actionButtons
                         anchors.fill: parent
-                        spacing: 4
+                        spacing: 12
 
                         // Botón cancelar (cruz)
                         Rectangle {
