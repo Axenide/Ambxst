@@ -146,6 +146,21 @@ QtObject {
         }
     }
 
+    property Process deleteProcess: Process {
+        property string itemId: ""
+        running: false
+
+        onExited: function(code) {
+            if (code === 0) {
+                console.log("ClipboardService: Item deleted:", deleteProcess.itemId);
+                // Refrescar la lista después de eliminar
+                Qt.callLater(root.list);
+            } else {
+                console.log("ClipboardService: Failed to delete item:", deleteProcess.itemId);
+            }
+        }
+    }
+
     function checkCliphistAvailability() {
         dependencyCheckProcess.running = true;
     }
@@ -158,6 +173,13 @@ QtObject {
     function clear() {
         if (!active) return;
         clearProcess.running = true;
+    }
+
+    function deleteItem(id) {
+        if (!active) return;
+        deleteProcess.itemId = id;
+        deleteProcess.command = ["cliphist", "delete-query", id];
+        deleteProcess.running = true;
     }
 
     function isImageData(content) {

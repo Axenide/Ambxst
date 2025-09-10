@@ -29,6 +29,12 @@ Rectangle {
     property bool clearButtonFocused: false
     property bool clearButtonConfirmState: false
 
+    // Delete mode state
+    property bool deleteMode: false
+    property string itemToDelete: ""
+    property int originalSelectedIndex: -1
+    property int deleteButtonIndex: 0 // 0 = cancel, 1 = confirm
+
     property int imgSize: 78
 
     signal itemSelected
@@ -57,6 +63,44 @@ Rectangle {
 
     function resetClearButton() {
         clearButtonConfirmState = false;
+    }
+
+    function cancelDeleteModeFromExternal() {
+        if (deleteMode) {
+            console.log("DEBUG: Canceling delete mode from external source (tab change)");
+            cancelDeleteMode();
+        }
+    }
+
+    function enterDeleteMode(itemId) {
+        console.log("DEBUG: Entering delete mode for item:", itemId);
+        originalSelectedIndex = selectedIndex; // Store the current index
+        deleteMode = true;
+        itemToDelete = itemId;
+        deleteButtonIndex = 0; // Start with cancel button selected
+        // Quitar focus del SearchInput para que el componente root pueda capturar teclas
+        root.forceActiveFocus();
+    }
+
+    function cancelDeleteMode() {
+        console.log("DEBUG: Canceling delete mode");
+        deleteMode = false;
+        itemToDelete = "";
+        deleteButtonIndex = 0;
+        // Devolver focus al SearchInput
+        searchInput.focusInput();
+        updateFilteredItems();
+        // Restore the original selectedIndex
+        selectedIndex = originalSelectedIndex;
+        textResultsList.currentIndex = originalSelectedIndex;
+        originalSelectedIndex = -1;
+    }
+
+    function confirmDeleteItem() {
+        console.log("DEBUG: Confirming delete for item:", itemToDelete);
+        ClipboardService.deleteItem(itemToDelete);
+        cancelDeleteMode();
+        refreshClipboardHistory();
     }
 
     function clearClipboardHistory() {
@@ -254,9 +298,12 @@ Rectangle {
                 onEscapePressed: {
                     if (root.clearButtonConfirmState) {
                         root.resetClearButton();
-                    } else {
+                    } else if (!root.deleteMode) {
+                        // Solo cerrar el notch si NO estamos en modo eliminar
                         root.itemSelected();
                     }
+                    // Si estamos en modo eliminar, no hacer nada aquí
+                    // El handler global del root se encargará
                 }
 
                 onDownPressed: {
@@ -279,6 +326,16 @@ Rectangle {
                     if (event.key === Qt.Key_Tab && !(event.modifiers & Qt.ShiftModifier)) {
                         root.clearButtonFocused = true;
                         clearButton.forceActiveFocus();
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Delete && !root.deleteMode && root.selectedIndex >= 0 && root.selectedIndex < root.textItems.length) {
+                        // Tecla Delete para activar modo delete
+                        var selectedText = root.textItems[root.selectedIndex];
+                        root.enterDeleteMode(selectedText.id);
+                        event.accepted = true;
+                    } else if (event.key === Qt.Key_Return && (event.modifiers & Qt.ShiftModifier) && !root.deleteMode && root.selectedIndex >= 0 && root.selectedIndex < root.textItems.length) {
+                        // Shift+Enter para activar modo delete
+                        var selectedText = root.textItems[root.selectedIndex];
+                        root.enterDeleteMode(selectedText.id);
                         event.accepted = true;
                     }
                 }
@@ -640,29 +697,301 @@ Rectangle {
                             id: mouseArea
                             anchors.fill: parent
                             hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                            // Variables para gestos táctiles
+                            property real startX: 0
+                            property real startY: 0
+                            property bool isDragging: false
+                            property bool longPressTriggered: false
+
+                            property bool isInDeleteMode: root.deleteMode && modelData.id === root.itemToDelete
 
                             onEntered: {
-                                if (root.isImageSectionFocused) {
-                                    root.isImageSectionFocused = false;
-                                    root.selectedImageIndex = -1;
+                                // Solo cambiar la selección si no estamos en modo delete
+                                if (!root.deleteMode) {
+                                    if (root.isImageSectionFocused) {
+                                        root.isImageSectionFocused = false;
+                                        root.selectedImageIndex = -1;
+                                    }
+                                    root.selectedIndex = index;
+                                    textResultsList.currentIndex = index;
                                 }
-                                root.selectedIndex = index;
-                                textResultsList.currentIndex = index;
                             }
-                            onClicked: {
-                                root.copyToClipboard(modelData.id);
+
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.LeftButton && !mouseArea.isInDeleteMode) {
+                                    // Solo copiar si NO estamos en modo delete
+                                    root.copyToClipboard(modelData.id);
+                                } else if (mouse.button === Qt.RightButton) {
+                                    // Click derecho - mostrar menú contextual
+                                    console.log("DEBUG: Right click detected, showing context menu");
+                                    contextMenu.popup(mouse.x, mouse.y);
+                                }
                             }
+
+                            onPressed: mouse => {
+                                startX = mouse.x;
+                                startY = mouse.y;
+                                isDragging = false;
+                                longPressTriggered = false;
+
+                                // Solo iniciar el timer para long press si no es click derecho
+                                if (mouse.button !== Qt.RightButton) {
+                                    longPressTimer.start();
+                                }
+                            }
+
+                            onPositionChanged: mouse => {
+                                if (pressed && mouse.button !== Qt.RightButton) {
+                                    let deltaX = mouse.x - startX;
+                                    let deltaY = mouse.y - startY;
+                                    let distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+                                    // Si se mueve más de 10 píxeles, considerar como arrastre
+                                    if (distance > 10) {
+                                        isDragging = true;
+                                        longPressTimer.stop();
+
+                                         // Detectar swipe hacia la izquierda para delete
+                                        if (deltaX < -50 && Math.abs(deltaY) < 30) {
+                                            if (!longPressTriggered) {
+                                                root.enterDeleteMode(modelData.id);
+                                                longPressTriggered = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                        // Botones de acción que aparecen desde la derecha
+                        Rectangle {
+                            id: actionContainer
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.rightMargin: 8
+                            width: 68 // 32 + 4 + 32
+                            height: 32
+                            color: "transparent"
+                            opacity: mouseArea.isInDeleteMode ? 1.0 : 0.0
+                            visible: opacity > 0
+
+                            transform: Translate {
+                                x: mouseArea.isInDeleteMode ? 0 : 80
+
+                                Behavior on x {
+                                    NumberAnimation {
+                                        duration: Config.animDuration
+                                        easing.type: Easing.OutQuart
+                                    }
+                                }
+                            }
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Config.animDuration / 2
+                                    easing.type: Easing.OutQuart
+                                }
+                            }
+
+                            // Highlight elástico que se estira entre botones
+                            Rectangle {
+                                id: deleteHighlight
+                                color: Colors.adapter.overError
+                                radius: Config.roundness > 4 ? Config.roundness - 4 : 0
+                                visible: mouseArea.isInDeleteMode
+                                z: 0
+
+                                property real activeButtonMargin: 2
+                                property real idx1X: root.deleteButtonIndex
+                                property real idx2X: root.deleteButtonIndex
+
+                                // Posición y tamaño con efecto elástico
+                                x: {
+                                    let minX = Math.min(idx1X, idx2X) * 36 + activeButtonMargin; // 32 + 4 spacing
+                                    return minX;
+                                }
+
+                                y: activeButtonMargin
+
+                                width: {
+                                    let stretchX = Math.abs(idx1X - idx2X) * 36 + 32 - activeButtonMargin * 2; // 32 + 4 spacing
+                                    return stretchX;
+                                }
+
+                                height: 32 - activeButtonMargin * 2
+
+                                Behavior on idx1X {
+                                    NumberAnimation {
+                                        duration: Config.animDuration / 3
+                                        easing.type: Easing.OutSine
+                                    }
+                                }
+                                Behavior on idx2X {
+                                    NumberAnimation {
+                                        duration: Config.animDuration
+                                        easing.type: Easing.OutSine
+                                    }
+                                }
+                            }
+
+                            Row {
+                                id: actionButtons
+                                anchors.fill: parent
+                                spacing: 4
+
+                                // Botón cancelar (cruz)
+                                Rectangle {
+                                    id: cancelButton
+                                    width: 32
+                                    height: 32
+                                    color: "transparent"
+                                    radius: 6
+                                    border.width: 0
+                                    border.color: Colors.adapter.outline
+                                    z: 1
+
+                                    property bool isHighlighted: root.deleteButtonIndex === 0
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        onClicked: root.cancelDeleteMode()
+                                        onEntered: {
+                                            root.deleteButtonIndex = 0;
+                                        }
+                                        onExited: parent.color = "transparent"
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Icons.cancel
+                                        color: cancelButton.isHighlighted ? Colors.adapter.error : Colors.adapter.overError
+                                        font.pixelSize: 14
+                                        font.family: Icons.font
+
+                                        Behavior on color {
+                                            ColorAnimation {
+                                                duration: Config.animDuration / 2
+                                                easing.type: Easing.OutQuart
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Botón confirmar (check)
+                                Rectangle {
+                                    id: confirmButton
+                                    width: 32
+                                    height: 32
+                                    color: "transparent"
+                                    radius: 6
+                                    z: 1
+
+                                    property bool isHighlighted: root.deleteButtonIndex === 1
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        onClicked: root.confirmDeleteItem()
+                                        onEntered: {
+                                            root.deleteButtonIndex = 1;
+                                        }
+                                        onExited: parent.color = "transparent"
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Icons.accept
+                                        color: confirmButton.isHighlighted ? Colors.adapter.error : Colors.adapter.overError
+                                        font.pixelSize: 14
+                                        font.family: Icons.font
+
+                                        Behavior on color {
+                                            ColorAnimation {
+                                                duration: Config.animDuration / 2
+                                                easing.type: Easing.OutQuart
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        onReleased: mouse => {
+                                longPressTimer.stop();
+                                isDragging = false;
+                                longPressTriggered = false;
+                            }
+
+                            // Timer para long press
+                            Timer {
+                                id: longPressTimer
+                                interval: 800 // 800ms para activar long press
+                                repeat: false
+                                onTriggered: {
+                                    // Long press activado - copiar item
+                                    if (!mouseArea.isDragging) {
+                                        root.copyToClipboard(modelData.id);
+                                        mouseArea.longPressTriggered = true;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Menú contextual usando el componente reutilizable
+                        OptionsMenu {
+                            id: contextMenu
+
+                            items: [
+                                {
+                                    text: "Copy",
+                                    icon: Icons.copy,
+                                    highlightColor: Colors.adapter.primary,
+                                    textColor: Colors.adapter.overPrimary,
+                                    onTriggered: function () {
+                                        console.log("DEBUG: Copy clicked from ContextMenu");
+                                        root.copyToClipboard(modelData.id);
+                                    }
+                                },
+                                {
+                                    text: "Delete",
+                                    icon: Icons.trash,
+                                    highlightColor: Colors.adapter.errorContainer,
+                                    textColor: Colors.adapter.error,
+                                    onTriggered: function () {
+                                        console.log("DEBUG: Delete clicked from ContextMenu");
+                                        root.enterDeleteMode(modelData.id);
+                                    }
+                                }
+                            ]
                         }
 
                         RowLayout {
                             anchors.fill: parent
                             anchors.margins: 8
+                            anchors.rightMargin: mouseArea.isInDeleteMode ? 84 : 8 // 68 (ancho botones) + 16 (padding extra)
                             spacing: 12
+
+                            Behavior on anchors.rightMargin {
+                                NumberAnimation {
+                                    duration: Config.animDuration
+                                    easing.type: Easing.OutQuart
+                                }
+                            }
 
                             Rectangle {
                                 Layout.preferredWidth: 32
                                 Layout.preferredHeight: 32
-                                color: root.selectedIndex === index && !root.isImageSectionFocused ? Colors.adapter.overPrimary : Colors.surface
+                                color: {
+                                    if (mouseArea.isInDeleteMode) {
+                                        return Colors.adapter.overError;
+                                    } else if (root.selectedIndex === index && !root.isImageSectionFocused) {
+                                        return Colors.adapter.overPrimary;
+                                    } else {
+                                        return Colors.surface;
+                                    }
+                                }
                                 radius: Config.roundness > 0 ? Config.roundness - 4 : 0
 
                                 Behavior on color {
@@ -674,8 +1003,16 @@ Rectangle {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: Icons.clip
-                                    color: root.selectedIndex === index && !root.isImageSectionFocused ? Colors.adapter.primary : Colors.adapter.overBackground
+                                    text: mouseArea.isInDeleteMode ? Icons.trash : Icons.clip
+                                    color: {
+                                        if (mouseArea.isInDeleteMode) {
+                                            return Colors.adapter.error;
+                                        } else if (root.selectedIndex === index && !root.isImageSectionFocused) {
+                                            return Colors.adapter.primary;
+                                        } else {
+                                            return Colors.adapter.overBackground;
+                                        }
+                                    }
                                     font.family: Icons.font
                                     font.pixelSize: 16
 
@@ -690,11 +1027,19 @@ Rectangle {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: modelData.preview
-                                color: root.selectedIndex === index && !root.isImageSectionFocused ? Colors.adapter.overPrimary : Colors.adapter.overBackground
+                                text: mouseArea.isInDeleteMode ? ("Delete \"" + modelData.preview.substring(0, 20) + (modelData.preview.length > 20 ? '...' : '') + "\"?") : modelData.preview
+                                color: {
+                                    if (mouseArea.isInDeleteMode) {
+                                        return Colors.adapter.overError;
+                                    } else if (root.selectedIndex === index && !root.isImageSectionFocused) {
+                                        return Colors.adapter.overPrimary;
+                                    } else {
+                                        return Colors.adapter.overBackground;
+                                    }
+                                }
                                 font.family: Config.theme.font
                                 font.pixelSize: Config.theme.fontSize
-                                font.weight: Font.Bold
+                                font.weight: mouseArea.isInDeleteMode ? Font.Bold : Font.Bold
                                 elide: Text.ElideRight
 
                                 Behavior on color {
@@ -708,9 +1053,16 @@ Rectangle {
                     }
 
                     highlight: Rectangle {
-                        color: Colors.adapter.primary
+                        color: root.deleteMode ? Colors.adapter.error : Colors.adapter.primary
                         radius: Config.roundness > 0 ? Config.roundness + 4 : 0
                         visible: root.selectedIndex >= 0 && !root.isImageSectionFocused
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: Config.animDuration / 2
+                                easing.type: Easing.OutQuart
+                            }
+                        }
                     }
 
                     highlightMoveDuration: Config.animDuration / 2
@@ -749,6 +1101,40 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
+
+    // Handler de teclas global para manejar navegación en modo eliminar
+    Keys.onPressed: event => {
+        if (root.deleteMode) {
+            if (event.key === Qt.Key_Left) {
+                root.deleteButtonIndex = 0; // Cancelar (cruz)
+                event.accepted = true;
+            } else if (event.key === Qt.Key_Right) {
+                root.deleteButtonIndex = 1; // Confirmar (check)
+                event.accepted = true;
+            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Space) {
+                // Ejecutar acción del botón seleccionado
+                if (root.deleteButtonIndex === 0) {
+                    console.log("DEBUG: Enter/Space pressed - canceling delete");
+                    root.cancelDeleteMode();
+                } else {
+                    console.log("DEBUG: Enter/Space pressed - confirming delete");
+                    root.confirmDeleteItem();
+                }
+                event.accepted = true;
+            } else if (event.key === Qt.Key_Escape) {
+                console.log("DEBUG: Escape pressed in delete mode - canceling without closing notch");
+                root.cancelDeleteMode();
+                event.accepted = true;
+            }
+        }
+    }
+
+    // Monitor cambios en deleteMode
+    onDeleteModeChanged: {
+        if (!deleteMode) {
+            console.log("DEBUG: Delete mode ended");
         }
     }
 
