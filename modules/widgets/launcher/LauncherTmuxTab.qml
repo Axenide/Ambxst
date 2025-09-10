@@ -242,19 +242,19 @@ Rectangle {
 
     function createTmuxSession(sessionName) {
         if (sessionName) {
-            // Crear la sesión con nombre específico
-            createProcess.command = ["bash", "-c", `kitty -e tmux new -s "${sessionName}" & disown`];
+            // Crear la sesión con nombre específico en el directorio home
+            createProcess.command = ["bash", "-c", `cd "$HOME" && kitty -e tmux new -s "${sessionName}" & disown`];
         } else {
-            // Crear sesión sin nombre (tmux se encarga del nombre automático)
-            createProcess.command = ["bash", "-c", `kitty -e tmux & disown`];
+            // Crear sesión sin nombre en el directorio home
+            createProcess.command = ["bash", "-c", `cd "$HOME" && kitty -e tmux & disown`];
         }
         createProcess.running = true;
         root.itemSelected(); // Cerrar el notch
     }
 
     function attachToSession(sessionName) {
-        // Ejecutar terminal con tmux attach de forma independiente (detached)
-        attachProcess.command = ["bash", "-c", `kitty -e tmux attach-session -t "${sessionName}" & disown`];
+        // Ejecutar terminal con tmux attach de forma independiente (detached) desde home
+        attachProcess.command = ["bash", "-c", `cd "$HOME" && kitty -e tmux attach-session -t "${sessionName}" & disown`];
         attachProcess.running = true;
     }
 
