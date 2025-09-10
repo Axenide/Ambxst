@@ -79,7 +79,15 @@ FocusScope {
         // Highlight que se desplaza entre botones con efecto elástico
         Rectangle {
             id: highlight
-            color: Colors.adapter.primary
+            color: {
+                // Buscar si algún botón está presionado
+                for (let i = 0; i < repeater.count; i++) {
+                    if (repeater.itemAt(i) && repeater.itemAt(i).pressed) {
+                        return Colors.adapter.overPrimary;
+                    }
+                }
+                return Colors.adapter.primary;
+            }
             radius: Config.roundness > 0 ? Config.roundness + 4 : 0
             border.width: 0
             border.color: Colors.adapter.primary
@@ -179,7 +187,7 @@ FocusScope {
                         text: modelData.icon || ""
                         font.family: Icons.font
                         font.pixelSize: root.iconSize
-                        color: actionButton.pressed ? Colors.background : (index === root.currentIndex ? Colors.adapter.overPrimary : Colors.adapter.overBackground)
+                        color: actionButton.pressed ? Colors.adapter.primary : (index === root.currentIndex ? Colors.adapter.overPrimary : Colors.adapter.overBackground)
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
 
