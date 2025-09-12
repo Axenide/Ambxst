@@ -404,17 +404,17 @@ NotchAnimationBehavior {
     // Component definitions for better performance (defined once, reused)
     Component {
         id: overviewComponent
-        OverviewTab {}
+        WidgetsTab {}
     }
 
     Component {
         id: systemComponent
-        SystemTab {}
+        PinsTab {}
     }
 
     Component {
         id: quickSettingsComponent
-        QuickSettingsTab {}
+        KanbanTab {}
     }
 
     Component {
