@@ -132,7 +132,7 @@ QtObject {
         const inactiveColorFormatted = formatColorForHyprland(inactiveColorWithFullOpacity)
         
         // Usar batch para aplicar todos los comandos de una vez
-        const batchCommand = `keyword general:col.active_border ${activeColorFormatted} ; keyword general:col.inactive_border ${inactiveColorFormatted} ; keyword general:border_size ${Config.hyprland.borderSize} ; keyword decoration:rounding ${Config.hyprland.rounding}`
+        const batchCommand = `keyword general:col.active_border ${activeColorFormatted} ; keyword general:col.inactive_border ${inactiveColorFormatted} ; keyword general:border_size ${Config.hyprland.borderSize} ; keyword decoration:rounding ${Config.hyprlandRounding}`
         
         hyprctlProcess.command = ["hyprctl", "--batch", batchCommand]
         hyprctlProcess.running = true
@@ -141,11 +141,8 @@ QtObject {
 
 
     property Connections configConnections: Connections {
-        target: Config.hyprland
-        function onActiveBorderColorChanged() { applyHyprlandConfig() }
-        function onInactiveBorderColorChanged() { applyHyprlandConfig() }
-        function onBorderSizeChanged() { applyHyprlandConfig() }
-        function onRoundingChanged() { applyHyprlandConfig() }
+        target: Config.loader
+        function onFileChanged() { applyHyprlandConfig() }
     }
 
     Component.onCompleted: {

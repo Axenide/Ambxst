@@ -7,6 +7,8 @@ import Quickshell.Io
 Singleton {
     id: root
 
+    property alias loader: loader
+
     FileView {
         id: loader
         path: Qt.resolvedUrl("../config.json")
@@ -59,7 +61,8 @@ Singleton {
                 property string activeBorderColor: "primary"
                 property string inactiveBorderColor: "background"
                 property int borderSize: 2
-                property int rounding: 10
+                property int rounding: 16
+                property bool syncRoundness: true
             }
         }
     }
@@ -90,4 +93,5 @@ Singleton {
 
     // Hyprland configuration
     property QtObject hyprland: loader.adapter.hyprland
+    property int hyprlandRounding: hyprland.syncRoundness ? Math.max(0, roundness - hyprland.borderSize) : Math.max(0, hyprland.rounding - hyprland.borderSize)
 }
