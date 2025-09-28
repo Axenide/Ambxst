@@ -178,7 +178,7 @@ Item {
                     Layout.fillWidth: true
                     property real fontSize: 11
                     property bool showAppName: root.multipleNotifications
-                    implicitHeight: Math.max(topTextRow.implicitHeight, expandButton.implicitHeight)
+                    implicitHeight: root.notificationCount === 1 ? 0 : Math.max(topTextRow.implicitHeight, expandButton.implicitHeight)
 
                     RowLayout {
                         id: topTextRow
@@ -186,6 +186,7 @@ Item {
                         anchors.right: expandButton.left
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 5
+                        visible: root.multipleNotifications
 
                         Text {
                             id: appName
@@ -214,6 +215,7 @@ Item {
                         count: root.notificationCount
                         expanded: root.expanded
                         fontSize: topRow.fontSize
+                        visible: root.multipleNotifications
                         onClicked: {
                             root.toggleExpanded();
                         }
