@@ -54,4 +54,5 @@ QtObject {
     readonly property string image: ""
     readonly property string broom: ""
     readonly property string xeyes: ""
+    readonly property string seal: ""
 }

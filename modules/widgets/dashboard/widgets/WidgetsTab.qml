@@ -54,7 +54,7 @@ Rectangle {
                         required property string modelData
                         width: notificationList.width
                         notificationGroup: Notifications.groupsByAppName[modelData]
-                        expanded: true  // Always expanded for history view
+                        expanded: false  // Always expanded for history view
                         popup: false
                     }
                 }

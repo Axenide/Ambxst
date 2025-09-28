@@ -173,13 +173,7 @@ Item {
             anchors.margins: root.padding
             spacing: root.padding / 2
 
-            NotificationAppIcon {
-                Layout.alignment: Qt.AlignTop
-                Layout.fillWidth: false
-                image: root?.multipleNotifications ? "" : (root.validNotifications.length > 0 ? root.validNotifications[0]?.image ?? "" : "")
-                appIcon: notificationGroup?.appIcon
-                summary: root.validNotifications.length > 0 ? root.validNotifications[root.validNotifications.length - 1]?.summary ?? "" : ""
-            }
+
 
             ColumnLayout {
                 Layout.fillWidth: true

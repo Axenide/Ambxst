@@ -17,74 +17,27 @@ Item {
     property real padding: 8
     property bool onlyNotification: false
     
-    // Verificar que la notificación tiene contenido válido
-    property bool isValid: notificationObject != null && 
-                          (notificationObject.summary != null && notificationObject.summary.length > 0) ||
-                          (notificationObject.body != null && notificationObject.body.length > 0)
+    property bool isValid: notificationObject !== null && 
+                          (notificationObject.summary !== null && notificationObject.summary.length > 0) ||
+                          (notificationObject.body !== null && notificationObject.body.length > 0)
     
-    onNotificationObjectChanged: {
-        console.log("[ITEM-DEBUG] NotificationObject cambió:", {
-            id: notificationObject?.id,
-            summary: notificationObject?.summary,
-            body: notificationObject?.body,
-            isValid: isValid,
-            isNull: notificationObject == null
-        });
-    }
-    
-    onIsValidChanged: {
-        console.log("[ITEM-DEBUG] Validez cambió:", {
-            id: notificationObject?.id,
-            isValid: isValid,
-            summary: notificationObject?.summary,
-            body: notificationObject?.body
-        });
-    }
-
-    property real dragConfirmThreshold: 70
-    property real dismissOvershoot: 20
-    property var qmlParent: root?.parent?.parent
-    property var parentDragIndex: qmlParent?.dragIndex ?? -1
-    property var parentDragDistance: qmlParent?.dragDistance ?? 0
-    property var dragIndexDiff: Math.abs(parentDragIndex - (index ?? 0))
-    property real xOffset: dragIndexDiff == 0 ? Math.max(0, parentDragDistance) : parentDragDistance > dragConfirmThreshold ? 0 : dragIndexDiff == 1 ? Math.max(0, parentDragDistance * 0.3) : dragIndexDiff == 2 ? Math.max(0, parentDragDistance * 0.1) : 0
-
     signal destroyRequested
 
-    implicitHeight: background.implicitHeight
-
-    // Timer para actualizar el timestamp cada minuto
-    Timer {
-        id: timestampUpdateTimer
-        interval: 60000 // 1 minuto
-        repeat: true
-        running: true
-        triggeredOnStart: true
-        onTriggered: {
-            // Forzar actualización del binding del timestamp
-            if (timestampText) {
-                timestampText.text = NotificationUtils.getFriendlyNotifTimeString(root.notificationObject.time);
-            }
-        }
-    }
+    implicitHeight: background.height
 
     function processNotificationBody(body) {
-        // Limpiar HTML básico y saltos de línea para vista simple
+        if (!body) return ""
         return body.replace(/<[^>]*>/g, "").replace(/\n/g, " ");
     }
 
     function destroyWithAnimation() {
-        if (root.qmlParent && root.qmlParent.resetDrag)
-            root.qmlParent.resetDrag();
-
-        background.anchors.leftMargin = background.anchors.leftMargin;
         notificationAnimation.startDestroy();
     }
 
     NotificationAnimation {
         id: notificationAnimation
         targetItem: background
-        dismissOvershoot: root.dismissOvershoot
+        dismissOvershoot: 20
         parentWidth: root.width
 
         onDestroyFinished: {
@@ -97,112 +50,82 @@ Item {
         anchors.fill: root
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
-        property bool dragging: false
-        property real dragDiffX: 0
-
         onPressed: mouse => {
             if (mouse.button === Qt.MiddleButton) {
                 root.destroyWithAnimation();
             }
-        }
-
-        function resetDrag() {
-            dragging = false;
-            dragDiffX = 0;
         }
     }
 
     Rectangle {
         id: background
         width: parent.width
-        anchors.left: parent.left
+        height: contentColumn.implicitHeight + padding * 2
         radius: 8
-        anchors.leftMargin: root.xOffset
         visible: root.isValid
-        
-        onVisibleChanged: {
-            console.log("[ITEM-DEBUG] Visibilidad del item cambió:", {
-                id: root.notificationObject?.id,
-                visible: visible,
-                isValid: root.isValid
-            });
-        }
+        color: (notificationObject.urgency == NotificationUrgency.Critical) ? Colors.adapter.error : "transparent"
 
-        Behavior on anchors.leftMargin {
-            enabled: !dragManager.dragging
+        Behavior on height {
             NumberAnimation {
-                duration: 300
+                duration: Config.animDuration
                 easing.type: Easing.OutCubic
             }
         }
-
-        color: (notificationObject.urgency == NotificationUrgency.Critical) ? Colors.adapter.error : Colors.surfaceContainerLow
-
-        implicitHeight: contentColumn.implicitHeight + padding * 2
 
         ColumnLayout {
             id: contentColumn
             anchors.fill: parent
             anchors.margins: root.padding
-            spacing: 8
+            spacing: expanded ? 8 : 4
 
-            // Row con app name, summary y timestamp
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
 
-                Text {
-                    id: appNameText
-                    font.family: Config.theme.font
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                    color: Colors.adapter.outline
-                    text: root.notificationObject.appName || ""
-                    visible: text.length > 0
-                    elide: Text.ElideRight
-                    Layout.maximumWidth: Math.max(60, parent.width * 0.25)
+                NotificationAppIcon {
+                    id: appIcon
+                    Layout.preferredWidth: 32
+                    Layout.preferredHeight: 32
+                    Layout.alignment: Qt.AlignTop
+                    size: 32
+                    radius: Config.roundness > 0 ? Config.roundness + 4 : 0
+                    visible: notificationObject && (notificationObject.appIcon !== "" || notificationObject.image !== "")
+                    appIcon: notificationObject ? notificationObject.appIcon : ""
+                    image: notificationObject ? notificationObject.image : ""
+                    summary: notificationObject ? notificationObject.summary : ""
+                    urgency: notificationObject ? notificationObject.urgency : NotificationUrgency.Normal
                 }
 
-                Text {
-                    id: summaryText
+                Column {
                     Layout.fillWidth: true
-                    font.family: Config.theme.font
-                    font.pixelSize: 14
-                    font.weight: Font.Bold
-                    color: Colors.adapter.primary
-                    elide: Text.ElideRight
-                    text: root.notificationObject.summary || ""
-                    visible: text.length > 0
-                }
+                    spacing: 4
 
-                Text {
-                    id: timestampText
-                    font.family: Config.theme.font
-                    font.pixelSize: 11
-                    color: Colors.adapter.overBackground
-                    text: NotificationUtils.getFriendlyNotifTimeString(root.notificationObject.time)
-                    visible: text.length > 0
-                    // No elide para el timestamp
+                    Text {
+                        width: parent.width
+                        text: notificationObject.summary || ""
+                        font.family: Config.theme.font
+                        font.pixelSize: 14
+                        font.weight: Font.Bold
+                        color: Colors.adapter.primary
+                        elide: Text.ElideRight
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: processNotificationBody(notificationObject.body || "")
+                        font.family: Config.theme.font
+                        font.pixelSize: root.fontSize
+                        color: Colors.adapter.overBackground
+                        wrapMode: Text.NoWrap
+                        elide: Text.ElideRight
+                        visible: text.length > 0
+                    }
                 }
             }
 
-            // Contenido de la notificación
-            Text {
-                id: bodyText
-                Layout.fillWidth: true
-                font.family: Config.theme.font
-                font.pixelSize: root.fontSize
-                color: Colors.adapter.overBackground
-                wrapMode: Text.Wrap
-                textFormat: Text.PlainText
-                text: processNotificationBody(notificationObject.body || "")
-                visible: text.length > 0
-            }
-
-            // Botones de acción si existen
             RowLayout {
                 Layout.fillWidth: true
-                visible: notificationObject.actions.length > 0
+                visible: expanded && notificationObject.actions.length > 0
 
                 Repeater {
                     model: notificationObject.actions
