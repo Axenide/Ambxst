@@ -156,12 +156,20 @@ PanelWindow {
             console.log("Using source for matugen:", matugenSource, "(type:", fileType + ")");
 
             // Ejecutar matugen con configuración específica
-            var command = ["matugen", "image", matugenSource, "-c", Qt.resolvedUrl("../../../../assets/matugen/config.toml").toString().replace("file://", "")];
+            var commandWithConfig = ["matugen", "image", matugenSource, "-c", Qt.resolvedUrl("../../../../assets/matugen/config.toml").toString().replace("file://", "")];
             if (Config.theme.lightMode) {
-                command.push("-m", "light");
+                commandWithConfig.push("-m", "light");
             }
-            matugenProcessWithConfig.command = command;
+            matugenProcessWithConfig.command = commandWithConfig;
             matugenProcessWithConfig.running = true;
+
+            // Ejecutar matugen normal en paralelo
+            var commandNormal = ["matugen", "image", matugenSource];
+            if (Config.theme.lightMode) {
+                commandNormal.push("-m", "light");
+            }
+            matugenProcessNormal.command = commandNormal;
+            matugenProcessNormal.running = true;
         }
     }
 
@@ -178,6 +186,8 @@ PanelWindow {
         scanWallpapers.running = true;
         // Start directory monitoring
         directoryWatcher.reload();
+        // Load initial wallpaper config
+        wallpaperConfig.reload();
         forceActiveFocus();
     }
 
@@ -197,17 +207,19 @@ PanelWindow {
                 console.log("DEBUG: currentWall changed to:", currentWall);
                 console.log("DEBUG: current wallpaper is:", wallpaper.currentWallpaper);
                 console.log("DEBUG: initialLoadCompleted:", wallpaper.initialLoadCompleted);
-                // Solo actualizar si el cambio viene del archivo JSON y es diferente al actual
-                if (currentWall && currentWall !== wallpaper.currentWallpaper && wallpaper.initialLoadCompleted) {
+                // Siempre actualizar si es diferente al actual
+                if (currentWall && currentWall !== wallpaper.currentWallpaper) {
                     console.log("Loading wallpaper from JSON:", currentWall);
                     var pathIndex = wallpaper.wallpaperPaths.indexOf(currentWall);
                     if (pathIndex !== -1) {
                         wallpaper.currentIndex = pathIndex;
+                        if (!wallpaper.initialLoadCompleted) {
+                            wallpaper.initialLoadCompleted = true;
+                        }
+                        wallpaper.runMatugenForCurrentWallpaper();
                     } else {
                         console.warn("Saved wallpaper not found in current list:", currentWall);
                     }
-                } else if (currentWall && !wallpaper.initialLoadCompleted) {
-                    console.log("DEBUG: Deferring wallpaper load until scan completes");
                 }
             }
 
@@ -272,19 +284,7 @@ PanelWindow {
         }
 
         onExited: {
-            // Cuando termina el primer proceso, ejecutar el segundo sin configuración
-            console.log("Matugen with config finished, running normal matugen...");
-            var fileType = getFileType(currentWallpaper);
-            var matugenSource = getColorSource(currentWallpaper);
-
-            console.log("Using source for normal matugen:", matugenSource, "(type:", fileType + ")");
-
-            var command = ["matugen", "image", matugenSource];
-            if (Config.theme.lightMode) {
-                command.push("-m", "light");
-            }
-            matugenProcessNormal.command = command;
-            matugenProcessNormal.running = true;
+            console.log("Matugen with config finished");
         }
     }
 
@@ -310,7 +310,7 @@ PanelWindow {
         }
 
         onExited: {
-            console.log("Both matugen processes completed");
+            console.log("Matugen normal finished");
         }
     }
 
@@ -406,6 +406,7 @@ PanelWindow {
                             }
                             console.log("DEBUG: Setting initialLoadCompleted to true");
                             initialLoadCompleted = true;
+                            // runMatugenForCurrentWallpaper() will be called by onCurrentWallChanged
                         }
                         }
                     }
@@ -462,8 +463,7 @@ PanelWindow {
                                 wallpaperConfig.adapter.currentWall = wallpaperPaths[0];
                             }
                             initialLoadCompleted = true;
-                            // Ejecutar Matugen con el primer wallpaper del fallback
-                            runMatugenForCurrentWallpaper();
+                            // runMatugenForCurrentWallpaper() will be called by onCurrentWallChanged
                         }
                     }
                 }
