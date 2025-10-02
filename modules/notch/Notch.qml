@@ -20,7 +20,7 @@ Item {
     property Component powermenuViewComponent
     property Component notificationViewComponent
     property var stackView: stackViewInternal
-    property bool isExpanded: stackViewInternal.currentItem && stackViewInternal.initialItem && stackViewInternal.currentItem !== stackViewInternal.initialItem
+    property bool isExpanded: stackViewInternal.depth > 1
 
     // Screen-specific visibility properties passed from parent
     property var visibilities

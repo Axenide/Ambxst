@@ -82,7 +82,7 @@ Menu {
     
     // Estilo del menú principal
     background: Item {
-        implicitWidth: root.calculatedWidth
+        implicitWidth: root.menuWidth
         
         // Fondo principal
         Rectangle {
