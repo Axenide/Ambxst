@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Hyprland
 import qs.modules.bar.workspaces
+import qs.modules.services
 
 Singleton {
     id: root
@@ -60,19 +61,17 @@ Singleton {
         
         let focusedScreenName = Hyprland.focusedMonitor.name;
         
-        // Store if we're closing a module for focus restoration
         let wasOpen = currentActiveModule !== "";
         
-        // Clear all modules on all screens first
         clearAll();
         
-        // Set the active module on the focused screen
         if (moduleName && moduleName !== "") {
             let focusedScreen = getForScreen(focusedScreenName);
             if (moduleName === "launcher") {
                 focusedScreen.launcher = true;
             } else if (moduleName === "dashboard") {
                 focusedScreen.dashboard = true;
+                Notifications.hideAllPopups();
             } else if (moduleName === "overview") {
                 focusedScreen.overview = true;
             } else if (moduleName === "powermenu") {
@@ -82,11 +81,9 @@ Singleton {
         } else {
             currentActiveModule = "";
             
-            // Restore focus to windows when closing modules (unless explicitly skipped)
             if (wasOpen && !skipFocusRestore) {
                 Qt.callLater(() => {
                     if (Hyprland.focusedMonitor) {
-                        // Find a window in the current workspace to focus
                         let currentWorkspace = Hyprland.focusedMonitor.activeWorkspace?.id;
                         if (currentWorkspace) {
                             let windowInWorkspace = HyprlandData.windowList.find(win => 

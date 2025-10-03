@@ -444,6 +444,17 @@ Singleton {
         });
     }
 
+    function hideAllPopups() {
+        root.popupList.forEach(notif => {
+            notif.popup = false;
+            if (notif.timer) {
+                notif.timer.stop();
+                notif.timer.destroy();
+                notif.timer = null;
+            }
+        });
+    }
+
     function triggerListChange() {
         root.list = root.list.slice(0);
     }
