@@ -20,6 +20,9 @@ Item {
     onCornerChanged: {
         canvas.requestPaint();
     }
+    onSizeChanged: {
+        canvas.requestPaint();
+    }
 
     implicitWidth: size
     implicitHeight: size
