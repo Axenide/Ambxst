@@ -40,11 +40,12 @@ Singleton {
 
             property JsonObject bar: JsonObject {
                 property string position: "top"
-                property string launcherIcon: ""
+                property string launcherIcon: ""
                 property bool showBackground: false
                 property real bgOpacity: 0.75
                 property bool verbose: true
                 property list<string> screenList: []
+                property bool enableFirefoxPlayer: false
             }
 
             property JsonObject workspaces: JsonObject {

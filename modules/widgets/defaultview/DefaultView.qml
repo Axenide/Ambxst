@@ -190,7 +190,7 @@ Item {
                             visible: opacity > 0
                             clip: true
                             scale: 1.0
-                            
+
                             readonly property real naturalWidth: implicitWidth
                             width: (playerHover.hovered || root.notchHovered) ? naturalWidth : 0
 
@@ -226,7 +226,7 @@ Item {
                                 cursorShape: compactPlayer.player?.canGoPrevious ?? false ? Qt.PointingHandCursor : Qt.ArrowCursor
                                 enabled: compactPlayer.player?.canGoPrevious ?? false
                                 onClicked: {
-                                    previousBtn.scale = 1.25;
+                                    previousBtn.scale = 1.5;
                                     compactPlayer.player?.previous();
                                     previousScaleTimer.restart();
                                 }
@@ -261,7 +261,7 @@ Item {
                                 NumberAnimation {
                                     duration: Config.animDuration
                                     easing.type: Easing.OutBack
-                                    easing.overshoot: 1.25
+                                    easing.overshoot: 1.5
                                 }
                             }
 
@@ -300,7 +300,7 @@ Item {
                             visible: opacity > 0
                             clip: true
                             scale: 1.0
-                            
+
                             readonly property real naturalWidth: implicitWidth
                             width: (playerHover.hovered || root.notchHovered) ? naturalWidth : 0
 
@@ -322,7 +322,7 @@ Item {
                                 NumberAnimation {
                                     duration: Config.animDuration
                                     easing.type: Easing.OutBack
-                                    easing.overshoot: 1.25
+                                    easing.overshoot: 1.5
                                 }
                             }
 
@@ -461,14 +461,18 @@ Item {
                         anchors.rightMargin: 8
                         anchors.verticalCenter: parent.verticalCenter
                         text: {
-                            if (!compactPlayer.player) return Icons.player;
+                            if (!compactPlayer.player)
+                                return Icons.player;
                             const dbusName = (compactPlayer.player.dbusName || "").toLowerCase();
                             const desktopEntry = (compactPlayer.player.desktopEntry || "").toLowerCase();
                             const identity = (compactPlayer.player.identity || "").toLowerCase();
-                            
-                            if (dbusName.includes("spotify") || desktopEntry.includes("spotify") || identity.includes("spotify")) return Icons.spotify;
-                            if (dbusName.includes("chromium") || dbusName.includes("chrome") || desktopEntry.includes("chromium") || desktopEntry.includes("chrome")) return Icons.chromium;
-                            if (dbusName.includes("firefox") || desktopEntry.includes("firefox")) return Icons.firefox;
+
+                            if (dbusName.includes("spotify") || desktopEntry.includes("spotify") || identity.includes("spotify"))
+                                return Icons.spotify;
+                            if (dbusName.includes("chromium") || dbusName.includes("chrome") || desktopEntry.includes("chromium") || desktopEntry.includes("chrome"))
+                                return Icons.chromium;
+                            if (dbusName.includes("firefox") || desktopEntry.includes("firefox"))
+                                return Icons.firefox;
                             return Icons.player;
                         }
                         textFormat: Text.RichText
@@ -476,23 +480,23 @@ Item {
                         font.pixelSize: 20
                         font.family: Icons.font
                         verticalAlignment: Text.AlignVCenter
-                        
+
                         Behavior on color {
                             ColorAnimation {
                                 duration: Config.animDuration
                                 easing.type: Easing.OutQuart
                             }
                         }
-                        
+
                         HoverHandler {
                             id: playerIconHover
                         }
-                        
+
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
-                            
+
                             onClicked: mouse => {
                                 if (mouse.button === Qt.LeftButton) {
                                     MprisController.cyclePlayer(1);

@@ -5,11 +5,22 @@ import QtQml.Models
 import QtQuick
 import Quickshell
 import Quickshell.Services.Mpris
+import qs.config
 
 Singleton {
     id: root
     property MprisPlayer trackedPlayer: null
-    property MprisPlayer activePlayer: trackedPlayer ?? Mpris.players.values[0] ?? null
+    property var filteredPlayers: {
+        const filtered = Mpris.players.values.filter(player => {
+            const dbusName = (player.dbusName || "").toLowerCase();
+            if (!Config.bar.enableFirefoxPlayer && dbusName.includes("firefox")) {
+                return false;
+            }
+            return true;
+        });
+        return filtered;
+    }
+    property MprisPlayer activePlayer: trackedPlayer ?? filteredPlayers[0] ?? null
 
     Instantiator {
         model: Mpris.players
@@ -26,15 +37,15 @@ Singleton {
 
             Component.onDestruction: {
                 if (root.trackedPlayer == null || !root.trackedPlayer.isPlaying) {
-                    for (const player of Mpris.players.values) {
+                    for (const player of root.filteredPlayers) {
                         if (player.playbackState.isPlaying) {
                             root.trackedPlayer = player
                             break
                         }
                     }
 
-                    if (trackedPlayer == null && Mpris.players.values.length != 0) {
-                        trackedPlayer = Mpris.players.values[0]
+                    if (trackedPlayer == null && root.filteredPlayers.length != 0) {
+                        trackedPlayer = root.filteredPlayers[0]
                     }
                 }
             }
@@ -91,7 +102,7 @@ Singleton {
     }
 
     function cyclePlayer(direction) {
-        const players = Mpris.players.values;
+        const players = root.filteredPlayers;
         if (players.length === 0) return;
         
         const currentIndex = players.indexOf(this.activePlayer);
