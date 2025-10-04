@@ -21,7 +21,8 @@ Item {
     readonly property int workspaceGroup: Math.floor((monitor?.activeWorkspace?.id - 1 || 0) / Config.workspaces.shown)
     property list<bool> workspaceOccupied: []
     property int widgetPadding: 4
-    property int workspaceButtonWidth: Math.round(parent.height - widgetPadding * 2)
+    property int workspaceButtonSize: height > 0 ? height - widgetPadding * 2 : 36
+    property int workspaceButtonWidth: workspaceButtonSize
     property real workspaceIconSize: Math.round(workspaceButtonWidth * 0.6)
     property real workspaceIconSizeShrinked: Math.round(workspaceButtonWidth * 0.5)
     property real workspaceIconOpacityShrinked: 1
@@ -45,7 +46,6 @@ Item {
         }
     }
 
-    // Monitor changes for this specific monitor
     Connections {
         target: monitor
         function onActiveWorkspaceChanged() {
@@ -57,11 +57,13 @@ Item {
         updateWorkspaceOccupied();
     }
 
-    implicitWidth: rowLayout.implicitWidth + widgetPadding * 2
-    implicitHeight: rowLayout.implicitHeight + widgetPadding * 2
+    implicitWidth: workspaceButtonSize * Config.workspaces.shown + widgetPadding * 2
+    implicitHeight: 36
 
     BgRect {
+        id: bgRect
         anchors.fill: parent
+        height: 36
     }
 
     WheelHandler {
