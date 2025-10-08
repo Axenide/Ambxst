@@ -25,7 +25,7 @@ Item {
         id: background
         anchors.fill: parent
         anchors.margins: 4
-        color: mouseArea.containsMouse || mouseArea.pressed ? Qt.rgba(Colors.primary.r, Colors.primary.g, Colors.primary.b, 0.3) : "transparent"
+        color: hoverHandler.hovered ? Qt.rgba(Colors.primary.r, Colors.primary.g, Colors.primary.b, 0.3) : "transparent"
         radius: Config.roundness / 2
 
         Behavior on color {
@@ -36,34 +36,33 @@ Item {
         }
     }
 
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
+    TapHandler {
+        acceptedButtons: Qt.LeftButton
+        onDoubleTapped: {
+            root.activated();
 
-        onDoubleClicked: mouse => {
-            if (mouse.button === Qt.LeftButton) {
-                root.activated();
-
-                if (root.isDesktopFile) {
-                    console.log("Executing desktop file:", root.itemPath);
-                    DesktopService.executeDesktopFile(root.itemPath);
-                } else if (root.itemType === 'folder') {
-                    console.log("Opening folder:", root.itemPath);
-                    DesktopService.openFile(root.itemPath);
-                } else {
-                    console.log("Opening file:", root.itemPath);
-                    DesktopService.openFile(root.itemPath);
-                }
+            if (root.isDesktopFile) {
+                console.log("Executing desktop file:", root.itemPath);
+                DesktopService.executeDesktopFile(root.itemPath);
+            } else if (root.itemType === 'folder') {
+                console.log("Opening folder:", root.itemPath);
+                DesktopService.openFile(root.itemPath);
+            } else {
+                console.log("Opening file:", root.itemPath);
+                DesktopService.openFile(root.itemPath);
             }
         }
+    }
 
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) {
-                root.contextMenuRequested();
-            }
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        onTapped: {
+            root.contextMenuRequested();
         }
+    }
+
+    HoverHandler {
+        id: hoverHandler
     }
 
     ColumnLayout {
