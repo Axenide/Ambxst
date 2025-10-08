@@ -325,7 +325,13 @@ PaneRect {
                     color: modeHover.hovered ? Colors.primaryFixed : Colors.whiteSource
                     font.pixelSize: 20
                     font.family: Icons.font
-                    opacity: (MprisController.shuffleSupported || MprisController.loopSupported) ? 1.0 : 0.3
+                    opacity: {
+                        if (!(MprisController.shuffleSupported || MprisController.loopSupported))
+                            return 0.3;
+                        if (!MprisController.hasShuffle && MprisController.loopState === MprisLoopState.None)
+                            return 0.3;
+                        return 1.0;
+                    }
 
                     Behavior on color {
                         ColorAnimation {
