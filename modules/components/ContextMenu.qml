@@ -38,7 +38,11 @@ PanelWindow {
 
     MouseArea {
         anchors.fill: parent
-        onClicked: contextWindow.close()
+        onClicked: {
+            menu.hoveredIndex = -1;
+            menu.previousHoveredIndex = -1;
+            contextWindow.close();
+        }
     }
 
     Process {
@@ -125,12 +129,17 @@ PanelWindow {
                         highlightColor: item.highlightColor,
                         textColor: item.textColor,
                         onTriggered: function() {
-                            if (item.onTriggered) {
-                                item.onTriggered();
-                            }
+                            let callback = item.onTriggered;
                             contextWindow.close();
+                            if (callback) {
+                                Qt.callLater(callback);
+                            }
                         }
                     }));
+                }
+
+                if (!contextWindow.menuHandle) {
+                    return [];
                 }
 
                 console.log("Building menu items from systray...");
@@ -195,10 +204,11 @@ PanelWindow {
                                 isSeparator: false,
                                 onTriggered: function () {
                                     console.log("Triggering menu item:", cleanText);
-                                    if (entry.triggered) {
-                                        entry.triggered();
-                                    }
+                                    let callback = entry.triggered;
                                     contextWindow.close();
+                                    if (callback) {
+                                        Qt.callLater(callback);
+                                    }
                                 }
                             });
                         }
@@ -237,24 +247,34 @@ PanelWindow {
 
     function close() {
         console.log("Closing context menu");
+        menu.hoveredIndex = -1;
+        menu.previousHoveredIndex = -1;
+        menu.close();
         visible = false;
         WlrLayershell.keyboardFocus = WlrKeyboardFocus.None;
         if (menuType === "player") {
             Visibilities.playerMenuOpen = false;
         }
-        menuHandle = null;
-        customItems = [];
-        menuType = "";
+        Qt.callLater(() => {
+            menuHandle = null;
+            customItems = [];
+            menuType = "";
+        });
     }
 
     onVisibleChanged: {
         if (!visible) {
+            menu.hoveredIndex = -1;
+            menu.previousHoveredIndex = -1;
+            menu.close();
             if (menuType === "player") {
                 Visibilities.playerMenuOpen = false;
             }
-            menuHandle = null;
-            customItems = [];
-            menuType = "";
+            Qt.callLater(() => {
+                menuHandle = null;
+                customItems = [];
+                menuType = "";
+            });
         }
     }
 

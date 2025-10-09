@@ -10,7 +10,11 @@ Menu {
     property var items: []
 
     // Update menu width when items change
-    onItemsChanged: updateMenuWidth()
+    onItemsChanged: {
+        hoveredIndex = -1;
+        previousHoveredIndex = -1;
+        updateMenuWidth();
+    }
     property int menuWidth: 140
 
     // Function to update menu width when items change
@@ -100,33 +104,32 @@ Menu {
             width: root.menuWidth - 16
             height: root.itemHeight
             color: {
-                if (root.hoveredIndex === -1)
+                if (root.hoveredIndex === -1 || root.hoveredIndex >= root.items.length)
                     return root.defaultHighlightColor;
                 let item = root.items[root.hoveredIndex];
                 return item && item.highlightColor !== undefined ? item.highlightColor : root.defaultHighlightColor;
             }
             radius: root.menuRadius > 6 ? root.menuRadius - 6 : 0
             visible: {
-                if (root.hoveredIndex === -1)
+                if (root.hoveredIndex === -1 || root.hoveredIndex >= root.items.length)
                     return false;
                 let item = root.items[root.hoveredIndex];
-                return item && (item.isSeparator === false || item.isSeparator === undefined);
+                return item && !item.isSeparator;
             }
             opacity: visible ? 1.0 : 0
 
             x: 8 // Padding offset
             y: {
-                if (root.hoveredIndex === -1)
+                if (root.hoveredIndex === -1 || root.hoveredIndex >= root.items.length)
                     return 8;
 
-                // Calcular la posición Y considerando las alturas reales de los elementos anteriores
-                let yPosition = 8; // padding inicial
+                let yPosition = 8;
                 for (let i = 0; i < root.hoveredIndex; i++) {
                     let item = root.items[i];
                     if (item && item.isSeparator) {
-                        yPosition += 10; // altura del separador con márgenes (2px + 4px + 4px)
+                        yPosition += 10;
                     } else {
-                        yPosition += root.itemHeight; // altura del item normal
+                        yPosition += root.itemHeight;
                     }
                 }
                 return yPosition;
@@ -188,10 +191,12 @@ Menu {
                     root.previousHoveredIndex = root.hoveredIndex;
                     root.hoveredIndex = itemIndex;
                 } else {
+                    let menuRoot = root;
+                    let currentIndex = itemIndex;
                     Qt.callLater(() => {
-                        if (root.hoveredIndex === itemIndex) {
-                            root.previousHoveredIndex = root.hoveredIndex;
-                            root.hoveredIndex = -1;
+                        if (menuRoot.hoveredIndex === currentIndex) {
+                            menuRoot.previousHoveredIndex = menuRoot.hoveredIndex;
+                            menuRoot.hoveredIndex = -1;
                         }
                     });
                 }
@@ -296,8 +301,9 @@ Menu {
 
             // Acción al hacer click
             onTriggered: {
-                if (itemData.onTriggered) {
-                    itemData.onTriggered();
+                if (itemData && itemData.onTriggered) {
+                    let callback = itemData.onTriggered;
+                    Qt.callLater(callback);
                 }
             }
         }

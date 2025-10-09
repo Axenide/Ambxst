@@ -102,6 +102,41 @@ PanelWindow {
 
                     onContextMenuRequested: {
                         console.log("Context menu requested for:", itemName);
+                        Visibilities.contextMenu.openCustomMenu([
+                            {
+                                text: "Open",
+                                icon: "📂",
+                                isSeparator: false,
+                                onTriggered: function() {
+                                    if (delegateRoot.isDesktopFile) {
+                                        DesktopService.executeDesktopFile(delegateRoot.path);
+                                    } else {
+                                        DesktopService.openFile(delegateRoot.path);
+                                    }
+                                }
+                            },
+                            {
+                                text: "Properties",
+                                icon: "ℹ️",
+                                isSeparator: false,
+                                onTriggered: function() {
+                                    console.log("Properties for:", delegateRoot.path);
+                                }
+                            },
+                            { 
+                                isSeparator: true,
+                                text: ""
+                            },
+                            {
+                                text: "Delete",
+                                icon: "🗑️",
+                                textColor: Colors.error,
+                                isSeparator: false,
+                                onTriggered: function() {
+                                    console.log("Delete:", delegateRoot.path);
+                                }
+                            }
+                        ], 160, 32, "desktop");
                     }
 
                     opacity: dragHandler.active ? 0.3 : 1.0
