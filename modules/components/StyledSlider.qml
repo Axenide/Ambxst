@@ -30,6 +30,7 @@ RowLayout {
     property bool wavy: false
     property real wavyAmplitude: 0.8
     property real wavyFrequency: 8
+    property bool resizeAnim: true
 
     Behavior on wavyAmplitude {
         NumberAnimation {
@@ -79,6 +80,7 @@ RowLayout {
             z: 0
 
             Behavior on width {
+                enabled: root.resizeAnim
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
@@ -102,6 +104,7 @@ RowLayout {
             z: 1
 
             Behavior on width {
+                enabled: root.resizeAnim
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
@@ -125,6 +128,7 @@ RowLayout {
             z: 1
 
             Behavior on width {
+                enabled: root.resizeAnim
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
@@ -143,6 +147,7 @@ RowLayout {
             z: 2
 
             Behavior on x {
+                enabled: root.resizeAnim
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
@@ -150,6 +155,7 @@ RowLayout {
             }
 
             Behavior on width {
+                enabled: root.resizeAnim
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
@@ -157,6 +163,7 @@ RowLayout {
             }
 
             Behavior on height {
+                enabled: root.resizeAnim
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
