@@ -41,16 +41,15 @@ float coverage(vec2 pos, float centerY) {
     float derivative = abs(cos(k * x + ubuf.phase) * k * ubuf.amplitude);
     
     // El ancho efectivo aumenta con la pendiente de la onda
-    float effectiveWidth = ubuf.lineWidth * 0.1 * sqrt(1.0 + derivative * derivative);
+    float effectiveWidth = ubuf.lineWidth * 1.0 * sqrt(1.0 + derivative * derivative);
     
     // Distancia del píxel a la línea de la onda
     float dist = abs(pos.y - waveY);
     
-    // Antialiasing considerando el ancho efectivo
+    // Sharp cutoff for full opacity
     float halfWidth = effectiveWidth * 0.5;
-    float fadeRange = 1.5;
     
-    return 1.0 - smoothstep(halfWidth - fadeRange, halfWidth + fadeRange, dist);
+    return step(dist, halfWidth);
 }
 
 void main() {
@@ -71,12 +70,9 @@ void main() {
     
     alpha /= samples;
     
-    // Suavizado en los bordes laterales con forma más redondeada
-    float edgeRadius = ubuf.lineWidth * 3.0; // Radio mayor para más suavidad
-    float edgeFade = roundedEdge(pixelPos.x, ubuf.canvasWidth, edgeRadius);
-    alpha *= edgeFade;
+    // No edge fading for full opacity
     
-    if (alpha < 0.01) {
+    if (alpha < 0.5) {
         discard;
     }
     

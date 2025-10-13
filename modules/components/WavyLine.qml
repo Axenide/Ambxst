@@ -31,6 +31,9 @@ Item {
         vertexShader: Qt.resolvedUrl("wavyline.vert.qsb")
         fragmentShader: Qt.resolvedUrl("wavyline.frag.qsb")
 
+        smooth: true
+        blending: false
+
         Component.onCompleted: {
             console.log("Shader values:");
             console.log("  amplitude:", amplitude);
