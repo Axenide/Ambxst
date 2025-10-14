@@ -8,16 +8,20 @@ import qs.modules.components
 
 /**
  * Simplified slider inspired by CompactPlayer position control.
+ * Supports both horizontal and vertical orientations.
  */
 
 Item {
     id: root
 
-    Layout.fillHeight: true
-    implicitHeight: 4
+    Layout.fillHeight: orientation === "v"
+    Layout.fillWidth: orientation === "h"
+    implicitHeight: orientation === "h" ? 4 : 100
+    implicitWidth: orientation === "v" ? 4 : 100
 
     signal iconClicked
 
+    property string orientation: "h" // "h" for horizontal, "v" for vertical
     property string icon: ""
     property real value: 0
     property bool isDragging: false
@@ -58,15 +62,17 @@ Item {
         }
     }
 
+    // Horizontal Layout
     RowLayout {
-        id: layout
+        id: horizontalLayout
+        visible: root.orientation === "h"
         anchors.fill: parent
         anchors.leftMargin: root.iconPos === "start" && root.icon !== "" ? iconText.width + spacing : 0
         anchors.rightMargin: root.iconPos === "end" && root.icon !== "" ? iconText.width + spacing : 0
         spacing: 4
 
         Item {
-            id: sliderItem
+            id: hSliderItem
             Layout.fillWidth: true
             Layout.preferredHeight: 4
             Layout.alignment: Qt.AlignVCenter
@@ -89,7 +95,7 @@ Item {
             }
 
             WavyLine {
-                id: wavyFill
+                id: hWavyFill
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
                 frequency: root.wavyFrequency
@@ -112,8 +118,8 @@ Item {
                 }
 
                 FrameAnimation {
-                    running: wavyFill.visible && wavyFill.opacity > 0
-                    onTriggered: wavyFill.requestPaint()
+                    running: hWavyFill.visible && hWavyFill.opacity > 0
+                    onTriggered: hWavyFill.requestPaint()
                 }
             }
 
@@ -136,23 +142,23 @@ Item {
                 }
             }
 
-             Rectangle {
-                 id: dragHandle
-                 anchors.verticalCenter: parent.verticalCenter
-                 x: parent.width * root.progressRatio - 2
-                 width: root.isDragging ? 2 : 4
-                 height: root.isDragging ? 20 : 16
-                 radius: width / 2
-                 color: Colors.overBackground
-                 z: 2
+            Rectangle {
+                id: hDragHandle
+                anchors.verticalCenter: parent.verticalCenter
+                x: parent.width * root.progressRatio - 2
+                width: root.isDragging ? 2 : 4
+                height: root.isDragging ? 20 : 16
+                radius: width / 2
+                color: Colors.overBackground
+                z: 2
 
-                 Behavior on x {
-                     enabled: root.resizeAnim
-                     NumberAnimation {
-                         duration: Config.animDuration
-                         easing.type: Easing.OutQuart
-                     }
-                 }
+                Behavior on x {
+                    enabled: root.resizeAnim
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
 
                 Behavior on width {
                     enabled: root.resizeAnim
@@ -174,8 +180,140 @@ Item {
             StyledToolTip {
                 tooltipText: root.tooltipText
                 visible: root.isDragging && root.tooltip
-                x: dragHandle.x + dragHandle.width / 2 - width / 2
-                y: dragHandle.y - height - 5
+                x: hDragHandle.x + hDragHandle.width / 2 - width / 2
+                y: hDragHandle.y - height - 5
+            }
+        }
+    }
+
+    // Vertical Layout
+    ColumnLayout {
+        id: verticalLayout
+        visible: root.orientation === "v"
+        anchors.fill: parent
+        anchors.topMargin: root.iconPos === "start" && root.icon !== "" ? iconText.height + spacing : 0
+        anchors.bottomMargin: root.iconPos === "end" && root.icon !== "" ? iconText.height + spacing : 0
+        spacing: 4
+
+        Item {
+            id: vSliderItem
+            Layout.fillHeight: true
+            Layout.preferredWidth: 4
+            Layout.alignment: Qt.AlignHCenter
+
+            Rectangle {
+                anchors.top: parent.top
+                height: (1 - root.progressRatio) * parent.height - root.dragSeparation
+                width: parent.width
+                radius: width / 2
+                color: root.backgroundColor
+                z: 0
+
+                Behavior on height {
+                    enabled: root.resizeAnim
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+            }
+
+            Item {
+                id: wavyContainer
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width * heightMultiplier
+                height: Math.max(0, parent.height * root.progressRatio - root.dragSeparation)
+                
+                WavyLine {
+                    id: vWavyFill
+                    anchors.centerIn: parent
+                    rotation: -90
+                    frequency: root.wavyFrequency
+                    color: root.progressColor
+                    amplitudeMultiplier: root.wavyAmplitude
+                    height: parent.width
+                    width: parent.height
+                    lineWidth: parent.width / heightMultiplier
+                    fullLength: parent.height
+                    visible: root.wavy
+                    opacity: 1.0
+                    z: 1
+
+                    FrameAnimation {
+                        running: vWavyFill.visible && vWavyFill.opacity > 0
+                        onTriggered: vWavyFill.requestPaint()
+                    }
+                }
+
+                Behavior on height {
+                    enabled: root.resizeAnim
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                height: Math.max(0, parent.height * root.progressRatio - root.dragSeparation)
+                width: parent.width
+                radius: width / 2
+                color: root.progressColor
+                visible: !root.wavy
+                z: 1
+
+                Behavior on height {
+                    enabled: root.resizeAnim
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+            }
+
+            Rectangle {
+                id: vDragHandle
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.height * (1 - root.progressRatio) - 2
+                height: root.isDragging ? 2 : 4
+                width: root.isDragging ? 20 : 16
+                radius: height / 2
+                color: Colors.overBackground
+                z: 2
+
+                Behavior on y {
+                    enabled: root.resizeAnim
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+
+                Behavior on width {
+                    enabled: root.resizeAnim
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+
+                Behavior on height {
+                    enabled: root.resizeAnim
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+            }
+
+            StyledToolTip {
+                tooltipText: root.tooltipText
+                visible: root.isDragging && root.tooltip
+                x: vDragHandle.x + vDragHandle.width + 5
+                y: vDragHandle.y + vDragHandle.height / 2 - height / 2
             }
         }
     }
@@ -186,13 +324,13 @@ Item {
         text: root.icon
         font.family: Icons.font
         font.pixelSize: 20
-        color: Colors.overBackground
-        anchors.verticalCenter: layout.verticalCenter
-        x: root.iconPos === "start" ? 0 : parent.width - width
-
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
+         color: Colors.overBackground
+         x: root.orientation === "h" ? (root.iconPos === "start" ? 0 : parent.width - width) : (parent.width - width) / 2
+         y: root.orientation === "v" ? (root.iconPos === "start" ? 0 : parent.height - height) : (parent.height - height) / 2
+ 
+         MouseArea {
+             anchors.fill: parent
+             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             z: 4
             onEntered: iconText.color = Colors.primary
@@ -206,40 +344,59 @@ Item {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
         z: 3
-        onClicked: mouse => {
-            if (root.iconPos === "start" && mouse.x < iconText.width + layout.spacing) {
+        
+        property var activeLayout: root.orientation === "h" ? horizontalLayout : verticalLayout
+        property real layoutStart: root.orientation === "h" ? activeLayout.x : activeLayout.y
+         property real layoutSize: root.orientation === "h" ? activeLayout.width : activeLayout.height
+         
+         function isInIconArea(mouseX: real, mouseY: real): bool {
+            if (root.orientation === "h") {
+                return (root.iconPos === "start" && mouseX < iconText.width + horizontalLayout.spacing) ||
+                       (root.iconPos === "end" && mouseX > parent.width - iconText.width - horizontalLayout.spacing)
+            } else {
+                return (root.iconPos === "start" && mouseY < iconText.height + verticalLayout.spacing) ||
+                       (root.iconPos === "end" && mouseY > parent.height - iconText.height - verticalLayout.spacing)
+            }
+        }
+        
+         function calculatePosition(mouseX: real, mouseY: real): real {
+            const mousePos = root.orientation === "h" ? mouseX : mouseY
+            const relativePos = mousePos - layoutStart
+            let ratio = Math.max(0, Math.min(1, relativePos / layoutSize))
+            if (root.orientation === "v") {
+                ratio = 1 - ratio // Invert for vertical
+            }
+            return ratio
+        }
+        
+         onClicked: mouse => {
+            if (isInIconArea(mouse.x, mouse.y)) {
                 mouse.accepted = false
                 return
             }
-            if (root.iconPos === "end" && mouse.x > parent.width - iconText.width - layout.spacing) {
-                mouse.accepted = false
-                return
-            }
-            if (mouse.x >= layout.x && mouse.x <= layout.x + layout.width) {
-                const relativeX = mouse.x - layout.x
-                root.value = Math.max(0, Math.min(1, relativeX / layout.width))
+            const mousePos = root.orientation === "h" ? mouse.x : mouse.y
+            if (mousePos >= layoutStart && mousePos <= layoutStart + layoutSize) {
+                root.value = calculatePosition(mouse.x, mouse.y)
             } else {
                 mouse.accepted = false
             }
         }
-        onPressed: mouse => {
-            if (root.iconPos === "start" && mouse.x < iconText.width + layout.spacing) {
+        
+         onPressed: mouse => {
+            if (isInIconArea(mouse.x, mouse.y)) {
                 mouse.accepted = false
                 return
             }
-            if (root.iconPos === "end" && mouse.x > parent.width - iconText.width - layout.spacing) {
-                mouse.accepted = false
-                return
-            }
-            if (mouse.x >= layout.x && mouse.x <= layout.x + layout.width) {
+            const mousePos = root.orientation === "h" ? mouse.x : mouse.y
+            if (mousePos >= layoutStart && mousePos <= layoutStart + layoutSize) {
                 root.isDragging = true
-                const relativeX = mouse.x - layout.x
-                root.dragPosition = Math.max(0, Math.min(1, relativeX / layout.width))
+                root.dragPosition = calculatePosition(mouse.x, mouse.y)
             } else {
                 mouse.accepted = false
             }
         }
-        onReleased: {
+        
+         onReleased: mouse => {
             if (root.isDragging) {
                 root.value = root.dragPosition
                 root.isDragging = false
@@ -247,18 +404,14 @@ Item {
                 mouse.accepted = false
             }
         }
-        onPositionChanged: mouse => {
-            if (root.iconPos === "start" && mouse.x < iconText.width + layout.spacing) {
-                mouse.accepted = false
-                return
-            }
-            if (root.iconPos === "end" && mouse.x > parent.width - iconText.width - layout.spacing) {
+        
+         onPositionChanged: mouse => {
+            if (isInIconArea(mouse.x, mouse.y)) {
                 mouse.accepted = false
                 return
             }
             if (root.isDragging) {
-                const relativeX = mouse.x - layout.x
-                root.dragPosition = Math.max(0, Math.min(1, relativeX / layout.width))
+                root.dragPosition = calculatePosition(mouse.x, mouse.y)
                 if (!root.updateOnRelease) {
                     root.value = root.dragPosition
                 }
@@ -266,6 +419,7 @@ Item {
                 mouse.accepted = false
             }
         }
+        
         onWheel: wheel => {
             if (root.scroll) {
                 if (wheel.angleDelta.y > 0) {
