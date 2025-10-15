@@ -196,7 +196,7 @@ Rectangle {
                  }
              }
 
-             // Filtros horizontales para tipos de archivo
+// Filtros horizontales para tipos de archivo
              Flickable {
                  id: filterFlickable
                  Layout.fillWidth: true
@@ -212,33 +212,68 @@ Rectangle {
                      Repeater {
                          model: filterModel
                          delegate: Rectangle {
-                             width: filterText.width + 40
+                             property bool isActive: activeFilters.includes(model.type)
+                             property alias filterText: filterText
+                             
+                             // Ancho dinámico: incluye icono solo cuando está activo
+                             width: filterText.width + 16 + (isActive ? filterIcon.width + 4 : 0)
                              height: 32
-                             color: activeFilters.includes(model.type) ? Colors.primaryContainer : Colors.surface
+                             color: isActive ? Colors.surfaceBright : Colors.surface
                              radius: Math.max(0, Config.roundness - 8)
 
-                             property alias filterText: filterText
-
-                             RowLayout {
+                             Item {
                                  anchors.fill: parent
                                  anchors.margins: 8
-                                 spacing: 4
 
-                                 Text {
-                                     id: filterIcon
-                                     text: activeFilters.includes(model.type) ? Icons.accept : ""
-                                     font.family: Icons.font
-                                     font.pixelSize: 16
-                                     color: activeFilters.includes(model.type) ? Colors.primary : Colors.overBackground
-                                     visible: activeFilters.includes(model.type)
-                                 }
+                                 Row {
+                                     anchors.centerIn: parent
+                                     spacing: 4
 
-                                 Text {
-                                     id: filterText
-                                     text: model.label
-                                     font.family: Config.theme.font
-                                     font.pixelSize: Config.theme.fontSize
-                                     color: activeFilters.includes(model.type) ? Colors.primary : Colors.overBackground
+                                     // Icono con animación de revelación
+                                     Item {
+                                         width: filterIcon.visible ? filterIcon.width : 0
+                                         height: filterIcon.height
+                                         clip: true
+
+                                         Text {
+                                             id: filterIcon
+                                             text: Icons.accept
+                                             font.family: Icons.font
+                                             font.pixelSize: 16
+                                             color: Colors.primary
+                                             visible: isActive
+                                             opacity: isActive ? 1 : 0
+
+                                             Behavior on opacity {
+                                                 NumberAnimation {
+                                                     duration: Config.animDuration / 3
+                                                     easing.type: Easing.OutCubic
+                                                 }
+                                             }
+                                         }
+
+                                         Behavior on width {
+                                             NumberAnimation {
+                                                 duration: Config.animDuration / 3
+                                                 easing.type: Easing.OutCubic
+                                             }
+                                         }
+                                     }
+
+                                     Text {
+                                         id: filterText
+                                         text: model.label
+                                         font.family: Config.theme.font
+                                         font.pixelSize: Config.theme.fontSize
+                                         color: isActive ? Colors.primary : Colors.overBackground
+
+                                         Behavior on color {
+                                             ColorAnimation {
+                                                 duration: Config.animDuration / 3
+                                                 easing.type: Easing.OutCubic
+                                             }
+                                         }
+                                     }
                                  }
                              }
 
@@ -253,6 +288,13 @@ Rectangle {
                                          activeFilters.push(model.type);
                                      }
                                      activeFilters = activeFilters.slice();  // Trigger update
+                                 }
+                             }
+
+                             Behavior on width {
+                                 NumberAnimation {
+                                     duration: Config.animDuration / 3
+                                     easing.type: Easing.OutCubic
                                  }
                              }
 
