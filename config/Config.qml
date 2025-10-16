@@ -62,7 +62,7 @@ Singleton {
                  property string bgOrientation: "vertical"
                  property list<var> paneColor: [["surface", 0.0]]
                  property string paneOrientation: "vertical"
-                 property string matugenScheme: "scheme-tonal-spot"
+
              }
 
             property JsonObject bar: JsonObject {

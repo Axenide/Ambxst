@@ -29,6 +29,11 @@ PanelWindow {
     property string currentWallpaper: initialLoadCompleted && wallpaperPaths.length > 0 ? wallpaperPaths[currentIndex] : ""
     property bool initialLoadCompleted: false
     property bool usingFallback: false
+    property string currentMatugenScheme: wallpaperConfig.adapter.matugenScheme
+
+    onCurrentMatugenSchemeChanged: {
+        // Optional: Add any logic if needed when scheme changes
+    }
 
     // Funciones utilitarias para tipos de archivo
     function getFileType(path) {
@@ -161,7 +166,12 @@ PanelWindow {
     }
 
     // Función para re-ejecutar Matugen con el wallpaper actual
-    function runMatugenForCurrentWallpaper() {
+     function setMatugenScheme(scheme) {
+         wallpaperConfig.adapter.matugenScheme = scheme;
+         runMatugenForCurrentWallpaper();
+     }
+
+     function runMatugenForCurrentWallpaper() {
         if (currentWallpaper && initialLoadCompleted) {
             console.log("Running Matugen for current wallpaper:", currentWallpaper);
 
@@ -170,16 +180,16 @@ PanelWindow {
 
             console.log("Using source for matugen:", matugenSource, "(type:", fileType + ")");
 
-             // Ejecutar matugen con configuración específica
-             var commandWithConfig = ["matugen", "image", matugenSource, "-c", Qt.resolvedUrl("../../../../assets/matugen/config.toml").toString().replace("file://", ""), "-t", Config.theme.matugenScheme];
+              // Ejecutar matugen con configuración específica
+              var commandWithConfig = ["matugen", "image", matugenSource, "-c", Qt.resolvedUrl("../../../../assets/matugen/config.toml").toString().replace("file://", ""), "-t", wallpaperConfig.adapter.matugenScheme];
              if (Config.theme.lightMode) {
                  commandWithConfig.push("-m", "light");
              }
              matugenProcessWithConfig.command = commandWithConfig;
              matugenProcessWithConfig.running = true;
 
-             // Ejecutar matugen normal en paralelo
-             var commandNormal = ["matugen", "image", matugenSource, "-t", Config.theme.matugenScheme];
+              // Ejecutar matugen normal en paralelo
+              var commandNormal = ["matugen", "image", matugenSource, "-t", wallpaperConfig.adapter.matugenScheme];
              if (Config.theme.lightMode) {
                  commandNormal.push("-m", "light");
              }
@@ -213,11 +223,20 @@ PanelWindow {
         watchChanges: true
 
         onFileChanged: reload()
-        onAdapterUpdated: writeAdapter()
+         onAdapterUpdated: {
+             // Ensure matugenScheme has a default value
+             if (!wallpaperConfig.adapter.matugenScheme) {
+                 wallpaperConfig.adapter.matugenScheme = "scheme-tonal-spot";
+             }
+             // Update the currentMatugenScheme property to trigger UI updates
+             currentMatugenScheme = Qt.binding(function() { return wallpaperConfig.adapter.matugenScheme; });
+             writeAdapter();
+         }
 
-        JsonAdapter {
-            property string currentWall: ""
-            property string wallPath: ""
+         JsonAdapter {
+             property string currentWall: ""
+             property string wallPath: ""
+             property string matugenScheme: "scheme-tonal-spot"
 
             onCurrentWallChanged: {
                 console.log("DEBUG: currentWall changed to:", currentWall);

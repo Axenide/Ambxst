@@ -12,6 +12,13 @@ Item {
     property bool scrollBarPressed: false
     property real opacityValue: schemeListExpanded ? 1 : 0
 
+    Connections {
+        target: GlobalStates.wallpaperManager
+        function onCurrentMatugenSchemeChanged() {
+            // Force re-evaluation of the text binding when scheme changes
+        }
+    }
+
     function getSchemeDisplayName(scheme) {
         const map = {
             "scheme-content": "Content",
@@ -48,7 +55,7 @@ Item {
                 Button {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 40
-                    text: getSchemeDisplayName(Config.theme.matugenScheme) || "Selecciona esquema"
+                    text: GlobalStates.wallpaperManager && GlobalStates.wallpaperManager.currentMatugenScheme ? getSchemeDisplayName(GlobalStates.wallpaperManager.currentMatugenScheme) : "Selecciona esquema"
                     onClicked: schemeListExpanded = !schemeListExpanded
 
                     background: Rectangle {
@@ -120,12 +127,11 @@ Item {
                                     height: 40
                                     text: schemeDisplayNames[index]
                                     onClicked: {
-                                        Config.theme.matugenScheme = modelData;
-                                        schemeListExpanded = false;
-                                        if (GlobalStates.wallpaperManager) {
-                                            GlobalStates.wallpaperManager.runMatugenForCurrentWallpaper();
-                                        }
-                                    }
+                                         if (GlobalStates.wallpaperManager) {
+                                             GlobalStates.wallpaperManager.setMatugenScheme(modelData);
+                                             schemeListExpanded = false;
+                                         }
+                                     }
 
                                     background: Rectangle {
                                         color: "transparent"
