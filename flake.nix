@@ -16,15 +16,36 @@
       inherit system;
       config.allowUnfree = true;
     };
+
+    # Ejecutable de nixGL
+    nixGL = nixgl.packages.${system}.nixGLDefault;
+
+    # Función para envolver binarios con nixGL
+    wrapWithNixGL = pkg: pkgs.symlinkJoin {
+      name = "${pkg.pname or pkg.name}-nixGL";
+      paths = [ pkg ];
+      buildInputs = [ pkgs.makeWrapper ];
+      postBuild = ''
+        for bin in $out/bin/*; do
+          if [ -x "$bin" ]; then
+            mv "$bin" "$bin.orig"
+            makeWrapper ${nixGL}/bin/nixGL "$bin" --add-flags "$bin.orig"
+          fi
+        done
+      '';
+    };
+
   in {
-    packages.${system}.default = pkgs.symlinkJoin {
-      name = "qs-env";
+    packages.${system}.default = pkgs.buildEnv {
+      name = "ambxst";
       paths = with pkgs; [
-        # Core
-        quickshell
+        (wrapWithNixGL quickshell)
+        (wrapWithNixGL gpu-screen-recorder)
+        (wrapWithNixGL mpvpaper)
+
         wl-clipboard
         cliphist
-        nixgl.packages.${system}.nixGLDefault
+        nixGL
 
         # OpenGL / Wayland stack
         mesa
@@ -46,7 +67,6 @@
         hicolor-icon-theme
 
         # Extras
-        mpvpaper
         fuzzel
         wtype
         imagemagick
