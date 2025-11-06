@@ -10,7 +10,6 @@ Item {
     property bool schemeListExpanded: false
     readonly property var schemeDisplayNames: ["Content", "Expressive", "Fidelity", "Fruit Salad", "Monochrome", "Neutral", "Rainbow", "Tonal Spot"]
     property bool scrollBarPressed: false
-    property real opacityValue: schemeListExpanded ? 1 : 0
 
     Connections {
         target: GlobalStates.wallpaperManager
@@ -34,7 +33,14 @@ Item {
     }
 
     Layout.fillWidth: true
-    implicitHeight: mainLayout.implicitHeight + 8
+    Layout.preferredHeight: schemeListExpanded ? 40 + 4 + (40 * 3) + 8 : 48
+
+    Behavior on Layout.preferredHeight {
+        NumberAnimation {
+            duration: Config.animDuration
+            easing.type: Easing.OutQuart
+        }
+    }
 
     Rectangle {
         color: Colors.surface
@@ -139,7 +145,7 @@ Item {
                     Layout.topMargin: schemeListExpanded ? 4 : 0
                     color: Colors.background
                     radius: Config.roundness
-                    opacity: opacityValue
+                    opacity: schemeListExpanded ? 1 : 0
 
                     Flickable {
                         id: schemeFlickable
