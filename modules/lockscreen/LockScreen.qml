@@ -55,6 +55,15 @@ PanelWindow {
         visible: false
         opacity: (GlobalStates.lockscreenVisible && !unlocking) ? 1 : 0
 
+        property real zoomScale: (GlobalStates.lockscreenVisible && !unlocking) ? 1.1 : 1.0
+
+        transform: Scale {
+            origin.x: blurEffect.width / 2
+            origin.y: blurEffect.height / 2
+            xScale: blurEffect.zoomScale
+            yScale: blurEffect.zoomScale
+        }
+
         Behavior on blur {
             NumberAnimation {
                 duration: Config.animDuration
@@ -68,6 +77,13 @@ PanelWindow {
                 easing.type: Easing.OutCubic
             }
         }
+
+        Behavior on zoomScale {
+            NumberAnimation {
+                duration: Config.animDuration * 1.5
+                easing.type: Easing.OutCubic
+            }
+        }
     }
 
     // Overlay for dimming
@@ -76,9 +92,25 @@ PanelWindow {
         color: "black"
         opacity: (GlobalStates.lockscreenVisible && !unlocking) ? 0.25 : 0
 
+        property real zoomScale: (GlobalStates.lockscreenVisible && !unlocking) ? 1.1 : 1.0
+
+        transform: Scale {
+            origin.x: parent.width / 2
+            origin.y: parent.height / 2
+            xScale: parent.zoomScale
+            yScale: parent.zoomScale
+        }
+
         Behavior on opacity {
             NumberAnimation {
                 duration: Config.animDuration
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        Behavior on zoomScale {
+            NumberAnimation {
+                duration: Config.animDuration * 1.5
                 easing.type: Easing.OutCubic
             }
         }
