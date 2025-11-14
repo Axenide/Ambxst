@@ -125,7 +125,10 @@
           # On non-NixOS, use local build from ~/.local/bin
           export PATH="$HOME/.local/bin:$PATH"
         ''}
-        exec ${lib.optionalString (!isNixOS) "${nixGL}/bin/nixGL "}${pkgs.quickshell}/bin/qs -p ${self}/shell.qml
+        # Wrap QuickShell with nixGL if needed, then delegate to CLI script
+        ${lib.optionalString (!isNixOS) "export AMBXST_NIXGL=\"${nixGL}/bin/nixGL\""}
+        export AMBXST_QS="${pkgs.quickshell}/bin/qs"
+        exec ${self}/cli.sh "$@"
       '';
 
       Ambxst = pkgs.buildEnv {
