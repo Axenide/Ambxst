@@ -207,11 +207,16 @@ WlSessionLockSurface {
     // Music player (slides from left)
     Item {
         id: playerContainer
+        
+        property bool isTopPosition: Config.lockscreen.position === "top"
+        
         anchors {
             left: parent.left
             leftMargin: startAnim ? 32 : -(playerContainer.width + 64)
-            bottom: parent.bottom
-            bottomMargin: 32
+            top: isTopPosition ? parent.top : undefined
+            topMargin: isTopPosition ? 32 : 0
+            bottom: !isTopPosition ? parent.bottom : undefined
+            bottomMargin: !isTopPosition ? 32 : 0
         }
         width: 350
         height: playerContent.height
@@ -238,19 +243,31 @@ WlSessionLockSurface {
         }
     }
 
-    // Password input container (slides from bottom)
+    // Password input container (slides from top or bottom)
     Item {
         id: passwordContainer
+        
+        property bool isTopPosition: Config.lockscreen.position === "top"
+        
         anchors {
             horizontalCenter: parent.horizontalCenter
-            bottom: parent.bottom
-            bottomMargin: startAnim ? 32 : -80
+            top: isTopPosition ? parent.top : undefined
+            topMargin: isTopPosition ? (startAnim ? 32 : -80) : 0
+            bottom: !isTopPosition ? parent.bottom : undefined
+            bottomMargin: !isTopPosition ? (startAnim ? 32 : -80) : 0
         }
         width: 350
         height: 96
 
         opacity: startAnim ? 1 : 0
         scale: startAnim ? 1 : 0.92
+
+        Behavior on anchors.topMargin {
+            NumberAnimation {
+                duration: Config.animDuration * 1.2
+                easing.type: Easing.OutExpo
+            }
+        }
 
         Behavior on anchors.bottomMargin {
             NumberAnimation {
