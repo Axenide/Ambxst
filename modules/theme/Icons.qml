@@ -135,4 +135,5 @@ QtObject {
     readonly property string link: ""
     readonly property string globe: ""
     readonly property string folder: ""
+    readonly property string cactus: ""
 }
