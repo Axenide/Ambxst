@@ -361,7 +361,7 @@ Rectangle {
             // Columna izquierda: Search + Lista normal de emojis
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                Layout.fillHeight: true
                 spacing: 8
 
                 // Barra de búsqueda con botón de limpiar
@@ -666,8 +666,13 @@ Rectangle {
 
             // Recent emojis vertical list
             Item {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                Layout.fillWidth: false
+                Layout.preferredWidth: {
+                    var gridRows = 3;
+                    var gridColumns = 5;
+                    var wallpaperHeight = (parent.height + 4 * 2) / gridRows;
+                    return (wallpaperHeight * gridColumns) - 8;
+                }
                 Layout.preferredHeight: 7 * 48 + 56  // misma altura total que la columna izquierda
                 visible: recentEmojis.length > 0 && searchText.length === 0
 
@@ -792,8 +797,13 @@ Rectangle {
 
             // Placeholder cuando no hay recientes
             Item {
-                Layout.fillWidth: true
-                Layout.preferredWidth: 1
+                Layout.fillWidth: false
+                Layout.preferredWidth: {
+                    var gridRows = 3;
+                    var gridColumns = 5;
+                    var wallpaperHeight = (parent.height + 4 * 2) / gridRows;
+                    return (wallpaperHeight * gridColumns) - 8;
+                }
                 Layout.preferredHeight: 7 * 48 + 56  // misma altura total que la columna izquierda
                 visible: recentEmojis.length === 0 && searchText.length === 0
 

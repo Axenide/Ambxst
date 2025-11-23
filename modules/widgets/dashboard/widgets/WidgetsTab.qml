@@ -30,7 +30,7 @@ Rectangle {
         // App Launcher (primera columna) - Inline desde LauncherAppsTab
         Rectangle {
             id: appLauncherItem
-            Layout.preferredWidth: parent.width / 3 - 16
+            Layout.fillWidth: true
             Layout.fillHeight: true
 
             property string searchText: GlobalStates.launcherSearchText
@@ -420,7 +420,13 @@ Rectangle {
         }
 
         ClippingRectangle {
-            Layout.fillWidth: true
+            Layout.fillWidth: false
+            Layout.preferredWidth: {
+                var gridRows = 3;
+                var gridColumns = 5;
+                var wallpaperHeight = (parent.height + 4 * 2) / gridRows;
+                return (wallpaperHeight * gridColumns) - 8;
+            }
             Layout.fillHeight: true
             radius: Config.roundness > 0 ? Config.roundness + 4 : 0
 
