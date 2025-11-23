@@ -1441,31 +1441,23 @@ Item {
                             id: panesContainer
                             anchors.fill: parent
 
-                            // Calculate scale to fit panes proportionally
+                            // Calculate scale to maximize use of available space
                             property real totalWidth: root.sessionPanes.length > 0 ? root.sessionPanes[0].totalWidth || 1 : 1
                             property real totalHeight: root.sessionPanes.length > 0 ? root.sessionPanes[0].totalHeight || 1 : 1
                             
+                            // Use individual scales - stretch to fill
                             property real scaleX: width / totalWidth
                             property real scaleY: height / totalHeight
-                            property real scale: Math.min(scaleX, scaleY)
-                            
-                            // Calculate actual rendered size
-                            property real renderedWidth: totalWidth * scale
-                            property real renderedHeight: totalHeight * scale
-                            
-                            // Center offset
-                            property real offsetX: (width - renderedWidth) / 2
-                            property real offsetY: (height - renderedHeight) / 2
 
                             Repeater {
                                 model: root.sessionPanes
                                 delegate: Rectangle {
                                     required property var modelData
                                     
-                                    x: panesContainer.offsetX + modelData.left * panesContainer.scale
-                                    y: panesContainer.offsetY + modelData.top * panesContainer.scale
-                                    width: modelData.width * panesContainer.scale
-                                    height: modelData.height * panesContainer.scale
+                                    x: modelData.left * panesContainer.scaleX
+                                    y: modelData.top * panesContainer.scaleY
+                                    width: modelData.width * panesContainer.scaleX
+                                    height: modelData.height * panesContainer.scaleY
                                     
                                     color: modelData.active ? Colors.primary : Colors.surface
                                     border.width: 2
