@@ -527,7 +527,7 @@ Rectangle {
             // Tab 1: Clipboard (with prefix from config)
             Loader {
                 id: clipboardLoader
-                active: true
+                active: currentTab === 1
                 sourceComponent: Component {
                     ClipboardTab {
                         prefixIcon: Icons.clipboard
@@ -545,7 +545,7 @@ Rectangle {
             // Tab 2: Emoji (with prefix from config)
             Loader {
                 id: emojiLoader
-                active: true
+                active: currentTab === 2
                 sourceComponent: Component {
                     EmojiTab {
                         prefixIcon: Icons.emoji
@@ -562,7 +562,7 @@ Rectangle {
             // Tab 3: Tmux (with prefix from config)
             Loader {
                 id: tmuxLoader
-                active: true
+                active: currentTab === 3
                 sourceComponent: Component {
                     TmuxTab {
                         prefixIcon: Icons.terminal
@@ -579,7 +579,7 @@ Rectangle {
             // Tab 4: Wallpapers (with prefix from config)
             Loader {
                 id: wallpapersLoader
-                active: true
+                active: currentTab === 4
                 sourceComponent: Component {
                     WallpapersTab {
                         prefixIcon: Icons.wallpapers
