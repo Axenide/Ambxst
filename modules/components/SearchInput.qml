@@ -62,9 +62,9 @@ PaneRect {
 
         // Prefix indicator
         Rectangle {
-            Layout.preferredWidth: prefixLabel.implicitWidth + 12
-            Layout.preferredHeight: 28
-            radius: Config.roundness > 0 ? Math.max(Config.roundness - 2, 0) : 0
+            Layout.preferredWidth: prefixLabel.implicitWidth + 16
+            Layout.preferredHeight: 32
+            radius: Config.roundness > 0 ? Math.max(Config.roundness - 4, 0) : 0
             color: Colors.primary
             visible: root.prefixText.length > 0
 
