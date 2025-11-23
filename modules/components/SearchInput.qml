@@ -75,7 +75,7 @@ PaneRect {
                 text: root.prefixIcon.length > 0 ? root.prefixIcon : root.prefixText.trim()
                 font.family: root.prefixIcon.length > 0 ? Icons.font : Config.theme.font
                 font.pixelSize: root.prefixIcon.length > 0 ? 18 : Config.theme.fontSize - 1
-                font.weight: Font.Bold
+                // font.weight: Font.Bold
                 color: Colors.overPrimary
             }
         }
