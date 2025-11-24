@@ -398,7 +398,7 @@ Item {
             }
             ctx.lineTo(rTop + wCenter, rTop);
             if (rTop > 0) {
-                ctx.arc(rTop + wCenter + rTop, rTop, Math.PI, 3 * Math.PI / 2);
+                ctx.arc(rTop + wCenter + rTop, rTop, rTop, Math.PI, 3 * Math.PI / 2);
             }
             ctx.stroke();
         }
