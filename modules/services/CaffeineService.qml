@@ -8,61 +8,100 @@ Singleton {
     id: root
 
     property bool inhibit: false
-
-    property Timer updateTimer: Timer {
-        interval: 3000
-        running: false
-        repeat: true
-        onTriggered: root.updateStatus()
-    }
-
-    property Process killProcess: Process {
+    property bool initialized: false
+    
+    property string stateFile: Quickshell.statePath("states.json")
+    
+    property Process writeStateProcess: Process {
         running: false
         stdout: SplitParser {}
+    }
+    
+    property Process readCurrentStateProcess: Process {
+        running: false
+        stdout: SplitParser {
+            onRead: (data) => {
+                try {
+                    const content = data ? data.trim() : ""
+                    let states = {}
+                    if (content) {
+                        states = JSON.parse(content)
+                    }
+                    // Update only our state
+                    states.caffeine = root.inhibit
+                    
+                    // Write back
+                    writeStateProcess.command = ["sh", "-c", 
+                        `printf '%s' '${JSON.stringify(states)}' > "${root.stateFile}"`]
+                    writeStateProcess.running = true
+                } catch (e) {
+                    console.warn("CaffeineService: Failed to update state:", e)
+                }
+            }
+        }
         onExited: (code) => {
-            root.inhibit = true
-            root.updateStatus()
+            // If file doesn't exist, create new with our state
+            if (code !== 0) {
+                const states = { caffeine: root.inhibit }
+                writeStateProcess.command = ["sh", "-c", 
+                    `printf '%s' '${JSON.stringify(states)}' > "${root.stateFile}"`]
+                writeStateProcess.running = true
+            }
         }
     }
-
-    property Process startProcess: Process {
+    
+    property Process readStateProcess: Process {
         running: false
-        stdout: SplitParser {}
+        stdout: SplitParser {
+            onRead: (data) => {
+                try {
+                    const content = data ? data.trim() : ""
+                    if (content) {
+                        const states = JSON.parse(content)
+                        if (states.caffeine !== undefined) {
+                            root.inhibit = states.caffeine
+                        }
+                    }
+                } catch (e) {
+                    console.warn("CaffeineService: Failed to parse states:", e)
+                }
+                root.initialized = true
+            }
+        }
         onExited: (code) => {
-            root.inhibit = false
-            root.updateStatus()
+            // If file doesn't exist, just mark as initialized
+            if (code !== 0) {
+                root.initialized = true
+            }
         }
     }
 
     function toggleInhibit() {
-        if (inhibit) {
-            // When inhibit is ON, we kill hypridle to allow system to sleep again
-            killProcess.command = ["pkill", "hypridle"]
-            killProcess.running = true
-        } else {
-            // When inhibit is OFF, we start hypridle
-            startProcess.command = ["sh", "-c", "hypridle &"]
-            startProcess.running = true
+        inhibit = !inhibit
+        saveState()
+        
+        // TODO: Implementar funcionalidad real aquí
+    }
+
+    function saveState() {
+        readCurrentStateProcess.command = ["cat", stateFile]
+        readCurrentStateProcess.running = true
+    }
+
+    function loadState() {
+        readStateProcess.command = ["cat", stateFile]
+        readStateProcess.running = true
+    }
+
+    // Auto-initialize on creation
+    Timer {
+        interval: 100
+        running: true
+        repeat: false
+        onTriggered: {
+            if (!root.initialized) {
+                root.loadState()
+            }
         }
-    }
-
-    function updateStatus() {
-        checkProcess.running = true
-    }
-
-    property Process checkProcess: Process {
-        command: ["pgrep", "hypridle"]
-        running: false
-        stdout: SplitParser {}
-        onExited: (code, status) => {
-            // If hypridle is running (code === 0), then inhibit is OFF
-            // If hypridle is NOT running (code !== 0), then inhibit is ON
-            root.inhibit = code !== 0
-        }
-    }
-
-    Component.onCompleted: {
-        updateStatus()
-        updateTimer.start()
     }
 }

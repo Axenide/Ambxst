@@ -134,4 +134,16 @@ ShellRoot {
             // Service initialized and ready
         }
     }
+
+    // Force initialization of control services at startup
+    QtObject {
+        id: serviceInitializer
+        
+        Component.onCompleted: {
+            // Reference the services to force their creation
+            let _ = NightLightService.active
+            _ = GameModeService.toggled
+            _ = CaffeineService.inhibit
+        }
+    }
 }
