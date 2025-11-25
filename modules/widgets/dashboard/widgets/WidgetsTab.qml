@@ -4,6 +4,7 @@ import Quickshell.Widgets
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
+import Quickshell.Hyprland
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.services
@@ -632,17 +633,22 @@ Rectangle {
 
         // Widgets column (only visible when in launcher tab)
         ClippingRectangle {
+            id: widgetsContainer
             Layout.fillWidth: true
             Layout.fillHeight: true
             radius: Config.roundness > 0 ? Config.roundness + 4 : 0
             color: "transparent"
             visible: currentTab === 0
 
+            property bool circularControlDragging: false
+
             Flickable {
+                id: widgetsFlickable
                 anchors.fill: parent
                 contentWidth: width
                 contentHeight: columnLayout.implicitHeight
                 clip: true
+                interactive: !widgetsContainer.circularControlDragging
 
                 ColumnLayout {
                     id: columnLayout
@@ -718,6 +724,144 @@ Rectangle {
                             onClicked: GameModeService.toggle()
                         }
                         
+                        Item { Layout.fillWidth: true }
+                    }
+
+                    // Circular Controls Row
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 48
+                        spacing: 4
+
+                        Item { Layout.fillWidth: true }
+
+                        CircularControl {
+                            id: brightnessControl
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            icon: Icons.sun
+                            value: brightnessValue
+                            accentColor: Colors.primary
+                            isToggleable: false
+                            isToggled: true
+                            enableIconRotation: true
+                            iconRotation: (value / 1.0) * 180
+
+                            property real brightnessValue: 0
+                            property var currentMonitor: {
+                                if (Brightness.monitors.length > 0) {
+                                    let focusedName = Hyprland.focusedMonitor?.name ?? "";
+                                    let found = null;
+                                    for (let i = 0; i < Brightness.monitors.length; i++) {
+                                        let mon = Brightness.monitors[i];
+                                        if (mon && mon.screen && mon.screen.name === focusedName) {
+                                            found = mon;
+                                            break;
+                                        }
+                                    }
+                                    return found || Brightness.monitors[0];
+                                }
+                                return null;
+                            }
+
+                            Component.onCompleted: {
+                                if (currentMonitor && currentMonitor.ready) {
+                                    brightnessValue = currentMonitor.brightness;
+                                }
+                            }
+
+                            onControlValueChanged: newValue => {
+                                brightnessValue = newValue;
+                                if (currentMonitor && currentMonitor.ready) {
+                                    currentMonitor.setBrightness(newValue);
+                                }
+                            }
+
+                            onDraggingChanged: isDragging => {
+                                widgetsContainer.circularControlDragging = isDragging;
+                            }
+
+                            Connections {
+                                target: brightnessControl.currentMonitor
+                                ignoreUnknownSignals: true
+                                function onBrightnessChanged() {
+                                    if (brightnessControl.currentMonitor && brightnessControl.currentMonitor.ready) {
+                                        brightnessControl.brightnessValue = brightnessControl.currentMonitor.brightness;
+                                    }
+                                }
+                                function onReadyChanged() {
+                                    if (brightnessControl.currentMonitor && brightnessControl.currentMonitor.ready) {
+                                        brightnessControl.brightnessValue = brightnessControl.currentMonitor.brightness;
+                                    }
+                                }
+                            }
+                        }
+
+                        CircularControl {
+                            id: volumeControl
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            icon: {
+                                if (Audio.sink?.audio?.muted)
+                                    return Icons.speakerSlash;
+                                const vol = Audio.sink?.audio?.volume ?? 0;
+                                if (vol < 0.01)
+                                    return Icons.speakerX;
+                                if (vol < 0.19)
+                                    return Icons.speakerNone;
+                                if (vol < 0.49)
+                                    return Icons.speakerLow;
+                                return Icons.speakerHigh;
+                            }
+                            value: Audio.sink?.audio?.volume ?? 0
+                            accentColor: Audio.sink?.audio?.muted ? Colors.outline : Colors.primary
+                            isToggleable: true
+                            isToggled: !(Audio.sink?.audio?.muted ?? false)
+
+                            onControlValueChanged: newValue => {
+                                if (Audio.sink?.audio) {
+                                    Audio.sink.audio.volume = newValue;
+                                }
+                            }
+
+                            onDraggingChanged: isDragging => {
+                                widgetsContainer.circularControlDragging = isDragging;
+                            }
+
+                            onToggled: {
+                                if (Audio.sink?.audio) {
+                                    Audio.sink.audio.muted = !Audio.sink.audio.muted;
+                                }
+                            }
+                        }
+
+                        CircularControl {
+                            id: micControl
+                            Layout.preferredWidth: 48
+                            Layout.preferredHeight: 48
+                            icon: Audio.source?.audio?.muted ? Icons.micSlash : Icons.mic
+                            value: Audio.source?.audio?.volume ?? 0
+                            accentColor: Audio.source?.audio?.muted ? Colors.outline : Colors.primary
+                            isToggleable: true
+                            isToggled: !(Audio.source?.audio?.muted ?? false)
+
+                            onControlValueChanged: newValue => {
+                                if (Audio.source?.audio) {
+                                    Audio.source.audio.volume = newValue;
+                                }
+                            }
+
+                            onDraggingChanged: isDragging => {
+                                widgetsContainer.circularControlDragging = isDragging;
+                            }
+
+                            onToggled: {
+                                if (Audio.source?.audio) {
+                                    Audio.source.audio.muted = !Audio.source.audio.muted;
+                                }
+                            }
+                        }
+
                         Item { Layout.fillWidth: true }
                     }
 
