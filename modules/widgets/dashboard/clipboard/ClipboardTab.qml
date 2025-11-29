@@ -1037,7 +1037,10 @@ Item {
 
                         MouseArea {
                             id: mouseArea
-                            anchors.fill: parent
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: isExpanded ? 48 : parent.height
                             hoverEnabled: !isDraggingForReorder
                             enabled: !root.deleteMode && !root.aliasMode
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -2160,13 +2163,57 @@ Item {
 
                 MouseArea {
                     anchors.fill: resultsList
-                    enabled: root.deleteMode
-                    z: -1
+                    enabled: root.deleteMode || root.expandedItemIndex >= 0
+                    z: 1000
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                    onClicked: {
+                    function isClickInsideExpandedItem(mouseY) {
+                        if (root.expandedItemIndex < 0) return false;
+                        
+                        // Calculate Y position of expanded item
+                        var itemY = 0;
+                        for (var i = 0; i < root.expandedItemIndex; i++) {
+                            itemY += 48; // All items before are collapsed
+                        }
+                        
+                        // Calculate expanded item height
+                        var itemData = animatedItemsModel.get(root.expandedItemIndex).itemData;
+                        var optionsCount = 4;
+                        if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
+                            optionsCount++;
+                        }
+                        var listHeight = 36 * Math.min(3, optionsCount);
+                        var expandedHeight = 48 + 4 + listHeight + 8;
+                        
+                        var clickY = mouseY + resultsList.contentY;
+                        return clickY >= itemY && clickY < itemY + expandedHeight;
+                    }
+
+                    onClicked: mouse => {
                         if (root.deleteMode) {
                             console.log("DEBUG: Clicked on empty space in list - canceling delete mode");
                             root.cancelDeleteMode();
+                            mouse.accepted = true;
+                        } else if (root.expandedItemIndex >= 0) {
+                            if (!isClickInsideExpandedItem(mouse.y)) {
+                                console.log("DEBUG: Clicked outside expanded item - closing options");
+                                root.expandedItemIndex = -1;
+                                root.selectedOptionIndex = 0;
+                                root.keyboardNavigation = false;
+                                mouse.accepted = true;
+                            }
+                        }
+                    }
+                    
+                    onPressed: mouse => {
+                        if (root.deleteMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                            mouse.accepted = true;
+                        }
+                    }
+                    
+                    onReleased: mouse => {
+                        if (root.deleteMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                            mouse.accepted = true;
                         }
                     }
                 }

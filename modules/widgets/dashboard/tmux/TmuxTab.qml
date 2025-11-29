@@ -920,7 +920,10 @@ Item {
 
                 MouseArea {
                     id: mouseArea
-                    anchors.fill: parent
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    height: isExpanded ? 48 : parent.height
                     hoverEnabled: true
                     enabled: !isInDeleteMode && !isInRenameMode
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -1772,14 +1775,54 @@ Item {
 
              MouseArea {
                  anchors.fill: parent
-                 enabled: root.deleteMode || root.renameMode
+                 enabled: root.deleteMode || root.renameMode || root.expandedItemIndex >= 0
                  z: 1000
+                 acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                 onClicked: {
+                 function isClickInsideExpandedItem(mouseY) {
+                     if (root.expandedItemIndex < 0) return false;
+                     
+                     // Calculate Y position of expanded item
+                     var itemY = 0;
+                     for (var i = 0; i < root.expandedItemIndex; i++) {
+                         itemY += 48; // All items before are collapsed
+                     }
+                     
+                     // Calculate expanded item height - always 3 options
+                     var listHeight = 36 * 3;
+                     var expandedHeight = 48 + 4 + listHeight + 8;
+                     
+                     var clickY = mouseY + resultsList.contentY;
+                     return clickY >= itemY && clickY < itemY + expandedHeight;
+                 }
+
+                 onClicked: mouse => {
                      if (root.deleteMode) {
                          root.cancelDeleteMode();
+                         mouse.accepted = true;
                      } else if (root.renameMode) {
                          root.cancelRenameMode();
+                         mouse.accepted = true;
+                     } else if (root.expandedItemIndex >= 0) {
+                         if (!isClickInsideExpandedItem(mouse.y)) {
+                             console.log("DEBUG: Clicked outside expanded item - closing options");
+                             root.expandedItemIndex = -1;
+                             root.selectedOptionIndex = 0;
+                             root.keyboardNavigation = false;
+                             mouse.accepted = true;
+                         }
+                     }
+                 }
+                 
+                 onPressed: mouse => {
+                     if (root.deleteMode || root.renameMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                         mouse.accepted = true;
+                     }
+                 }
+                 
+                 onReleased: mouse => {
+                     if (root.deleteMode || root.renameMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                         mouse.accepted = true;
                      }
                  }
              }
