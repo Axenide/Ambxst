@@ -443,14 +443,22 @@ Rectangle {
                         }
                     }
 
-                     // Animación para items que se desplazan a nueva posición
-                     displaced: Transition {
-                         NumberAnimation {
-                             properties: "y"
-                             duration: Config.animDuration > 0 ? Config.animDuration : 0
-                             easing.type: Easing.OutCubic
-                         }
-                     }
+                      // Animación para items que se desplazan a nueva posición
+                      displaced: Transition {
+                          ParallelAnimation {
+                              NumberAnimation {
+                                  property: "y"
+                                  duration: Config.animDuration > 0 ? Config.animDuration : 0
+                                  easing.type: Easing.OutCubic
+                              }
+                              NumberAnimation {
+                                  property: "opacity"
+                                  to: 1
+                                  duration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
+                                  easing.type: Easing.OutCubic
+                              }
+                          }
+                      }
 
                      // Animación para items que aparecen
                      add: Transition {
