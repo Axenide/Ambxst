@@ -66,6 +66,53 @@ Item {
     property int expandedItemIndex: -1
     property int selectedOptionIndex: 0
     property bool keyboardNavigation: false
+    
+    onExpandedItemIndexChanged: {
+        // Adjust scroll when item expands to ensure it's fully visible
+        if (expandedItemIndex >= 0 && expandedItemIndex < animatedItemsModel.count) {
+            Qt.callLater(() => {
+                adjustScrollForExpandedItem(expandedItemIndex);
+            });
+        }
+    }
+    
+    function adjustScrollForExpandedItem(index) {
+        if (index < 0 || index >= animatedItemsModel.count) return;
+        
+        // Calculate Y position of the item
+        var itemY = 0;
+        for (var i = 0; i < index; i++) {
+            itemY += 48; // All items before are collapsed (base height)
+        }
+        
+        // Calculate expanded item height
+        var itemData = animatedItemsModel.get(index).itemData;
+        var optionsCount = 4;
+        if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
+            optionsCount++;
+        }
+        var listHeight = 36 * Math.min(3, optionsCount);
+        var expandedHeight = 48 + 4 + listHeight + 8;
+        
+        var viewportTop = resultsList.contentY;
+        var viewportBottom = viewportTop + resultsList.height;
+        
+        // Check if expanded item fits in viewport
+        if (itemY + expandedHeight > viewportBottom) {
+            // Item is too big or goes below viewport, scroll down to fit it
+            var newContentY = itemY + expandedHeight - resultsList.height;
+            
+            // Make sure we don't scroll past the top
+            if (newContentY < itemY) {
+                newContentY = itemY;
+            }
+            
+            resultsList.contentY = newContentY;
+        } else if (itemY < viewportTop) {
+            // Item starts above viewport, scroll up
+            resultsList.contentY = itemY;
+        }
+    }
 
     property int previewImageSize: 200
     property string currentFullContent: ""
