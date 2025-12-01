@@ -103,22 +103,21 @@ Item {
         layer.enabled: true
         layer.smooth: true
 
-        // Left corner mask
-        Item {
-            id: leftCornerMaskPart
-            visible: Config.notchTheme === "default"
-            anchors.top: parent.top
-            anchors.left: parent.left
-            width: Config.roundness > 0 ? Config.roundness + 4 : 0
-            height: width
+    // Left corner mask
+    Item {
+        id: leftCornerMaskPart
+        anchors.top: parent.top
+        anchors.left: parent.left
+        width: Config.notchTheme === "default" && Config.roundness > 0 ? Config.roundness + 4 : 0
+        height: width
 
-            RoundCorner {
-                anchors.fill: parent
-                corner: RoundCorner.CornerEnum.TopRight
-                size: parent.width
-                color: "white"
-            }
+        RoundCorner {
+            anchors.fill: parent
+            corner: RoundCorner.CornerEnum.TopRight
+            size: Math.max(parent.width, 1)
+            color: "white"
         }
+    }
 
         // Center rect mask
         Rectangle {
@@ -135,22 +134,21 @@ Item {
             bottomRightRadius: notchRect.bottomRightRadius
         }
 
-        // Right corner mask
-        Item {
-            id: rightCornerMaskPart
-            visible: Config.notchTheme === "default"
-            anchors.top: parent.top
-            anchors.right: parent.right
-            width: Config.roundness > 0 ? Config.roundness + 4 : 0
-            height: width
+    // Right corner mask
+    Item {
+        id: rightCornerMaskPart
+        anchors.top: parent.top
+        anchors.right: parent.right
+        width: Config.notchTheme === "default" && Config.roundness > 0 ? Config.roundness + 4 : 0
+        height: width
 
-            RoundCorner {
-                anchors.fill: parent
-                corner: RoundCorner.CornerEnum.TopLeft
-                size: parent.width
-                color: "white"
-            }
+        RoundCorner {
+            anchors.fill: parent
+            corner: RoundCorner.CornerEnum.TopLeft
+            size: Math.max(parent.width, 1)
+            color: "white"
         }
+    }
     }
 
     // Contenedor del notch (solo visual, sin fondo)
@@ -507,6 +505,24 @@ Item {
                 outlineCanvas.requestPaint();
             }
             function onImplicitHeightChanged() {
+                outlineCanvas.requestPaint();
+            }
+        }
+        Connections {
+            target: Config
+            function onNotchThemeChanged() {
+                outlineCanvas.requestPaint();
+            }
+        }
+        Connections {
+            target: leftCornerMaskPart
+            function onWidthChanged() {
+                outlineCanvas.requestPaint();
+            }
+        }
+        Connections {
+            target: rightCornerMaskPart
+            function onWidthChanged() {
                 outlineCanvas.requestPaint();
             }
         }
