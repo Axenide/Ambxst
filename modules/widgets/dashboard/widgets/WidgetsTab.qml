@@ -101,9 +101,11 @@ Rectangle {
             property string searchText: GlobalStates.launcherSearchText
             property bool showResults: searchText.length > 0
             property int selectedIndex: GlobalStates.launcherSelectedIndex
-            property bool optionsMenuOpen: false
-            property int menuItemIndex: -1
-            property bool menuJustClosed: false
+            
+            // Options menu state (expandable list)
+            property int expandedItemIndex: -1
+            property int selectedOptionIndex: 0
+            property bool keyboardNavigation: false
 
             // Animated model for smooth filtering
             property var filteredApps: searchText.length > 0 ? AppSearch.fuzzyQuery(searchText) : AppSearch.getAllApps()
@@ -223,6 +225,13 @@ Rectangle {
                  if (selectedIndex === -1 && resultsList.count > 0) {
                      resultsList.contentY = 0;
                  }
+                 
+                 // Close expanded options when selection changes to a different item
+                 if (expandedItemIndex >= 0 && selectedIndex !== expandedItemIndex) {
+                     expandedItemIndex = -1;
+                     selectedOptionIndex = 0;
+                     keyboardNavigation = false;
+                 }
              }
 
             function clearSearch() {
@@ -232,6 +241,40 @@ Rectangle {
 
             function focusSearchInput() {
                 searchInput.focusInput();
+            }
+            
+            function adjustScrollForExpandedItem(index) {
+                if (index < 0 || index >= appsModel.count)
+                    return;
+
+                // Calculate Y position of the item
+                var itemY = 0;
+                for (var i = 0; i < index; i++) {
+                    itemY += 48; // All items before are collapsed (base height)
+                }
+
+                // Calculate expanded item height - always 2 options (Launch, Create Shortcut)
+                var listHeight = 36 * 2;
+                var expandedHeight = 48 + 4 + listHeight + 8;
+
+                // Calculate max valid scroll position
+                var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height);
+
+                // Current viewport bounds
+                var viewportTop = resultsList.contentY;
+                var viewportBottom = viewportTop + resultsList.height;
+
+                // Only scroll if item is not fully visible
+                var itemBottom = itemY + expandedHeight;
+
+                if (itemY < viewportTop) {
+                    // Item top is above viewport - scroll up to show it
+                    resultsList.contentY = itemY;
+                } else if (itemBottom > viewportBottom) {
+                    // Item bottom is below viewport - scroll down to show it
+                    resultsList.contentY = Math.min(itemBottom - resultsList.height, maxContentY);
+                }
+                // Otherwise, item is already fully visible - no scroll needed
             }
 
             Behavior on height {
@@ -281,21 +324,88 @@ Rectangle {
                      }
 
                     onAccepted: {
-                        if (appLauncher.selectedIndex >= 0 && appLauncher.selectedIndex < appsModel.count) {
-                            let selectedApp = appsModel.get(appLauncher.selectedIndex);
+                        if (appLauncher.expandedItemIndex >= 0) {
+                            // Execute selected option when menu is expanded
+                            let selectedApp = appsModel.get(appLauncher.expandedItemIndex);
                             if (selectedApp) {
-                                appLauncher.executeApp(selectedApp.appId);
-                                Visibilities.setActiveModule("");
+                                // Build options array
+                                let options = [
+                                    function() { 
+                                        appLauncher.executeApp(selectedApp.appId);
+                                        Visibilities.setActiveModule("");
+                                    },
+                                    function() {
+                                        // Create shortcut
+                                        let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
+                                        let timestamp = Date.now();
+                                        let fileName = selectedApp.appId + "-" + timestamp + ".desktop";
+                                        let filePath = desktopDir + "/" + fileName;
+                                        
+                                        let desktopContent = "[Desktop Entry]\n" + 
+                                            "Version=1.0\n" + 
+                                            "Type=Application\n" + 
+                                            "Name=" + selectedApp.appName + "\n" + 
+                                            "Exec=" + selectedApp.appExecString + "\n" + 
+                                            "Icon=" + selectedApp.appIcon + "\n" + 
+                                            (selectedApp.appComment ? "Comment=" + selectedApp.appComment + "\n" : "") + 
+                                            (selectedApp.appCategories.length > 0 ? "Categories=" + selectedApp.appCategories.join(";") + ";\n" : "") + 
+                                            (selectedApp.appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
+                                        
+                                        let writeCmd = "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > \"" + filePath + "\" && chmod 755 \"" + filePath + "\" && gio set \"" + filePath + "\" metadata::trusted true";
+                                        copyProcess.command = ["sh", "-c", writeCmd];
+                                        copyProcess.running = true;
+                                        appLauncher.expandedItemIndex = -1;
+                                    }
+                                ];
+                                
+                                if (appLauncher.selectedOptionIndex >= 0 && appLauncher.selectedOptionIndex < options.length) {
+                                    options[appLauncher.selectedOptionIndex]();
+                                }
+                            }
+                        } else {
+                            if (appLauncher.selectedIndex >= 0 && appLauncher.selectedIndex < appsModel.count) {
+                                let selectedApp = appsModel.get(appLauncher.selectedIndex);
+                                if (selectedApp) {
+                                    appLauncher.executeApp(selectedApp.appId);
+                                    Visibilities.setActiveModule("");
+                                }
+                            }
+                        }
+                    }
+                    
+                    onShiftAccepted: {
+                        if (appLauncher.selectedIndex >= 0 && appLauncher.selectedIndex < resultsList.count) {
+                            // Toggle expanded state
+                            if (appLauncher.expandedItemIndex === appLauncher.selectedIndex) {
+                                appLauncher.expandedItemIndex = -1;
+                                appLauncher.selectedOptionIndex = 0;
+                                appLauncher.keyboardNavigation = false;
+                            } else {
+                                appLauncher.expandedItemIndex = appLauncher.selectedIndex;
+                                appLauncher.selectedOptionIndex = 0;
+                                appLauncher.keyboardNavigation = true;
                             }
                         }
                     }
 
                     onEscapePressed: {
-                        Visibilities.setActiveModule("");
+                        if (appLauncher.expandedItemIndex >= 0) {
+                            appLauncher.expandedItemIndex = -1;
+                            appLauncher.selectedOptionIndex = 0;
+                            appLauncher.keyboardNavigation = false;
+                        } else {
+                            Visibilities.setActiveModule("");
+                        }
                     }
 
                     onDownPressed: {
-                        if (resultsList.count > 0) {
+                        if (appLauncher.expandedItemIndex >= 0) {
+                            // Navigate options when menu is expanded - always 2 options (Launch, Create Shortcut)
+                            if (appLauncher.selectedOptionIndex < 1) {
+                                appLauncher.selectedOptionIndex++;
+                                appLauncher.keyboardNavigation = true;
+                            }
+                        } else if (resultsList.count > 0) {
                             if (appLauncher.selectedIndex === -1) {
                                 GlobalStates.launcherSelectedIndex = 0;
                                 appLauncher.selectedIndex = 0;
@@ -309,7 +419,13 @@ Rectangle {
                     }
 
                     onUpPressed: {
-                        if (appLauncher.selectedIndex > 0) {
+                        if (appLauncher.expandedItemIndex >= 0) {
+                            // Navigate options when menu is expanded
+                            if (appLauncher.selectedOptionIndex > 0) {
+                                appLauncher.selectedOptionIndex--;
+                                appLauncher.keyboardNavigation = true;
+                            }
+                        } else if (appLauncher.selectedIndex > 0) {
                             GlobalStates.launcherSelectedIndex--;
                             appLauncher.selectedIndex--;
                             resultsList.currentIndex = appLauncher.selectedIndex;
@@ -373,7 +489,7 @@ Rectangle {
                     visible: true
 
                     clip: true
-                    interactive: !appLauncher.optionsMenuOpen
+                    interactive: appLauncher.expandedItemIndex === -1
                     cacheBuffer: 96
                     reuseItems: false
 
@@ -396,18 +512,33 @@ Rectangle {
                             appLauncher.selectedIndex = currentIndex;
                         }
 
-                        // Manual smooth auto-scroll
+                        // Manual smooth auto-scroll accounting for variable height items
                         if (currentIndex >= 0) {
-                            var itemY = currentIndex * 48;
+                            var itemY = 0;
+                            for (var i = 0; i < currentIndex && i < appsModel.count; i++) {
+                                var itemHeight = 48;
+                                if (i === appLauncher.expandedItemIndex) {
+                                    var listHeight = 36 * 2;
+                                    itemHeight = 48 + 4 + listHeight + 8;
+                                }
+                                itemY += itemHeight;
+                            }
+                            
+                            var currentItemHeight = 48;
+                            if (currentIndex === appLauncher.expandedItemIndex) {
+                                var listHeight = 36 * 2;
+                                currentItemHeight = 48 + 4 + listHeight + 8;
+                            }
+                            
                             var viewportTop = resultsList.contentY;
                             var viewportBottom = viewportTop + resultsList.height;
 
                             if (itemY < viewportTop) {
                                 // Item is above viewport, scroll up
                                 resultsList.contentY = itemY;
-                            } else if (itemY + 48 > viewportBottom) {
+                            } else if (itemY + currentItemHeight > viewportBottom) {
                                 // Item is below viewport, scroll down
-                                resultsList.contentY = itemY + 48 - resultsList.height;
+                                resultsList.contentY = itemY + currentItemHeight - resultsList.height;
                             }
                         }
                     }
@@ -422,108 +553,92 @@ Rectangle {
                         required property bool appRunInTerminal
                         required property int index
 
+                        property bool isExpanded: index === appLauncher.expandedItemIndex
+
                         width: resultsList.width
-                        height: 48
+                        height: {
+                            let baseHeight = 48;
+                            if (isExpanded) {
+                                var listHeight = 36 * 2; // Always 2 options: Launch, Create Shortcut
+                                return baseHeight + 4 + listHeight + 8; // base + spacing + list + bottom margin
+                            }
+                            return baseHeight;
+                        }
                         color: "transparent"
                         radius: 16
+                        
+                        Behavior on height {
+                            enabled: Config.animDuration > 0
+                            NumberAnimation {
+                                duration: Config.animDuration
+                                easing.type: Easing.OutQuart
+                            }
+                        }
 
                         MouseArea {
                             id: mouseArea
-                            anchors.fill: parent
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: isExpanded ? 48 : parent.height
                             hoverEnabled: true
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                             onEntered: {
-                                if (!appLauncher.optionsMenuOpen) {
+                                if (appLauncher.expandedItemIndex === -1) {
                                     GlobalStates.launcherSelectedIndex = index;
                                     appLauncher.selectedIndex = index;
                                     resultsList.currentIndex = index;
                                 }
                             }
+                            
                             onClicked: mouse => {
-                                if (appLauncher.menuJustClosed) {
-                                    return;
-                                }
-
                                 if (mouse.button === Qt.LeftButton) {
-                                    appLauncher.executeApp(appId);
-                                    Visibilities.setActiveModule("");
+                                    if (!isExpanded) {
+                                        appLauncher.executeApp(appId);
+                                        Visibilities.setActiveModule("");
+                                    }
                                 } else if (mouse.button === Qt.RightButton) {
-                                    appLauncher.menuItemIndex = index;
-                                    appLauncher.optionsMenuOpen = true;
-                                    contextMenu.popup(mouse.x, mouse.y);
-                                }
-                            }
-
-                            OptionsMenu {
-                                id: contextMenu
-
-                                onClosed: {
-                                    appLauncher.optionsMenuOpen = false;
-                                    appLauncher.menuItemIndex = -1;
-                                    appLauncher.menuJustClosed = true;
-                                    menuClosedTimer.start();
-                                }
-
-                                Timer {
-                                    id: menuClosedTimer
-                                    interval: 100
-                                    repeat: false
-                                    onTriggered: {
-                                        appLauncher.menuJustClosed = false;
+                                    // Toggle expanded state
+                                    if (appLauncher.expandedItemIndex === index) {
+                                        appLauncher.expandedItemIndex = -1;
+                                        appLauncher.selectedOptionIndex = 0;
+                                        appLauncher.keyboardNavigation = false;
+                                        // Update selection to current hover position after closing
+                                        GlobalStates.launcherSelectedIndex = index;
+                                        appLauncher.selectedIndex = index;
+                                        resultsList.currentIndex = index;
+                                    } else {
+                                        appLauncher.expandedItemIndex = index;
+                                        GlobalStates.launcherSelectedIndex = index;
+                                        appLauncher.selectedIndex = index;
+                                        resultsList.currentIndex = index;
+                                        appLauncher.selectedOptionIndex = 0;
+                                        appLauncher.keyboardNavigation = false;
                                     }
                                 }
-
-                                items: [
-                                    {
-                                        text: "Launch",
-                                        icon: Icons.launch,
-                                        highlightColor: Colors.primary,
-                                        textColor: Colors.overPrimary,
-                                        onTriggered: function () {
-                                            appLauncher.executeApp(appId);
-                                            Visibilities.setActiveModule("");
-                                        }
-                                    },
-                                    {
-                                        text: "Create Shortcut",
-                                        icon: Icons.shortcut,
-                                        highlightColor: Colors.secondary,
-                                        textColor: Colors.overSecondary,
-                                        onTriggered: function () {
-                                            let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
-                                            let timestamp = Date.now();
-                                            let fileName = appId + "-" + timestamp + ".desktop";
-                                            let filePath = desktopDir + "/" + fileName;
-
-                                            let desktopContent = "[Desktop Entry]\n" + "Version=1.0\n" + "Type=Application\n" + "Name=" + appName + "\n" + "Exec=" + appExecString + "\n" + "Icon=" + appIcon + "\n" + (appComment ? "Comment=" + appComment + "\n" : "") + (appCategories.length > 0 ? "Categories=" + appCategories.join(";") + ";\n" : "") + (appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
-
-                                            let writeCmd = "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > \"" + filePath + "\" && chmod 755 \"" + filePath + "\" && gio set \"" + filePath + "\" metadata::trusted true";
-                                            copyProcess.command = ["sh", "-c", writeCmd];
-                                            copyProcess.running = true;
-                                        }
-                                    }
-                                ]
                             }
                         }
-
+                        
+                        // App content (icon and text)
                         RowLayout {
-                            anchors.fill: parent
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
                             anchors.margins: 8
+                            height: 32
                             spacing: 12
 
-                            Loader {
+                            // App icon
+                            Item {
                                 Layout.preferredWidth: 32
                                 Layout.preferredHeight: 32
-                                sourceComponent: Config.tintIcons ? tintedIconComponent : normalIconComponent
-                            }
 
-                            Component {
-                                id: normalIconComponent
                                 Image {
-                                    id: appIconImage
+                                    anchors.fill: parent
                                     source: "image://icon/" + appIcon
                                     fillMode: Image.PreserveAspectFit
+                                    visible: !Config.tintIcons
 
                                     Rectangle {
                                         anchors.fill: parent
@@ -541,11 +656,10 @@ Rectangle {
                                         }
                                     }
                                 }
-                            }
 
-                            Component {
-                                id: tintedIconComponent
                                 Tinted {
+                                    anchors.fill: parent
+                                    visible: Config.tintIcons
                                     sourceItem: Image {
                                         source: "image://icon/" + appIcon
                                         fillMode: Image.PreserveAspectFit
@@ -560,7 +674,15 @@ Rectangle {
                                 Text {
                                     width: parent.width
                                     text: appName
-                                    color: appLauncher.selectedIndex === index ? Config.resolveColor(Config.theme.srPrimary.itemColor) : Colors.overBackground
+                                    color: {
+                                        if (isExpanded) {
+                                            return Config.resolveColor(Config.theme.srPane.itemColor);
+                                        } else if (appLauncher.selectedIndex === index) {
+                                            return Config.resolveColor(Config.theme.srPrimary.itemColor);
+                                        } else {
+                                            return Colors.overBackground;
+                                        }
+                                    }
                                     font.family: Config.theme.font
                                     font.pixelSize: Config.theme.fontSize
                                     font.weight: Font.Bold
@@ -578,7 +700,15 @@ Rectangle {
                                 Text {
                                     width: parent.width
                                     text: appComment || ""
-                                    color: appLauncher.selectedIndex === index ? Config.resolveColor(Config.theme.srPrimary.itemColor) : Colors.outline
+                                    color: {
+                                        if (isExpanded) {
+                                            return Config.resolveColor(Config.theme.srPane.itemColor);
+                                        } else if (appLauncher.selectedIndex === index) {
+                                            return Config.resolveColor(Config.theme.srPrimary.itemColor);
+                                        } else {
+                                            return Colors.outline;
+                                        }
+                                    }
                                     font.family: Config.theme.font
                                     font.pixelSize: Math.max(8, Config.theme.fontSize - 2)
                                     elide: Text.ElideRight
@@ -594,14 +724,217 @@ Rectangle {
                                 }
                             }
                         }
+                        
+                        // Expandable options list
+                        RowLayout {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.leftMargin: 8
+                            anchors.rightMargin: 8
+                            anchors.bottomMargin: 8
+                            spacing: 4
+                            visible: isExpanded
+                            opacity: isExpanded ? 1 : 0
+
+                            Behavior on opacity {
+                                enabled: Config.animDuration > 0
+                                NumberAnimation {
+                                    duration: Config.animDuration
+                                    easing.type: Easing.OutQuart
+                                }
+                            }
+
+                            ClippingRectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 36 * 2 // Always 2 options
+                                color: Colors.background
+                                radius: Config.roundness
+
+                                ListView {
+                                    id: optionsListView
+                                    anchors.fill: parent
+                                    clip: true
+                                    interactive: false
+                                    boundsBehavior: Flickable.StopAtBounds
+                                    model: [
+                                        {
+                                            text: "Launch",
+                                            icon: Icons.launch,
+                                            highlightColor: Colors.primary,
+                                            textColor: Config.resolveColor(Config.theme.srPrimary.itemColor),
+                                            action: function() {
+                                                appLauncher.executeApp(appId);
+                                                Visibilities.setActiveModule("");
+                                            }
+                                        },
+                                        {
+                                            text: "Create Shortcut",
+                                            icon: Icons.shortcut,
+                                            highlightColor: Colors.secondary,
+                                            textColor: Config.resolveColor(Config.theme.srSecondary.itemColor),
+                                            action: function() {
+                                                let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
+                                                let timestamp = Date.now();
+                                                let fileName = appId + "-" + timestamp + ".desktop";
+                                                let filePath = desktopDir + "/" + fileName;
+
+                                                let desktopContent = "[Desktop Entry]\n" + 
+                                                    "Version=1.0\n" + 
+                                                    "Type=Application\n" + 
+                                                    "Name=" + appName + "\n" + 
+                                                    "Exec=" + appExecString + "\n" + 
+                                                    "Icon=" + appIcon + "\n" + 
+                                                    (appComment ? "Comment=" + appComment + "\n" : "") + 
+                                                    (appCategories.length > 0 ? "Categories=" + appCategories.join(";") + ";\n" : "") + 
+                                                    (appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
+
+                                                let writeCmd = "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > \"" + filePath + "\" && chmod 755 \"" + filePath + "\" && gio set \"" + filePath + "\" metadata::trusted true";
+                                                copyProcess.command = ["sh", "-c", writeCmd];
+                                                copyProcess.running = true;
+                                                appLauncher.expandedItemIndex = -1;
+                                            }
+                                        }
+                                    ]
+                                    currentIndex: appLauncher.selectedOptionIndex
+                                    highlightFollowsCurrentItem: true
+                                    highlightRangeMode: ListView.ApplyRange
+                                    preferredHighlightBegin: 0
+                                    preferredHighlightEnd: height
+
+                                    highlight: StyledRect {
+                                        variant: {
+                                            if (optionsListView.currentIndex >= 0 && optionsListView.currentIndex < optionsListView.count) {
+                                                var item = optionsListView.model[optionsListView.currentIndex];
+                                                if (item && item.highlightColor) {
+                                                    if (item.highlightColor === Colors.secondary)
+                                                        return "secondary";
+                                                    return "primary";
+                                                }
+                                            }
+                                            return "primary";
+                                        }
+                                        radius: Config.roundness
+                                        visible: optionsListView.currentIndex >= 0
+                                        z: -1
+                                    }
+
+                                    highlightMoveDuration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
+                                    highlightMoveVelocity: -1
+                                    highlightResizeDuration: Config.animDuration / 2
+                                    highlightResizeVelocity: -1
+
+                                    delegate: Item {
+                                        required property var modelData
+                                        required property int index
+
+                                        width: optionsListView.width
+                                        height: 36
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: "transparent"
+
+                                            RowLayout {
+                                                anchors.fill: parent
+                                                anchors.margins: 8
+                                                spacing: 8
+
+                                                Text {
+                                                    text: modelData && modelData.icon ? modelData.icon : ""
+                                                    font.family: Icons.font
+                                                    font.pixelSize: 14
+                                                    font.weight: Font.Bold
+                                                    textFormat: Text.RichText
+                                                    color: {
+                                                        if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
+                                                            return modelData.textColor;
+                                                        }
+                                                        return Colors.overSurface;
+                                                    }
+
+                                                    Behavior on color {
+                                                        enabled: Config.animDuration > 0
+                                                        ColorAnimation {
+                                                            duration: Config.animDuration / 2
+                                                            easing.type: Easing.OutQuart
+                                                        }
+                                                    }
+                                                }
+
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: modelData && modelData.text ? modelData.text : ""
+                                                    font.family: Config.theme.font
+                                                    font.pixelSize: Config.theme.fontSize
+                                                    font.weight: optionsListView.currentIndex === index ? Font.Bold : Font.Normal
+                                                    color: {
+                                                        if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
+                                                            return modelData.textColor;
+                                                        }
+                                                        return Colors.overSurface;
+                                                    }
+                                                    elide: Text.ElideRight
+                                                    maximumLineCount: 1
+
+                                                    Behavior on color {
+                                                        enabled: Config.animDuration > 0
+                                                        ColorAnimation {
+                                                            duration: Config.animDuration / 2
+                                                            easing.type: Easing.OutQuart
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+
+                                                onEntered: {
+                                                    optionsListView.currentIndex = index;
+                                                    appLauncher.selectedOptionIndex = index;
+                                                    appLauncher.keyboardNavigation = false;
+                                                }
+
+                                                onClicked: {
+                                                    if (modelData && modelData.action) {
+                                                        modelData.action();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     highlight: Item {
                         width: resultsList.width
-                        height: 48
+                        height: {
+                            let baseHeight = 48;
+                            if (resultsList.currentIndex === appLauncher.expandedItemIndex) {
+                                var listHeight = 36 * 2; // Always 2 options
+                                return baseHeight + 4 + listHeight + 8;
+                            }
+                            return baseHeight;
+                        }
 
-                        // Calculate Y position based on index, not item position
-                        y: resultsList.currentIndex * 48
+                        // Calculate Y position based on index, accounting for expanded items
+                        y: {
+                            var yPos = 0;
+                            for (var i = 0; i < resultsList.currentIndex && i < appsModel.count; i++) {
+                                var itemHeight = 48;
+                                if (i === appLauncher.expandedItemIndex) {
+                                    var listHeight = 36 * 2;
+                                    itemHeight = 48 + 4 + listHeight + 8;
+                                }
+                                yPos += itemHeight;
+                            }
+                            return yPos;
+                        }
 
                         Behavior on y {
                             enabled: Config.animDuration > 0
@@ -610,12 +943,34 @@ Rectangle {
                                 easing.type: Easing.OutCubic
                             }
                         }
+                        
+                        Behavior on height {
+                            enabled: Config.animDuration > 0
+                            NumberAnimation {
+                                duration: Config.animDuration
+                                easing.type: Easing.OutQuart
+                            }
+                        }
+                        
+                        onHeightChanged: {
+                            if (appLauncher.expandedItemIndex >= 0 && height > 48) {
+                                Qt.callLater(() => {
+                                    appLauncher.adjustScrollForExpandedItem(appLauncher.expandedItemIndex);
+                                });
+                            }
+                        }
 
                         StyledRect {
                             anchors.fill: parent
-                            variant: "primary"
+                            variant: {
+                                if (appLauncher.expandedItemIndex >= 0 && appLauncher.selectedIndex === appLauncher.expandedItemIndex) {
+                                    return "pane";
+                                } else {
+                                    return "primary";
+                                }
+                            }
                             radius: Config.roundness > 0 ? Config.roundness + 4 : 0
-                            visible: appLauncher.selectedIndex >= 0 && (appLauncher.optionsMenuOpen ? appLauncher.selectedIndex === appLauncher.menuItemIndex : true)
+                            visible: appLauncher.selectedIndex >= 0
                         }
                     }
 
