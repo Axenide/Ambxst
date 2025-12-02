@@ -318,8 +318,12 @@ Rectangle {
                                 const visiblePoints = Math.min(zoomedMaxPoints, history.length);
                                 const recentHistory = history.slice(-visiblePoints);
                                 
-                                // Always use full width - spacing adjusts to fit visible points
-                                const pointSpacing = w / (recentHistory.length - 1);
+                                // Calculate spacing to always fill the width with visible points
+                                const pointSpacing = w / (zoomedMaxPoints - 1);
+                                
+                                // Calculate offset to align to the right
+                                // If we have fewer points than zoomedMaxPoints, start from the right
+                                const offset = w - ((recentHistory.length - 1) * pointSpacing);
 
                                 // Create gradient from top to bottom
                                 const gradient = ctx.createLinearGradient(0, 0, 0, h);
@@ -335,22 +339,23 @@ Rectangle {
                                 ctx.fillStyle = gradient;
                                 ctx.beginPath();
 
-                                // Start from bottom left
-                                ctx.moveTo(0, h);
+                                // Start from bottom at first point position
+                                const firstX = offset;
+                                ctx.moveTo(firstX, h);
 
                                 // Draw line to first data point
                                 const firstY = h - (recentHistory[0] * h);
-                                ctx.lineTo(0, firstY);
+                                ctx.lineTo(firstX, firstY);
 
                                 // Draw through all data points
                                 for (let i = 1; i < recentHistory.length; i++) {
-                                    const x = i * pointSpacing;
+                                    const x = offset + (i * pointSpacing);
                                     const y = h - (recentHistory[i] * h);
                                     ctx.lineTo(x, y);
                                 }
 
                                 // Close path along bottom
-                                const lastX = (recentHistory.length - 1) * pointSpacing;
+                                const lastX = offset + ((recentHistory.length - 1) * pointSpacing);
                                 ctx.lineTo(lastX, h);
                                 ctx.closePath();
                                 ctx.fill();
@@ -363,7 +368,7 @@ Rectangle {
                                 ctx.beginPath();
 
                                 for (let i = 0; i < recentHistory.length; i++) {
-                                    const x = i * pointSpacing;
+                                    const x = offset + (i * pointSpacing);
                                     const y = h - (recentHistory[i] * h);
 
                                     if (i === 0) {
