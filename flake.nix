@@ -160,6 +160,10 @@
         pipewire
         wireplumber
 
+        # Terminal
+        kitty
+        tmux
+
         # Fonts
         roboto
         barlow
