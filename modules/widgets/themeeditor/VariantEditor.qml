@@ -11,11 +11,13 @@ StyledRect {
     id: root
 
     required property string variantId
+
+    signal updateVariant(string property, var value)
     signal close()
 
     variant: "pane"
 
-    // Get the config object for this variant
+    // Get the Config object for this variant (reads directly from Config)
     readonly property var variantConfig: {
         switch (variantId) {
         case "bg": return Config.theme.srBg;
@@ -35,7 +37,7 @@ StyledRect {
         case "error": return Config.theme.srError;
         case "errorfocus": return Config.theme.srErrorFocus;
         case "overerror": return Config.theme.srOverError;
-        default: return Config.theme.srCommon;
+        default: return null;
         }
     }
 
@@ -88,6 +90,14 @@ StyledRect {
         "white", "whiteContainer", "overWhite", "overWhiteContainer"
     ]
 
+    // Helper to update a property - updates Config directly
+    function updateProp(prop, value) {
+        if (variantConfig) {
+            variantConfig[prop] = value;
+            root.updateVariant(prop, value);
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 12
@@ -98,7 +108,7 @@ StyledRect {
             Layout.fillWidth: true
             spacing: 10
 
-            // Preview
+            // Preview using StyledRect (shows current Config state - now real-time!)
             StyledRect {
                 Layout.preferredWidth: 56
                 Layout.preferredHeight: 56
@@ -166,6 +176,7 @@ StyledRect {
             ColumnLayout {
                 width: parent.width
                 spacing: 16
+                enabled: root.variantConfig !== null
 
                 // Gradient Type Section
                 GroupBox {
@@ -200,7 +211,7 @@ StyledRect {
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 36
 
-                                readonly property bool isSelected: root.variantConfig.gradientType === modelData
+                                readonly property bool isSelected: root.variantConfig && root.variantConfig.gradientType === modelData
 
                                 background: StyledRect {
                                     variant: typeButton.isSelected ? "primary" : (typeButton.hovered ? "focus" : "common")
@@ -215,7 +226,7 @@ StyledRect {
                                     verticalAlignment: Text.AlignVCenter
                                 }
 
-                                onClicked: root.variantConfig.gradientType = modelData
+                                onClicked: root.updateProp("gradientType", modelData)
                             }
                         }
                     }
@@ -242,8 +253,8 @@ StyledRect {
                     ColorSelector {
                         anchors.fill: parent
                         colorNames: root.colorNames
-                        currentValue: root.variantConfig.itemColor
-                        onColorChanged: newColor => root.variantConfig.itemColor = newColor
+                        currentValue: root.variantConfig ? root.variantConfig.itemColor : ""
+                        onColorChanged: newColor => root.updateProp("itemColor", newColor)
                     }
                 }
 
@@ -288,13 +299,13 @@ StyledRect {
                                 Layout.preferredHeight: 36
                                 from: 0
                                 to: 10
-                                value: root.variantConfig.border[1]
+                                value: root.variantConfig ? root.variantConfig.border[1] : 0
                                 editable: true
 
                                 function applyValue() {
-                                    let border = root.variantConfig.border.slice();
-                                    border[1] = value;
-                                    root.variantConfig.border = border;
+                                    if (!root.variantConfig) return;
+                                    let border = [root.variantConfig.border[0], value];
+                                    root.updateProp("border", border);
                                 }
 
                                 onValueModified: applyValue()
@@ -385,11 +396,11 @@ StyledRect {
                             ColorSelector {
                                 Layout.fillWidth: true
                                 colorNames: root.colorNames
-                                currentValue: root.variantConfig.border[0]
+                                currentValue: root.variantConfig ? root.variantConfig.border[0] : ""
                                 onColorChanged: newColor => {
-                                    let border = root.variantConfig.border.slice();
-                                    border[0] = newColor;
-                                    root.variantConfig.border = border;
+                                    if (!root.variantConfig) return;
+                                    let border = [newColor, root.variantConfig.border[1]];
+                                    root.updateProp("border", border);
                                 }
                             }
                         }
@@ -423,10 +434,10 @@ StyledRect {
                             Layout.fillWidth: true
                             from: 0.0
                             to: 1.0
-                            value: root.variantConfig.opacity
+                            value: root.variantConfig ? root.variantConfig.opacity : 1.0
                             stepSize: 0.05
 
-                            onMoved: root.variantConfig.opacity = value
+                            onMoved: root.updateProp("opacity", value)
 
                             background: StyledRect {
                                 x: opacitySlider.leftPadding
@@ -455,7 +466,7 @@ StyledRect {
                         }
 
                         Text {
-                            text: (root.variantConfig.opacity * 100).toFixed(0) + "%"
+                            text: root.variantConfig ? (root.variantConfig.opacity * 100).toFixed(0) + "%" : "100%"
                             font.family: Styling.defaultFont
                             font.pixelSize: Config.theme.fontSize
                             color: Colors.overBackground
@@ -469,16 +480,16 @@ StyledRect {
                 GradientStopsEditor {
                     Layout.fillWidth: true
                     colorNames: root.colorNames
-                    stops: root.variantConfig.gradient
+                    stops: root.variantConfig ? root.variantConfig.gradient : []
                     variantId: root.variantId
-                    onUpdateStops: newStops => root.variantConfig.gradient = newStops
+                    onUpdateStops: newStops => root.updateProp("gradient", newStops)
                 }
 
                 // Linear/Radial specific settings
                 GroupBox {
                     Layout.fillWidth: true
-                    title: root.variantConfig.gradientType === "radial" ? "Radial Settings" : "Linear Settings"
-                    visible: root.variantConfig.gradientType !== "halftone"
+                    title: root.variantConfig && root.variantConfig.gradientType === "radial" ? "Radial Settings" : "Linear Settings"
+                    visible: root.variantConfig && root.variantConfig.gradientType !== "halftone"
 
                     background: StyledRect {
                         variant: "common"
@@ -499,7 +510,7 @@ StyledRect {
 
                         // Angle (for linear)
                         RowLayout {
-                            visible: root.variantConfig.gradientType === "linear"
+                            visible: root.variantConfig && root.variantConfig.gradientType === "linear"
                             Layout.fillWidth: true
                             spacing: 10
 
@@ -517,12 +528,12 @@ StyledRect {
                                 Layout.preferredHeight: 36
                                 from: 0
                                 to: 360
-                                value: root.variantConfig.gradientAngle
+                                value: root.variantConfig ? root.variantConfig.gradientAngle : 0
                                 editable: true
                                 wrap: true
 
                                 function applyValue() {
-                                    root.variantConfig.gradientAngle = value;
+                                    root.updateProp("gradientAngle", value);
                                 }
 
                                 onValueModified: applyValue()
@@ -593,7 +604,7 @@ StyledRect {
 
                         // Center X/Y (for radial)
                         RowLayout {
-                            visible: root.variantConfig.gradientType === "radial"
+                            visible: root.variantConfig && root.variantConfig.gradientType === "radial"
                             Layout.fillWidth: true
                             spacing: 10
 
@@ -610,10 +621,10 @@ StyledRect {
                                 Layout.fillWidth: true
                                 from: 0.0
                                 to: 1.0
-                                value: root.variantConfig.gradientCenterX
+                                value: root.variantConfig ? root.variantConfig.gradientCenterX : 0.5
                                 stepSize: 0.05
 
-                                onMoved: root.variantConfig.gradientCenterX = value
+                                onMoved: root.updateProp("gradientCenterX", value)
 
                                 background: StyledRect {
                                     x: centerXSlider.leftPadding
@@ -640,7 +651,7 @@ StyledRect {
                             }
 
                             Text {
-                                text: root.variantConfig.gradientCenterX.toFixed(2)
+                                text: root.variantConfig ? root.variantConfig.gradientCenterX.toFixed(2) : "0.50"
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Config.theme.fontSize
                                 color: Colors.overBackground
@@ -649,7 +660,7 @@ StyledRect {
                         }
 
                         RowLayout {
-                            visible: root.variantConfig.gradientType === "radial"
+                            visible: root.variantConfig && root.variantConfig.gradientType === "radial"
                             Layout.fillWidth: true
                             spacing: 10
 
@@ -666,10 +677,10 @@ StyledRect {
                                 Layout.fillWidth: true
                                 from: 0.0
                                 to: 1.0
-                                value: root.variantConfig.gradientCenterY
+                                value: root.variantConfig ? root.variantConfig.gradientCenterY : 0.5
                                 stepSize: 0.05
 
-                                onMoved: root.variantConfig.gradientCenterY = value
+                                onMoved: root.updateProp("gradientCenterY", value)
 
                                 background: StyledRect {
                                     x: centerYSlider.leftPadding
@@ -696,7 +707,7 @@ StyledRect {
                             }
 
                             Text {
-                                text: root.variantConfig.gradientCenterY.toFixed(2)
+                                text: root.variantConfig ? root.variantConfig.gradientCenterY.toFixed(2) : "0.50"
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Config.theme.fontSize
                                 color: Colors.overBackground
@@ -710,7 +721,7 @@ StyledRect {
                 GroupBox {
                     Layout.fillWidth: true
                     title: "Halftone Settings"
-                    visible: root.variantConfig.gradientType === "halftone"
+                    visible: root.variantConfig && root.variantConfig.gradientType === "halftone"
 
                     background: StyledRect {
                         variant: "common"
@@ -745,8 +756,8 @@ StyledRect {
                             ColorSelector {
                                 Layout.fillWidth: true
                                 colorNames: root.colorNames
-                                currentValue: root.variantConfig.halftoneDotColor
-                                onColorChanged: newColor => root.variantConfig.halftoneDotColor = newColor
+                                currentValue: root.variantConfig ? root.variantConfig.halftoneDotColor : ""
+                                onColorChanged: newColor => root.updateProp("halftoneDotColor", newColor)
                             }
                         }
 
@@ -766,8 +777,8 @@ StyledRect {
                             ColorSelector {
                                 Layout.fillWidth: true
                                 colorNames: root.colorNames
-                                currentValue: root.variantConfig.halftoneBackgroundColor
-                                onColorChanged: newColor => root.variantConfig.halftoneBackgroundColor = newColor
+                                currentValue: root.variantConfig ? root.variantConfig.halftoneBackgroundColor : ""
+                                onColorChanged: newColor => root.updateProp("halftoneBackgroundColor", newColor)
                             }
                         }
 
@@ -790,13 +801,13 @@ StyledRect {
                                 Layout.preferredHeight: 36
                                 from: 0
                                 to: 200
-                                value: root.variantConfig.halftoneDotMin * 10
+                                value: root.variantConfig ? root.variantConfig.halftoneDotMin * 10 : 20
                                 editable: true
 
                                 property real realValue: value / 10.0
 
                                 function applyValue() {
-                                    root.variantConfig.halftoneDotMin = realValue;
+                                    root.updateProp("halftoneDotMin", realValue);
                                 }
 
                                 onValueModified: applyValue()
@@ -880,13 +891,13 @@ StyledRect {
                                 Layout.preferredHeight: 36
                                 from: 0
                                 to: 200
-                                value: root.variantConfig.halftoneDotMax * 10
+                                value: root.variantConfig ? root.variantConfig.halftoneDotMax * 10 : 80
                                 editable: true
 
                                 property real realValue: value / 10.0
 
                                 function applyValue() {
-                                    root.variantConfig.halftoneDotMax = realValue;
+                                    root.updateProp("halftoneDotMax", realValue);
                                 }
 
                                 onValueModified: applyValue()
@@ -970,10 +981,10 @@ StyledRect {
                                 Layout.fillWidth: true
                                 from: 0.0
                                 to: 1.0
-                                value: root.variantConfig.halftoneStart
+                                value: root.variantConfig ? root.variantConfig.halftoneStart : 0
                                 stepSize: 0.05
 
-                                onMoved: root.variantConfig.halftoneStart = value
+                                onMoved: root.updateProp("halftoneStart", value)
 
                                 background: StyledRect {
                                     x: halftoneStartSlider.leftPadding
@@ -1000,7 +1011,7 @@ StyledRect {
                             }
 
                             Text {
-                                text: root.variantConfig.halftoneStart.toFixed(2)
+                                text: root.variantConfig ? root.variantConfig.halftoneStart.toFixed(2) : "0.00"
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Config.theme.fontSize
                                 color: Colors.overBackground
@@ -1025,10 +1036,10 @@ StyledRect {
                                 Layout.fillWidth: true
                                 from: 0.0
                                 to: 1.0
-                                value: root.variantConfig.halftoneEnd
+                                value: root.variantConfig ? root.variantConfig.halftoneEnd : 1
                                 stepSize: 0.05
 
-                                onMoved: root.variantConfig.halftoneEnd = value
+                                onMoved: root.updateProp("halftoneEnd", value)
 
                                 background: StyledRect {
                                     x: halftoneEndSlider.leftPadding
@@ -1055,7 +1066,7 @@ StyledRect {
                             }
 
                             Text {
-                                text: root.variantConfig.halftoneEnd.toFixed(2)
+                                text: root.variantConfig ? root.variantConfig.halftoneEnd.toFixed(2) : "1.00"
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Config.theme.fontSize
                                 color: Colors.overBackground
@@ -1082,12 +1093,12 @@ StyledRect {
                                 Layout.preferredHeight: 36
                                 from: 0
                                 to: 360
-                                value: root.variantConfig.gradientAngle
+                                value: root.variantConfig ? root.variantConfig.gradientAngle : 0
                                 editable: true
                                 wrap: true
 
                                 function applyValue() {
-                                    root.variantConfig.gradientAngle = value;
+                                    root.updateProp("gradientAngle", value);
                                 }
 
                                 onValueModified: applyValue()

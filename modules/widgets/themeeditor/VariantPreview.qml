@@ -22,7 +22,8 @@ Item {
         anchors.fill: parent
         spacing: 6
 
-        // Preview box
+        // Preview box - uses StyledRect with the variant
+        // Now shows real-time changes since we modify Config directly
         StyledRect {
             id: previewRect
             Layout.preferredWidth: 64
@@ -37,11 +38,11 @@ Item {
                 color: "transparent"
                 border.color: Colors.primary
                 border.width: root.isSelected ? 2 : 0
-                radius: parent.radius
+                radius: previewRect.radius
 
                 Behavior on border.width {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation { duration: Config.animDuration / 2 }
+                    enabled: (Config.animDuration ?? 0) > 0
+                    NumberAnimation { duration: (Config.animDuration ?? 0) / 2 }
                 }
             }
 
@@ -69,12 +70,12 @@ Item {
                 id: hoverOverlay
                 anchors.fill: parent
                 color: Colors.primary
-                radius: parent.radius
+                radius: previewRect.radius
                 opacity: 0
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation { duration: Config.animDuration / 2 }
+                    enabled: (Config.animDuration ?? 0) > 0
+                    NumberAnimation { duration: (Config.animDuration ?? 0) / 2 }
                 }
             }
         }
@@ -91,8 +92,8 @@ Item {
             Layout.alignment: Qt.AlignHCenter
 
             Behavior on color {
-                enabled: Config.animDuration > 0
-                ColorAnimation { duration: Config.animDuration / 2 }
+                enabled: (Config.animDuration ?? 0) > 0
+                ColorAnimation { duration: (Config.animDuration ?? 0) / 2 }
             }
         }
     }

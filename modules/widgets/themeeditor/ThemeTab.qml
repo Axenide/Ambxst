@@ -12,6 +12,8 @@ Item {
 
     property string selectedVariant: ""
 
+    signal updateVariant(string variantId, string property, var value)
+
     readonly property var variantCategories: [
         {
             name: "Base",
@@ -144,7 +146,9 @@ Item {
             active: root.selectedVariant !== ""
             sourceComponent: VariantEditor {
                 variantId: root.selectedVariant
-
+                onUpdateVariant: (property, value) => {
+                    root.updateVariant(root.selectedVariant, property, value);
+                }
                 onClose: root.selectedVariant = ""
             }
         }

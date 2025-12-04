@@ -16,6 +16,7 @@ Singleton {
     property alias keybindsLoader: keybindsLoader
     property bool initialLoadComplete: false
     property bool keybindsInitialLoadComplete: false
+    property bool pauseAutoSave: false  // When true, changes won't auto-save to JSON
     property string configPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/Ambxst/config.json"
     property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/Ambxst/binds.json"
 
@@ -86,7 +87,7 @@ Singleton {
         onFileChanged: reload()
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.initialLoadComplete) {
+            if (root.initialLoadComplete && !root.pauseAutoSave) {
                 loader.writeAdapter();
             }
         }
