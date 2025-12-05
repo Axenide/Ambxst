@@ -74,11 +74,11 @@ Singleton {
     // Lockscreen state
     property bool lockscreenVisible: false
 
-    // Theme Editor state
-    property bool themeEditorVisible: false
+    // Ambxst Settings state
+    property bool settingsVisible: false
 
-    function openThemeEditor() {
-        themeEditorVisible = false;
-        themeEditorVisible = true;
+    function openSettings() {
+        settingsVisible = false;
+        settingsVisible = true;
     }
 }

@@ -12,8 +12,8 @@ import qs.config
 FloatingWindow {
     id: root
 
-    visible: GlobalStates.themeEditorVisible
-    title: "Theme Editor"
+    visible: GlobalStates.settingsVisible
+    title: "Ambxst Settings"
     color: "transparent"
 
     minimumSize: Qt.size(750, 750)
@@ -209,7 +209,7 @@ FloatingWindow {
 
                     // Title
                     Text {
-                        text: "Theme Editor"
+                        text: "Ambxst Settings"
                         font.family: Styling.defaultFont
                         font.pixelSize: Styling.fontSize(0) + 2
                         font.bold: true
@@ -329,7 +329,7 @@ FloatingWindow {
                             if (root.hasChanges) {
                                 root.discardChanges();
                             }
-                            GlobalStates.themeEditorVisible = false;
+                            GlobalStates.settingsVisible = false;
                         }
                     }
                 }

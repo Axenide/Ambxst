@@ -10,7 +10,7 @@ import qs.modules.bar
 import qs.modules.bar.workspaces
 import qs.modules.notifications
 import qs.modules.widgets.dashboard.wallpapers
-import qs.modules.widgets.themeeditor
+import qs.modules.widgets.settings
 import qs.modules.notch
 import qs.modules.services
 import qs.modules.corners
@@ -128,9 +128,9 @@ ShellRoot {
         id: hyprlandKeybinds
     }
 
-    // Theme Editor floating window
-    ThemeEditor {
-        id: themeEditor
+    // Ambxst Settings floating window
+    Settings {
+        id: settingsWindow
     }
 
     // Initialize clipboard service at startup to ensure clipboard watching starts immediately

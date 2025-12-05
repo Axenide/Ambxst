@@ -226,9 +226,9 @@ NotchAnimationBehavior {
                 }
             }
 
-            // Theme Editor button
+            // Settings button
             Button {
-                id: themeEditorButton
+                id: settingsButton
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -238,7 +238,7 @@ NotchAnimationBehavior {
 
                 background: StyledRect {
                     radius: Styling.radius(4)
-                    variant: themeEditorButton.hovered ? "focus" : "common"
+                    variant: settingsButton.hovered ? "focus" : "common"
                 }
 
                 contentItem: Text {
@@ -253,7 +253,7 @@ NotchAnimationBehavior {
 
                 onClicked: {
                     Visibilities.setActiveModule("");
-                    GlobalStates.openThemeEditor();
+                    GlobalStates.openSettings();
                 }
             }
         }
