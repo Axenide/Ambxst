@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import qs.modules.theme
 import qs.config
 import "../../../config/ConfigDefaults.js" as ConfigDefaults
@@ -373,14 +372,6 @@ GroupBox {
 
             // Current stop info
             readonly property var currentStop: root.selectedStopIndex >= 0 && root.selectedStopIndex < root.stops.length ? root.stops[root.selectedStopIndex] : null
-            readonly property string colorStr: currentStop ? (currentStop[0] ? currentStop[0].toString() : "") : ""
-            readonly property bool isHex: colorStr.startsWith("#")
-            readonly property string displayHex: {
-                if (isHex)
-                    return colorStr;
-                const color = Colors[colorStr];
-                return color ? color.toString() : "#000000";
-            }
 
             // Header row: Stop number, position, delete
             RowLayout {
@@ -488,243 +479,18 @@ GroupBox {
                 }
             }
 
-            // Color selector row
-            RowLayout {
+            // Color selector - using ColorButton
+            ColorButton {
                 Layout.fillWidth: true
-                spacing: 8
-
-                // Color preview
-                Rectangle {
-                    Layout.preferredWidth: 32
-                    Layout.preferredHeight: 32
-                    radius: Styling.radius(-12)
-                    border.color: Colors.outline
-                    border.width: 1
-                    color: stopEditor.currentStop ? Config.resolveColor(stopEditor.currentStop[0]) : "transparent"
-                }
-
-                // Color dropdown
-                ComboBox {
-                    id: stopColorCombo
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 32
-
-                    model: ["Custom"].concat(root.colorNames)
-                    currentIndex: {
-                        if (stopEditor.isHex)
-                            return 0;
-                        const idx = root.colorNames.indexOf(stopEditor.colorStr);
-                        return idx >= 0 ? idx + 1 : 0;
-                    }
-
-                    onActivated: idx => {
-                        if (idx === 0) {
-                            // Switch to custom/hex mode - use current resolved color
-                            let newStops = root.stops.slice();
-                            newStops[root.selectedStopIndex] = [stopEditor.displayHex, newStops[root.selectedStopIndex][1]];
-                            root.updateStops(newStops);
-                            return;
-                        }
+                compact: true
+                colorNames: root.colorNames
+                currentColor: (stopEditor.currentStop && stopEditor.currentStop[0]) ? stopEditor.currentStop[0].toString() : "surface"
+                dialogTitle: "Select Stop Color"
+                onColorSelected: color => {
+                    if (root.selectedStopIndex >= 0 && root.selectedStopIndex < root.stops.length) {
                         let newStops = root.stops.slice();
-                        newStops[root.selectedStopIndex] = [root.colorNames[idx - 1], newStops[root.selectedStopIndex][1]];
+                        newStops[root.selectedStopIndex] = [color, newStops[root.selectedStopIndex][1]];
                         root.updateStops(newStops);
-                    }
-
-                    background: Rectangle {
-                        color: stopColorCombo.hovered ? Colors.surfaceContainerHigh : Colors.surfaceContainer
-                        radius: Styling.radius(-2)
-                        border.color: Colors.outlineVariant
-                        border.width: 1
-                    }
-
-                    contentItem: Text {
-                        text: stopEditor.isHex ? "Custom" : stopEditor.colorStr
-                        font.family: Styling.defaultFont
-                        font.pixelSize: Styling.fontSize(0)
-                        color: Colors.overBackground
-                        elide: Text.ElideRight
-                        verticalAlignment: Text.AlignVCenter
-                        leftPadding: 8
-                    }
-
-                    indicator: Text {
-                        x: stopColorCombo.width - width - 6
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: Icons.caretDown
-                        font.family: Icons.font
-                        font.pixelSize: Styling.fontSize(0)
-                        color: Colors.overBackground
-                    }
-
-                    popup: Popup {
-                        y: stopColorCombo.height + 2
-                        width: stopColorCombo.width
-                        implicitHeight: contentItem.implicitHeight > 200 ? 200 : contentItem.implicitHeight
-                        padding: 2
-
-                        background: Rectangle {
-                            color: Colors.surfaceContainerLow
-                            radius: Styling.radius(-1)
-                            border.color: Colors.outlineVariant
-                            border.width: 1
-                        }
-
-                        contentItem: ListView {
-                            clip: true
-                            implicitHeight: contentHeight
-                            model: stopColorCombo.popup.visible ? stopColorCombo.delegateModel : null
-                            currentIndex: stopColorCombo.highlightedIndex
-                            ScrollIndicator.vertical: ScrollIndicator {}
-                        }
-                    }
-
-                    delegate: ItemDelegate {
-                        id: colorDelegate
-                        required property var modelData
-                        required property int index
-
-                        width: stopColorCombo.width - 4
-                        height: 28
-
-                        background: Rectangle {
-                            color: colorDelegate.highlighted ? Colors.surfaceContainerHigh : "transparent"
-                            radius: Styling.radius(-2)
-                        }
-
-                        contentItem: RowLayout {
-                            spacing: 6
-
-                            Rectangle {
-                                Layout.preferredWidth: 18
-                                Layout.preferredHeight: 18
-                                radius: 2
-                                color: colorDelegate.index === 0 ? "transparent" : (Colors[root.colorNames[colorDelegate.index - 1]] || "transparent")
-                                border.color: Colors.outline
-                                border.width: colorDelegate.index === 0 ? 0 : 1
-
-                                // Diagonal line for "Custom"
-                                Rectangle {
-                                    visible: colorDelegate.index === 0
-                                    width: parent.width * 1.2
-                                    height: 2
-                                    color: Colors.error
-                                    anchors.centerIn: parent
-                                    rotation: 45
-                                }
-                            }
-
-                            Text {
-                                text: colorDelegate.modelData
-                                font.family: Styling.defaultFont
-                                font.pixelSize: Styling.fontSize(0)
-                                color: Colors.overBackground
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                        }
-
-                        highlighted: stopColorCombo.highlightedIndex === index
-                    }
-                }
-
-                // Color picker button
-                Button {
-                    id: pickerButton
-                    Layout.preferredWidth: 32
-                    Layout.preferredHeight: 32
-
-                    background: Rectangle {
-                        color: pickerButton.hovered ? Colors.surfaceContainerHigh : Colors.surfaceContainer
-                        radius: Styling.radius(-2)
-                        border.color: Colors.outlineVariant
-                        border.width: 1
-                    }
-
-                    contentItem: Text {
-                        text: Icons.picker
-                        font.family: Icons.font
-                        font.pixelSize: 16
-                        color: Colors.overBackground
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                    }
-
-                    onClicked: colorDialog.open()
-
-                    ToolTip.visible: hovered
-                    ToolTip.text: "Color picker"
-                    ToolTip.delay: 500
-                }
-            }
-
-            // HEX input row - only enabled when Custom is selected
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 8
-                opacity: stopEditor.isHex ? 1.0 : 0.5
-
-                Text {
-                    text: "HEX:"
-                    font.family: Styling.defaultFont
-                    font.pixelSize: Styling.fontSize(0)
-                    color: Colors.overBackground
-                    opacity: 0.7
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 28
-                    color: hexInput.activeFocus ? Colors.surfaceContainerHigh : Colors.surfaceContainer
-                    radius: Styling.radius(-2)
-                    border.color: hexInput.activeFocus ? Colors.primary : Colors.outlineVariant
-                    border.width: 1
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        spacing: 2
-
-                        Text {
-                            text: "#"
-                            font.family: "monospace"
-                            font.pixelSize: Styling.fontSize(0)
-                            color: Colors.overBackground
-                            opacity: 0.6
-                        }
-
-                        TextInput {
-                            id: hexInput
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-
-                            text: stopEditor.displayHex.replace("#", "").toUpperCase()
-
-                            font.family: "monospace"
-                            font.pixelSize: Styling.fontSize(0)
-                            color: Colors.overBackground
-                            verticalAlignment: Text.AlignVCenter
-                            selectByMouse: true
-                            maximumLength: 8
-                            readOnly: !stopEditor.isHex
-
-                            validator: RegularExpressionValidator {
-                                regularExpression: /[0-9A-Fa-f]{0,8}/
-                            }
-
-                            onEditingFinished: {
-                                if (!stopEditor.isHex)
-                                    return;
-                                let hex = text.trim();
-                                if (hex.length >= 6) {
-                                    let newStops = root.stops.slice();
-                                    newStops[root.selectedStopIndex] = ["#" + hex.toUpperCase(), newStops[root.selectedStopIndex][1]];
-                                    root.updateStops(newStops);
-                                }
-                            }
-
-                            Keys.onReturnPressed: editingFinished()
-                            Keys.onEnterPressed: editingFinished()
-                        }
                     }
                 }
             }
@@ -774,23 +540,6 @@ GroupBox {
 
             Item {
                 Layout.fillHeight: true
-            }
-        }
-    }
-
-    ColorDialog {
-        id: colorDialog
-        title: "Select Color"
-        selectedColor: {
-            const stop = root.selectedStopIndex >= 0 && root.selectedStopIndex < root.stops.length ? root.stops[root.selectedStopIndex] : null;
-            return stop ? Config.resolveColor(stop[0]) : "#000000";
-        }
-
-        onAccepted: {
-            if (root.selectedStopIndex >= 0 && root.selectedStopIndex < root.stops.length) {
-                let newStops = root.stops.slice();
-                newStops[root.selectedStopIndex] = [selectedColor.toString().toUpperCase(), newStops[root.selectedStopIndex][1]];
-                root.updateStops(newStops);
             }
         }
     }
