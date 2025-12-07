@@ -65,6 +65,142 @@ Item {
     property bool loadingNote: false
     property bool editorDirty: false
 
+    // Pre-format state (for typing with format when no selection)
+    // null = inherit from cursor position, true/false = explicit state
+    property var preFormatBold: null
+    property var preFormatItalic: null
+    property var preFormatUnderline: null
+    property var preFormatStrikeout: null
+    property var preFormatFontSize: null
+
+    // Check if there's a text selection
+    function hasSelection() {
+        return noteEditor.selectionStart !== noteEditor.selectionEnd;
+    }
+
+    // Toggle bold (handles both selection and pre-format)
+    function toggleBold() {
+        if (hasSelection()) {
+            noteEditor.cursorSelection.font.bold = !noteEditor.cursorSelection.font.bold;
+        } else {
+            // Toggle based on current visual state
+            preFormatBold = !isBold();
+        }
+        noteEditor.forceActiveFocus();
+    }
+
+    // Toggle italic
+    function toggleItalic() {
+        if (hasSelection()) {
+            noteEditor.cursorSelection.font.italic = !noteEditor.cursorSelection.font.italic;
+        } else {
+            preFormatItalic = !isItalic();
+        }
+        noteEditor.forceActiveFocus();
+    }
+
+    // Toggle underline
+    function toggleUnderline() {
+        if (hasSelection()) {
+            noteEditor.cursorSelection.font.underline = !noteEditor.cursorSelection.font.underline;
+        } else {
+            preFormatUnderline = !isUnderline();
+        }
+        noteEditor.forceActiveFocus();
+    }
+
+    // Toggle strikeout
+    function toggleStrikeout() {
+        if (hasSelection()) {
+            noteEditor.cursorSelection.font.strikeout = !noteEditor.cursorSelection.font.strikeout;
+        } else {
+            preFormatStrikeout = !isStrikeout();
+        }
+        noteEditor.forceActiveFocus();
+    }
+
+    // Set font size
+    function setFontSize(size) {
+        if (hasSelection()) {
+            noteEditor.cursorSelection.font.pixelSize = size;
+        } else {
+            preFormatFontSize = size;
+        }
+        noteEditor.forceActiveFocus();
+    }
+
+    // Get current bold state (selection or pre-format or cursor)
+    function isBold() {
+        if (hasSelection()) {
+            return noteEditor.cursorSelection.font.bold;
+        }
+        if (preFormatBold !== null) {
+            return preFormatBold;
+        }
+        // Inherit from cursor position
+        return noteEditor.cursorSelection.font.bold;
+    }
+
+    // Get current italic state
+    function isItalic() {
+        if (hasSelection()) {
+            return noteEditor.cursorSelection.font.italic;
+        }
+        if (preFormatItalic !== null) {
+            return preFormatItalic;
+        }
+        return noteEditor.cursorSelection.font.italic;
+    }
+
+    // Get current underline state
+    function isUnderline() {
+        if (hasSelection()) {
+            return noteEditor.cursorSelection.font.underline;
+        }
+        if (preFormatUnderline !== null) {
+            return preFormatUnderline;
+        }
+        return noteEditor.cursorSelection.font.underline;
+    }
+
+    // Get current strikeout state
+    function isStrikeout() {
+        if (hasSelection()) {
+            return noteEditor.cursorSelection.font.strikeout;
+        }
+        if (preFormatStrikeout !== null) {
+            return preFormatStrikeout;
+        }
+        return noteEditor.cursorSelection.font.strikeout;
+    }
+
+    // Get current font size
+    function getCurrentFontSize() {
+        if (hasSelection()) {
+            return noteEditor.cursorSelection.font.pixelSize || Config.theme.fontSize;
+        }
+        if (preFormatFontSize !== null) {
+            return preFormatFontSize;
+        }
+        return noteEditor.cursorSelection.font.pixelSize || Config.theme.fontSize;
+    }
+
+    // Check if any pre-format is active
+    function hasActivePreFormat() {
+        return preFormatBold !== null || preFormatItalic !== null || 
+               preFormatUnderline !== null || preFormatStrikeout !== null || 
+               preFormatFontSize !== null;
+    }
+
+    // Reset pre-format state
+    function resetPreFormat() {
+        preFormatBold = null;
+        preFormatItalic = null;
+        preFormatUnderline = null;
+        preFormatStrikeout = null;
+        preFormatFontSize = null;
+    }
+
     // Debounce timer for auto-save
     Timer {
         id: saveDebounceTimer
@@ -1569,21 +1705,154 @@ Item {
                     anchors.rightMargin: 8
                     spacing: 4
 
+                    // Font size controls: minus button, input, plus button
+                    Rectangle {
+                        id: fontSizeMinusButton
+                        width: 28
+                        height: 28
+                        radius: Styling.radius(-4)
+                        color: "transparent"
+
+                        property bool isHovered: minusMouseArea.containsMouse
+
+                        StyledRect {
+                            anchors.fill: parent
+                            variant: parent.isHovered ? "surface" : "transparent"
+                            radius: Styling.radius(-4)
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: Icons.minus
+                            font.family: Icons.font
+                            font.pixelSize: 12
+                            color: Colors.overSurface
+                        }
+
+                        MouseArea {
+                            id: minusMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                let currentSize = getCurrentFontSize();
+                                let newSize = Math.max(8, currentSize - 2);
+                                setFontSize(newSize);
+                            }
+                        }
+
+                        StyledToolTip {
+                            text: "Decrease font size"
+                            visible: minusMouseArea.containsMouse
+                        }
+                    }
+
+                    Rectangle {
+                        id: fontSizeInput
+                        width: 40
+                        height: 28
+                        radius: Styling.radius(-4)
+                        color: "transparent"
+
+                        StyledRect {
+                            anchors.fill: parent
+                            variant: fontSizeField.activeFocus ? "primary" : "surface"
+                            radius: Styling.radius(-4)
+                        }
+
+                        TextInput {
+                            id: fontSizeField
+                            anchors.centerIn: parent
+                            width: parent.width - 8
+                            horizontalAlignment: TextInput.AlignHCenter
+                            text: getCurrentFontSize().toString()
+                            font.family: Config.theme.font
+                            font.pixelSize: 12
+                            color: activeFocus ? Colors.overPrimary : Colors.overSurface
+                            selectByMouse: true
+                            validator: IntValidator { bottom: 8; top: 200 }
+
+                            onEditingFinished: {
+                                let size = parseInt(text);
+                                if (!isNaN(size) && size >= 8 && size <= 200) {
+                                    setFontSize(size);
+                                } else {
+                                    text = getCurrentFontSize().toString();
+                                }
+                                noteEditor.forceActiveFocus();
+                            }
+
+                            Keys.onEscapePressed: {
+                                text = getCurrentFontSize().toString();
+                                noteEditor.forceActiveFocus();
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        id: fontSizePlusButton
+                        width: 28
+                        height: 28
+                        radius: Styling.radius(-4)
+                        color: "transparent"
+
+                        property bool isHovered: plusMouseArea.containsMouse
+
+                        StyledRect {
+                            anchors.fill: parent
+                            variant: parent.isHovered ? "surface" : "transparent"
+                            radius: Styling.radius(-4)
+                        }
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: Icons.plus
+                            font.family: Icons.font
+                            font.pixelSize: 12
+                            color: Colors.overSurface
+                        }
+
+                        MouseArea {
+                            id: plusMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                let currentSize = getCurrentFontSize();
+                                let newSize = Math.min(200, currentSize + 2);
+                                setFontSize(newSize);
+                            }
+                        }
+
+                        StyledToolTip {
+                            text: "Increase font size"
+                            visible: plusMouseArea.containsMouse
+                        }
+                    }
+
+                    // Separator
+                    Rectangle {
+                        width: 1
+                        height: 24
+                        color: Colors.outline
+                        opacity: 0.3
+                    }
+
                     // Bold button
                     Rectangle {
                         id: boldButton
                         width: 32
                         height: 32
                         radius: Styling.radius(-4)
-                        color: noteEditor.cursorSelection.font.bold ? Colors.primary : "transparent"
+                        color: isBold() ? Colors.primary : "transparent"
 
                         property bool isHovered: boldMouseArea.containsMouse
 
                         StyledRect {
                             anchors.fill: parent
-                            variant: parent.isHovered && !noteEditor.cursorSelection.font.bold ? "surface" : "transparent"
+                            variant: parent.isHovered && !isBold() ? "surface" : "transparent"
                             radius: Styling.radius(-4)
-                            visible: !noteEditor.cursorSelection.font.bold
+                            visible: !isBold()
                         }
 
                         Text {
@@ -1592,7 +1861,7 @@ Item {
                             font.family: Config.theme.font
                             font.pixelSize: 14
                             font.bold: true
-                            color: noteEditor.cursorSelection.font.bold ? Colors.overPrimary : Colors.overSurface
+                            color: isBold() ? Colors.overPrimary : Colors.overSurface
                         }
 
                         MouseArea {
@@ -1600,10 +1869,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                noteEditor.cursorSelection.font.bold = !noteEditor.cursorSelection.font.bold;
-                                noteEditor.forceActiveFocus();
-                            }
+                            onClicked: toggleBold()
                         }
 
                         StyledToolTip {
@@ -1618,15 +1884,15 @@ Item {
                         width: 32
                         height: 32
                         radius: Styling.radius(-4)
-                        color: noteEditor.cursorSelection.font.italic ? Colors.primary : "transparent"
+                        color: isItalic() ? Colors.primary : "transparent"
 
                         property bool isHovered: italicMouseArea.containsMouse
 
                         StyledRect {
                             anchors.fill: parent
-                            variant: parent.isHovered && !noteEditor.cursorSelection.font.italic ? "surface" : "transparent"
+                            variant: parent.isHovered && !isItalic() ? "surface" : "transparent"
                             radius: Styling.radius(-4)
-                            visible: !noteEditor.cursorSelection.font.italic
+                            visible: !isItalic()
                         }
 
                         Text {
@@ -1635,7 +1901,7 @@ Item {
                             font.family: Config.theme.font
                             font.pixelSize: 14
                             font.italic: true
-                            color: noteEditor.cursorSelection.font.italic ? Colors.overPrimary : Colors.overSurface
+                            color: isItalic() ? Colors.overPrimary : Colors.overSurface
                         }
 
                         MouseArea {
@@ -1643,10 +1909,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                noteEditor.cursorSelection.font.italic = !noteEditor.cursorSelection.font.italic;
-                                noteEditor.forceActiveFocus();
-                            }
+                            onClicked: toggleItalic()
                         }
 
                         StyledToolTip {
@@ -1661,15 +1924,15 @@ Item {
                         width: 32
                         height: 32
                         radius: Styling.radius(-4)
-                        color: noteEditor.cursorSelection.font.underline ? Colors.primary : "transparent"
+                        color: isUnderline() ? Colors.primary : "transparent"
 
                         property bool isHovered: underlineMouseArea.containsMouse
 
                         StyledRect {
                             anchors.fill: parent
-                            variant: parent.isHovered && !noteEditor.cursorSelection.font.underline ? "surface" : "transparent"
+                            variant: parent.isHovered && !isUnderline() ? "surface" : "transparent"
                             radius: Styling.radius(-4)
-                            visible: !noteEditor.cursorSelection.font.underline
+                            visible: !isUnderline()
                         }
 
                         Text {
@@ -1678,7 +1941,7 @@ Item {
                             font.family: Config.theme.font
                             font.pixelSize: 14
                             font.underline: true
-                            color: noteEditor.cursorSelection.font.underline ? Colors.overPrimary : Colors.overSurface
+                            color: isUnderline() ? Colors.overPrimary : Colors.overSurface
                         }
 
                         MouseArea {
@@ -1686,10 +1949,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                noteEditor.cursorSelection.font.underline = !noteEditor.cursorSelection.font.underline;
-                                noteEditor.forceActiveFocus();
-                            }
+                            onClicked: toggleUnderline()
                         }
 
                         StyledToolTip {
@@ -1704,15 +1964,15 @@ Item {
                         width: 32
                         height: 32
                         radius: Styling.radius(-4)
-                        color: noteEditor.cursorSelection.font.strikeout ? Colors.primary : "transparent"
+                        color: isStrikeout() ? Colors.primary : "transparent"
 
                         property bool isHovered: strikeMouseArea.containsMouse
 
                         StyledRect {
                             anchors.fill: parent
-                            variant: parent.isHovered && !noteEditor.cursorSelection.font.strikeout ? "surface" : "transparent"
+                            variant: parent.isHovered && !isStrikeout() ? "surface" : "transparent"
                             radius: Styling.radius(-4)
-                            visible: !noteEditor.cursorSelection.font.strikeout
+                            visible: !isStrikeout()
                         }
 
                         Text {
@@ -1721,7 +1981,7 @@ Item {
                             font.family: Config.theme.font
                             font.pixelSize: 14
                             font.strikeout: true
-                            color: noteEditor.cursorSelection.font.strikeout ? Colors.overPrimary : Colors.overSurface
+                            color: isStrikeout() ? Colors.overPrimary : Colors.overSurface
                         }
 
                         MouseArea {
@@ -1729,10 +1989,7 @@ Item {
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                noteEditor.cursorSelection.font.strikeout = !noteEditor.cursorSelection.font.strikeout;
-                                noteEditor.forceActiveFocus();
-                            }
+                            onClicked: toggleStrikeout()
                         }
 
                         StyledToolTip {
@@ -1925,6 +2182,29 @@ Item {
                             }
                         }
 
+                        // Track if cursor moved due to typing or user navigation
+                        property int lastCursorPos: 0
+                        property bool cursorMovedByTyping: false
+                        
+                        // Reset pre-format when cursor moves by navigation (not typing)
+                        onCursorPositionChanged: {
+                            if (applyingFormat) return;
+                            
+                            // If length changed, cursor moved due to typing - don't reset
+                            if (cursorMovedByTyping) {
+                                cursorMovedByTyping = false;
+                                lastCursorPos = cursorPosition;
+                                return;
+                            }
+                            
+                            // Cursor moved by more than 1 position or moved backward = navigation
+                            let delta = cursorPosition - lastCursorPos;
+                            if (delta < 0 || delta > 1) {
+                                resetPreFormat();
+                            }
+                            lastCursorPos = cursorPosition;
+                        }
+
                         Keys.onEscapePressed: {
                             searchInput.focusInput();
                         }
@@ -1934,19 +2214,53 @@ Item {
                             if (event.modifiers & Qt.ControlModifier) {
                                 switch (event.key) {
                                     case Qt.Key_B:
-                                        cursorSelection.font.bold = !cursorSelection.font.bold;
+                                        toggleBold();
                                         event.accepted = true;
                                         break;
                                     case Qt.Key_I:
-                                        cursorSelection.font.italic = !cursorSelection.font.italic;
+                                        toggleItalic();
                                         event.accepted = true;
                                         break;
                                     case Qt.Key_U:
-                                        cursorSelection.font.underline = !cursorSelection.font.underline;
+                                        toggleUnderline();
                                         event.accepted = true;
                                         break;
                                 }
                             }
+                        }
+
+                        // Apply pre-format when inserting text
+                        property int lastLength: 0
+                        property bool applyingFormat: false
+                        onLengthChanged: {
+                            // Prevent recursion
+                            if (applyingFormat) return;
+                            
+                            // Mark that cursor will move due to typing
+                            if (length !== lastLength) {
+                                cursorMovedByTyping = true;
+                            }
+                            
+                            // Detect if text was inserted (not deleted)
+                            if (length > lastLength && !hasSelection() && hasActivePreFormat()) {
+                                // Apply pre-format to newly typed character
+                                let pos = cursorPosition;
+                                if (pos > 0) {
+                                    applyingFormat = true;
+                                    // Select the just-typed character
+                                    select(pos - 1, pos);
+                                    // Apply explicit format states
+                                    if (preFormatBold !== null) cursorSelection.font.bold = preFormatBold;
+                                    if (preFormatItalic !== null) cursorSelection.font.italic = preFormatItalic;
+                                    if (preFormatUnderline !== null) cursorSelection.font.underline = preFormatUnderline;
+                                    if (preFormatStrikeout !== null) cursorSelection.font.strikeout = preFormatStrikeout;
+                                    if (preFormatFontSize !== null) cursorSelection.font.pixelSize = preFormatFontSize;
+                                    // Deselect and move cursor back
+                                    cursorPosition = pos;
+                                    applyingFormat = false;
+                                }
+                            }
+                            lastLength = length;
                         }
                     }
 
@@ -1972,28 +2286,28 @@ Item {
                 color: Colors.outline
             }
         }
+    }
 
-        // Loading overlay
-        Rectangle {
-            anchors.fill: parent
-            color: Qt.rgba(Colors.background.r, Colors.background.g, Colors.background.b, 0.8)
-            visible: loadingNote
-            radius: Styling.radius(4)
+    // Loading overlay (outside RowLayout to avoid anchor warning)
+    Rectangle {
+        anchors.fill: parent
+        color: Qt.rgba(Colors.background.r, Colors.background.g, Colors.background.b, 0.8)
+        visible: loadingNote
+        radius: Styling.radius(4)
 
-            Text {
-                anchors.centerIn: parent
-                text: Icons.spinnerGap
-                font.family: Icons.font
-                font.pixelSize: 24
-                color: Colors.overSurface
+        Text {
+            anchors.centerIn: parent
+            text: Icons.spinnerGap
+            font.family: Icons.font
+            font.pixelSize: 24
+            color: Colors.overSurface
 
-                RotationAnimator on rotation {
-                    from: 0
-                    to: 360
-                    duration: 1000
-                    loops: Animation.Infinite
-                    running: loadingNote
-                }
+            RotationAnimator on rotation {
+                from: 0
+                to: 360
+                duration: 1000
+                loops: Animation.Infinite
+                running: loadingNote
             }
         }
     }
