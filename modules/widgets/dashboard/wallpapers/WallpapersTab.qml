@@ -183,6 +183,31 @@ FocusScope {
         return wallpapers;
     }
 
+    // Scheme Selector posicionado absolutamente para que se superponga al expandirse
+    SchemeSelector {
+        id: schemeSelector
+        anchors.right: parent.right
+        anchors.top: parent.top
+        width: 200
+        z: 1000
+
+        onSchemeSelectorClosed: {
+            wallpapersTabRoot.focusSearch();
+        }
+
+        onEscapePressedOnScheme: {
+            wallpapersTabRoot.focusSearch();
+        }
+
+        onTabPressed: {
+            wallpapersTabRoot.focusNextElement();
+        }
+
+        onShiftTabPressed: {
+            wallpapersTabRoot.focusPreviousElement();
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 8
@@ -455,29 +480,12 @@ FocusScope {
                 }
             }
 
-            // Scheme Selector a la derecha
-            SchemeSelector {
-                id: schemeSelector
+            // Scheme Selector a la derecha (placeholder para el espacio)
+            Item {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
                 width: 200
                 height: 48
-
-                onSchemeSelectorClosed: {
-                    wallpapersTabRoot.focusSearch();
-                }
-
-                onEscapePressedOnScheme: {
-                    wallpapersTabRoot.focusSearch();
-                }
-
-                onTabPressed: {
-                    wallpapersTabRoot.focusNextElement();
-                }
-
-                onShiftTabPressed: {
-                    wallpapersTabRoot.focusPreviousElement();
-                }
             }
         }
 
@@ -520,13 +528,18 @@ FocusScope {
             clip: true
 
             // Calcular tamaño de celda basado en columnas y proporción 1:1
-            readonly property real cellSize: width / wallpapersTabRoot.gridColumns
+            // El grid tiene margins negativos, así que el ancho real es width + margin*2
+            readonly property real gridWidth: width + (wallpapersTabRoot.wallpaperMargin * 2)
+            readonly property real cellSize: gridWidth / wallpapersTabRoot.gridColumns
 
             GridView {
                 id: wallpaperGrid
                 anchors.fill: parent
+                anchors.margins: -wallpapersTabRoot.wallpaperMargin
                 cellWidth: wallpaperGridContainer.cellSize
                 cellHeight: wallpaperGridContainer.cellSize
+                flow: GridView.FlowLeftToRight
+                boundsBehavior: Flickable.StopAtBounds
                 model: filteredWallpapers
                 currentIndex: selectedIndex
 
@@ -549,10 +562,10 @@ FocusScope {
                 }
 
                 // Elemento de realce para el wallpaper seleccionado.
-                highlight: Item {
-                    width: wallpaperGridContainer.cellSize
-                    height: wallpaperGridContainer.cellSize
-                    z: 100
+                    highlight: Item {
+                        width: wallpaperGrid.cellWidth
+                        height: wallpaperGrid.cellHeight
+                        z: 100
 
                     Behavior on x {
                         enabled: Config.animDuration > 0
@@ -619,7 +632,7 @@ FocusScope {
                                 Rectangle {
                                     anchors.verticalCenter: parent.verticalCenter
                                     anchors.horizontalCenter: parent.horizontalCenter
-                                    width: wallpaperGridContainer.cellSize - 20
+                                        width: wallpaperGrid.cellWidth - 20
                                     height: parent.height
                                     color: "transparent"
                                     clip: true
@@ -710,8 +723,8 @@ FocusScope {
 
                 // Delegado para cada elemento de la cuadrícula con lazy loading optimizado.
                 delegate: Rectangle {
-                    width: wallpaperGridContainer.cellSize
-                    height: wallpaperGridContainer.cellSize
+                    width: wallpaperGrid.cellWidth
+                    height: wallpaperGrid.cellHeight
                     color: "transparent"
 
                     property bool isCurrentWallpaper: {
@@ -731,7 +744,7 @@ FocusScope {
                         var itemBottom = itemTop + height;
 
                         // Buffer de una fila arriba y abajo para precarga suave
-                        var buffer = wallpaperGridContainer.cellSize;
+                        var buffer = wallpaperGrid.cellHeight;
                         return itemBottom + buffer >= gridTop && itemTop - buffer <= gridBottom;
                     }
 
