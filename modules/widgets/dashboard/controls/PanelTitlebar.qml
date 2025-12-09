@@ -21,6 +21,9 @@ RowLayout {
     // Each action: { icon: "...", tooltip: "...", onClicked: function, enabled: true, loading: false }
     property var actions: []
 
+    // Custom content slot (appears between spacer and actions)
+    default property alias customContent: customContentContainer.data
+
     signal toggleChanged(bool checked)
 
     Layout.fillWidth: true
@@ -46,6 +49,14 @@ RowLayout {
     }
 
     Item { Layout.fillWidth: true }
+
+    // Custom content container
+    Item {
+        id: customContentContainer
+        Layout.preferredWidth: childrenRect.width
+        Layout.preferredHeight: childrenRect.height
+        visible: children.length > 0
+    }
 
     // Action buttons
     Repeater {

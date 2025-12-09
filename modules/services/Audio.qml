@@ -4,7 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
-import qs.config
+import qs.modules.services
 
 /**
  * A nice wrapper for default Pipewire audio sink and source.
@@ -20,11 +20,24 @@ Singleton {
     readonly property real hardMaxValue: 2.00
     property real value: sink?.audio?.volume ?? 0
 
-    // Volume protection settings
-    readonly property bool protectionEnabled: Config.volumeProtection?.enabled ?? true
-    readonly property real maxVolumeJump: Config.volumeProtection?.maxJump ?? 0.15  // 15% max jump
-    readonly property real safeMaxVolume: Config.volumeProtection?.safeMax ?? 0.80  // 80% safe maximum
+    // Volume protection settings (persisted via StateService)
+    property bool protectionEnabled: true
+    readonly property real maxVolumeJump: 0.15  // 15% max jump
     property bool protectionTriggered: false
+
+    // Load protection state when StateService is ready
+    Connections {
+        target: StateService
+        function onStateLoaded() {
+            root.protectionEnabled = StateService.get("volumeProtectionEnabled", true);
+        }
+    }
+
+    // Toggle protection and persist
+    function setProtectionEnabled(enabled: bool) {
+        root.protectionEnabled = enabled;
+        StateService.set("volumeProtectionEnabled", enabled);
+    }
 
     signal sinkProtectionTriggered(string reason);
 

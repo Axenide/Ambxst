@@ -22,13 +22,13 @@ Item {
 
         // Titlebar
         PanelTitlebar {
-            title: root.showOutput ? "Sound Output" : "Sound Input"
+            title: "Sound"
             
             actions: [
                 {
-                    icon: root.showOutput ? Icons.mic : Icons.speakerHigh,
-                    tooltip: root.showOutput ? "Switch to Input" : "Switch to Output",
-                    onClicked: function() { root.showOutput = !root.showOutput; }
+                    icon: Audio.protectionEnabled ? Icons.shieldCheck : Icons.shield,
+                    tooltip: Audio.protectionEnabled ? "Volume protection enabled" : "Volume protection disabled",
+                    onClicked: function() { Audio.setProtectionEnabled(!Audio.protectionEnabled); }
                 },
                 {
                     icon: Icons.externalLink,
@@ -36,6 +36,18 @@ Item {
                     onClicked: function() { Quickshell.execDetached(["pwvucontrol"]); }
                 }
             ]
+
+            // Output/Input segmented switch
+            SegmentedSwitch {
+                currentIndex: root.showOutput ? 0 : 1
+                options: [
+                    { icon: Icons.speakerHigh, tooltip: "Output" },
+                    { icon: Icons.mic, tooltip: "Input" }
+                ]
+                onIndexChanged: index => {
+                    root.showOutput = (index === 0);
+                }
+            }
         }
 
         // Scrollable content
