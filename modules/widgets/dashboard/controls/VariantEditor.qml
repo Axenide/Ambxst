@@ -403,6 +403,9 @@ Item {
             variantId: root.variantId
             visible: root.variantConfig && root.variantConfig.gradientType !== "halftone"
             onUpdateStops: newStops => root.updateProp("gradient", newStops)
+            onOpenColorPickerRequested: (colorNames, currentColor, dialogTitle, callback) => {
+                root.openColorPickerRequested(colorNames, currentColor, dialogTitle, callback);
+            }
         }
 
         // === LINEAR SETTINGS ===

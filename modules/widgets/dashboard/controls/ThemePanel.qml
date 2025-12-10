@@ -135,10 +135,23 @@ Item {
         contentHeight: mainColumn.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
-        interactive: true
-        visible: !root.colorPickerActive
+        interactive: !root.colorPickerActive
 
+        // Horizontal slide + fade animation
         opacity: root.colorPickerActive ? 0 : 1
+        transform: Translate {
+            id: mainTranslate
+            x: root.colorPickerActive ? -30 : 0
+
+            Behavior on x {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration / 2
+                    easing.type: Easing.OutQuart
+                }
+            }
+        }
+
         Behavior on opacity {
             enabled: Config.animDuration > 0
             NumberAnimation {
@@ -660,16 +673,26 @@ Item {
     }
 
     // Color picker view (shown when colorPickerActive)
-    Flickable {
-        id: colorPickerFlickable
+    Item {
+        id: colorPickerContainer
         anchors.fill: parent
-        contentHeight: colorPickerColumn.implicitHeight
         clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        interactive: true
-        visible: root.colorPickerActive
 
+        // Horizontal slide + fade animation (enters from right)
         opacity: root.colorPickerActive ? 1 : 0
+        transform: Translate {
+            id: pickerTranslate
+            x: root.colorPickerActive ? 0 : 30
+
+            Behavior on x {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration / 2
+                    easing.type: Easing.OutQuart
+                }
+            }
+        }
+
         Behavior on opacity {
             enabled: Config.animDuration > 0
             NumberAnimation {
@@ -678,27 +701,20 @@ Item {
             }
         }
 
-        ColumnLayout {
-            id: colorPickerColumn
-            width: colorPickerFlickable.width
-            spacing: 8
+        // Prevent interaction when hidden
+        enabled: root.colorPickerActive
 
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: colorPickerContent.implicitHeight
+        ColorPickerView {
+            id: colorPickerContent
+            anchors.fill: parent
+            anchors.leftMargin: root.sideMargin
+            anchors.rightMargin: root.sideMargin
+            colorNames: root.colorPickerColorNames
+            currentColor: root.colorPickerCurrentColor
+            dialogTitle: root.colorPickerDialogTitle
 
-                ColorPickerView {
-                    id: colorPickerContent
-                    width: root.contentWidth
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    colorNames: root.colorPickerColorNames
-                    currentColor: root.colorPickerCurrentColor
-                    dialogTitle: root.colorPickerDialogTitle
-
-                    onColorSelected: color => root.handleColorSelected(color)
-                    onClosed: root.closeColorPicker()
-                }
-            }
+            onColorSelected: color => root.handleColorSelected(color)
+            onClosed: root.closeColorPicker()
         }
     }
 }

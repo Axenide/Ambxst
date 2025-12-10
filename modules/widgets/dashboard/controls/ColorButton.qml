@@ -3,11 +3,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import qs.modules.theme
+import qs.modules.components
 import qs.config
 
 // Reusable color picker button with preview and label
 // Emits openColorPicker signal for parent to handle
-Rectangle {
+StyledRect {
     id: root
 
     required property var colorNames
@@ -21,11 +22,9 @@ Rectangle {
     signal colorSelected(string color)
     signal openColorPicker(var colorNames, string currentColor, string dialogTitle)
 
+    variant: "pane"
     height: compact ? 36 : 56
-    color: Colors.surfaceContainer
     radius: Styling.radius(-1)
-    border.color: Colors.outlineVariant
-    border.width: 1
 
     // Helper to get display name
     readonly property string displayName: {
@@ -36,14 +35,14 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.margins: compact ? 6 : 8
-        spacing: compact ? 6 : 8
+        anchors.margins: root.compact ? 6 : 8
+        spacing: root.compact ? 6 : 8
 
         // Color preview
         Rectangle {
-            Layout.preferredWidth: compact ? 24 : 32
-            Layout.preferredHeight: compact ? 24 : 32
-            radius: root.circlePreview ? (compact ? 12 : 16) : Styling.radius(-4)
+            Layout.preferredWidth: root.compact ? 24 : 32
+            Layout.preferredHeight: root.compact ? 24 : 32
+            radius: root.circlePreview ? (root.compact ? 12 : 16) : Styling.radius(-4)
             color: Config.resolveColor(root.currentColor)
             border.color: Colors.outline
             border.width: 1
@@ -51,15 +50,15 @@ Rectangle {
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: compact ? 0 : 2
-            visible: !compact || root.label !== ""
+            spacing: root.compact ? 0 : 2
+            visible: !root.compact || root.label !== ""
 
             Text {
                 text: root.label
                 font.family: Styling.defaultFont
                 font.pixelSize: Styling.fontSize(-2)
                 font.bold: true
-                color: Colors.overBackground
+                color: root.itemColor
                 opacity: 0.6
                 visible: root.label !== ""
             }
@@ -69,7 +68,7 @@ Rectangle {
                 font.family: Styling.defaultFont
                 font.pixelSize: Styling.fontSize(0)
                 font.bold: true
-                color: Colors.overBackground
+                color: root.itemColor
                 elide: Text.ElideRight
                 Layout.fillWidth: true
             }
@@ -78,8 +77,8 @@ Rectangle {
         Text {
             text: Icons.caretRight
             font.family: Icons.font
-            font.pixelSize: compact ? 12 : 14
-            color: Colors.overBackground
+            font.pixelSize: root.compact ? 12 : 14
+            color: root.itemColor
             opacity: 0.5
         }
     }

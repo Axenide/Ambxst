@@ -14,6 +14,7 @@ GroupBox {
     required property string variantId
 
     signal updateStops(var newStops)
+    signal openColorPickerRequested(var colorNames, string currentColor, string dialogTitle, var callback)
 
     // Currently selected stop index for editing (default to first stop)
     property int selectedStopIndex: 0
@@ -492,6 +493,16 @@ GroupBox {
                         newStops[root.selectedStopIndex] = [color, newStops[root.selectedStopIndex][1]];
                         root.updateStops(newStops);
                     }
+                }
+                onOpenColorPicker: (names, current, title) => {
+                    const stopIndex = root.selectedStopIndex;
+                    root.openColorPickerRequested(names, current, title, function(color) {
+                        if (stopIndex >= 0 && stopIndex < root.stops.length) {
+                            let newStops = root.stops.slice();
+                            newStops[stopIndex] = [color, newStops[stopIndex][1]];
+                            root.updateStops(newStops);
+                        }
+                    });
                 }
             }
 

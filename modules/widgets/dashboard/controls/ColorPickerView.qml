@@ -18,7 +18,18 @@ Item {
     signal colorSelected(string color)
     signal closed
 
-    implicitHeight: mainColumn.implicitHeight
+    // Handle Escape key to close (without closing notch)
+    Keys.onEscapePressed: event => {
+        root.closed();
+        event.accepted = true;
+    }
+
+    // Request focus when visible
+    onVisibleChanged: {
+        if (visible) {
+            root.forceActiveFocus();
+        }
+    }
 
     // Helper to check if current color is hex
     readonly property bool isHexColor: currentColor && currentColor.toString().startsWith("#")
@@ -34,11 +45,10 @@ Item {
 
     ColumnLayout {
         id: mainColumn
-        anchors.left: parent.left
-        anchors.right: parent.right
+        anchors.fill: parent
         spacing: 8
 
-        // Header with back button and title
+        // Header with back button and title (FIXED)
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
@@ -78,7 +88,7 @@ Item {
             }
         }
 
-        // Custom HEX input row
+        // Custom HEX input row (FIXED)
         StyledRect {
             variant: "common"
             Layout.fillWidth: true
@@ -145,6 +155,10 @@ Item {
                         focus = false;
                     }
                     Keys.onEnterPressed: Keys.onReturnPressed(event)
+                    Keys.onEscapePressed: event => {
+                        root.closed();
+                        event.accepted = true;
+                    }
 
                     Connections {
                         target: root
@@ -196,7 +210,7 @@ Item {
             }
         }
 
-        // Separator
+        // Separator (FIXED)
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
@@ -204,17 +218,15 @@ Item {
             opacity: 0.2
         }
 
-        // Color grid
+        // Color grid (SCROLLABLE)
         GridView {
             id: colorGrid
             Layout.fillWidth: true
-            Layout.preferredHeight: Math.ceil(root.colorNames.length / 4) * 44
-            Layout.maximumHeight: 300
+            Layout.fillHeight: true
             clip: true
             cellWidth: width / 4
             cellHeight: 44
             model: root.colorNames
-            interactive: contentHeight > height
 
             delegate: Item {
                 id: colorItem
@@ -269,10 +281,14 @@ Item {
 
                         onClicked: {
                             root.colorSelected(colorItem.modelData);
-                            root.closed();
+                            // Don't close - let user continue selecting
                         }
                     }
                 }
+            }
+
+            ScrollBar.vertical: ScrollBar {
+                policy: ScrollBar.AsNeeded
             }
         }
     }
@@ -284,6 +300,7 @@ Item {
 
         onAccepted: {
             root.colorSelected(selectedColor.toString().toUpperCase());
+            // Don't close - let user continue selecting
         }
     }
 }
