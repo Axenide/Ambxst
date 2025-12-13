@@ -518,9 +518,11 @@ Item {
         id: editContainer
         anchors.fill: parent
         clip: true
+        z: 100  // Ensure it's above everything else
 
         // Horizontal slide + fade animation (enters from right)
         opacity: root.editMode ? 1 : 0
+        visible: opacity > 0
         transform: Translate {
             x: root.editMode ? 0 : 30
 
@@ -541,17 +543,16 @@ Item {
             }
         }
 
-        // Prevent interaction when hidden
-        enabled: root.editMode
-
         // Block interaction with elements behind when active
         MouseArea {
             anchors.fill: parent
             enabled: root.editMode
             hoverEnabled: true
             acceptedButtons: Qt.AllButtons
+            propagateComposedEvents: false
             onPressed: event => event.accepted = true
             onReleased: event => event.accepted = true
+            onClicked: event => event.accepted = true
             onWheel: event => event.accepted = true
         }
 
