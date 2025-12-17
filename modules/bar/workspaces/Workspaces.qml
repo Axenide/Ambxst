@@ -39,10 +39,9 @@ Item {
             // Get occupied workspace IDs, sorted and limited by 'shown'
             const occupiedIds = Hyprland.workspaces.values.filter(ws => HyprlandData.windowList.some(w => w.workspace.id === ws.id)).map(ws => ws.id).sort((a, b) => a - b).slice(0, Config.workspaces.shown);
 
-            // Include active workspace if not already in list AND if it has windows
+            // Always include active workspace, even if empty
             const activeId = monitor?.activeWorkspace?.id || 1;
-            const activeHasWindows = HyprlandData.windowList.some(w => w.workspace.id === activeId);
-            if (!occupiedIds.includes(activeId) && activeHasWindows) {
+            if (!occupiedIds.includes(activeId)) {
                 occupiedIds.push(activeId);
                 occupiedIds.sort((a, b) => a - b);
                 if (occupiedIds.length > Config.workspaces.shown) {
@@ -53,7 +52,7 @@ Item {
             dynamicWorkspaceIds = occupiedIds;
             workspaceOccupied = Array.from({
                 length: dynamicWorkspaceIds.length
-            }, () => true);
+            }, (_, i) => HyprlandData.windowList.some(w => w.workspace.id === dynamicWorkspaceIds[i]));
         } else {
             workspaceOccupied = Array.from({
                 length: Config.workspaces.shown
@@ -421,18 +420,20 @@ Item {
                     id: workspaceButtonBackground
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
-                    property var biggestWindow: {
+                    property var focusedWindow: {
                         const windowsInThisWorkspace = HyprlandData.windowList.filter(w => w.workspace.id == button.workspaceValue);
-                        return windowsInThisWorkspace.reduce((maxWin, win) => {
-                            const maxArea = (maxWin?.size?.[0] ?? 0) * (maxWin?.size?.[1] ?? 0);
-                            const winArea = (win?.size?.[0] ?? 0) * (win?.size?.[1] ?? 0);
-                            return winArea > maxArea ? win : maxWin;
+                        if (windowsInThisWorkspace.length === 0) return null;
+                        // Get the window with the lowest focusHistoryID (most recently focused)
+                        return windowsInThisWorkspace.reduce((best, win) => {
+                            const bestFocus = best?.focusHistoryID ?? Infinity;
+                            const winFocus = win?.focusHistoryID ?? Infinity;
+                            return winFocus < bestFocus ? win : best;
                         }, null);
                     }
-                    property var mainAppIconSource: Quickshell.iconPath(AppSearch.guessIcon(biggestWindow?.class), "image-missing")
+                    property var mainAppIconSource: Quickshell.iconPath(AppSearch.guessIcon(focusedWindow?.class), "image-missing")
 
                     Text {
-                        opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackground.biggestWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
+                        opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackground.focusedWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
                         z: 3
 
                         anchors.centerIn: parent
@@ -453,7 +454,7 @@ Item {
                         }
                     }
                     Rectangle {
-                        opacity: (Config.workspaces.showNumbers || Config.workspaces.alwaysShowNumbers || (Config.workspaces.showAppIcons && workspaceButtonBackground.biggestWindow)) ? 0 : 1
+                        opacity: (Config.workspaces.showNumbers || Config.workspaces.alwaysShowNumbers || (Config.workspaces.showAppIcons && workspaceButtonBackground.focusedWindow)) ? 0 : 1
                         visible: opacity > 0
                         anchors.centerIn: parent
                         width: workspaceButtonWidth * 0.2
@@ -473,7 +474,7 @@ Item {
                         anchors.centerIn: parent
                         width: workspaceButtonWidth
                         height: workspaceButtonWidth
-                        opacity: !Config.workspaces.showAppIcons ? 0 : (workspaceButtonBackground.biggestWindow && !Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? 1 : workspaceButtonBackground.biggestWindow ? workspaceIconOpacityShrinked : 0
+                        opacity: !Config.workspaces.showAppIcons ? 0 : (workspaceButtonBackground.focusedWindow && !Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? 1 : workspaceButtonBackground.focusedWindow ? workspaceIconOpacityShrinked : 0
                         visible: opacity > 0
                         IconImage {
                             id: mainAppIcon
@@ -550,18 +551,20 @@ Item {
                     id: workspaceButtonBackgroundVert
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
-                    property var biggestWindow: {
+                    property var focusedWindow: {
                         const windowsInThisWorkspace = HyprlandData.windowList.filter(w => w.workspace.id == buttonVert.workspaceValue);
-                        return windowsInThisWorkspace.reduce((maxWin, win) => {
-                            const maxArea = (maxWin?.size?.[0] ?? 0) * (maxWin?.size?.[1] ?? 0);
-                            const winArea = (win?.size?.[0] ?? 0) * (win?.size?.[1] ?? 0);
-                            return winArea > maxArea ? win : maxWin;
+                        if (windowsInThisWorkspace.length === 0) return null;
+                        // Get the window with the lowest focusHistoryID (most recently focused)
+                        return windowsInThisWorkspace.reduce((best, win) => {
+                            const bestFocus = best?.focusHistoryID ?? Infinity;
+                            const winFocus = win?.focusHistoryID ?? Infinity;
+                            return winFocus < bestFocus ? win : best;
                         }, null);
                     }
-                    property var mainAppIconSource: Quickshell.iconPath(AppSearch.guessIcon(biggestWindow?.class), "image-missing")
+                    property var mainAppIconSource: Quickshell.iconPath(AppSearch.guessIcon(focusedWindow?.class), "image-missing")
 
                     Text {
-                        opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackgroundVert.biggestWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
+                        opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackgroundVert.focusedWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
                         z: 3
 
                         anchors.centerIn: parent
@@ -582,7 +585,7 @@ Item {
                         }
                     }
                     Rectangle {
-                        opacity: (Config.workspaces.showNumbers || Config.workspaces.alwaysShowNumbers || (Config.workspaces.showAppIcons && workspaceButtonBackgroundVert.biggestWindow)) ? 0 : 1
+                        opacity: (Config.workspaces.showNumbers || Config.workspaces.alwaysShowNumbers || (Config.workspaces.showAppIcons && workspaceButtonBackgroundVert.focusedWindow)) ? 0 : 1
                         visible: opacity > 0
                         anchors.centerIn: parent
                         width: workspaceButtonWidth * 0.2
@@ -602,7 +605,7 @@ Item {
                         anchors.centerIn: parent
                         width: workspaceButtonWidth
                         height: workspaceButtonWidth
-                        opacity: !Config.workspaces.showAppIcons ? 0 : (workspaceButtonBackgroundVert.biggestWindow && !Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? 1 : workspaceButtonBackgroundVert.biggestWindow ? workspaceIconOpacityShrinked : 0
+                        opacity: !Config.workspaces.showAppIcons ? 0 : (workspaceButtonBackgroundVert.focusedWindow && !Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? 1 : workspaceButtonBackgroundVert.focusedWindow ? workspaceIconOpacityShrinked : 0
                         visible: opacity > 0
                         IconImage {
                             id: mainAppIconVert
