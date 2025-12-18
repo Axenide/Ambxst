@@ -639,8 +639,248 @@ Scope {
                             }
                         }
                     }
+
+                    // Unified outline canvas (single continuous stroke around silhouette)
+                    Canvas {
+                        id: outlineCanvas
+                        anchors.fill: parent
+                        z: 5000
+                        antialiasing: true
+                        
+                        readonly property var borderData: Config.theme.srBg.border
+                        readonly property int borderWidth: borderData[1]
+                        readonly property color borderColor: Config.resolveColor(borderData[0])
+                        
+                        visible: root.isDefault && borderWidth > 0
+                        
+                        onPaint: {
+                            if (!root.isDefault)
+                                return;
+                            var ctx = getContext("2d");
+                            ctx.clearRect(0, 0, width, height);
+                            
+                            if (borderWidth <= 0)
+                                return;
+                            
+                            ctx.strokeStyle = borderColor;
+                            ctx.lineWidth = borderWidth;
+                            ctx.lineJoin = "round";
+                            ctx.lineCap = "round";
+
+                            var offset = borderWidth / 2;
+                            var cs = dockContainer.cornerSize;
+                            
+                            // Floating radii
+                            var tl = dockBackground.topLeftRadius;
+                            var tr = dockBackground.topRightRadius;
+                            var bl = dockBackground.bottomLeftRadius;
+                            var br = dockBackground.bottomRightRadius;
+
+                            ctx.beginPath();
+                            
+                            if (root.isBottom) {
+                                // Start at Bottom Left (Screen Edge)
+                                ctx.moveTo(offset, height - offset);
+                                
+                                // Left Fillet (Bottom Edge -> Left Side)
+                                // ACW from 90 (Bottom) to 0 (Right)
+                                ctx.arc(offset, height - cs, cs - offset, Math.PI / 2, 0, true);
+                                
+                                // Line Up
+                                ctx.lineTo(cs, tl);
+                                
+                                // Top Left Corner
+                                if (tl > 0) ctx.arcTo(cs, offset, cs + tl, offset, tl - offset);
+                                else ctx.lineTo(cs, offset);
+                                
+                                // Line Right
+                                ctx.lineTo(width - cs - tr, offset);
+                                
+                                // Top Right Corner
+                                if (tr > 0) ctx.arcTo(width - cs, offset, width - cs, offset + tr, tr - offset);
+                                else ctx.lineTo(width - cs, offset);
+                                
+                                // Line Down
+                                ctx.lineTo(width - cs, height - cs);
+                                
+                                // Right Fillet (Right Side -> Bottom Edge)
+                                // ACW from 180 (Left) to 90 (Bottom)
+                                ctx.arc(width - offset, height - cs, cs - offset, Math.PI, Math.PI / 2, true);
+                                
+                                // Close to start
+                                ctx.lineTo(offset, height - offset);
+                                
+                            } else if (root.isLeft) {
+                                // Start at Top Left (Screen Edge)
+                                ctx.moveTo(offset, offset);
+                                
+                                // Top Fillet (Left Edge -> Top Side)
+                                // ACW from 180 (Left) to 90 (Bottom/Right-ish) - wait, Angle 90 is Down.
+                                // In standard canvas: 0 Right, 90 Down, 180 Left, 270 Top.
+                                // We want Tangent Down (at 180) to Tangent Right (at 270 Top).
+                                // My manual logic said: Center (cs, offset). Start (offset, offset) [Angle 180]. End (cs, cs) [Angle 90].
+                                // Angle 90 is Down.
+                                // Wait, if we are at (cs, cs) relative to (cs, offset).
+                                // dx=0, dy=cs-offset. Positive Y is Down. So Angle 90 is correct.
+                                // Tangent at 90 (Bottom point of circle) is Horizontal.
+                                // ACW (Decreasing Angle). 180 -> 90? No, 180 -> 90 is crossing 0/360 if ACW?
+                                // No. 180 -> 90 is CW (decreasing). 180 -> 270 is ACW (increasing).
+                                // Canvas arc(start, end, anticlockwise).
+                                // true = anticlockwise.
+                                // 180 -> 270 (Top) is ACW.
+                                // But (cs, cs) is Angle 90 (Bottom).
+                                // We want to go from Left Edge (Angle 180) to Top Edge of Dock (Tanget Right).
+                                // Tangent Right is at Angle 270 (Top of Circle).
+                                // So we need to end at Angle 270.
+                                // Point at 270: (cs, offset - R) = (cs, offset - (cs - offset)) = (cs, 2*offset - cs).
+                                // This is way above.
+                                // This means my center calculation was for a different shape.
+                                // Let's look at Bottom Dock Left Fillet again.
+                                // Center (offset, height - cs). Radius cs - offset.
+                                // Start (offset, height - offset).
+                                // dy = (height - offset) - (height - cs) = cs - offset.
+                                // This is +R. So Angle 90 (Down/Bottom).
+                                // Tangent at 90 is Horizontal.
+                                // We are moving Right. Tangent Vector (1, 0).
+                                // ACW circle at 90: Tangent is (1, 0). Correct.
+                                // End (cs, height - cs).
+                                // dy = 0. dx = cs - offset. Angle 0 (Right).
+                                // Tangent at 0: Vertical Up (0, -1).
+                                // ACW circle at 0: Tangent is (0, -1). Correct.
+                                // So Bottom Dock ACW 90 -> 0 works.
+
+                                // Now Left Dock Top Fillet.
+                                // Connects x=0 to y=cs.
+                                // Moving Down along x=0, then Curve, then Right along y=cs.
+                                // Start Tangent: Down (0, 1).
+                                // End Tangent: Right (1, 0).
+                                // 90 degree turn Left (Counter-Clockwise turn).
+                                // So we need an ACW arc.
+                                // Start Point: (offset, offset).
+                                // End Point: (cs, cs).
+                                // Circle Center (cs, offset).
+                                // At Start: (offset, offset). Relative (-R, 0). Angle 180.
+                                // Tangent of ACW circle at 180: Down (0, 1). Correct.
+                                // At End: (cs, cs). Relative (0, R). Angle 90.
+                                // Tangent of ACW circle at 90: Right (1, 0). Correct.
+                                // Wait, ACW traversal of unit circle:
+                                // 0 (Right) -> goes Up? No.
+                                // Standard coord: Y down.
+                                // x = cos t, y = sin t.
+                                // t increases -> ACW? No, Clockwise on screen (since Y is flipped).
+                                // Math ACW (counter-clockwise) is X -> Y.
+                                // On screen (+X Right, +Y Down), X -> Y is Clockwise rotation visually.
+                                // So increasing angle is CW on screen.
+                                // Canvas `anticlockwise` parameter:
+                                // "true" means Counter-Clockwise in Math? Or Visually?
+                                // "The arc() method creates a circular arc centered at (x, y) with a radius r. The path starts at startAngle and ends at endAngle, traveling in the direction given by anticlockwise (defaulting to clockwise)."
+                                // HTML5 Canvas: Default is Clockwise (false).
+                                // Screen coords: 0 is Right. PI/2 is Down.
+                                // 0 -> PI/2 is Clockwise visually.
+                                // So increasing angle = Clockwise.
+                                // `anticlockwise = true` means decreasing angle.
+                                // Bottom Dock: 90 -> 0. Decreasing. ACW.
+                                // Left Dock: 180 -> 90. Decreasing. ACW.
+                                // So logic holds.
+                                
+                                ctx.arc(cs, offset, cs - offset, Math.PI, Math.PI / 2, true);
+                                
+                                // Line Right
+                                ctx.lineTo(width - tr, cs);
+                                
+                                // Top Right Corner
+                                if (tr > 0) ctx.arcTo(width - offset, cs, width - offset, cs + tr, tr - offset);
+                                else ctx.lineTo(width - offset, cs);
+                                
+                                // Line Down
+                                ctx.lineTo(width - offset, height - cs - br);
+                                
+                                // Bottom Right Corner
+                                if (br > 0) ctx.arcTo(width - offset, height - cs, width - offset - br, height - cs, br - offset);
+                                else ctx.lineTo(width - offset, height - cs);
+                                
+                                // Line Left
+                                ctx.lineTo(cs, height - cs);
+                                
+                                // Bottom Fillet (Bottom Side -> Left Edge)
+                                // ACW from 270 (Top - wait) to 180 (Left).
+                                // Start (cs, height - cs). Center (cs, height - offset).
+                                // Relative: (0, -R). Angle 270 (3*PI/2).
+                                // End (offset, height - offset).
+                                // Relative: (-R, 0). Angle 180.
+                                // 270 -> 180. Decreasing. ACW.
+                                ctx.arc(cs, height - offset, cs - offset, 3 * Math.PI / 2, Math.PI, true);
+                                
+                                // Close
+                                ctx.lineTo(offset, offset);
+                                
+                            } else if (root.isRight) {
+                                // Start at Top Right (Screen Edge)
+                                ctx.moveTo(width - offset, offset);
+                                
+                                // Top Fillet (Right Edge -> Top Side)
+                                // Moving Down along x=width, then Curve, then Left along y=cs.
+                                // Tangent Start: Down (0, 1).
+                                // Tangent End: Left (-1, 0).
+                                // Turn Right (Clockwise).
+                                // Use `anticlockwise = false`.
+                                // Start (width - offset, offset).
+                                // End (width - cs, cs).
+                                // Center (width - cs, offset).
+                                // Start Rel: (R, 0). Angle 0.
+                                // End Rel: (0, R). Angle 90.
+                                // 0 -> 90. Increasing. CW.
+                                ctx.arc(width - cs, offset, cs - offset, 0, Math.PI / 2, false);
+                                
+                                // Line Left
+                                ctx.lineTo(tl, cs);
+                                
+                                // Top Left Corner
+                                if (tl > 0) ctx.arcTo(offset, cs, offset, cs + tl, tl - offset);
+                                else ctx.lineTo(offset, cs);
+                                
+                                // Line Down
+                                ctx.lineTo(offset, height - cs - bl);
+                                
+                                // Bottom Left Corner
+                                if (bl > 0) ctx.arcTo(offset, height - cs, offset + bl, height - cs, bl - offset);
+                                else ctx.lineTo(offset, height - cs);
+                                
+                                // Line Right
+                                ctx.lineTo(width - cs, height - cs);
+                                
+                                // Bottom Fillet (Bottom Side -> Right Edge)
+                                // CW from 270 (Top) to 360/0 (Right).
+                                // Start (width - cs, height - cs).
+                                // End (width - offset, height - offset).
+                                // Center (width - cs, height - offset).
+                                // Start Rel: (0, -R). Angle 270.
+                                // End Rel: (R, 0). Angle 0 (or 360).
+                                // 270 -> 360. CW.
+                                ctx.arc(width - cs, height - offset, cs - offset, 3 * Math.PI / 2, 2 * Math.PI, false);
+                                
+                                // Close
+                                ctx.lineTo(width - offset, offset);
+                            }
+                            
+                            ctx.stroke();
+                        }
+                        
+                        // Signal connections for repainting
+                        Connections { target: Colors; function onPrimaryChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: Config.theme.srBg; function onBorderChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: dockBackground; function onBottomLeftRadiusChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: dockBackground; function onBottomRightRadiusChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: dockBackground; function onTopLeftRadiusChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: dockBackground; function onTopRightRadiusChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: dockContainer; function onWidthChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: dockContainer; function onHeightChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: root; function onIsDefaultChanged() { outlineCanvas.requestPaint(); } }
+                        Connections { target: root; function onPositionChanged() { outlineCanvas.requestPaint(); } }
+                    }
                 }
             }
         }
     }
 }
+
