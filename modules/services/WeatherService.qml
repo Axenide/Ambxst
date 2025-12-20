@@ -1,5 +1,6 @@
 pragma Singleton
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import qs.config
 
@@ -30,6 +31,9 @@ QtObject {
     property real debugHour: 12.0  // 0-24 hour format (e.g., 14.5 = 2:30 PM)
     property int debugWeatherCode: 0
 
+    // Script path
+    readonly property string scriptPath: Quickshell.shellRoot + "/scripts/weather.sh"
+
     // Parse "HH:MM" to hours as decimal (e.g., "14:30" -> 14.5)
     function parseTime(timeStr) {
         if (!timeStr) return 0;
@@ -42,13 +46,10 @@ QtObject {
     readonly property real visualSunsetHour: 18.0
 
     // Calculate sun/moon progress based on hour (0-24 format)
-    // Returns 0.0 at rise, 1.0 at set for both sun and moon
     function calculateSunProgress(hour, sunriseH, sunsetH) {
         if (hour >= sunriseH && hour <= sunsetH) {
-            // Daytime: sun moves from 0 to 1
             return (hour - sunriseH) / (sunsetH - sunriseH);
         } else {
-            // Nighttime: moon moves from 0 to 1
             var nightDuration = 24 - (sunsetH - sunriseH);
             if (hour > sunsetH) {
                 return (hour - sunsetH) / nightDuration;
@@ -58,82 +59,37 @@ QtObject {
         }
     }
 
-    // Calculate debug values based on debugHour (uses visual sunrise/sunset)
+    // Calculate debug values based on debugHour
     readonly property real debugSunProgress: calculateSunProgress(debugHour, visualSunriseHour, visualSunsetHour)
-
     readonly property bool debugIsDay: debugHour >= visualSunriseHour && debugHour <= visualSunsetHour
 
-    // Time periods with smooth transitions
-    // 6-8: Evening (dawn), 8-18: Day, 18-20: Evening (dusk), 20-6: Night
-    readonly property real debugDayAmount: {
-        var h = debugHour;
-        if (h >= 8 && h <= 18) return 1.0;  // Full day
-        if (h > 6 && h < 8) return (h - 6) / 2;  // Dawn transition: 0 -> 1
-        if (h > 18 && h < 20) return 1.0 - (h - 18) / 2;  // Dusk transition: 1 -> 0
-        return 0.0;  // Night
-    }
-
-    readonly property real debugEveningAmount: {
-        var h = debugHour;
-        if (h >= 6 && h <= 8) return 1.0 - (h - 6) / 2;  // Dawn: 1 -> 0
-        if (h >= 18 && h <= 20) return (h - 18) / 2 + (1.0 - (h - 18) / 2) * (h < 19 ? 1 : 0);  // Dusk
-        if (h > 18 && h < 20) return 1.0 - Math.abs(h - 19);  // Peak at 19
-        return 0.0;
-    }
-
-    readonly property real debugNightAmount: {
-        var h = debugHour;
-        if (h >= 20 || h <= 6) return 1.0;  // Full night
-        if (h > 18 && h < 20) return (h - 18) / 2;  // Dusk transition: 0 -> 1
-        if (h > 6 && h < 8) return 1.0 - (h - 6) / 2;  // Dawn transition: 1 -> 0
-        return 0.0;  // Day
-    }
-
-    // Simplified: calculate blend factors for smooth transitions
-    // Returns values 0-1 for day, evening, night that sum to 1
-    // Transition scheme:
-    // 5-6: Night -> Evening
-    // 6-8: Evening (max)
-    // 8-9: Evening -> Day
-    // 9-17: Day (max)
-    // 17-18: Day -> Evening
-    // 18-20: Evening (max)
-    // 20-21: Evening -> Night
-    // 21-5: Night (max)
+    // Transition scheme for time blending
     function calculateTimeBlend(hour) {
         var day = 0, evening = 0, night = 0;
         
         if (hour >= 9 && hour <= 17) {
-            // Pure day (9:00 - 17:00)
             day = 1.0;
         } else if (hour > 8 && hour < 9) {
-            // Morning transition (8:00 - 9:00): evening -> day
             var t = hour - 8;
             evening = 1.0 - t;
             day = t;
         } else if (hour > 17 && hour < 18) {
-            // Pre-dusk (17:00 - 18:00): day -> evening
             var t = hour - 17;
             day = 1.0 - t;
             evening = t;
         } else if (hour >= 6 && hour <= 8) {
-            // Dawn evening (6:00 - 8:00): pure evening
             evening = 1.0;
         } else if (hour >= 18 && hour <= 20) {
-            // Dusk evening (18:00 - 20:00): pure evening
             evening = 1.0;
         } else if (hour > 5 && hour < 6) {
-            // Pre-dawn (5:00 - 6:00): night -> evening
             var t = hour - 5;
             night = 1.0 - t;
             evening = t;
         } else if (hour > 20 && hour < 21) {
-            // Post-dusk (20:00 - 21:00): evening -> night
             var t = hour - 20;
             evening = 1.0 - t;
             night = t;
         } else {
-            // Pure night (21:00 - 5:00)
             night = 1.0;
         }
         
@@ -141,24 +97,15 @@ QtObject {
     }
 
     readonly property var debugTimeBlend: calculateTimeBlend(debugHour)
-    
-    // Current hour as decimal, updated every minute by timer
-    property real currentHour: 12.0  // Will be set properly in Component.onCompleted
-    
+    property real currentHour: 12.0
     readonly property var realTimeBlend: calculateTimeBlend(currentHour)
-    
-    // Sun progress uses fixed 6:00-18:00 range for visual consistency
     readonly property real realSunProgress: calculateSunProgress(currentHour, visualSunriseHour, visualSunsetHour)
-    
-    // isDay uses real sunrise/sunset data when available
     readonly property real realSunriseHour: sunrise.length > 0 ? parseTime(sunrise) : 6.0
     readonly property real realSunsetHour: sunset.length > 0 ? parseTime(sunset) : 18.0
     readonly property bool realIsDay: currentHour >= realSunriseHour && currentHour <= realSunsetHour
 
-    // Effective blend (use debug or real)
     readonly property var effectiveTimeBlend: debugMode ? debugTimeBlend : realTimeBlend
 
-    // For backward compatibility
     readonly property string debugTimeOfDay: {
         var blend = debugTimeBlend;
         if (blend.day >= blend.evening && blend.day >= blend.night) return "Day";
@@ -193,36 +140,29 @@ QtObject {
     }
 
     function getWeatherIntensity(code) {
-        // Returns 0.0 - 1.0 intensity
         if (code === 0 || code === 1) return 0.0;
-        if (code === 2) return 0.5;  // Partly cloudy
-        if (code === 3) return 1.0;  // Overcast
-        if (code === 45) return 0.5;  // Fog
-        if (code === 48) return 0.7;  // Rime fog
-        if (code === 51 || code === 56) return 0.3;  // Light drizzle
-        if (code === 53) return 0.5;  // Moderate drizzle
-        if (code === 55 || code === 57) return 0.7;  // Dense drizzle
-        if (code === 61) return 0.4;  // Light rain
-        if (code === 63 || code === 66) return 0.6;  // Moderate rain
-        if (code === 65 || code === 67) return 0.9;  // Heavy rain
-        if (code === 71) return 0.3;  // Light snow
-        if (code === 73) return 0.5;  // Moderate snow
-        if (code === 75 || code === 77) return 0.8;  // Heavy snow
-        if (code === 80) return 0.5;  // Light showers
-        if (code === 81) return 0.7;  // Moderate showers
-        if (code === 82) return 1.0;  // Heavy showers
-        if (code === 85) return 0.6;  // Light snow showers
-        if (code === 86) return 0.9;  // Heavy snow showers
-        if (code === 95) return 0.8;  // Thunderstorm
-        if (code >= 96) return 1.0;  // Thunderstorm with hail
+        if (code === 2) return 0.5;
+        if (code === 3) return 1.0;
+        if (code === 45) return 0.5;
+        if (code === 48) return 0.7;
+        if (code === 51 || code === 56) return 0.3;
+        if (code === 53) return 0.5;
+        if (code === 55 || code === 57) return 0.7;
+        if (code === 61) return 0.4;
+        if (code === 63 || code === 66) return 0.6;
+        if (code === 65 || code === 67) return 0.9;
+        if (code === 71) return 0.3;
+        if (code === 73) return 0.5;
+        if (code === 75 || code === 77) return 0.8;
+        if (code === 80) return 0.5;
+        if (code === 81) return 0.7;
+        if (code === 82) return 1.0;
+        if (code === 85) return 0.6;
+        if (code === 86) return 0.9;
+        if (code === 95) return 0.8;
+        if (code >= 96) return 1.0;
         return 0.0;
     }
-
-    // Internal state
-    property int retryCount: 0
-    property int maxRetries: 5
-    property string cachedLat: ""
-    property string cachedLon: ""
 
     function getWeatherDescription(code) {
         if (code === 0) return "Clear sky";
@@ -252,25 +192,15 @@ QtObject {
 
     function calculateSunPosition() {
         var now = new Date();
-        // Use 24-hour format from Date object (independent of user's locale)
-        var currentHour = now.getHours() + now.getMinutes() / 60;
+        var hour = now.getHours() + now.getMinutes() / 60;
 
-        var sunriseH = 6.0;  // Default
-        var sunsetH = 18.0;  // Default
+        var sunriseH = sunrise.length > 0 ? parseTime(sunrise) : 6.0;
+        var sunsetH = sunset.length > 0 ? parseTime(sunset) : 18.0;
 
-        if (sunrise && sunset) {
-            sunriseH = parseTime(sunrise);
-            sunsetH = parseTime(sunset);
-        }
-
-        // Calculate if it's day
-        root.isDay = (currentHour >= sunriseH && currentHour <= sunsetH);
+        root.isDay = (hour >= sunriseH && hour <= sunsetH);
+        root.sunProgress = calculateSunProgress(hour, sunriseH, sunsetH);
         
-        // Calculate sun/moon progress
-        root.sunProgress = calculateSunProgress(currentHour, sunriseH, sunsetH);
-        
-        // TimeOfDay is now handled by calculateTimeBlend, but keep for compatibility
-        var blend = calculateTimeBlend(currentHour);
+        var blend = calculateTimeBlend(hour);
         if (blend.day >= blend.evening && blend.day >= blend.night) {
             root.timeOfDay = "Day";
         } else if (blend.evening >= blend.night) {
@@ -281,40 +211,23 @@ QtObject {
     }
 
     function getWeatherCodeEmoji(code) {
-        if (code === 0)
-            return "☀️";
-        if (code === 1)
-            return "🌤️";
-        if (code === 2)
-            return "⛅";
-        if (code === 3)
-            return "☁️";
-        if (code === 45)
-            return "🌫️";
-        if (code === 48)
-            return "🌨️";
-        if (code >= 51 && code <= 53)
-            return "🌦️";
-        if (code === 55)
-            return "🌧️";
-        if (code >= 56 && code <= 57)
-            return "🧊";
-        if (code >= 61 && code <= 65)
-            return "🌧️";
-        if (code >= 66 && code <= 67)
-            return "🧊";
-        if (code >= 71 && code <= 77)
-            return "❄️";
-        if (code >= 80 && code <= 81)
-            return "🌦️";
-        if (code === 82)
-            return "🌧️";
-        if (code >= 85 && code <= 86)
-            return "🌨️";
-        if (code === 95)
-            return "⛈️";
-        if (code >= 96 && code <= 99)
-            return "🌩️";
+        if (code === 0) return "☀️";
+        if (code === 1) return "🌤️";
+        if (code === 2) return "⛅";
+        if (code === 3) return "☁️";
+        if (code === 45) return "🌫️";
+        if (code === 48) return "🌨️";
+        if (code >= 51 && code <= 53) return "🌦️";
+        if (code === 55) return "🌧️";
+        if (code >= 56 && code <= 57) return "🧊";
+        if (code >= 61 && code <= 65) return "🌧️";
+        if (code >= 66 && code <= 67) return "🧊";
+        if (code >= 71 && code <= 77) return "❄️";
+        if (code >= 80 && code <= 81) return "🌦️";
+        if (code === 82) return "🌧️";
+        if (code >= 85 && code <= 86) return "🌨️";
+        if (code === 95) return "⛈️";
+        if (code >= 96 && code <= 99) return "🌩️";
         return "❓";
     }
 
@@ -325,105 +238,38 @@ QtObject {
         return temp;
     }
 
-    function fetchWeatherWithCoords(lat, lon) {
-        var url = "https://api.open-meteo.com/v1/forecast?latitude=" + lat + "&longitude=" + lon + "&current_weather=true&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset&timezone=auto";
-        weatherProcess.command = ["curl", "-s", url];
-        weatherProcess.running = true;
-    }
-
-    function urlEncode(str) {
-        return str.replace(/%/g, "%25").replace(/ /g, "%20").replace(/!/g, "%21").replace(/"/g, "%22").replace(/#/g, "%23").replace(/\$/g, "%24").replace(/&/g, "%26").replace(/'/g, "%27").replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/\*/g, "%2A").replace(/\+/g, "%2B").replace(/,/g, "%2C").replace(/\//g, "%2F").replace(/:/g, "%3A").replace(/;/g, "%3B").replace(/=/g, "%3D").replace(/\?/g, "%3F").replace(/@/g, "%40").replace(/\[/g, "%5B").replace(/]/g, "%5D");
-    }
+    // Retry logic
+    property int retryCount: 0
+    readonly property int maxRetries: 3
 
     function updateWeather() {
+        if (weatherProcess.running) {
+            weatherProcess.running = false;
+        }
+        
         root.isLoading = true;
         root.hasFailed = false;
         
         var location = Config.weather.location.trim();
-        if (location.length === 0) {
-            geoipProcess.command = ["curl", "-s", "https://ipapi.co/json/"];
-            geoipProcess.running = true;
-            return;
-        }
+        weatherProcess.command = [scriptPath, location];
+        weatherProcess.running = true;
+    }
 
-        var coords = location.split(",");
-        var isCoordinates = coords.length === 2 && !isNaN(parseFloat(coords[0].trim())) && !isNaN(parseFloat(coords[1].trim()));
-
-        if (isCoordinates) {
-            cachedLat = coords[0].trim();
-            cachedLon = coords[1].trim();
-            fetchWeatherWithCoords(cachedLat, cachedLon);
+    function handleError() {
+        if (retryCount < maxRetries) {
+            retryCount++;
+            retryTimer.start();
         } else {
-            var encodedCity = urlEncode(location);
-            var geocodeUrl = "https://geocoding-api.open-meteo.com/v1/search?name=" + encodedCity;
-            geocodingProcess.command = ["curl", "-s", geocodeUrl];
-            geocodingProcess.running = true;
+            root.isLoading = false;
+            root.hasFailed = true;
+            retryCount = 0;
         }
     }
 
-    property Process geoipProcess: Process {
-        running: false
-        command: []
-
-        stdout: StdioCollector {
-            waitForEnd: true
-            onStreamFinished: {
-                var raw = text.trim();
-                if (raw.length > 0) {
-                    try {
-                        var data = JSON.parse(raw);
-                        if (data.latitude && data.longitude) {
-                            root.cachedLat = data.latitude.toString();
-                            root.cachedLon = data.longitude.toString();
-                            root.fetchWeatherWithCoords(root.cachedLat, root.cachedLon);
-                        } else {
-                            root.dataAvailable = false;
-                        }
-                    } catch (e) {
-                        root.dataAvailable = false;
-                    }
-                }
-            }
-        }
-
-        onExited: function (code) {
-            if (code !== 0) {
-                root.dataAvailable = false;
-            }
-        }
-    }
-
-    property Process geocodingProcess: Process {
-        running: false
-        command: []
-
-        stdout: StdioCollector {
-            waitForEnd: true
-            onStreamFinished: {
-                var raw = text.trim();
-                if (raw.length > 0) {
-                    try {
-                        var data = JSON.parse(raw);
-                        if (data.results && data.results.length > 0) {
-                            var result = data.results[0];
-                            root.cachedLat = result.latitude.toString();
-                            root.cachedLon = result.longitude.toString();
-                            root.fetchWeatherWithCoords(root.cachedLat, root.cachedLon);
-                        } else {
-                            root.dataAvailable = false;
-                        }
-                    } catch (e) {
-                        root.dataAvailable = false;
-                    }
-                }
-            }
-        }
-
-        onExited: function (code) {
-            if (code !== 0) {
-                root.dataAvailable = false;
-            }
-        }
+    property Timer retryTimer: Timer {
+        interval: 3000
+        repeat: false
+        onTriggered: root.updateWeather()
     }
 
     property Process weatherProcess: Process {
@@ -437,6 +283,15 @@ QtObject {
                 if (raw.length > 0) {
                     try {
                         var data = JSON.parse(raw);
+                        
+                        // Check for error from script
+                        if (data.error) {
+                            console.warn("WeatherService:", data.error);
+                            root.dataAvailable = false;
+                            root.handleError();
+                            return;
+                        }
+                        
                         if (data.current_weather && data.daily) {
                             var weather = data.current_weather;
                             var daily = data.daily;
@@ -445,7 +300,6 @@ QtObject {
                             root.currentTemp = convertTemp(parseFloat(weather.temperature));
                             root.windSpeed = parseFloat(weather.windspeed);
                             
-                            // Get today's max/min temps
                             if (daily.temperature_2m_max && daily.temperature_2m_max.length > 0) {
                                 root.maxTemp = convertTemp(parseFloat(daily.temperature_2m_max[0]));
                             }
@@ -453,15 +307,11 @@ QtObject {
                                 root.minTemp = convertTemp(parseFloat(daily.temperature_2m_min[0]));
                             }
 
-                            // Get sunrise/sunset times
                             if (daily.sunrise && daily.sunrise.length > 0) {
-                                // Format: "2024-12-20T07:45" -> "07:45"
-                                var sunriseStr = daily.sunrise[0];
-                                root.sunrise = sunriseStr.split("T")[1];
+                                root.sunrise = daily.sunrise[0].split("T")[1];
                             }
                             if (daily.sunset && daily.sunset.length > 0) {
-                                var sunsetStr = daily.sunset[0];
-                                root.sunset = sunsetStr.split("T")[1];
+                                root.sunset = daily.sunset[0].split("T")[1];
                             }
 
                             root.weatherSymbol = getWeatherCodeEmoji(root.weatherCode);
@@ -472,65 +322,41 @@ QtObject {
                             root.hasFailed = false;
                             root.retryCount = 0;
                         } else {
+                            console.warn("WeatherService: Invalid response structure");
                             root.dataAvailable = false;
-                            root.isLoading = false;
-                            if (root.retryCount < root.maxRetries) {
-                                root.retryCount++;
-                                retryTimer.interval = Math.min(600000, 5000 * Math.pow(2, root.retryCount - 1));
-                                retryTimer.start();
-                            } else {
-                                root.hasFailed = true;
-                            }
+                            root.handleError();
                         }
                     } catch (e) {
                         console.warn("WeatherService: JSON parse error:", e);
                         root.dataAvailable = false;
-                        root.isLoading = false;
-                        if (root.retryCount < root.maxRetries) {
-                            root.retryCount++;
-                            retryTimer.interval = Math.min(600000, 5000 * Math.pow(2, root.retryCount - 1));
-                            retryTimer.start();
-                        } else {
-                            root.hasFailed = true;
-                        }
+                        root.handleError();
                     }
+                } else {
+                    console.warn("WeatherService: Empty response");
+                    root.handleError();
                 }
             }
         }
 
         onExited: function (code) {
             if (code !== 0) {
+                console.warn("WeatherService: Script exited with code", code);
                 root.dataAvailable = false;
-                root.isLoading = false;
-                if (root.retryCount < root.maxRetries) {
-                    root.retryCount++;
-                    retryTimer.interval = Math.min(600000, 5000 * Math.pow(2, root.retryCount - 1));
-                    retryTimer.start();
-                } else {
-                    root.hasFailed = true;
-                }
+                root.handleError();
             }
         }
     }
 
-    property Timer retryTimer: Timer {
-        repeat: false
-        running: false
-        onTriggered: root.updateWeather()
-    }
-
     property Timer refreshTimer: Timer {
-        // Periodic weather refresh (every 10 minutes)
-        interval: 600000
+        interval: 600000  // 10 minutes
         running: true
         repeat: true
         onTriggered: root.updateWeather()
     }
 
     property Timer sunPositionTimer: Timer {
-        // Update sun position every minute
-        interval: 60000
-        running: true  // Always run to keep time updated
+        interval: 60000  // 1 minute
+        running: true
         repeat: true
         onTriggered: {
             var now = new Date();
@@ -543,16 +369,11 @@ QtObject {
 
     property Connections configConnections: Connections {
         target: Config.weather
-        function onLocationChanged() {
-            root.updateWeather();
-        }
-        function onUnitChanged() {
-            root.updateWeather();
-        }
+        function onLocationChanged() { root.updateWeather(); }
+        function onUnitChanged() { root.updateWeather(); }
     }
 
     Component.onCompleted: {
-        // Initialize current hour
         var now = new Date();
         currentHour = now.getHours() + now.getMinutes() / 60;
         updateWeather();

@@ -158,7 +158,7 @@ Item {
         contentHeight: 100
 
         onIsOpenChanged: {
-            if (isOpen && !WeatherService.dataAvailable && !WeatherService.isLoading) {
+            if (isOpen && !WeatherService.dataAvailable) {
                 WeatherService.updateWeather();
             }
         }
