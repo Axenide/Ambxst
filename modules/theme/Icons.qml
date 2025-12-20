@@ -10,7 +10,8 @@ QtObject {
     readonly property string overview: ""
 
     // Layouts
-    readonly property string dwindle: ""
+    readonly property string layout: ""
+    readonly property string dwindle: ""
     readonly property string master: ""
     readonly property string scrolling: ""
 

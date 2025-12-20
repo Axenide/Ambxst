@@ -197,6 +197,9 @@ Item {
     property alias flickable: workspaceFlickable
     readonly property bool needsScrollbar: workspaceFlickable.contentHeight > workspaceFlickable.height
 
+    // Track if user is manually scrolling (set externally by scrollbar)
+    property bool isManualScrolling: false
+
     // Calculate target scroll position to center active workspace
     readonly property int activeWorkspaceId: monitor?.activeWorkspace?.id || 1
     readonly property real workspaceRowHeight: workspaceHeight + workspaceSpacing
@@ -216,7 +219,7 @@ Item {
         flickableDirection: Flickable.VerticalFlick
 
         Behavior on contentY {
-            enabled: Config.animDuration > 0
+            enabled: Config.animDuration > 0 && !scrollingOverviewRoot.isManualScrolling
             NumberAnimation {
                 duration: Config.animDuration
                 easing.type: Easing.OutQuart

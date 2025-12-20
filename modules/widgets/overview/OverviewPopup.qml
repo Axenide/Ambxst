@@ -322,6 +322,13 @@ PanelWindow {
                 size: overviewLoader.item && overviewLoader.item.flickable 
                     ? overviewLoader.item.flickable.visibleArea.heightRatio : 1
                 
+                // Notify flickable when manually scrolling to disable animation
+                onActiveChanged: {
+                    if (overviewLoader.item) {
+                        overviewLoader.item.isManualScrolling = active;
+                    }
+                }
+
                 onPositionChanged: {
                     if (active && overviewLoader.item && overviewLoader.item.flickable) {
                         overviewLoader.item.flickable.contentY = position * overviewLoader.item.flickable.contentHeight;

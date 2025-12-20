@@ -18,6 +18,14 @@ Item {
     readonly property var flickable: isScrollingLayout && overviewLoader.item ? overviewLoader.item.flickable : null
     readonly property bool needsScrollbar: isScrollingLayout && overviewLoader.item ? overviewLoader.item.needsScrollbar : false
 
+    // Manual scrolling state - passed through to ScrollingOverview
+    property bool isManualScrolling: false
+    onIsManualScrollingChanged: {
+        if (isScrollingLayout && overviewLoader.item) {
+            overviewLoader.item.isManualScrolling = isManualScrolling;
+        }
+    }
+
     Behavior on implicitWidth {
         enabled: Config.animDuration > 0
         NumberAnimation {
