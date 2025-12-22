@@ -174,6 +174,11 @@ Popup {
                                 from: 0; to: 360
                                 duration: 1000
                                 running: Ai.fetchingModels
+                                onRunningChanged: {
+                                    if (!running) {
+                                        parent.rotation = 0;
+                                    }
+                                }
                             }
                             
                             Behavior on color {
