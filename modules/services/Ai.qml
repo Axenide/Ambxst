@@ -73,6 +73,16 @@ Singleton {
     // ============================================ 
     // INIT
     // ============================================ 
+    function deleteChat(id) {
+        if (id === currentChatId) {
+            createNewChat();
+        }
+        
+        let filename = chatDir + "/" + id + ".json";
+        deleteChatProcess.command = ["rm", filename];
+        deleteChatProcess.running = true;
+    }
+
     Component.onCompleted: {
         reloadHistory();
         createNewChat();
@@ -107,8 +117,57 @@ Singleton {
         return Quickshell.env(model.key_id) || "";
     }
 
+    function processCommand(text) {
+        let cmd = text.trim();
+        if (!cmd.startsWith("/")) return false;
+        
+        let parts = cmd.split(" ");
+        let command = parts[0].toLowerCase();
+        let args = parts.slice(1).join(" ");
+        
+        switch (command) {
+            case "/clear":
+                createNewChat();
+                return true;
+            case "/model":
+                if (args) {
+                    // Fuzzy search or exact match
+                    let found = false;
+                    for (let i = 0; i < models.length; i++) {
+                         if (models[i].name.toLowerCase().includes(args.toLowerCase()) || 
+                             models[i].model.toLowerCase() === args.toLowerCase()) {
+                             setModel(models[i].name);
+                             found = true;
+                             break;
+                         }
+                    }
+                    if (!found) {
+                        pushSystemMessage("Model '" + args + "' not found.");
+                    } else {
+                        pushSystemMessage("Switched to model: " + currentModel.name);
+                    }
+                } else {
+                    pushSystemMessage("Current model: " + currentModel.name + "\nAvailable models:\n" + models.map(m => "- " + m.name).join("\n"));
+                }
+                return true;
+            case "/help":
+                pushSystemMessage("Available commands:\n/clear - Start new chat\n/model [name] - Switch AI model\n/help - Show this help");
+                return true;
+        }
+        
+        return false;
+    }
+
+    function pushSystemMessage(text) {
+        let newChat = Array.from(currentChat);
+        newChat.push({ role: "system", content: text });
+        currentChat = newChat;
+    }
+
     function sendMessage(text) {
         if (text.trim() === "") return;
+        
+        if (processCommand(text)) return;
 
         isLoading = true;
         lastError = "";
@@ -275,6 +334,11 @@ Singleton {
 
     Process {
         id: saveChatProcess
+        onExited: reloadHistory()
+    }
+
+    Process {
+        id: deleteChatProcess
         onExited: reloadHistory()
     }
     

@@ -199,6 +199,7 @@ QtObject {
     readonly property string arrowCounterClockwise: ""
     readonly property string arrowFatLinesDown: ""
     readonly property string arrowsOutCardinal: ""
+    readonly property string dotsThree: ""
     readonly property string dotsNine: ""
     readonly property string circleHalf: ""
 
@@ -232,4 +233,6 @@ QtObject {
 
     readonly property string shieldCheck: ""
     readonly property string shield: ""
+
+    readonly property string list: ""
 }
