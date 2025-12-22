@@ -175,17 +175,23 @@ Item {
         ColumnLayout {
             id: mainColumn
             anchors.fill: parent
-            spacing: 12
+            spacing: 4
 
-            ColumnLayout {
-                id: batteryDetailsColumn
+            StyledRect {
+                id: batteryDetailsContainer
                 Layout.fillWidth: true
+                Layout.preferredHeight: 60
                 visible: Battery.available
-                spacing: 8
+                variant: "pane"
+                enableShadow: false
+
+                Layout.margins: 4
+                radius: Styling.radius(0)
 
                 RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 12
                     spacing: 12
-                    Layout.fillWidth: true
 
                     Text {
                         Layout.alignment: Qt.AlignVCenter
@@ -220,10 +226,6 @@ Item {
                             elide: Text.ElideRight
                         }
                     }
-                }
-
-                Separator {
-                    Layout.fillWidth: true
                 }
             }
 
