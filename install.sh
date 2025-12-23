@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 set -e
 
 FLAKE_URI="${1:-github:Axenide/Ambxst}"
