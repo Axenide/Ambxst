@@ -9,12 +9,12 @@ Singleton {
 
     property bool active: StateService.get("nightLight", false)
     
-    property Process hyprsunsetProcess: Process {
-        command: ["hyprsunset", "-t", "4000"]
+    property Process wlsunsetProcess: Process {
+        command: ["wlsunset"]
         running: false
         stdout: SplitParser {
             onRead: (data) => {
-                // hyprsunset output cuando está corriendo
+                // wlsunset output cuando está corriendo
                 if (data) {
                     root.active = true
                 }
@@ -29,7 +29,7 @@ Singleton {
     }
     
     property Process killProcess: Process {
-        command: ["pkill", "hyprsunset"]
+        command: ["pkill", "wlsunset"]
         running: false
         onExited: (code) => {
             root.active = false
@@ -37,19 +37,19 @@ Singleton {
     }
     
     property Process checkRunningProcess: Process {
-        command: ["pgrep", "hyprsunset"]
+        command: ["pgrep", "wlsunset"]
         running: false
         onExited: (code) => {
             const isRunning = code === 0
             
             // If state says active but not running, start it
             if (root.active && !isRunning) {
-                console.log("NightLightService: Starting hyprsunset (state was active but not running)")
-                hyprsunsetProcess.running = true
+                console.log("NightLightService: Starting wlsunset (state was active but not running)")
+                wlsunsetProcess.running = true
             } 
             // If state says inactive but running, kill it
             else if (!root.active && isRunning) {
-                console.log("NightLightService: Stopping hyprsunset (state was inactive but running)")
+                console.log("NightLightService: Stopping wlsunset (state was inactive but running)")
                 killProcess.running = true
             }
         }
@@ -59,7 +59,7 @@ Singleton {
         if (active) {
             killProcess.running = true
         } else {
-            hyprsunsetProcess.running = true
+            wlsunsetProcess.running = true
         }
     }
     
