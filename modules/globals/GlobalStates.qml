@@ -129,6 +129,9 @@ Singleton {
     // Screen Record Tool state
     property bool screenRecordToolVisible: false
 
+    // Mirror Tool state
+    property bool mirrorWindowVisible: false
+
     // Theme editor state - persists across tab switches
     property bool themeHasChanges: false
     property var themeSnapshot: null

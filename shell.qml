@@ -222,6 +222,13 @@ ShellRoot {
         }
     }
 
+    // Mirror Tool
+    Loader {
+        id: mirrorLoader
+        active: true
+        source: "modules/tools/MirrorWindow.qml"
+    }
+
     // Initialize clipboard service at startup to ensure clipboard watching starts immediately
     Connections {
         target: ClipboardService

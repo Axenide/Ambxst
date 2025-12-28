@@ -128,6 +128,8 @@ ActionGrid {
             var scriptPath = Qt.resolvedUrl("../../../scripts/qr_scan.sh").toString().replace("file://", "");
             qrProc.command = ["bash", "-c", "nohup \"" + scriptPath + "\" > /dev/null 2>&1 &"];
             qrProc.running = true;
+        } else if (action.tooltip === "Mirror") {
+            GlobalStates.mirrorWindowVisible = !GlobalStates.mirrorWindowVisible;
         }
 
         root.itemSelected();
