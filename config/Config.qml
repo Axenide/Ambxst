@@ -1106,6 +1106,15 @@ Singleton {
                     }
                 ]
             }
+            property JsonObject ocr: JsonObject {
+                property bool eng: true
+                property bool spa: true
+                property bool lat: false
+                property bool jpn: false
+                property bool chi_sim: false
+                property bool chi_tra: false
+                property bool kor: false
+            }
         }
     }
 

@@ -124,15 +124,13 @@ PanelWindow {
                     width: 40
                     height: 40
                     radius: 20
-                    color: Styling.surface
-                    border.color: Styling.surfaceVariant
-                    border.width: 1
+                    color: Colors.surface
 
                     Text {
                         anchors.centerIn: parent
                         text: root.isSquare ? Icons.arrowsOut : Icons.crop
                         font.family: Icons.font
-                        color: Styling.text
+                        color: Colors.overBackground
                         font.pixelSize: 20
                     }
 
@@ -158,15 +156,13 @@ PanelWindow {
                     width: 40
                     height: 40
                     radius: 20
-                    color: Styling.surface
-                    border.color: Styling.surfaceVariant
-                    border.width: 1
+                    color: Colors.surface
 
                     Text {
                         anchors.centerIn: parent
                         text: Icons.flipX
                         font.family: Icons.font
-                        color: Styling.text
+                        color: Colors.overBackground
                         font.pixelSize: 20
                     }
 
@@ -188,7 +184,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: Icons.cancel
                         font.family: Icons.font
-                        color: Colors.overError
+                        color: Styling.styledRectItem("error")
                         font.pixelSize: 20
                     }
 
@@ -325,7 +321,7 @@ PanelWindow {
             text: mode == 0 || mode == 3 ? Icons.caretDoubleDown : Icons.caretDoubleUp
             rotation: mode == 0 ? -45 : mode == 1 ? 45 : mode == 2 ? -135 : 135
             font.family: Icons.font
-            color: Styling.primary
+            color: Colors.primary
             font.pixelSize: 12
             opacity: (dragArea.containsMouse || parent.containsMouse) ? 0.8 : 0
         }
