@@ -93,13 +93,13 @@ Item {
         anchors.top: parent.top
         spacing: 8
 
-        // Title row: "Gradient Stops (X/20)" + Separator + "Stop X"
+        // Title row: "Gradient Stops (X)" + Separator + "Stop X"
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
 
             Text {
-                text: "Gradient Stops (" + root.stops.length + "/20)"
+                text: "Gradient Stops (" + root.stops.length + ")"
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.weight: Font.Medium
@@ -136,7 +136,7 @@ Item {
                 radius: Styling.radius(-4)
                 opacity: addButton.isEnabled ? (addMouseArea.containsMouse ? 0.8 : 1.0) : 0.5
 
-                property bool isEnabled: root.stops.length < 20
+                property bool isEnabled: true
 
                 Text {
                     anchors.centerIn: parent
@@ -153,7 +153,7 @@ Item {
                     cursorShape: addButton.isEnabled ? Qt.PointingHandCursor : Qt.ArrowCursor
 
                     onClicked: {
-                        if (!addButton.isEnabled || root.stops.length >= 20)
+                        if (!addButton.isEnabled)
                             return;
                         let newStops = root.stops.slice();
                         const lastColor = newStops[newStops.length - 1][0];
@@ -185,59 +185,38 @@ Item {
                     radius: Styling.radius(-4)
                     border.color: Colors.outline
                     border.width: 2
+                    clip: true
 
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
+                    Canvas {
+                        id: gradientPreviewCanvas
+                        anchors.fill: parent
+                        anchors.margins: 2 // Keep inside border
+                        
+                        onPaint: {
+                            var ctx = getContext("2d");
+                            ctx.clearRect(0, 0, width, height);
+                            
+                            var stops = root.stops;
+                            if (!stops || stops.length === 0) return;
 
-                        GradientStop {
-                            position: root.getStopPosition(0)
-                            color: Config.resolveColor(root.getStopColor(0))
+                            var grad = ctx.createLinearGradient(0, 0, width, 0);
+                            for (var i = 0; i < stops.length; i++) {
+                                var s = stops[i];
+                                grad.addColorStop(s[1], Config.resolveColor(s[0]));
+                            }
+                            
+                            ctx.fillStyle = grad;
+                            ctx.fillRect(0, 0, width, height);
                         }
-
-                        GradientStop {
-                            position: root.getStopPosition(1)
-                            color: Config.resolveColor(root.getStopColor(1))
+                        
+                        Connections {
+                            target: root
+                            function onStopsChanged() { gradientPreviewCanvas.requestPaint(); }
                         }
-
-                        GradientStop {
-                            position: root.getStopPosition(2)
-                            color: Config.resolveColor(root.getStopColor(2))
-                        }
-
-                        GradientStop {
-                            position: root.getStopPosition(3)
-                            color: Config.resolveColor(root.getStopColor(3))
-                        }
-
-                        GradientStop {
-                            position: root.getStopPosition(4)
-                            color: Config.resolveColor(root.getStopColor(4))
-                        }
-
-                        GradientStop {
-                            position: root.getStopPosition(5)
-                            color: Config.resolveColor(root.getStopColor(5))
-                        }
-
-                        GradientStop {
-                            position: root.getStopPosition(6)
-                            color: Config.resolveColor(root.getStopColor(6))
-                        }
-
-                        GradientStop {
-                            position: root.getStopPosition(7)
-                            color: Config.resolveColor(root.getStopColor(7))
-                        }
-
-                        GradientStop {
-                            position: root.getStopPosition(8)
-                            color: Config.resolveColor(root.getStopColor(8))
-                        }
-
-                        GradientStop {
-                            position: root.getStopPosition(9)
-                            color: Config.resolveColor(root.getStopColor(9))
-                        }
+                        
+                        // Repaint when size changes
+                        onWidthChanged: requestPaint()
+                        onHeightChanged: requestPaint()
                     }
                 }
 
@@ -364,8 +343,6 @@ Item {
                     anchors.fill: gradientBar
                     z: -1
                     onDoubleClicked: mouse => {
-                        if (root.stops.length >= 20)
-                            return;
                         const position = Math.round((mouse.x / gradientBar.width) * 1000) / 1000;
                         let nearestColor = root.stops[0][0];
                         let minDist = 1.0;
