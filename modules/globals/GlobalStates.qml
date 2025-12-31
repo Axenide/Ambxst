@@ -11,6 +11,43 @@ Singleton {
     id: root
 
     property var wallpaperManager: null
+    property string avatarCacheBuster: ""
+
+    function pickUserAvatar() {
+        filePickerProcess.running = true;
+    }
+
+    Process {
+        id: filePickerProcess
+        running: false
+        command: ["zenity", "--file-selection", "--title=Select User Icon", "--file-filter=Images | *.png *.jpg *.jpeg *.svg *.webp"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const path = text.trim();
+                if (path) {
+                    console.log("Selected icon:", path);
+                    copyIconProcess.command = ["cp", path, Quickshell.env("HOME") + "/.face.icon"];
+                    copyIconProcess.running = true;
+                }
+            }
+        }
+    }
+
+    Process {
+        id: copyIconProcess
+        running: false
+        command: []
+
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                console.log("Icon updated successfully");
+                avatarCacheBuster = Date.now();
+            } else {
+                console.warn("Failed to update icon");
+            }
+        }
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // HYPRLAND LAYOUT STATE (dynamic, not persisted)

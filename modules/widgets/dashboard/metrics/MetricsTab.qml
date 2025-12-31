@@ -7,6 +7,7 @@ import Quickshell.Io
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.services
+import qs.modules.globals
 import qs.config
 
 Rectangle {
@@ -182,7 +183,7 @@ Rectangle {
                             id: userAvatar
                             anchors.fill: parent
                             anchors.margins: 2
-                            source: `file://${Quickshell.env("HOME")}/.face.icon`
+                            source: `file://${Quickshell.env("HOME")}/.face.icon?${GlobalStates.avatarCacheBuster}`
                             fillMode: Image.PreserveAspectCrop
                             smooth: true
                             asynchronous: true
@@ -210,6 +211,24 @@ Rectangle {
                             font.pixelSize: 48
                             color: Colors.overSurfaceVariant
                             visible: userAvatar.status !== Image.Ready
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+                            onClicked: GlobalStates.pickUserAvatar()
+
+                            Rectangle {
+                                anchors.fill: parent
+                                color: Colors.onSurface
+                                opacity: parent.containsMouse ? 0.1 : 0
+                                radius: avatarContainer.radius
+
+                                Behavior on opacity {
+                                    NumberAnimation { duration: 150 }
+                                }
+                            }
                         }
                     }
 
@@ -278,7 +297,7 @@ Rectangle {
                             spacing: 4
 
                             Text {
-                                text: root.osIcon || (root.linuxLogos ? root.linuxLogos["Linux"] : "")
+                                text: root.osIcon || (root.linuxLogos ? (root.linuxLogos["Linux"] || "") : "")
                                 font.family: "Symbols Nerd Font Mono"
                                 font.pixelSize: Config.theme.fontSize + 2
                                 color: Styling.styledRectItem("overprimary")
