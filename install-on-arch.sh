@@ -53,5 +53,7 @@ if [ -n "$NEED_COMPILE" ]; then
   echo "✔ ambxst-auth installed"
 fi
 
+echo "Symlinking ambxst.."
 sudo chmod +x "$INSTALL_DIR/cli.sh"
 sudo ln -s "$INSTALL_DIR/cli.sh" /usr/bin/ambxst
+echo "Symlink successful, try running ambxst"

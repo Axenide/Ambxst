@@ -26,10 +26,15 @@ An <i><b>Ax</b>tremely</i> customizable shell.
 
 <h2><sub><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="Package" width="32" height="32" /></sub> Installation</h2>
 
+To install via Nix PM
 ```bash
 curl -L get.axeni.de/ambxst | sh
 ````
 
+Or if you want to install directly, without nix run this instead:
+```bash
+curl -L https://raw.githubusercontent.com/brys0/Ambxst/refs/heads/main/install-on-arch.sh | sh
+```
 > [!WARNING]
 > Ambxst is currently in early development.
 
