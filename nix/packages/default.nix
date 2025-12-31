@@ -1,14 +1,8 @@
 # Main Ambxst package
-{ pkgs, lib, self, system, nixgl, quickshell, ambxstLib }:
+{ pkgs, lib, self, system, quickshell, ...}:
 
 let
-  isNixOS = ambxstLib.detectNixOS pkgs;
-  nixGL = nixgl.packages.${system}.nixGLDefault;
   quickshellPkg = quickshell.packages.${system}.default;
-
-  wrapWithNixGL = ambxstLib.wrapWithNixGL {
-    inherit pkgs system isNixOS;
-  };
 
   # Import sub-packages
   ambxst-auth = import ./ambxst-auth.nix {
@@ -19,10 +13,10 @@ let
   ttf-phosphor-icons = import ./phosphor-icons.nix { inherit pkgs; };
 
   # Import modular package lists
-  corePkgs = import ./core.nix { inherit pkgs wrapWithNixGL quickshellPkg; };
+  corePkgs = import ./core.nix { inherit pkgs quickshellPkg; };
   toolsPkgs = import ./tools.nix { inherit pkgs; };
-  mediaPkgs = import ./media.nix { inherit pkgs wrapWithNixGL; };
-  appsPkgs = import ./apps.nix { inherit pkgs wrapWithNixGL; };
+  mediaPkgs = import ./media.nix { inherit pkgs; };
+  appsPkgs = import ./apps.nix { inherit pkgs; };
   fontsPkgs = import ./fonts.nix { inherit pkgs ttf-phosphor-icons; };
   tesseractPkgs = import ./tesseract.nix { inherit pkgs; };
 
@@ -33,9 +27,6 @@ let
     pkgs.networkmanager
   ];
 
-  # Non-NixOS packages
-  nonNixosPkgs = [ nixGL ];
-
   # Combine all packages
   baseEnv = corePkgs
     ++ toolsPkgs
@@ -43,7 +34,7 @@ let
     ++ appsPkgs
     ++ fontsPkgs
     ++ tesseractPkgs
-    ++ (if isNixOS then nixosPkgs else nonNixosPkgs);
+    ++ nixosPkgs;
 
   envAmbxst = pkgs.buildEnv {
     name = "Ambxst-env";
@@ -52,16 +43,7 @@ let
 
   launcher = pkgs.writeShellScriptBin "ambxst" ''
     # Ensure ambxst-auth is in PATH for lockscreen
-    ${lib.optionalString isNixOS ''
-      export PATH="${ambxst-auth}/bin:$PATH"
-    ''}
-    ${lib.optionalString (!isNixOS) ''
-      # On non-NixOS, use local build from ~/.local/bin
-      export PATH="$HOME/.local/bin:$PATH"
-    ''}
-
-    # Pass nixGL for non-NixOS
-    ${lib.optionalString (!isNixOS) "export AMBXST_NIXGL=\"${nixGL}/bin/nixGL\""}
+    export PATH="${ambxst-auth}/bin:$PATH"
 
     export AMBXST_QS="${quickshellPkg}/bin/qs"
 

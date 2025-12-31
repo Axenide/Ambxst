@@ -1,9 +1,9 @@
 # Media packages: video, audio, players
-{ pkgs, wrapWithNixGL }:
+{ pkgs, ...}:
 
 with pkgs; [
-  (wrapWithNixGL gpu-screen-recorder)
-  (wrapWithNixGL mpvpaper)
+  gpu-screen-recorder
+  mpvpaper
 
   ffmpeg
   x264

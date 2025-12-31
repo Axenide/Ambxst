@@ -8,16 +8,11 @@
       url = "git+https://git.outfoxxed.me/outfoxxed/quickshell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    nixgl = {
-      url = "github:nix-community/nixGL";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
   };
 
-  outputs = { self, nixpkgs, nixgl, quickshell, ... }:
+  outputs = { self, nixpkgs, quickshell, ... }:
     let
-      ambxstLib = import ./nix/lib.nix { inherit nixpkgs nixgl; };
+      ambxstLib = import ./nix/lib.nix { inherit nixpkgs; };
     in {
       nixosModules.default = import ./nix/modules;
 
@@ -31,7 +26,7 @@
           lib = nixpkgs.lib;
 
           Ambxst = import ./nix/packages {
-            inherit pkgs lib self system nixgl quickshell ambxstLib;
+            inherit pkgs lib self system quickshell ambxstLib;
           };
         in {
           default = Ambxst;

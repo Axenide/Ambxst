@@ -1,8 +1,8 @@
 # Core packages: Wayland, Mesa, Qt6
-{ pkgs, wrapWithNixGL, quickshellPkg }:
+{ pkgs,  quickshellPkg }:
 
 with pkgs; [
-  (wrapWithNixGL quickshellPkg)
+  quickshellPkg
 
   # Graphics/Wayland
   mesa

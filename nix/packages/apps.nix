@@ -1,9 +1,9 @@
 # Applications: terminal, launcher, control panels
-{ pkgs, wrapWithNixGL }:
+{ pkgs, ...}:
 
 with pkgs; [
   # Terminal
-  (wrapWithNixGL kitty)
+  kitty
   tmux
 
   # Launcher
