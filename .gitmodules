@@ -1,0 +1,3 @@
+[submodule "quickshell"]
+	path = quickshell
+	url = https://git.outfoxxed.me/quickshell/quickshell
