@@ -120,3 +120,16 @@ For now, the most important things to know are:
 > [!CAUTION]
 > Packages installed via Nix will take priority over system ones.
 > Keep this in mind if you run into version conflicts.
+
+## Credits
+- [end-4](https://github.com/end-4) for his awesome projects. I learned a lot from them! (And *yoinked* a lot of code, too. 😅)
+- [soramane](https://github.com/soramanew) for helping me when I started with Quickshell. (You probably don't remember, but still, heh.)
+- [outfoxxed](https://outfoxxed.me/) for creating Quickshell and great documentation!
+- [tr1x_em](https://github.com/tr1x_em) for being a great friend and helping me find great tools. You rock!
+- [Darsh](https://github.com/its-darsh) for not killing me when I left Fabric. u_u (Also for being a great friend and creating Fabric! Without Fabric, Ax-Shell wouldn't exist, so Ambxst wouldn't either. Thank you!)
+- [Mario](https://github.com/mariokhz) for being a great friend and showing me Quickshell!
+- [Samouly](https://github.com/N1xev) for being Samouly. :3
+- [kh](https://www.youtube.com/watch?v=dQw4w9WgXcQ) for being an awesome human being and listening to my delusions about Ambxst. :D
+- And you, the user, for trying out Ambxst! You're awesome! 💖
+
+(If I forgot someone, please let me know. 🙏)
