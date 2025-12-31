@@ -52,3 +52,6 @@ if [ -n "$NEED_COMPILE" ]; then
   chmod +x "$INSTALL_DIR/ambxst-auth"
   echo "✔ ambxst-auth installed"
 fi
+
+sudo chmod +x "$INSTALL_DIR/cli.sh"
+sudo ln -s "$INSTALL_DIR/cli.sh" /usr/bin/ambxst

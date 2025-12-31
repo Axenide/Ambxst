@@ -3,7 +3,14 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 
 # Use environment variables if set by flake, otherwise fall back to PATH
 QS_BIN="${AMBXST_QS:-qs}"
@@ -28,7 +35,6 @@ Usage: ambxst [COMMAND]
 
 Commands:
     (none)                            Launch Ambxst
-    update                            Update Ambxst
     refresh                           Refresh local/dev profile (for developers)
     lock                              Activate lockscreen
     brightness <percent> [monitor]    Set brightness (0-100)
@@ -70,10 +76,6 @@ find_ambxst_pid() {
 }
 
 case "${1:-}" in
-update)
-  echo "Updating Ambxst..."
-  exec curl -fsSL get.axeni.de/ambxst | sh
-  ;;
 refresh)
   echo "Refreshing Ambxst profile..."
   exec nix profile upgrade --impure Ambxst
