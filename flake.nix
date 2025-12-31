@@ -1,5 +1,5 @@
 {
-  description = "Ambxst - An Axtremely customizable shell by Axenide";
+  description = "Ambxst - An Axtremely customizable shell by Axenide.";
 
   inputs = {
     nixpkgs.url = "nixpkgs/nixos-unstable";
