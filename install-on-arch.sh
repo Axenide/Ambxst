@@ -2,32 +2,23 @@
 INSTALL_DIR="$HOME/Documents/Ambxst"
 
 cd "$HOME/Documents/"
-
-if [ -d "$INSTALL_DIR/.git" ]; then
-    echo "✔ Repo already exists, pulling latest"
-    cd "$INSTALL_DIR" || exit 1
-    git fetch origin
-    git pull --ff-only
-    git submodule update --init --recursive
-else
-    echo 'Repo not found, cloning instead.'
-    git clone --recurse-submodules https://github.com/brys0/Ambxst.git
-    cd "$INSTALL_DIR"
-    echo '✔ Downloaded repo'
-fi
+echo 'Fetching Repo..'
+git clone --recurse-submodules https://github.com/brys0/Ambxst.git
+cd "$INSTALL_DIR"
+echo '✔ Downloaded repo'
 
 echo 'Installing deps for quickshell..'
-sudo pacman -Su gcc-libs glibc hicolor-icon-theme jemalloc libdrm libglvnd libpipewire libxcb mesa pam qt6-base qt6-declarative qt6-svg qt6-wayland cli11 cmake ninja
+sudo pacman -Su --needed --noconfirm gcc-libs glibc hicolor-icon-theme jemalloc libdrm libglvnd libpipewire libxcb mesa pam qt6-base qt6-declarative qt6-svg qt6-wayland cli11 cmake ninja
 echo '✔ Installed.'
 
 echo 'Building quickshell..'
-cd "$INSTALL_DIR/quickshell"
-cmake -GNinja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDistributor="Built for Ambxst"
-cmake --build build
+    cd "$INSTALL_DIR/quickshell"
+    cmake -GNinja -B build
+    cmake --build build
 echo '✔ Built quickshell.'
 
 echo 'Installing quickshell..'
-sudo cmake --install build
+   sudo cmake --install build
 echo '✔ Installed quickshell.'
 
 # === Compile ambxst-auth if missing OR if source updated ===
@@ -52,8 +43,3 @@ if [ -n "$NEED_COMPILE" ]; then
   chmod +x "$INSTALL_DIR/ambxst-auth"
   echo "✔ ambxst-auth installed"
 fi
-
-echo "Symlinking ambxst.."
-sudo chmod +x "$INSTALL_DIR/cli.sh"
-sudo ln -s "$INSTALL_DIR/cli.sh" /usr/bin/ambxst
-echo "Symlink successful, try running ambxst"
