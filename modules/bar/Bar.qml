@@ -252,10 +252,6 @@ PanelWindow {
                 layerEnabled: false
             }
 
-            Item {
-                Layout.fillHeight: true
-            }
-
             LayoutSelectorButton {
                 id: layoutSelectorButtonVert
                 bar: panel
@@ -276,12 +272,13 @@ PanelWindow {
                 visible: integratedDockEnabled
             }
 
-            ToolsButton {
-                id: toolsButtonVert
-            }
-
             Item {
                 Layout.fillHeight: true
+                visible: !integratedDockEnabled
+            }
+
+            ToolsButton {
+                id: toolsButtonVert
             }
 
             PresetsButton {
