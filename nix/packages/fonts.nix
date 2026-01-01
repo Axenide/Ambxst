@@ -4,7 +4,7 @@
 with pkgs; [
   roboto
   roboto-mono
-  barlow
+  league-gothic
   terminus_font
   terminus_font_ttf
   dejavu_fonts
