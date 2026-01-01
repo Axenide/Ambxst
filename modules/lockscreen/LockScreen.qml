@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Pam
 import Quickshell.Wayland
 import qs.modules.components
 import qs.modules.corners
@@ -512,7 +513,7 @@ WlSessionLockSurface {
 
                                 authenticating = true;
                                 errorMessage = "";
-                                pamAuth.running = true;
+                                pamAuth.start();
                             }
                         }
                     }
@@ -644,20 +645,25 @@ WlSessionLockSurface {
     }
 
     // PAM authentication process
-    Process {
+    PamContext {
         id: pamAuth
-        command: [Qt.resolvedUrl("ambxst-auth-stdin.sh").toString().replace("file://", "")]
-        running: false
-        environment: {
-            "PAM_USER": usernameCollector.text.trim(),
-            "PAM_PASSWORD": authPasswordHolder.password
+        // Use custom PAM config for lockscreen authentication
+        configDirectory: Qt.resolvedUrl("../../config/pam").toString().replace("file://", "")
+        config: "password.conf"
+
+        onPamMessage: {
+            console.log("PAM Message:", this.message, "Type:", this.messageType, "Required:", this.responseRequired);
+            if (this.responseRequired) {
+                // pam_unix asks for password, respond with stored password
+                this.respond(authPasswordHolder.password);
+            }
         }
 
-        onExited: exitCode => {
+        onCompleted: result => {
             // Limpiar contraseña
             authPasswordHolder.password = "";
 
-            if (exitCode === 0) {
+            if (result === PamResult.Success) {
                 // Autenticación exitosa - trigger exit animation
                 startAnim = false;
 
@@ -668,55 +674,8 @@ WlSessionLockSurface {
                 authenticating = false;
             } else {
                 // Error de autenticación
-                let msg = "";
-                switch (exitCode) {
-                case 10:
-                    msg = "Usuario no encontrado";
-                    break;
-                case 11:
-                    msg = "Contraseña incorrecta";
-                    break;
-                case 12:
-                    msg = "Error de autenticación";
-                    break;
-                case 20:
-                    msg = "Cuenta expirada";
-                    break;
-                case 21:
-                    msg = "Debe cambiar su contraseña";
-                    break;
-                case 22:
-                    msg = "Cuenta bloqueada";
-                    break;
-                case 23:
-                    msg = "Error de estado de cuenta";
-                    break;
-                case 30:
-                    // Faillock detectado - verificar tiempo restante
-                    failLockCheck.running = true;
-                    msg = "Cuenta bloqueada por intentos fallidos";
-                    break;
-                case 100:
-                    msg = "Error: parámetro inválido";
-                    break;
-                case 101:
-                    msg = "Error leyendo contraseña";
-                    break;
-                case 102:
-                    msg = "Error inicializando PAM";
-                    break;
-                case 103:
-                    msg = "Timeout esperando contraseña";
-                    break;
-                case 104:
-                    msg = "Error interno";
-                    break;
-                default:
-                    msg = `Error desconocido (${exitCode})`;
-                }
-
-                errorMessage = msg;
-                console.warn("PAM auth failed:", exitCode, msg);
+                errorMessage = "Authentication failed";
+                console.warn("PAM auth failed with result:", result);
                 if (Config.animDuration > 0) {
                     wrongPasswordAnim.start();
                 }

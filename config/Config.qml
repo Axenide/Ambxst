@@ -1408,8 +1408,8 @@ Singleton {
                     property JsonObject lockscreen: JsonObject {
                         property list<string> modifiers: ["SUPER"]
                         property string key: "L"
-                        property string dispatcher: "global"
-                        property string argument: "ambxst:lockscreen"
+                        property string dispatcher: "exec"
+                        property string argument: "loginctl lock-session"
                     }
                     property JsonObject overview: JsonObject {
                         property list<string> modifiers: ["SUPER"]

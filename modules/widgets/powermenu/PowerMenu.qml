@@ -56,7 +56,7 @@ ActionGrid {
         if (action.command) {
             actionProcess.command = ["/bin/bash", "-c", action.command];
             console.log("Starting process with command:", actionProcess.command);
-            actionProcess.start();
+            actionProcess.running = true;
         }
         root.itemSelected();
     }

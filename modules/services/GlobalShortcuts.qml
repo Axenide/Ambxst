@@ -215,14 +215,4 @@ Item {
             }
         }
     }
-
-    GlobalShortcut {
-        appid: root.appId
-        name: "lockscreen"
-        description: "Lock screen securely"
-
-        onPressed: {
-            GlobalStates.lockscreenVisible = true;
-        }
-    }
 }

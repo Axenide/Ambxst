@@ -189,29 +189,6 @@ install_python_tools() {
 	fi
 }
 
-# === Auth Binary Compilation ===
-compile_auth() {
-	mkdir -p "$BIN_DIR"
-	AUTH_SRC="$INSTALL_PATH/modules/lockscreen/auth.c"
-
-	if [ -f "$AUTH_SRC" ]; then
-		log_info "Compiling ambxst-auth..."
-		# Check dependencies
-		if ! pkg-config --exists pam; then
-			# Try to guess/warn if on non-arch/nix
-			log_warn "PAM development headers might be missing."
-		fi
-
-		gcc -o "$BIN_DIR/ambxst-auth" "$AUTH_SRC" -lpam -Wall -Wextra -O2
-
-		if [ $? -eq 0 ]; then
-			log_success "ambxst-auth compiled successfully."
-		else
-			log_error "Compilation of ambxst-auth failed."
-		fi
-	fi
-}
-
 # === Launcher Setup ===
 setup_launcher() {
 	if [ "$DISTRO" == "nixos" ]; then return; fi
@@ -250,9 +227,7 @@ install_quickshell
 install_python_tools
 
 # 5. Compile Auth
-if [ -d "$INSTALL_PATH" ]; then
-	compile_auth
-fi
+# (Auth removed - using Quickshell internal PAM)
 
 # 6. Setup Launcher
 setup_launcher

@@ -8,20 +8,6 @@ for daemon in dunst mako swaync; do
   fi
 done
 
-# wl-clip-persist
-if pgrep -x "wl-clip-persist" >/dev/null; then
-  echo "Stopping existing wl-clip-persist instances..."
-  pkill -x "wl-clip-persist"
-  sleep 0.5
-fi
-
-if command -v wl-clip-persist >/dev/null; then
-  echo "Starting wl-clip-persist from Ambxst environment..."
-  nohup wl-clip-persist --clipboard regular >/dev/null 2>&1 &
-else
-  echo "Warning: wl-clip-persist not found in PATH"
-fi
-
 # LiteLLM Proxy
 if pgrep -f "litellm" >/dev/null; then
   echo "Stopping existing litellm instances..."

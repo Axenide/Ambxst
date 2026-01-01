@@ -6,11 +6,6 @@ let
   quickshellPkg = quickshell.packages.${system}.default;
 
   # Import sub-packages
-  ambxst-auth = import ./ambxst-auth.nix {
-    inherit pkgs;
-    src = self + /modules/lockscreen;
-  };
-
   ttf-phosphor-icons = import ./phosphor-icons.nix { inherit pkgs; };
 
   # Import modular package lists
@@ -23,7 +18,6 @@ let
 
   # NixOS-specific packages
   nixosPkgs = [
-    ambxst-auth
     pkgs.power-profiles-daemon
     pkgs.networkmanager
   ];
@@ -46,10 +40,6 @@ let
   };
 
   launcher = pkgs.writeShellScriptBin "ambxst" ''
-    # Ensure ambxst-auth is in PATH for lockscreen
-    ${lib.optionalString isNixOS ''
-      export PATH="${ambxst-auth}/bin:$PATH"
-    ''}
     ${lib.optionalString (!isNixOS) ''
       # On non-NixOS, use local build from ~/.local/bin
       export PATH="$HOME/.local/bin:$PATH"
