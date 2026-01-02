@@ -189,6 +189,40 @@ install_python_tools() {
 	fi
 }
 
+# === Service Configuration ===
+configure_services() {
+	if [ "$DISTRO" == "nixos" ]; then return; fi
+
+	if command -v systemctl >/dev/null; then
+		log_info "Configuring system services..."
+
+		# Disable iwd if active/enabled to prevent conflicts
+		if systemctl is-enabled --quiet iwd 2>/dev/null || systemctl is-active --quiet iwd 2>/dev/null; then
+			log_warn "Disabling iwd to prevent conflicts with NetworkManager..."
+			sudo systemctl stop iwd
+			sudo systemctl disable iwd
+		fi
+
+		# Enable NetworkManager
+		if ! systemctl is-enabled --quiet NetworkManager 2>/dev/null; then
+			log_info "Enabling and starting NetworkManager..."
+			sudo systemctl enable --now NetworkManager
+			log_success "NetworkManager enabled."
+		else
+			log_info "NetworkManager is already enabled."
+		fi
+
+		# Enable Bluetooth
+		if ! systemctl is-enabled --quiet bluetooth 2>/dev/null; then
+			log_info "Enabling and starting Bluetooth..."
+			sudo systemctl enable --now bluetooth
+			log_success "Bluetooth enabled."
+		else
+			log_info "Bluetooth is already enabled."
+		fi
+	fi
+}
+
 # === Launcher Setup ===
 setup_launcher() {
 	if [ "$DISTRO" == "nixos" ]; then return; fi
@@ -236,7 +270,10 @@ install_python_tools
 # 5. Compile Auth
 # (Auth removed - using Quickshell internal PAM)
 
-# 6. Setup Launcher
+# 6. Configure Services
+configure_services
+
+# 7. Setup Launcher
 setup_launcher
 
 echo ""
