@@ -57,7 +57,6 @@
           pkgs.imagemagick
           pkgs.slurp
           pkgs.zbar
-          pkgs.ffmpeg
         ]; 
 
         nativeBuildInputs = [ pkgs.makeWrapper ];
