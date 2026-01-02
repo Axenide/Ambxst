@@ -38,8 +38,24 @@
           pkgs.brightnessctl
           pkgs.matugen
           pkgs.pipewire
-          pkgs.wlsunset
           pkgs.upower
+          pkgs.jq                            
+          pkgs.procps                        
+          pkgs.libnotify                     
+          pkgs.gpu-screen-recorder
+          pkgs.grim
+          pkgs.easyeffects
+          pkgs.blueman
+          pkgs.mpvpaper
+          pkgs.pwvucontrol
+          pkgs.wireplumber
+          pkgs.wl-clip-persist
+          pkgs.wl-clipboard
+          pkgs.wlsunset
+          pkgs.wtype
+          pkgs.tmux
+          pkgs.imagemagick
+          pkgs.slurm
         ]; 
 
         nativeBuildInputs = [ pkgs.makeWrapper ];
