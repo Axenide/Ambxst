@@ -1,4 +1,4 @@
-# Though i didn't copy the code directly the code's structure is heavily inspired from rexi's kurukuru bar https://github.com/Rexcrazy804/Zaphkiel/blob/master/pkgs/kurukurubar.nix
+# Though i didn't copy the code directly the code's structure and var namees are heavily inspired from rexi's kurukuru bar https://github.com/Rexcrazy804/Zaphkiel/blob/master/pkgs/kurukurubar.nix
 
 { inputs, ... }: {
   perSystem = { pkgs, lib, self', inputs', ... }: 
