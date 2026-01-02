@@ -12,18 +12,15 @@
         pkgs.libnotify                     
         pkgs.hyprland                      
       ];
-      
+    
       text = ''
         QS_BIN="ambxst-shell"
-
         find_ambxst_pid() {
             local pid
             pid=$(pgrep -f "shell.qml" | head -1)
-
             if [ -z "''${pid}" ]; then
                 pid=$(pgrep -f ".quickshell-wrapped" | head -1)
             fi
-            
             echo "''${pid}"
         }
 

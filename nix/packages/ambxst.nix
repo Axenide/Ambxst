@@ -26,7 +26,6 @@
         pkgs.kdePackages.qtmultimedia
         pkgs.kdePackages.syntax-highlighting
       ];
-
     in {
       packages.ambxst = pkgs.symlinkJoin {
         pname = "ambxst-shell";
@@ -72,7 +71,6 @@
 
         meta.mainProgram = "ambxst-shell";
       };
-
       packages.default = self'.packages.ambxst;
     };
 }

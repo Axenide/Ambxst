@@ -23,14 +23,10 @@
         runHook postInstall
       '';
 
-
       meta = with pkgs.lib; {
         description = "A flexible icon family for interfaces, diagrams, presentations";
-
         homepage = "https://phosphoricons.com";
-
         license = licenses.mit;
-
         platforms = platforms.all;
       };
     };
