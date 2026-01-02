@@ -14,15 +14,22 @@
       ];
       
       text = ''
+        # Ambxst CLI
+        
+        # Configuration
         QS_BIN="ambxst-shell"
+        # shellcheck disable=SC2034
         BRIGHTNESS_SAVE_FILE="/tmp/ambxst_brightness_saved.txt"
 
         find_ambxst_pid() {
+            # Nix wrappers often rename the binary to .quickshell-wrapped
+            # We look for the process that has 'shell.qml' in its arguments
             local pid
             pid=$(pgrep -f "shell.qml" | head -1)
             
+            # Fallback: look for the common Nix wrapper names
             if [ -z "''${pid}" ]; then
-                pid=$(pgrep -f ".quickshell-wra" | head -1)
+                pid=$(pgrep -f ".quickshell-wrapped" | head -1)
             fi
             
             echo "''${pid}"
