@@ -45,7 +45,7 @@
         nativeBuildInputs = [ pkgs.makeWrapper ];
 
         postBuild = ''
-          makeWrapper ${lib.getExe quickshellPkg} $out/bin/ambxst \
+          makeWrapper ${lib.getExe quickshellPkg} $out/bin/ambxst-shell \
             --set FONTCONFIG_FILE "${fontconfig}" \
             --set QML2_IMPORT_PATH "${qmlPath}" \
             --add-flags "-p ${qsConfig}" \
