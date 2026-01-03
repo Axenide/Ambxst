@@ -1,5 +1,5 @@
 { config, inputs, ... }: let
-  inherit (config.flake.lib) mkAmbxst;
+  inherit (config.flake) mkAmbxst;
 in {
   perSystem = { pkgs, self', ... }: {
     packages.ambxst = mkAmbxst { inherit pkgs; src = inputs.ambxst; };
