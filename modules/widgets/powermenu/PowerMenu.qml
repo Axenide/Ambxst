@@ -48,6 +48,11 @@ ActionGrid {
             icon: Icons.shutdown,
             tooltip: "Power Off",
             command: "systemctl poweroff"
+        },
+        {
+            icon: Icons.hibernate,
+            tooltip: "Hibernate",
+            command: "systemctl hibernate"
         }
     ]
 

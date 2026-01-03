@@ -21,6 +21,7 @@ QtObject {
     readonly property string logout: ""
     readonly property string reboot: ""
     readonly property string shutdown: ""
+    readonly property string hibernate: ""
 
     // Caret
     readonly property string caretLeft: ""
