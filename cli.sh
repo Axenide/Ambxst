@@ -30,6 +30,7 @@ Commands:
     (none)                            Launch Ambxst
     update                            Update Ambxst
     refresh                           Refresh local/dev profile (for developers)
+    launcher                          Toggle the launcher/dashboard widget
     lock                              Activate lockscreen
     brightness <percent> [monitor]    Set brightness (0-100)
     brightness +/-<delta> [monitor]   Adjust brightness relatively
@@ -88,6 +89,17 @@ update)
 refresh)
 	echo "Refreshing Ambxst profile..."
 	exec nix profile upgrade --impure Ambxst
+	;;
+launcher)
+	# Toggle the launcher/dashboard widget via Hyprland global shortcut
+	if ! command -v hyprctl &>/dev/null; then
+		echo "Error: hyprctl not found. This command requires Hyprland."
+		exit 1
+	fi
+	hyprctl dispatch global ambxst:dashboard-widgets 2>/dev/null || {
+		echo "Error: Could not toggle launcher. Is Ambxst running?"
+		exit 1
+	}
 	;;
 lock)
 	# Trigger lockscreen via quickshell-ipc
