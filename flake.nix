@@ -1,53 +1,19 @@
 {
-  description = "Ambxst - An Axtremely customizable shell by Axenide";
-
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
-
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    import-tree.url = "github:vic/import-tree";
     quickshell = {
-      url = "git+https://git.outfoxxed.me/outfoxxed/quickshell";
+      url = "github:quickshell-mirror/quickshell";
       inputs.nixpkgs.follows = "nixpkgs";
+    };
+    ambxst = {
+      url = "github:axenide/ambxst";
+      flake = false;
     };
   };
 
-  outputs = { self, nixpkgs, quickshell, ... }:
-    let
-      ambxstLib = import ./nix/lib.nix { inherit nixpkgs; };
-    in {
-      nixosModules.default = import ./nix/modules;
-
-      packages = ambxstLib.forAllSystems (system:
-        let
-          pkgs = import nixpkgs {
-            inherit system;
-            config.allowUnfree = true;
-          };
-
-          lib = nixpkgs.lib;
-
-          Ambxst = import ./nix/packages {
-            inherit pkgs lib self system quickshell ambxstLib;
-          };
-        in {
-          default = Ambxst;
-          Ambxst = Ambxst;
-        }
-      );
-
-      devShells = ambxstLib.forAllSystems (system:
-        let
-          pkgs = import nixpkgs { inherit system; };
-          Ambxst = self.packages.${system}.default;
-        in {
-          default = pkgs.mkShell {
-            packages = [ Ambxst ];
-            shellHook = ''
-              export QML2_IMPORT_PATH="${Ambxst}/lib/qt-6/qml:$QML2_IMPORT_PATH"
-              export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
-              echo "Ambxst dev environment loaded."
-            '';
-          };
-        }
-      );
-    };
+  outputs = inputs:
+    inputs.flake-parts.lib.mkFlake {inherit inputs;}
+    (inputs.import-tree ./nix); 
 }
