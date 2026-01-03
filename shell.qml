@@ -192,21 +192,18 @@ ShellRoot {
         Connections {
             target: GlobalStates
             function onScreenshotToolVisibleChanged() {
-                if (screenshotLoader.status === Loader.Ready) {
-                    if (GlobalStates.screenshotToolVisible) {
-                        screenshotLoader.item.open();
-                    } else {
-                        screenshotLoader.item.close();
-                    }
+                if (GlobalStates.screenshotToolVisible) {
+                    Screenshot.startCapture();
+                } else {
+                    Screenshot.stopCapture();
                 }
             }
         }
-        
+
         Connections {
-            target: screenshotLoader.item
-            ignoreUnknownSignals: true
-            function onVisibleChanged() {
-                if (!screenshotLoader.item.visible && GlobalStates.screenshotToolVisible) {
+            target: Screenshot
+            function onStateChanged() {
+                if (Screenshot.state === "idle" && GlobalStates.screenshotToolVisible) {
                     GlobalStates.screenshotToolVisible = false;
                 }
             }

@@ -3,7 +3,6 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import qs.modules.globals
 
 QtObject {
     id: root
@@ -12,210 +11,135 @@ QtObject {
     signal errorOccurred(string message)
     signal windowListReady(var windows)
 
-    property string tempPath: "/tmp/ambxst_freeze.png"
-    property string cropPath: "/tmp/ambxst_crop.png"
-    
-    // We'll store the resolved XDG_PICTURES_DIR/Screenshots here
+    property string state: "idle" 
+    property string currentMode: "region"
+    property string tempDir: "/tmp/quickshell_screenshots"
     property string screenshotsDir: ""
     property string finalPath: ""
-    
-    // Internal storage for active workspace IDs
     property var _activeWorkspaceIds: []
 
-    // Process to resolve XDG_PICTURES_DIR
-    property Process xdgProcess: Process {
-        id: xdgProcess
-        command: ["bash", "-c", "xdg-user-dir PICTURES"]
-        stdout: StdioCollector {
-             onTextChanged: {
-                // Not running immediately, handled in onExited
-             }
-        }
-        running: true // Run on load
+    function getTempPath(screenName) {
+        return tempDir + "/freeze_" + screenName + ".png";
+    }
+
+    function generateCapturePath(screenName) {
+        return tempDir + "/freeze_" + screenName + "_" + Date.now() + ".png";
+    }
+
+    property Process freezeProcess: Process {
+        id: freezeProcess
+        property string targetScreen: ""
         onExited: exitCode => {
             if (exitCode === 0) {
-                var dir = xdgProcess.stdout.text.trim()
-                if (dir === "") {
-                    // Fallback to home/Pictures if xdg-user-dir fails or returns empty
-                    dir = Quickshell.env("HOME") + "/Pictures"
-                }
+                root.screenshotCaptured(getTempPath(targetScreen))
+            } else {
+                root.errorOccurred("Failed to capture " + targetScreen)
+                root.state = "idle"
+            }
+        }
+    }
+
+    property Process xdgProcess: Process {
+        command: ["bash", "-c", "xdg-user-dir PICTURES"]
+        running: true
+        stdout: StdioCollector {
+            onTextChanged: {
+                let dir = text.trim() || (Quickshell.env("HOME") + "/Pictures")
                 root.screenshotsDir = dir + "/Screenshots"
-                // Ensure directory exists
                 ensureDirProcess.running = true
             }
         }
     }
 
     property Process ensureDirProcess: Process {
-        id: ensureDirProcess
-        command: ["mkdir", "-p", root.screenshotsDir]
+        command: ["mkdir", "-p", root.tempDir, root.screenshotsDir]
     }
 
-    // Process for initial freeze
-    property Process freezeProcess: Process {
-        id: freezeProcess
-        command: ["grim", root.tempPath]
-        onExited: exitCode => {
-            if (exitCode === 0) {
-                root.screenshotCaptured(root.tempPath)
-            } else {
-                root.errorOccurred("Failed to capture screen (grim)")
-            }
-        }
-    }
-    
-    // Process for fetching monitors (to get active workspaces reliably)
-    property Process monitorsProcess: Process {
-        id: monitorsProcess
-        command: ["hyprctl", "-j", "monitors"]
-        stdout: StdioCollector {}
-        onExited: exitCode => {
-            if (exitCode === 0) {
-                try {
-                    var monitors = JSON.parse(monitorsProcess.stdout.text)
-                    var ids = []
-                    for (var i = 0; i < monitors.length; i++) {
-                        if (monitors[i].activeWorkspace) {
-                            ids.push(monitors[i].activeWorkspace.id)
-                        }
-                    }
-                    root._activeWorkspaceIds = ids
-                    console.log("Screenshot: Active workspaces found via hyprctl: " + JSON.stringify(ids))
-                    
-                    // Now fetch clients
-                    clientsProcess.running = true
-                } catch (e) {
-                    console.warn("Screenshot: Failed to parse monitors: " + e.message)
-                    // Fallback: try fetching clients anyway, filtering might fail or be permissive
-                    root._activeWorkspaceIds = []
-                    clientsProcess.running = true
-                }
-            } else {
-                console.warn("Screenshot: Failed to fetch monitors")
-                root._activeWorkspaceIds = []
-                clientsProcess.running = true
-            }
-        }
+    // Centrally managed open/close logic
+    function startCapture() {
+        // Ensure directories exist before we start doing anything
+        ensureDirProcess.running = true
+        root.state = "loading"
+        root.currentMode = "region"
     }
 
-    // Process for fetching windows
-    property Process clientsProcess: Process {
-        id: clientsProcess
-        command: ["hyprctl", "-j", "clients"]
-        stdout: StdioCollector {}
-        onExited: exitCode => {
-            if (exitCode === 0) {
-                try {
-                    var allClients = JSON.parse(clientsProcess.stdout.text)
-                    
-                    // Filter using the IDs we got from monitorsProcess
-                    var activeIds = root._activeWorkspaceIds
-                    
-                    var filteredClients = allClients.filter(c => {
-                        // Keep pinned windows OR windows on active workspaces
-                        return c.pinned || (activeIds.length > 0 && activeIds.includes(c.workspace.id))
-                    })
-                    
-                    console.log("Screenshot: Total clients: " + allClients.length + ", Filtered: " + filteredClients.length)
-                    
-                    root.windowListReady(filteredClients)
-                    
-                } catch (e) {
-                    console.warn("Screenshot: Error processing windows: " + e.message)
-                    root.errorOccurred("Failed to parse window list: " + e.message)
-                }
-            } else {
-                console.warn("Screenshot: hyprctl clients failed with code " + exitCode)
-            }
-        }
+    function stopCapture() {
+        root.state = "idle"
     }
 
-    // Process for cropping/saving
+    function freezeScreen(screenName) {
+        freezeProcess.targetScreen = screenName;
+        freezeProcess.command = ["grim", "-o", screenName, getTempPath(screenName)];
+        freezeProcess.running = true;
+    }
+
+    function processRegion(x, y, w, h, inputPath) {
+        var filename = "Screenshot_" + getTimestamp() + ".png"
+        root.finalPath = root.screenshotsDir + "/" + filename
+        var geom = `${w}x${h}+${x}+${y}`
+        cropProcess.command = ["convert", inputPath, "-crop", geom, root.finalPath]
+        cropProcess.running = true
+        root.stopCapture()
+    }
+
+    function processFullscreen(inputPath) {
+        var filename = "Screenshot_" + getTimestamp() + ".png"
+        root.finalPath = root.screenshotsDir + "/" + filename
+        cropProcess.command = ["cp", inputPath, root.finalPath]
+        cropProcess.running = true
+        root.stopCapture()
+    }
+
     property Process cropProcess: Process {
-        id: cropProcess
-        // command set dynamically
-        onExited: exitCode => {
-            if (exitCode === 0) {
-                // After successful save/crop, copy to clipboard
-                copyProcess.running = true
-            } else {
-                root.errorOccurred("Failed to save image")
-            }
-        }
+        onExited: exitCode => { if (exitCode === 0) copyProcess.running = true }
     }
 
     property Process copyProcess: Process {
-        id: copyProcess
         command: ["bash", "-c", `wl-copy < "${root.finalPath}"`]
-        onExited: exitCode => {
-            if (exitCode !== 0) {
-                console.warn("Failed to copy to clipboard")
+    }
+
+    function getTimestamp() {
+        var d = new Date()
+        var pad = (n) => n < 10 ? '0' + n : n;
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 
+               '-' + pad(d.getHours()) + '-' + pad(d.getMinutes()) + '-' + pad(d.getSeconds());
+    }
+
+    function fetchWindows() { monitorsProcess.running = true }
+
+    property Process monitorsProcess: Process {
+        command: ["hyprctl", "-j", "monitors"]
+        stdout: StdioCollector {}
+        onExited: {
+            try {
+                let monitors = JSON.parse(monitorsProcess.stdout.text)
+                // Defensive mapping: ensure monitor has activeWorkspace and id
+                root._activeWorkspaceIds = monitors
+                    .filter(m => m && m.activeWorkspace && typeof m.activeWorkspace.id !== "undefined")
+                    .map(m => m.activeWorkspace.id)
+                clientsProcess.running = true
+            } catch(e) {
+                root.errorOccurred("Failed to parse monitors: " + e.message)
             }
         }
     }
 
-    function freezeScreen() {
-        freezeProcess.running = true
-    }
-
-    function fetchWindows() {
-        // Start the chain: Monitors -> Clients
-        monitorsProcess.running = true
-    }
-
-    function getTimestamp() {
-        // Simple timestamp format YYYY-MM-DD-HH-mm-ss
-        var d = new Date()
-        // Manually format to avoid weird ISO chars
-        var pad = (n) => n < 10 ? '0' + n : n;
-        return d.getFullYear() + '-' + 
-               pad(d.getMonth() + 1) + '-' + 
-               pad(d.getDate()) + '-' + 
-               pad(d.getHours()) + '-' + 
-               pad(d.getMinutes()) + '-' + 
-               pad(d.getSeconds());
-    }
-
-    function processRegion(x, y, w, h) {
-        if (root.screenshotsDir === "") {
-            // Fallback if xdg process hasn't finished yet?
-             root.screenshotsDir = Quickshell.env("HOME") + "/Pictures/Screenshots"
+    property Process clientsProcess: Process {
+        command: ["hyprctl", "-j", "clients"]
+        stdout: StdioCollector {}
+        onExited: {
+            try {
+                let all = JSON.parse(clientsProcess.stdout.text)
+                let filtered = all.filter(c => {
+                    if (!c) return false;
+                    if (c.pinned) return true;
+                    if (!c.workspace || typeof c.workspace.id === "undefined") return false;
+                    return root._activeWorkspaceIds.includes(c.workspace.id)
+                })
+                root.windowListReady(filtered)
+            } catch(e) {
+                root.errorOccurred("Failed to parse clients: " + e.message)
+            }
         }
-        
-        var filename = "Screenshot_" + getTimestamp() + ".png"
-        root.finalPath = root.screenshotsDir + "/" + filename
-        
-        // convert /tmp/ambxst_freeze.png -crop WxH+X+Y /path/to/save.png
-        var geom = `${w}x${h}+${x}+${y}`
-        cropProcess.command = ["convert", root.tempPath, "-crop", geom, root.finalPath]
-        cropProcess.running = true
-    }
-
-    function processFullscreen() {
-        if (root.screenshotsDir === "") {
-             root.screenshotsDir = Quickshell.env("HOME") + "/Pictures/Screenshots"
-        }
-        
-        var filename = "Screenshot_" + getTimestamp() + ".png"
-        root.finalPath = root.screenshotsDir + "/" + filename
-
-        // Just copy the freeze file to final path
-        cropProcess.command = ["cp", root.tempPath, root.finalPath]
-        cropProcess.running = true
-    }
-
-    property Process openScreenshotsProcess: Process {
-        id: openScreenshotsProcess
-        command: ["xdg-open", root.screenshotsDir]
-    }
-
-    function openScreenshotsFolder() {
-        if (root.screenshotsDir === "") {
-             // Fallback attempt if not ready
-             openScreenshotsProcess.command = ["xdg-open", Quickshell.env("HOME") + "/Pictures/Screenshots"];
-        } else {
-             openScreenshotsProcess.command = ["xdg-open", root.screenshotsDir];
-        }
-        openScreenshotsProcess.running = true;
     }
 }
