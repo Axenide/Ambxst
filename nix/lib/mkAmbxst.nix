@@ -1,7 +1,7 @@
 # Though i didn't copy the code directly the code's structure and var namees are heavily inspired from rexi's kurukuru bar https://github.com/Rexcrazy804/Zaphkiel/blob/master/pkgs/kurukurubar.nix
 
 { inputs, self, lib, ... }: {
-  flake.lib.mkAmbxst = {pkgs, source}:  
+  flake.lib.mkAmbxst = {pkgs, src}:  
     let
       system = pkgs.stdenv.hostPlatform.system;
       quickshellPkg = inputs.quickshell.packages.${system}.default;
@@ -30,8 +30,8 @@
       };
 
       qsConfig = pkgs.stdenvNoCC.mkDerivation {
+        inherit src;
         name = "ambxst-config";
-        src = source;
         installPhase = ''
           mkdir -p $out
           cp -r ./. $out
