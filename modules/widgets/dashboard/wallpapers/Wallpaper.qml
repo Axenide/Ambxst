@@ -22,8 +22,8 @@ PanelWindow {
     color: "transparent"
 
     property string wallpaperDir: wallpaperConfig.adapter.wallPath || fallbackDir
-    property string fallbackDir: Qt.resolvedUrl("../../../../assets/wallpapers_example").toString().replace("file://", "")
-    property list<string> wallpaperPaths: []
+    property string fallbackDir: decodeURIComponent(Qt.resolvedUrl("../../../../assets/wallpapers_example").toString().replace("file://", ""))
+    property var wallpaperPaths: []
     property var subfolderFilters: []
     property int currentIndex: 0
     property string currentWallpaper: initialLoadCompleted && wallpaperPaths.length > 0 ? wallpaperPaths[currentIndex] : ""
@@ -31,7 +31,7 @@ PanelWindow {
     property bool usingFallback: false
     property string currentMatugenScheme: wallpaperConfig.adapter.matugenScheme
     property string colorPresetsDir: Quickshell.env("HOME") + "/.config/Ambxst/colors"
-    property string officialColorPresetsDir: Qt.resolvedUrl("../../../../assets/colors").toString().replace("file://", "")
+    property string officialColorPresetsDir: decodeURIComponent(Qt.resolvedUrl("../../../../assets/colors").toString().replace("file://", ""))
     onColorPresetsDirChanged: console.log("Color Presets Directory:", colorPresetsDir)
     property list<string> colorPresets: []
     onColorPresetsChanged: console.log("Color Presets Updated:", colorPresets)
@@ -166,7 +166,7 @@ PanelWindow {
         
         console.log("Generating lockscreen frame for:", filePath);
         
-        var scriptPath = Qt.resolvedUrl("../../../../scripts/lockwall.py").toString().replace("file://", "");
+        var scriptPath = decodeURIComponent(Qt.resolvedUrl("../../../../scripts/lockwall.py").toString().replace("file://", ""));
         var dataPath = Quickshell.dataDir;
         
         lockscreenWallpaperScript.command = [
@@ -189,7 +189,9 @@ PanelWindow {
     }
 
     function scanSubfolders() {
-        var command = ["find", wallpaperDir, "-type", "d", "-mindepth", "1", "-maxdepth", "1"];
+        // Explicitly update command with current wallpaperDir
+        var cmd = ["find", wallpaperDir, "-type", "d", "-mindepth", "1", "-maxdepth", "1"];
+        scanSubfoldersProcess.command = cmd;
         scanSubfoldersProcess.running = true;
     }
 
@@ -197,8 +199,18 @@ PanelWindow {
     onWallpaperDirChanged: {
         console.log("Wallpaper directory changed to:", wallpaperDir);
         usingFallback = false;
+        
+        // Clear current lists to reflect change immediately
+        wallpaperPaths = [];
+        subfolderFilters = [];
+        
         directoryWatcher.path = wallpaperDir;
+        
+        // Force update scan command
+        var cmd = ["find", wallpaperDir, "-type", "f", "(", "-name", "*.jpg", "-o", "-name", "*.jpeg", "-o", "-name", "*.png", "-o", "-name", "*.webp", "-o", "-name", "*.tif", "-o", "-name", "*.tiff", "-o", "-name", "*.gif", "-o", "-name", "*.mp4", "-o", "-name", "*.webm", "-o", "-name", "*.mov", "-o", "-name", "*.avi", "-o", "-name", "*.mkv", ")"];
+        scanWallpapers.command = cmd;
         scanWallpapers.running = true;
+        
         scanSubfolders();
         
         // Regenerate thumbnails for the new directory (delayed)
@@ -278,7 +290,7 @@ PanelWindow {
             console.log("Using source for matugen:", matugenSource, "(type:", fileType + ")");
 
             // Ejecutar matugen con configuración específica
-            var commandWithConfig = ["matugen", "image", matugenSource, "-c", Qt.resolvedUrl("../../../../assets/matugen/config.toml").toString().replace("file://", ""), "-t", wallpaperConfig.adapter.matugenScheme];
+            var commandWithConfig = ["matugen", "image", matugenSource, "-c", decodeURIComponent(Qt.resolvedUrl("../../../../assets/matugen/config.toml").toString().replace("file://", "")), "-t", wallpaperConfig.adapter.matugenScheme];
             if (Config.theme.lightMode) {
                 commandWithConfig.push("-m", "light");
             }
@@ -458,7 +470,7 @@ PanelWindow {
     Process {
         id: thumbnailGeneratorScript
         running: false
-        command: ["python3", Qt.resolvedUrl("../../../../scripts").toString().replace("file://", "") + "/thumbgen.py", Quickshell.dataDir + "/wallpapers.json", Quickshell.dataDir]
+        command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../../../scripts/thumbgen.py").toString().replace("file://", "")), Quickshell.dataDir + "/wallpapers.json", Quickshell.dataDir, fallbackDir]
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -887,7 +899,7 @@ PanelWindow {
             id: mpvpaperComponent
             Item {
                 property string sourceFile: parent.sourceFile
-                property string scriptPath: Qt.resolvedUrl("mpvpaper.sh").toString().replace("file://", "")
+                property string scriptPath: decodeURIComponent(Qt.resolvedUrl("mpvpaper.sh").toString().replace("file://", ""))
 
                 Timer {
                     id: mpvpaperRestartTimer

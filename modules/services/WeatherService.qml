@@ -326,19 +326,7 @@ QtObject {
     readonly property int maxRetries: 3
     property bool wasCancelled: false
 
-    function updateWeather() {
-        if (weatherProcess.running) {
-            root.wasCancelled = true;
-            weatherProcess.running = false;
-        }
 
-        root.isLoading = true;
-        root.hasFailed = false;
-
-        var location = Config.weather.location.trim();
-        weatherProcess.command = [scriptPath, location];
-        weatherProcess.running = true;
-    }
 
     function handleError() {
         if (retryCount < maxRetries) {
@@ -472,14 +460,43 @@ QtObject {
         onTriggered: root.calculateSunPosition()
     }
 
-    property Connections configConnections: Connections {
-        target: Config.weather
-        function onLocationChanged() {
-            root.updateWeather();
+    // Watch for config changes
+    property var weatherConfig: Config.weather
+    readonly property string configLocation: weatherConfig ? weatherConfig.location : ""
+    readonly property string configUnit: weatherConfig ? weatherConfig.unit : "C"
+
+    onConfigLocationChanged: {
+        console.log("WeatherService: Location changed to '" + configLocation + "'");
+        updateWeather();
+    }
+    onConfigUnitChanged: {
+        console.log("WeatherService: Unit changed to '" + configUnit + "'");
+        updateWeather();
+    }
+
+    function updateWeather() {
+        // Cancel existing process if running
+        if (weatherProcess.running) {
+            root.wasCancelled = true;
+            weatherProcess.running = false;
         }
-        function onUnitChanged() {
-            root.updateWeather();
+
+        // Safety check for config
+        if (!Config.weather) {
+            console.warn("WeatherService: Config.weather is null");
+            return;
         }
+
+        root.isLoading = true;
+        root.hasFailed = false;
+
+        var locationStr = Config.weather.location || "";
+        var location = locationStr.trim();
+        
+        console.log("WeatherService: Fetching weather for '" + location + "'");
+        
+        weatherProcess.command = [scriptPath, location];
+        weatherProcess.running = true;
     }
 
     Component.onCompleted: {

@@ -660,7 +660,7 @@ Singleton {
     Process {
         id: thumbnailProcess
         running: false
-        command: ["python3", Qt.resolvedUrl("../../scripts/desktop_thumbgen.py").toString().replace("file://", ""), desktopDir, Quickshell.dataDir + "/desktop_thumbnails"]
+        command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../scripts/desktop_thumbgen.py").toString().replace("file://", "")), desktopDir, Quickshell.dataDir + "/desktop_thumbnails"]
 
         stdout: StdioCollector {
             onStreamFinished: {

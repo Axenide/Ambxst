@@ -4,8 +4,16 @@
 An <i><b>Ax</b>tremely</i> customizable shell.
 </p>
 
-<p align="center">
-<a href="https://ko-fi.com/Axenide"><img src="https://axeni.de/social-icons/128x/kofi_icon_bg.png" width="32" height="32" /></a> <a href="https://axeni.de/ambxst"><img src="https://axeni.de/social-icons/128x/domain_icon_bg.png" width="32" height="32" /></a> <a href="https://discord.com/invite/gHG9WHyNvH"><img src="https://axeni.de/social-icons/128x/discord_icon_bg.png" width="32" height="32" /></a>
+  <p align="center">
+  <a href="https://github.com/Axenide/Ax-Shell/stargazers">
+    <img src="https://img.shields.io/github/stars/Axenide/Ambxst?style=for-the-badge&logo=github&color=E3B341&logoColor=D9E0EE&labelColor=000000" alt="GitHub stars">
+  </a>
+  <a href="https://ko-fi.com/Axenide">
+    <img src="https://img.shields.io/badge/Support me on-Ko--fi-FF6433?style=for-the-badge&logo=kofi&logoColor=white&labelColor=000000" alt="Ko-Fi">
+  </a>
+  <a href="https://discord.com/invite/gHG9WHyNvH">
+    <img src="https://img.shields.io/discord/669048311034150914?style=for-the-badge&logo=discord&logoColor=D9E0EE&labelColor=000000&color=5865F2&label=Discord" alt="Discord">
+  </a>
 </p>
 
 ---

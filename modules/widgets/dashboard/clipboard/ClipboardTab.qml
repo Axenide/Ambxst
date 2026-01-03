@@ -2310,35 +2310,48 @@ Item {
                     z: 1000
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                    function isClickInsideExpandedItem(mouseY) {
-                        if (root.expandedItemIndex < 0)
+                    function isClickInsideActiveItem(mouseY) {
+                        var activeIndex = -1;
+                        var isExpanded = false;
+
+                        if (root.deleteMode || root.aliasMode) {
+                            activeIndex = root.selectedIndex;
+                            // In delete/alias mode, height is always base height (48)
+                        } else if (root.expandedItemIndex >= 0) {
+                            activeIndex = root.expandedItemIndex;
+                            isExpanded = true;
+                        }
+
+                        if (activeIndex < 0)
                             return false;
 
-                        // Calculate Y position of expanded item
-                        var itemY = 0;
-                        for (var i = 0; i < root.expandedItemIndex; i++) {
-                            itemY += 48; // All items before are collapsed
-                        }
+                        // Calculate Y position of the item
+                        var itemY = activeIndex * 48;
 
-                        // Calculate expanded item height
-                        var itemData = itemsModel.get(root.expandedItemIndex).itemData;
-                        var optionsCount = 4;
-                        if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
-                            optionsCount++;
+                        // Calculate item height
+                        var itemHeight = 48;
+                        if (isExpanded) {
+                            var itemData = itemsModel.get(activeIndex).itemData;
+                            var optionsCount = 4;
+                            if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
+                                optionsCount++;
+                            }
+                            var listHeight = 36 * Math.min(3, optionsCount);
+                            itemHeight = 48 + 4 + listHeight + 8;
                         }
-                        var listHeight = 36 * Math.min(3, optionsCount);
-                        var expandedHeight = 48 + 4 + listHeight + 8;
 
                         var clickY = mouseY + resultsList.contentY;
-                        return clickY >= itemY && clickY < itemY + expandedHeight;
+                        return clickY >= itemY && clickY < itemY + itemHeight;
                     }
 
                     onClicked: mouse => {
                         if (root.deleteMode) {
-                            root.cancelDeleteMode();
+                            if (!isClickInsideActiveItem(mouse.y)) {
+                                root.cancelDeleteMode();
+                            }
                             mouse.accepted = true;
                         } else if (root.expandedItemIndex >= 0) {
-                            if (!isClickInsideExpandedItem(mouse.y)) {
+                            if (!isClickInsideActiveItem(mouse.y)) {
                                 root.expandedItemIndex = -1;
                                 root.selectedOptionIndex = 0;
                                 root.keyboardNavigation = false;
@@ -2348,13 +2361,17 @@ Item {
                     }
 
                     onPressed: mouse => {
-                        if (root.deleteMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                        if (isClickInsideActiveItem(mouse.y)) {
+                            mouse.accepted = false;
+                        } else {
                             mouse.accepted = true;
                         }
                     }
 
                     onReleased: mouse => {
-                        if (root.deleteMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                        if (isClickInsideActiveItem(mouse.y)) {
+                            mouse.accepted = false;
+                        } else {
                             mouse.accepted = true;
                         }
                     }

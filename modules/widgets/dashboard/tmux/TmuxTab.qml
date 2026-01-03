@@ -1740,33 +1740,51 @@ Item {
                     z: 1000
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                    function isClickInsideExpandedItem(mouseY) {
-                        if (root.expandedItemIndex < 0)
-                            return false;
+                    function isClickInsideActiveItem(mouseY) {
+                        var activeIndex = -1;
+                        var isExpanded = false;
 
-                        // Calculate Y position of expanded item
-                        var itemY = 0;
-                        for (var i = 0; i < root.expandedItemIndex; i++) {
-                            itemY += 48; // All items before are collapsed
+                        if (root.deleteMode || root.renameMode) {
+                            activeIndex = root.selectedIndex;
+                            // In delete/rename mode, height is always base height (48)
+                        } else if (root.expandedItemIndex >= 0) {
+                            activeIndex = root.expandedItemIndex;
+                            isExpanded = true;
                         }
 
-                        // Calculate expanded item height - always 3 options
-                        var listHeight = 36 * 3;
-                        var expandedHeight = 48 + 4 + listHeight + 8;
+                        if (activeIndex < 0)
+                            return false;
+
+                        // Calculate Y position of the item
+                        // Since only one item can be expanded/active at a time, and it's the target,
+                        // all preceding items must be collapsed (height 48)
+                        var itemY = activeIndex * 48;
+
+                        // Calculate item height
+                        var itemHeight = 48;
+                        if (isExpanded) {
+                            // Always 3 options in TmuxTab
+                            var listHeight = 36 * 3;
+                            itemHeight = 48 + 4 + listHeight + 8;
+                        }
 
                         var clickY = mouseY + resultsList.contentY;
-                        return clickY >= itemY && clickY < itemY + expandedHeight;
+                        return clickY >= itemY && clickY < itemY + itemHeight;
                     }
 
                     onClicked: mouse => {
                         if (root.deleteMode) {
-                            root.cancelDeleteMode();
+                            if (!isClickInsideActiveItem(mouse.y)) {
+                                root.cancelDeleteMode();
+                            }
                             mouse.accepted = true;
                         } else if (root.renameMode) {
-                            root.cancelRenameMode();
+                            if (!isClickInsideActiveItem(mouse.y)) {
+                                root.cancelRenameMode();
+                            }
                             mouse.accepted = true;
                         } else if (root.expandedItemIndex >= 0) {
-                            if (!isClickInsideExpandedItem(mouse.y)) {
+                            if (!isClickInsideActiveItem(mouse.y)) {
                                 console.log("DEBUG: Clicked outside expanded item - closing options");
                                 root.expandedItemIndex = -1;
                                 root.selectedOptionIndex = 0;
@@ -1777,13 +1795,17 @@ Item {
                     }
 
                     onPressed: mouse => {
-                        if (root.deleteMode || root.renameMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                        if (isClickInsideActiveItem(mouse.y)) {
+                            mouse.accepted = false;
+                        } else {
                             mouse.accepted = true;
                         }
                     }
 
                     onReleased: mouse => {
-                        if (root.deleteMode || root.renameMode || (root.expandedItemIndex >= 0 && !isClickInsideExpandedItem(mouse.y))) {
+                        if (isClickInsideActiveItem(mouse.y)) {
+                            mouse.accepted = false;
+                        } else {
                             mouse.accepted = true;
                         }
                     }
