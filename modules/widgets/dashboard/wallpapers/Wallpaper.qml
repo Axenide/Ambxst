@@ -31,6 +31,36 @@ PanelWindow {
     property bool usingFallback: false
     property bool _wallpaperDirInitialized: false
     property string currentMatugenScheme: wallpaperConfig.adapter.matugenScheme
+
+    // Sync state from the primary wallpaper manager to secondary instances
+    Binding {
+        target: wallpaper
+        property: "wallpaperPaths"
+        value: GlobalStates.wallpaperManager.wallpaperPaths
+        when: GlobalStates.wallpaperManager !== null && GlobalStates.wallpaperManager !== wallpaper
+    }
+
+    Binding {
+        target: wallpaper
+        property: "currentIndex"
+        value: GlobalStates.wallpaperManager.currentIndex
+        when: GlobalStates.wallpaperManager !== null && GlobalStates.wallpaperManager !== wallpaper
+    }
+
+    Binding {
+        target: wallpaper
+        property: "subfolderFilters"
+        value: GlobalStates.wallpaperManager.subfolderFilters
+        when: GlobalStates.wallpaperManager !== null && GlobalStates.wallpaperManager !== wallpaper
+    }
+    
+    Binding {
+        target: wallpaper
+        property: "initialLoadCompleted"
+        value: GlobalStates.wallpaperManager.initialLoadCompleted
+        when: GlobalStates.wallpaperManager !== null && GlobalStates.wallpaperManager !== wallpaper
+    }
+
     property string colorPresetsDir: Quickshell.env("HOME") + "/.config/Ambxst/colors"
     property string officialColorPresetsDir: decodeURIComponent(Qt.resolvedUrl("../../../../assets/colors").toString().replace("file://", ""))
     onColorPresetsDirChanged: console.log("Color Presets Directory:", colorPresetsDir)
@@ -230,6 +260,11 @@ PanelWindow {
     {}
 
     function setWallpaper(path) {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.setWallpaper(path);
+            return;
+        }
+
         console.log("setWallpaper called with:", path);
         initialLoadCompleted = true;
         var pathIndex = wallpaperPaths.indexOf(path);
@@ -244,6 +279,11 @@ PanelWindow {
     }
 
     function nextWallpaper() {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.nextWallpaper();
+            return;
+        }
+
         if (wallpaperPaths.length === 0)
             return;
         initialLoadCompleted = true;
@@ -255,6 +295,11 @@ PanelWindow {
     }
 
     function previousWallpaper() {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.previousWallpaper();
+            return;
+        }
+
         if (wallpaperPaths.length === 0)
             return;
         initialLoadCompleted = true;
@@ -266,6 +311,11 @@ PanelWindow {
     }
 
     function setWallpaperByIndex(index) {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.setWallpaperByIndex(index);
+            return;
+        }
+
         if (index >= 0 && index < wallpaperPaths.length) {
             initialLoadCompleted = true;
             currentIndex = index;
