@@ -201,6 +201,9 @@ PanelWindow {
         // Skip initial spurious changes before config is loaded
         if (!_wallpaperDirInitialized) return;
         
+        // Only the primary wallpaper manager should handle directory changes
+        if (GlobalStates.wallpaperManager !== wallpaper) return;
+        
         console.log("Wallpaper directory changed to:", wallpaperDir);
         usingFallback = false;
         
@@ -312,6 +315,14 @@ PanelWindow {
     }
 
     Component.onCompleted: {
+        // Only the first Wallpaper instance should manage scanning
+        // Other instances (for other screens) share the same data via GlobalStates
+        if (GlobalStates.wallpaperManager !== null) {
+            // Another instance already registered, skip initialization
+            _wallpaperDirInitialized = true;
+            return;
+        }
+        
         GlobalStates.wallpaperManager = wallpaper;
 
         // Verificar si existe wallpapers.json, si no, crear con fallback
@@ -320,24 +331,10 @@ PanelWindow {
         // Initial scans - do these once after config is loaded
         scanColorPresets();
         // Start directory monitoring
-        directoryWatcher.path = wallpaperDir;
-        directoryWatcher.reload();
         presetsWatcher.reload();
         officialPresetsWatcher.reload();
-        // Load initial wallpaper config
+        // Load initial wallpaper config - this will trigger onWallPathChanged which does the actual scan
         wallpaperConfig.reload();
-        
-        // Now mark as initialized and trigger the initial scan
-        _wallpaperDirInitialized = true;
-        
-        // Perform initial wallpaper scan
-        var cmd = ["find", wallpaperDir, "-type", "f", "(", "-name", "*.jpg", "-o", "-name", "*.jpeg", "-o", "-name", "*.png", "-o", "-name", "*.webp", "-o", "-name", "*.tif", "-o", "-name", "*.tiff", "-o", "-name", "*.gif", "-o", "-name", "*.mp4", "-o", "-name", "*.webm", "-o", "-name", "*.mov", "-o", "-name", "*.avi", "-o", "-name", "*.mkv", ")"];
-        scanWallpapers.command = cmd;
-        scanWallpapers.running = true;
-        scanSubfolders();
-        
-        // Ejecutar script de generación de thumbnails (delayed)
-        delayedThumbnailGen.start();
         
         // Generate lockscreen frame for initial wallpaper after a short delay
         Qt.callLater(function() {
@@ -402,9 +399,26 @@ PanelWindow {
             }
 
             onWallPathChanged: {
-                // Only log change, logic moved to onWallpaperDirChanged
                 if (wallPath) {
                     console.log("Config wallPath updated:", wallPath);
+                    
+                    // Initialize scanning on first valid wallPath load
+                    if (!wallpaper._wallpaperDirInitialized && GlobalStates.wallpaperManager === wallpaper) {
+                        wallpaper._wallpaperDirInitialized = true;
+                        
+                        // Set up directory watcher
+                        directoryWatcher.path = wallpaper.wallpaperDir;
+                        directoryWatcher.reload();
+                        
+                        // Perform initial wallpaper scan
+                        var cmd = ["find", wallpaper.wallpaperDir, "-type", "f", "(", "-name", "*.jpg", "-o", "-name", "*.jpeg", "-o", "-name", "*.png", "-o", "-name", "*.webp", "-o", "-name", "*.tif", "-o", "-name", "*.tiff", "-o", "-name", "*.gif", "-o", "-name", "*.mp4", "-o", "-name", "*.webm", "-o", "-name", "*.mov", "-o", "-name", "*.avi", "-o", "-name", "*.mkv", ")"];
+                        scanWallpapers.command = cmd;
+                        scanWallpapers.running = true;
+                        wallpaper.scanSubfolders();
+                        
+                        // Start thumbnail generation
+                        delayedThumbnailGen.start();
+                    }
                 }
             }
         }
