@@ -31,6 +31,13 @@ PanelWindow {
     property string state: "idle" // idle, loading, active, processing
     property string currentMode: "region" // region, window, screen
     property var activeWindows: []
+    
+    // Get monitor info for coordinate conversion
+    readonly property var monitor: Hyprland.monitorFor(screen)
+    readonly property real monitorScale: monitor?.scale ?? 1.0
+    readonly property string monitorName: monitor?.name ?? ""
+    readonly property int monitorX: monitor?.x ?? 0
+    readonly property int monitorY: monitor?.y ?? 0
 
     property var modes: [
         { name: "region", icon: Icons.regionScreenshot, tooltip: "Region" }, 
@@ -44,7 +51,8 @@ PanelWindow {
         screenshotPopup.currentMode = "region"
         
         screenshotPopup.state = "loading"
-        Screenshot.freezeScreen()
+        // Pass monitor name to capture only this output
+        Screenshot.freezeScreen(monitorName)
     }
 
     function close() {
@@ -58,7 +66,12 @@ PanelWindow {
         } else if (screenshotPopup.currentMode === "region") {
             // Check if rect exists
             if (selectionRect.width > 0) {
-                Screenshot.processRegion(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height)
+                // Scale coordinates from logical to physical pixels
+                var scaledX = Math.round(selectionRect.x * monitorScale)
+                var scaledY = Math.round(selectionRect.y * monitorScale)
+                var scaledW = Math.round(selectionRect.width * monitorScale)
+                var scaledH = Math.round(selectionRect.height * monitorScale)
+                Screenshot.processRegion(scaledX, scaledY, scaledW, scaledH)
                 screenshotPopup.close()
             }
         } else if (screenshotPopup.currentMode === "window") {
@@ -126,7 +139,7 @@ PanelWindow {
         Image {
             id: previewImage
             anchors.fill: parent
-            fillMode: Image.PreserveAspectFit
+            fillMode: Image.Stretch
             visible: screenshotPopup.state === "active"
         }
 
@@ -146,10 +159,17 @@ PanelWindow {
             Repeater {
                 model: screenshotPopup.activeWindows
                 delegate: Rectangle {
-                    x: modelData.at[0]
-                    y: modelData.at[1]
-                    width: modelData.size[0]
-                    height: modelData.size[1]
+                    // Window coordinates from Hyprland are global (include monitor offset)
+                    // Subtract monitor offset and divide by scale to get QML local coordinates
+                    readonly property real winX: (modelData.at[0] - screenshotPopup.monitorX) / screenshotPopup.monitorScale
+                    readonly property real winY: (modelData.at[1] - screenshotPopup.monitorY) / screenshotPopup.monitorScale
+                    readonly property real winW: modelData.size[0] / screenshotPopup.monitorScale
+                    readonly property real winH: modelData.size[1] / screenshotPopup.monitorScale
+                    
+                    x: winX
+                    y: winY
+                    width: winW
+                    height: winH
                     color: "transparent"
                     border.color: hoverHandler.hovered ? Styling.styledRectItem("overprimary") : "transparent"
                     border.width: 2
@@ -166,7 +186,11 @@ PanelWindow {
                     
                     TapHandler {
                         onTapped: {
-                            Screenshot.processRegion(parent.x, parent.y, parent.width, parent.height)
+                            // For crop, use coordinates relative to the captured image (this monitor only)
+                            // Subtract monitor offset from global Hyprland coordinates
+                            var localX = modelData.at[0] - screenshotPopup.monitorX
+                            var localY = modelData.at[1] - screenshotPopup.monitorY
+                            Screenshot.processRegion(localX, localY, modelData.size[0], modelData.size[1])
                             screenshotPopup.close()
                         }
                     }
@@ -227,7 +251,12 @@ PanelWindow {
                 // Auto capture on release? Or wait for confirm? 
                 // Usually region drag ends in capture.
                 if (selectionRect.width > 5 && selectionRect.height > 5) {
-                    Screenshot.processRegion(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height)
+                    // Scale coordinates from logical to physical pixels
+                    var scaledX = Math.round(selectionRect.x * screenshotPopup.monitorScale)
+                    var scaledY = Math.round(selectionRect.y * screenshotPopup.monitorScale)
+                    var scaledW = Math.round(selectionRect.width * screenshotPopup.monitorScale)
+                    var scaledH = Math.round(selectionRect.height * screenshotPopup.monitorScale)
+                    Screenshot.processRegion(scaledX, scaledY, scaledW, scaledH)
                     screenshotPopup.close()
                 }
             }

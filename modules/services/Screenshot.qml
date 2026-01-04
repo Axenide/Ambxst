@@ -19,6 +19,9 @@ QtObject {
     property string screenshotsDir: ""
     property string finalPath: ""
     
+    // Current output name for targeted capture
+    property string currentOutput: ""
+    
     // Internal storage for active workspace IDs
     property var _activeWorkspaceIds: []
 
@@ -51,10 +54,10 @@ QtObject {
         command: ["mkdir", "-p", root.screenshotsDir]
     }
 
-    // Process for initial freeze
+    // Process for initial freeze - captures specific output
     property Process freezeProcess: Process {
         id: freezeProcess
-        command: ["grim", root.tempPath]
+        // Command is set dynamically in freezeScreen()
         onExited: exitCode => {
             if (exitCode === 0) {
                 root.screenshotCaptured(root.tempPath)
@@ -154,7 +157,15 @@ QtObject {
         }
     }
 
-    function freezeScreen() {
+    function freezeScreen(outputName) {
+        root.currentOutput = outputName || ""
+        if (root.currentOutput !== "") {
+            // Capture specific output
+            freezeProcess.command = ["grim", "-o", root.currentOutput, root.tempPath]
+        } else {
+            // Fallback to all outputs
+            freezeProcess.command = ["grim", root.tempPath]
+        }
         freezeProcess.running = true
     }
 
@@ -185,9 +196,16 @@ QtObject {
         var filename = "Screenshot_" + getTimestamp() + ".png"
         root.finalPath = root.screenshotsDir + "/" + filename
         
+        // Ensure integer values for geometry
+        var ix = Math.round(x)
+        var iy = Math.round(y)
+        var iw = Math.round(w)
+        var ih = Math.round(h)
+        
         // convert /tmp/ambxst_freeze.png -crop WxH+X+Y /path/to/save.png
-        var geom = `${w}x${h}+${x}+${y}`
-        cropProcess.command = ["convert", root.tempPath, "-crop", geom, root.finalPath]
+        var geom = `${iw}x${ih}+${ix}+${iy}`
+        console.log("Screenshot: Cropping region:", geom)
+        cropProcess.command = ["convert", root.tempPath, "-crop", geom, "+repage", root.finalPath]
         cropProcess.running = true
     }
 
