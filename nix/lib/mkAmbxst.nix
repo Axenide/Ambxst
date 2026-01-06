@@ -57,6 +57,7 @@
           pkgs.upower
           pkgs.jq                            
           pkgs.procps                        
+          pkgs.kitty
           pkgs.libnotify                     
           pkgs.gpu-screen-recorder
           pkgs.grim
