@@ -14,9 +14,6 @@ var data = {
     "showRunningIndicators": true,
     "showPinButton": true,
     "showOverviewButton": true,
-    "pinnedApps": [
-        "kitty"
-    ],
     "ignoredAppRegexes": [
         "quickshell.*",
         "xdg-desktop-portal.*"

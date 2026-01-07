@@ -11,21 +11,21 @@ Singleton {
 
     // Check if an app is pinned
     function isPinned(appId) {
-        const pinnedApps = Config.dock?.pinnedApps || [];
+        const pinnedApps = Config.pinnedApps?.apps || [];
         return pinnedApps.some(id => id.toLowerCase() === appId.toLowerCase());
     }
 
     // Toggle pin status of an app
     function togglePin(appId) {
-        let pinnedApps = Config.dock?.pinnedApps || [];
+        let pinnedApps = Config.pinnedApps?.apps || [];
         const normalizedAppId = appId.toLowerCase();
         
         if (isPinned(appId)) {
             // Remove from pinned
-            Config.dock.pinnedApps = pinnedApps.filter(id => id.toLowerCase() !== normalizedAppId);
+            Config.pinnedApps.apps = pinnedApps.filter(id => id.toLowerCase() !== normalizedAppId);
         } else {
             // Add to pinned
-            Config.dock.pinnedApps = pinnedApps.concat([appId]);
+            Config.pinnedApps.apps = pinnedApps.concat([appId]);
         }
     }
 
@@ -71,10 +71,14 @@ Singleton {
 
     // Also update on config changes
     Connections {
-        target: Config.dock ?? null
-        function onPinnedAppsChanged() {
+        target: Config.pinnedApps ?? null
+        function onAppsChanged() {
             updateTimer.restart();
         }
+    }
+
+    Connections {
+        target: Config.dock ?? null
         function onIgnoredAppRegexesChanged() {
             updateTimer.restart();
         }
@@ -89,7 +93,7 @@ Singleton {
         var map = new Map();
 
         // Get config values
-        const pinnedApps = Config.dock?.pinnedApps ?? [];
+        const pinnedApps = Config.pinnedApps?.apps ?? [];
         const ignoredRegexStrings = Config.dock?.ignoredAppRegexes ?? [];
         const ignoredRegexes = ignoredRegexStrings.map(pattern => new RegExp(pattern, "i"));
 

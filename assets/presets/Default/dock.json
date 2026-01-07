@@ -12,25 +12,6 @@
     "showRunningIndicators": true,
     "showPinButton": true,
     "showOverviewButton": true,
-    "pinnedApps": [
-        "zen",
-        "kitty",
-        "org.gnome.Nautilus",
-        "com.obsproject.Studio",
-        "org.kde.krita",
-        "org.inkscape.Inkscape",
-        "blender",
-        "Godot",
-        "FL Studio 25--FL Studio--1761574903.210074",
-        "com.usebottles.bottles",
-        "steam",
-        "spotify",
-        "youtube-music",
-        "LM Studio",
-        "vesktop",
-        "elecwhat",
-        "org.telegram.desktop"
-    ],
     "ignoredAppRegexes": [
         "quickshell.*",
         "xdg-desktop-portal.*"
