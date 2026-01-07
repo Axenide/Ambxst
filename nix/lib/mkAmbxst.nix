@@ -43,6 +43,7 @@
         qt6.qtdeclarative
         qt6.syntax-highlighting
         qt6.qtmultimedia 
+        qt6.qtwayland
       ];
     in 
       pkgs.symlinkJoin {
@@ -50,37 +51,49 @@
         version = "0.1.0"; 
         paths = [
           quickshellPkg
-          pkgs.tesseract
-          pkgs.power-profiles-daemon
+          pkgs.blueman
           pkgs.brightnessctl
-          pkgs.matugen
-          pkgs.upower
-          pkgs.jq                            
-          pkgs.procps                        
-          pkgs.kitty
-          pkgs.libnotify                     
+          pkgs.ddcutil
+          pkgs.easyeffects
+          pkgs.egl-wayland
+          pkgs.ffmpeg
+          pkgs.fontconfig
+          pkgs.fuzzel
+          pkgs.glib
           pkgs.gpu-screen-recorder
           pkgs.grim
-          pkgs.easyeffects
-          pkgs.blueman
+          pkgs.hicolor-icon-theme
+          pkgs.imagemagick
+          pkgs.inetutils
+          pkgs.jq
+          pkgs.kitty
+          pkgs.libglvnd
+          pkgs.litellm
+          pkgs.matugen
+          pkgs.mesa
           pkgs.mpvpaper
+          pkgs.networkmanager
+          pkgs.networkmanagerapplet
+          pkgs.pipewire
+          pkgs.playerctl
+          pkgs.power-profiles-daemon
           pkgs.pwvucontrol
+          pkgs.slurp
+          pkgs.sqlite
+          pkgs.tesseract
+          pkgs.tmux
+          pkgs.upower
+          pkgs.wayland
+          pkgs.wireplumber
           pkgs.wl-clip-persist
           pkgs.wl-clipboard
           pkgs.wlsunset
           pkgs.wtype
-          pkgs.tmux
-          pkgs.imagemagick
-          pkgs.slurp
-          pkgs.zbar
-          pkgs.sqlite
           pkgs.x264
-          pkgs.ffmpeg
-          pkgs.playerctl
-          pkgs.pipewire
-          pkgs.wireplumber
-          pkgs.ddcutil
+          pkgs.zbar
+          pkgs.zenity
           qt6.qtmultimedia
+          qt6.qtwayland
         ]; 
 
         nativeBuildInputs = [ pkgs.makeWrapper ];
