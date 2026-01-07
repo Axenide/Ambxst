@@ -1106,9 +1106,49 @@ Singleton {
             property bool showRunningIndicators: true
             property bool showPinButton: true
             property bool showOverviewButton: true
-            property list<string> pinnedApps: ["org.gnome.Nautilus", "firefox", "kitty"]
             property list<string> ignoredAppRegexes: ["quickshell.*", "xdg-desktop-portal.*"]
             property list<string> screenList: []
+        }
+    }
+
+    // ============================================
+    // PINNED APPS (stored in dataPath for per-user data)
+    // ============================================
+    property bool pinnedAppsReady: false
+
+    Process {
+        id: checkPinnedAppsFile
+        running: true
+        command: ["test", "-f", Quickshell.dataPath("pinnedapps.json")]
+
+        onExited: exitCode => {
+            if (exitCode !== 0) {
+                console.log("pinnedapps.json not found, creating with default values...");
+                pinnedAppsLoader.writeAdapter();
+            }
+            root.pinnedAppsReady = true;
+        }
+    }
+
+    FileView {
+        id: pinnedAppsLoader
+        path: Quickshell.dataPath("pinnedapps.json")
+        atomicWrites: true
+        watchChanges: true
+        onFileChanged: {
+            root.pauseAutoSave = true;
+            reload();
+            root.pauseAutoSave = false;
+        }
+        onPathChanged: reload()
+        onAdapterUpdated: {
+            if (root.pinnedAppsReady && !root.pauseAutoSave) {
+                pinnedAppsLoader.writeAdapter();
+            }
+        }
+
+        adapter: JsonAdapter {
+            property list<string> apps: ["kitty"]
         }
     }
 
@@ -3146,6 +3186,9 @@ Singleton {
     // Dock configuration
     property QtObject dock: dockLoader.adapter
 
+    // Pinned apps configuration (stored in dataPath)
+    property QtObject pinnedApps: pinnedAppsLoader.adapter
+
     // AI configuration
     property QtObject ai: aiLoader.adapter
 
@@ -3185,6 +3228,9 @@ Singleton {
     }
     function saveDock() {
         dockLoader.writeAdapter();
+    }
+    function savePinnedApps() {
+        pinnedAppsLoader.writeAdapter();
     }
     function saveAi() {
         aiLoader.writeAdapter();
