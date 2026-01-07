@@ -113,17 +113,10 @@ Singleton {
     Component.onCompleted: {
         detectGPU();
         cpuModelReader.running = true;
-        diskTypeDetector.running = true;
         
-        // Start the Python monitor
-        if (validDisks.length > 0) {
-            let cmd = ["python3", Quickshell.shellDir + "/scripts/system_monitor.py"];
-            for (let i = 0; i < validDisks.length; i++) {
-                cmd.push(validDisks[i]);
-            }
-            monitorProcess.command = cmd;
-            monitorProcess.running = true;
-        }
+        // Validate disks immediately - if Config is ready, this will populate validDisks
+        // and trigger onValidDisksChanged which starts the monitor
+        validateDisks();
     }
 
     // Watch for config changes and revalidate disks
@@ -172,19 +165,22 @@ Singleton {
     // Validate configured disks and fall back to "/" if invalid
     function validateDisks() {
         const configuredDisks = Config.system.disks || ["/"];
-        validDisks = [];
+        let newValidDisks = [];
 
         for (let i = 0; i < configuredDisks.length; i++) {
             const disk = configuredDisks[i];
             if (disk && typeof disk === 'string' && disk.trim() !== '') {
-                validDisks.push(disk.trim());
+                newValidDisks.push(disk.trim());
             }
         }
 
         // Ensure at least "/" is present
-        if (validDisks.length === 0) {
-            validDisks = ["/"];
+        if (newValidDisks.length === 0) {
+            newValidDisks = ["/"];
         }
+        
+        // Assign the new array to trigger onValidDisksChanged
+        validDisks = newValidDisks;
     }
 
     // Update history arrays with current values
