@@ -114,6 +114,14 @@ Item {
         onPressed: toggleSimpleModule("tools")
     }
 
+    GlobalShortcut {
+        appid: root.appId
+        name: "screenshot"
+        description: "Open screenshot tool"
+
+        onPressed: GlobalStates.screenshotToolVisible = true
+    }
+
     // Dashboard tab shortcuts
     GlobalShortcut {
         appid: root.appId

@@ -427,7 +427,7 @@ Item {
 
         // System binds
         if (ambxst.system) {
-            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools"];
+            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot"];
             for (const key of systemKeys) {
                 if (ambxst.system[key]) {
                     binds.push({

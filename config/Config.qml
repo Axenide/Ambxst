@@ -1204,8 +1204,95 @@ Singleton {
             if (exitCode !== 0) {
                 console.log("binds.json not found, creating with default values...");
                 keybindsLoader.writeAdapter();
+            } else {
+                // File exists, check if it needs repair
+                repairKeybindsTimer.start();
             }
             root.keybindsInitialLoadComplete = true;
+        }
+    }
+
+    // Timer to repair keybinds after initial load
+    Timer {
+        id: repairKeybindsTimer
+        interval: 500
+        repeat: false
+        onTriggered: {
+            if (keybindsRawLoader.status === FileView.Ready) {
+                repairKeybinds();
+            }
+        }
+    }
+
+    // Raw loader to check and repair binds.json
+    FileView {
+        id: keybindsRawLoader
+        path: keybindsPath
+    }
+
+    // Function to repair missing binds
+    function repairKeybinds() {
+        const raw = keybindsRawLoader.text();
+        if (!raw) return;
+
+        try {
+            const current = JSON.parse(raw);
+            let needsUpdate = false;
+
+            // Ensure ambxst structure exists
+            if (!current.ambxst) {
+                current.ambxst = {};
+                needsUpdate = true;
+            }
+            if (!current.ambxst.dashboard) {
+                current.ambxst.dashboard = {};
+                needsUpdate = true;
+            }
+            if (!current.ambxst.system) {
+                current.ambxst.system = {};
+                needsUpdate = true;
+            }
+
+            // Get default binds from adapter
+            const adapter = keybindsLoader.adapter;
+            if (!adapter || !adapter.ambxst) return;
+
+            // Helper function to create clean bind object
+            function createCleanBind(bindObj) {
+                return {
+                    "modifiers": bindObj.modifiers || [],
+                    "key": bindObj.key || "",
+                    "dispatcher": bindObj.dispatcher || "",
+                    "argument": bindObj.argument || ""
+                };
+            }
+
+            // Check dashboard binds
+            const dashboardKeys = ["assistant", "clipboard", "emoji", "notes", "tmux", "wallpapers", "widgets"];
+            for (const key of dashboardKeys) {
+                if (!current.ambxst.dashboard[key] && adapter.ambxst.dashboard && adapter.ambxst.dashboard[key]) {
+                    console.log("Adding missing dashboard bind:", key);
+                    current.ambxst.dashboard[key] = createCleanBind(adapter.ambxst.dashboard[key]);
+                    needsUpdate = true;
+                }
+            }
+
+            // Check system binds
+            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot"];
+            for (const key of systemKeys) {
+                if (!current.ambxst.system[key] && adapter.ambxst.system && adapter.ambxst.system[key]) {
+                    console.log("Adding missing system bind:", key);
+                    current.ambxst.system[key] = createCleanBind(adapter.ambxst.system[key]);
+                    needsUpdate = true;
+                }
+            }
+
+            if (needsUpdate) {
+                console.log("Auto-repairing binds.json: adding missing binds");
+                keybindsRawLoader.setText(JSON.stringify(current, null, 4));
+            }
+        } catch (e) {
+            console.warn("Failed to repair binds.json:", e);
         }
     }
 
@@ -1384,6 +1471,12 @@ Singleton {
                         property string key: "S"
                         property string dispatcher: "global"
                         property string argument: "ambxst:tools"
+                    }
+                    property JsonObject screenshot: JsonObject {
+                        property list<string> modifiers: ["SUPER", "SHIFT"]
+                        property string key: "S"
+                        property string dispatcher: "global"
+                        property string argument: "ambxst:screenshot"
                     }
                 }
             }
