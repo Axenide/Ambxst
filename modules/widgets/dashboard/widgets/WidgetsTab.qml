@@ -156,6 +156,8 @@ Rectangle {
                 let app = appsById[appId];
                 if (app && app.execute) {
                     app.execute();
+                    // Record usage for sorting priority
+                    UsageTracker.recordUsage(appId);
                 }
             }
 

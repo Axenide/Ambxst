@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.modules.services
 
 Singleton {
     id: root
@@ -142,6 +143,7 @@ Singleton {
         
         for (let i = 0; i < list.length; i++) {
             const app = list[i];
+            const usageScore = UsageTracker.getUsageScore(app.id);
             results.push({
                 name: app.name,
                 icon: app.icon || "application-x-executable",
@@ -150,11 +152,20 @@ Singleton {
                 comment: app.comment || "",
                 categories: app.categories || [],
                 runInTerminal: app.runInTerminal || false,
+                usageScore: usageScore,
                 execute: () => {
                     app.execute();
                 }
             });
         }
+        
+        // Sort by usage score (most used/recent first), then alphabetically
+        results.sort((a, b) => {
+            if (a.usageScore !== b.usageScore) {
+                return b.usageScore - a.usageScore;
+            }
+            return a.name.localeCompare(b.name);
+        });
         
         return results; // Show all apps
     }
@@ -222,6 +233,7 @@ Singleton {
             
             if (matchFound) {
                 const app = entry.original;
+                const usageScore = UsageTracker.getUsageScore(app.id);
                 results.push({
                     name: app.name,
                     icon: app.icon || "application-x-executable",
@@ -231,6 +243,7 @@ Singleton {
                     comment: app.comment || "",
                     categories: app.categories || [],
                     runInTerminal: app.runInTerminal || false,
+                    usageScore: usageScore,
                     execute: () => {
                         app.execute();
                     }
@@ -238,10 +251,14 @@ Singleton {
             }
         }
         
-        // Sort by score (highest first), then by name
+        // Sort by combined score (search match + usage), then by name
         results.sort((a, b) => {
-            if (a.score !== b.score) {
-                return b.score - a.score;
+            // Combine search score with usage score (usage score is already 0-200+)
+            const totalScoreA = a.score + a.usageScore;
+            const totalScoreB = b.score + b.usageScore;
+            
+            if (totalScoreA !== totalScoreB) {
+                return totalScoreB - totalScoreA;
             }
             return (a.name || "").localeCompare(b.name || "");
         });
