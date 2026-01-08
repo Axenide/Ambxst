@@ -24,6 +24,30 @@ Singleton {
             && !iconName.includes("image-missing");
     }
 
+    // Validate icon and return fallback if needed
+    function validateIcon(iconName) {
+        if (!iconName || iconName.length === 0) {
+            return "image-missing";
+        }
+        
+        // If it's an absolute path, check if file exists
+        if (iconName.startsWith("/")) {
+            // Use Quickshell.iconPath to check if the path is valid
+            const resolvedPath = Quickshell.iconPath(iconName, true);
+            if (resolvedPath.length === 0) {
+                return "image-missing";
+            }
+            return iconName;
+        }
+        
+        // For icon names (not paths), check if they exist in the theme
+        if (iconExists(iconName)) {
+            return iconName;
+        }
+        
+        return "image-missing";
+    }
+
     function getIconFromDesktopEntry(className) {
         if (!className || className.length === 0) return null;
 
@@ -144,9 +168,10 @@ Singleton {
         for (let i = 0; i < list.length; i++) {
             const app = list[i];
             const usageScore = UsageTracker.getUsageScore(app.id);
+            const validIcon = validateIcon(app.icon || "application-x-executable");
             results.push({
                 name: app.name,
-                icon: app.icon || "application-x-executable",
+                icon: validIcon,
                 id: app.id,
                 execString: app.execString,
                 comment: app.comment || "",
@@ -234,9 +259,10 @@ Singleton {
             if (matchFound) {
                 const app = entry.original;
                 const usageScore = UsageTracker.getUsageScore(app.id);
+                const validIcon = validateIcon(app.icon || "application-x-executable");
                 results.push({
                     name: app.name,
-                    icon: app.icon || "application-x-executable",
+                    icon: validIcon,
                     score: score,
                     id: app.id,
                     execString: app.execString,

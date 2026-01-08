@@ -645,24 +645,15 @@ Rectangle {
                                 Layout.preferredHeight: 32
 
                                 Image {
+                                    id: appIconImage
                                     anchors.fill: parent
                                     source: "image://icon/" + appIcon
                                     fillMode: Image.PreserveAspectFit
                                     visible: !Config.tintIcons
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: "transparent"
-                                        border.color: Colors.outline
-                                        border.width: parent.status === Image.Error ? 1 : 0
-                                        radius: 4
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: "?"
-                                            visible: parent.parent.status === Image.Error
-                                            color: Colors.overBackground
-                                            font.family: Config.theme.font
+                                    
+                                    onStatusChanged: {
+                                        if (status === Image.Error) {
+                                            source = "image://icon/image-missing";
                                         }
                                     }
                                 }
@@ -671,8 +662,15 @@ Rectangle {
                                     anchors.fill: parent
                                     visible: Config.tintIcons
                                     sourceItem: Image {
+                                        id: tintedAppIcon
                                         source: "image://icon/" + appIcon
                                         fillMode: Image.PreserveAspectFit
+                                        
+                                        onStatusChanged: {
+                                            if (status === Image.Error) {
+                                                source = "image://icon/image-missing";
+                                            }
+                                        }
                                     }
                                 }
                             }
