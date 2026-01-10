@@ -164,10 +164,6 @@ install_dependencies() {
 	arch)
 		log_info "Preparing installation..."
 
-		# Sync package databases
-		log_info "Syncing package databases..."
-		sudo pacman -Syy
-
 		# Ensure git and base-devel are installed for AUR helper compilation
 		if ! command -v git >/dev/null || ! command -v makepkg >/dev/null; then
 			log_info "Installing git and base-devel (required for AUR helper)..."
