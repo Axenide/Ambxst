@@ -682,6 +682,14 @@ Item {
                             }
 
                             ToggleRow {
+                                label: "SUPER Key Launcher"
+                                checked: Config.system.superKeyLauncher ?? true
+                                onToggled: value => {
+                                    Config.system.superKeyLauncher = value;
+                                }
+                            }
+
+                            ToggleRow {
                                 label: "Sync Border Size"
                                 checked: Config.hyprland.syncBorderWidth ?? false
                                 onToggled: value => {

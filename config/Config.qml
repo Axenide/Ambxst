@@ -1027,6 +1027,7 @@ Singleton {
 
         adapter: JsonAdapter {
             property list<string> disks: ["/"]
+            property bool superKeyLauncher: true
             property JsonObject idle: JsonObject {
                 property JsonObject general: JsonObject {
                     property string lock_cmd: "ambxst lock"
@@ -3356,21 +3357,24 @@ Singleton {
     }
 
     function resolveColor(colorValue) {
-        if (!colorValue) return "transparent"; // Fallback safe color
-        
+        if (!colorValue)
+            return "transparent"; // Fallback safe color
+
         if (isHexColor(colorValue)) {
             return colorValue;
         }
-        
+
         // Check if Colors singleton is ready
-        if (typeof Colors === 'undefined' || !Colors) return "transparent";
-        
-        return Colors[colorValue] || "transparent"; 
+        if (typeof Colors === 'undefined' || !Colors)
+            return "transparent";
+
+        return Colors[colorValue] || "transparent";
     }
 
     function resolveColorWithOpacity(colorValue, opacity) {
-        if (!colorValue) return Qt.rgba(0,0,0,0);
-        
+        if (!colorValue)
+            return Qt.rgba(0, 0, 0, 0);
+
         const color = isHexColor(colorValue) ? Qt.color(colorValue) : (Colors[colorValue] || Qt.color("transparent"));
         return Qt.rgba(color.r, color.g, color.b, opacity);
     }
