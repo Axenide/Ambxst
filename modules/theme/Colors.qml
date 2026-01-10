@@ -9,7 +9,28 @@ FileView {
     path: Quickshell.dataPath("colors.json")
     preload: true
     watchChanges: true
-    onFileChanged: reload()
+    onFileChanged: {
+        reload()
+        generationTimer.restart()
+    }
+
+    property QtCtGenerator qtCtGenerator: QtCtGenerator {
+        id: qtCtGenerator
+    }
+
+    property GtkGenerator gtkGenerator: GtkGenerator {
+        id: gtkGenerator
+    }
+
+    property Timer generationTimer: Timer {
+        id: generationTimer
+        interval: 100
+        repeat: false
+        onTriggered: {
+            qtCtGenerator.generate(colors)
+            gtkGenerator.generate(colors)
+        }
+    }
 
     adapter: JsonAdapter {
         property color background: "#1a1111"
