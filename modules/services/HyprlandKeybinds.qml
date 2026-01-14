@@ -214,9 +214,26 @@ QtObject {
         // Procesar Ambxst keybinds (still use old format)
         const ambxst = Config.keybindsLoader.adapter.ambxst;
 
+        // Check if SUPER key launcher is enabled
+        const superKeyLauncher = Config.system && Config.system.superKeyLauncher !== undefined ? Config.system.superKeyLauncher : true;
+
         // Dashboard keybinds
         const dashboard = ambxst.dashboard;
-        unbindCommands.push(createUnbindCommand(dashboard.widgets));
+
+        // Handle widgets keybind specially based on superKeyLauncher setting
+        if (superKeyLauncher) {
+            // Unbind any existing SUPER,Super_L and the normal widgets keybind
+            unbindCommands.push("keyword unbind SUPER,Super_L");
+            unbindCommands.push(createUnbindCommand(dashboard.widgets));
+            // Use SUPER key alone (release) to trigger launcher via ambxst CLI
+            batchCommands.push("keyword bindr SUPER,Super_L,exec,ambxst launcher");
+        } else {
+            // Use the normal widgets keybind from config
+            unbindCommands.push("keyword unbind SUPER,Super_L");
+            unbindCommands.push(createUnbindCommand(dashboard.widgets));
+            batchCommands.push(createBindCommand(dashboard.widgets));
+        }
+
         unbindCommands.push(createUnbindCommand(dashboard.clipboard));
         unbindCommands.push(createUnbindCommand(dashboard.emoji));
         unbindCommands.push(createUnbindCommand(dashboard.tmux));
@@ -224,7 +241,6 @@ QtObject {
         unbindCommands.push(createUnbindCommand(dashboard.assistant));
         unbindCommands.push(createUnbindCommand(dashboard.notes));
 
-        batchCommands.push(createBindCommand(dashboard.widgets));
         batchCommands.push(createBindCommand(dashboard.clipboard));
         batchCommands.push(createBindCommand(dashboard.emoji));
         batchCommands.push(createBindCommand(dashboard.tmux));
@@ -323,6 +339,15 @@ QtObject {
             if (GlobalStates.hyprlandLayoutReady) {
                 applyKeybinds();
             }
+        }
+    }
+
+    // Re-apply keybinds when SUPER key launcher setting changes
+    property Connections systemConfigConnections: Connections {
+        target: Config.system
+        function onSuperKeyLauncherChanged() {
+            console.log("HyprlandKeybinds: SUPER key launcher setting changed to " + Config.system.superKeyLauncher + ", reapplying keybindings...");
+            applyKeybinds();
         }
     }
 
