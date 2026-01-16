@@ -132,11 +132,13 @@ QtObject {
         } else {
             // Calcular ignorealpha dinámicamente basado en la opacidad de los StyledRect
             // Si barbg tiene opacidad > 0, usar el menor entre barbg y bg; si no, usar bg
-            const barBgOpacity = Config.theme.srBarBg.opacity || 0;
-            const bgOpacity = Config.theme.srBg.opacity || 1.0;
+            const barBgOpacity = (Config.theme.srBarBg && Config.theme.srBarBg.opacity !== undefined) ? Config.theme.srBarBg.opacity : 0;
+            const bgOpacity = (Config.theme.srBg && Config.theme.srBg.opacity !== undefined) ? Config.theme.srBg.opacity : 1.0;
             ignoreAlphaValue = (barBgOpacity > 0 ? Math.min(barBgOpacity, bgOpacity) : bgOpacity).toFixed(2);
+            console.log(`HyprlandConfig: Auto ignorealpha calculated: ${ignoreAlphaValue} (bg: ${bgOpacity}, bar: ${barBgOpacity})`);
         }
 
+        console.log(`HyprlandConfig: Applying ignorealpha: ${ignoreAlphaValue}, explicit: ${Config.hyprland.blurExplicitIgnoreAlpha}`);
         batchCommand += ` ; keyword layerrule noanim,quickshell ; keyword layerrule blur,quickshell ; keyword layerrule blurpopups,quickshell ; keyword layerrule ignorealpha ${ignoreAlphaValue},quickshell`;
         console.log("HyprlandConfig: Applying hyprctl batch command.");
         hyprctlProcess.command = ["hyprctl", "--batch", batchCommand];
