@@ -216,6 +216,20 @@ ShellRoot {
         }
     }
 
+    // Screenshot Overlay (Preview)
+    Variants {
+        model: Quickshell.screens
+
+        Loader {
+            id: screenshotOverlayLoader
+            active: true
+            required property ShellScreen modelData
+            sourceComponent: ScreenshotOverlay {
+                targetScreen: screenshotOverlayLoader.modelData
+            }
+        }
+    }
+
 
     // Screen Record Tool
     Loader {

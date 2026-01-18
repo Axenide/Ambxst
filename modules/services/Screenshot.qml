@@ -13,6 +13,7 @@ QtObject {
     signal errorOccurred(string message)
     signal windowListReady(var windows)
     signal lensImageReady(string path)
+    signal imageSaved(string path) // New signal for Overlay
 
     property string tempPathBase: "/tmp/ambxst_freeze"
     property string cropPath: "/tmp/ambxst_crop.png"
@@ -157,6 +158,7 @@ QtObject {
                     root.captureMode = "normal" 
                 } else {
                     copyProcess.running = true
+                    root.imageSaved(root.finalPath)
                 }
             } else {
                 root.errorOccurred("Failed to save image")
