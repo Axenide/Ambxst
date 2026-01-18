@@ -22,6 +22,10 @@ FileView {
         id: gtkGenerator
     }
 
+    property PywalGenerator pywalGenerator: PywalGenerator {
+        id: pywalGenerator
+    }
+
     property Timer generationTimer: Timer {
         id: generationTimer
         interval: 100
@@ -29,6 +33,7 @@ FileView {
         onTriggered: {
             qtCtGenerator.generate(colors)
             gtkGenerator.generate(colors)
+            pywalGenerator.generate(colors)
         }
     }
 
