@@ -23,7 +23,7 @@ Item {
     readonly property string activePreset: PresetsService.activePreset
 
     // Available config files
-    readonly property var availableConfigFiles: ["ai.js", "bar.js", "desktop.js", "dock.js", "hyprland.js", "lockscreen.js", "notch.js", "overview.js", "performance.js", "prefix.js", "system.js", "theme.js", "weather.js", "workspaces.js"]
+    readonly property var availableConfigFiles: ["ai.js", "bar.js", "desktop.js", "dock.js", "hyprland.js", "lockscreen.js", "notch.js", "overview.js", "performance.js", "prefix.js", "theme.js", "weather.js", "workspaces.js"]
 
     // List model
     ListModel {
@@ -58,6 +58,64 @@ Item {
     property alias flickable: resultsList
     property bool needsScrollbar: resultsList.contentHeight > resultsList.height
 
+    // Helper function to get options for a preset
+    function getPresetOptions(preset) {
+        if (!preset) return [];
+
+        var options = [];
+        
+        if (preset.authorUrl && preset.authorUrl !== "") {
+            options.push({
+                text: "Visit Author",
+                icon: Icons.globe,
+                highlightColor: Colors.primary,
+                textColor: Styling.srItem("primary"),
+                action: function () {
+                    Qt.openUrlExternally(preset.authorUrl);
+                }
+            });
+        }
+
+        if (!preset.isOfficial) {
+            options.push({
+                text: "Rename",
+                icon: Icons.edit,
+                highlightColor: Colors.secondary,
+                textColor: Styling.srItem("secondary"),
+                action: function () {
+                    root.enterRenameMode(preset.name);
+                    root.expandedItemIndex = -1;
+                }
+            });
+        }
+
+        options.push({
+            text: "Update",
+            icon: Icons.arrowCounterClockwise,
+            highlightColor: Colors.tertiary,
+            textColor: Styling.srItem("tertiary"),
+            action: function () {
+                root.enterUpdateMode(preset.name);
+                root.expandedItemIndex = -1;
+            }
+        });
+
+        if (!preset.isOfficial) {
+            options.push({
+                text: "Delete",
+                icon: Icons.trash,
+                highlightColor: Colors.error,
+                textColor: Styling.srItem("error"),
+                action: function () {
+                    root.enterDeleteMode(preset.name);
+                    root.expandedItemIndex = -1;
+                }
+            });
+        }
+
+        return options;
+    }
+
     onExpandedItemIndexChanged: {}
 
     function adjustScrollForExpandedItem(index) {
@@ -68,8 +126,15 @@ Item {
         for (var i = 0; i < index; i++) {
             itemY += 48;
         }
+        
+        // Calculate height based on options
+        let presetItem = presetsModel.get(index);
+        let optionsCount = 3; // default
+        if (presetItem && presetItem.presetData) {
+            optionsCount = getPresetOptions(presetItem.presetData).length;
+        }
 
-        var listHeight = 36 * 3;
+        var listHeight = 36 * optionsCount;
         var expandedHeight = 48 + 4 + listHeight + 8;
 
         var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height);
@@ -373,19 +438,10 @@ Item {
                 } else if (root.expandedItemIndex >= 0) {
                     let preset = root.filteredPresets[root.expandedItemIndex];
                     if (preset && !preset.isCreateButton && !preset.isCreateSpecificButton) {
-                        let options = [function () {
-                                root.enterRenameMode(preset.name);
-                                root.expandedItemIndex = -1;
-                            }, function () {
-                                root.enterUpdateMode(preset.name);
-                                root.expandedItemIndex = -1;
-                            }, function () {
-                                root.enterDeleteMode(preset.name);
-                                root.expandedItemIndex = -1;
-                            }];
+                        let options = root.getPresetOptions(preset);
 
                         if (root.selectedOptionIndex >= 0 && root.selectedOptionIndex < options.length) {
-                            options[root.selectedOptionIndex]();
+                            options[root.selectedOptionIndex].action();
                         }
                     }
                 } else {
@@ -493,7 +549,7 @@ Item {
                 }
             }
 
-            onCurrentIndexChanged: {
+                onCurrentIndexChanged: {
                 if (currentIndex !== root.selectedIndex) {
                     root.selectedIndex = currentIndex;
                 }
@@ -503,7 +559,9 @@ Item {
                     for (var i = 0; i < currentIndex && i < presetsModel.count; i++) {
                         var itemHeight = 48;
                         if (i === root.expandedItemIndex && !root.deleteMode && !root.renameMode && !root.updateMode) {
-                            var listHeight = 36 * 3;
+                            let pItem = presetsModel.get(i);
+                            let optCount = pItem && pItem.presetData ? root.getPresetOptions(pItem.presetData).length : 3;
+                            var listHeight = 36 * optCount;
                             itemHeight = 48 + 4 + listHeight + 8;
                         }
                         itemY += itemHeight;
@@ -511,7 +569,9 @@ Item {
 
                     var currentItemHeight = 48;
                     if (currentIndex === root.expandedItemIndex && !root.deleteMode && !root.renameMode && !root.updateMode) {
-                        var listHeight = 36 * 3;
+                        let pItem = presetsModel.get(currentIndex);
+                        let optCount = pItem && pItem.presetData ? root.getPresetOptions(pItem.presetData).length : 3;
+                        var listHeight = 36 * optCount;
                         currentItemHeight = 48 + 4 + listHeight + 8;
                     }
 
@@ -526,6 +586,7 @@ Item {
                 }
             }
 
+
             delegate: Rectangle {
                 required property string presetId
                 required property var presetData
@@ -537,7 +598,8 @@ Item {
                 height: {
                     let baseHeight = 48;
                     if (index === root.expandedItemIndex && !isInDeleteMode && !isInRenameMode && !isInUpdateMode) {
-                        var listHeight = 36 * 3;
+                        let options = root.getPresetOptions(modelData);
+                        var listHeight = 36 * options.length;
                         return baseHeight + 4 + listHeight + 8;
                     }
                     return baseHeight;
@@ -677,7 +739,7 @@ Item {
 
                     ClippingRectangle {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 36 * 3
+                        Layout.preferredHeight: 36 * optionsListView.count
                         color: Colors.background
                         radius: Styling.radius(0)
 
@@ -687,46 +749,7 @@ Item {
                             clip: true
                             interactive: false
                             boundsBehavior: Flickable.StopAtBounds
-                            model: {
-                                var options = [
-                                    {
-                                        text: "Rename",
-                                        icon: Icons.edit,
-                                        highlightColor: Colors.secondary,
-                                        textColor: Styling.srItem("secondary"),
-                                        action: function () {
-                                            root.enterRenameMode(modelData.name);
-                                            root.expandedItemIndex = -1;
-                                        }
-                                    },
-                                    {
-                                        text: "Update",
-                                        icon: Icons.arrowCounterClockwise,
-                                        highlightColor: Colors.tertiary,
-                                        textColor: Styling.srItem("tertiary"),
-                                        action: function () {
-                                            root.enterUpdateMode(modelData.name);
-                                            root.expandedItemIndex = -1;
-                                        }
-                                    },
-                                    {
-                                        text: "Delete",
-                                        icon: Icons.trash,
-                                        highlightColor: Colors.error,
-                                        textColor: Styling.srItem("error"),
-                                        action: function () {
-                                            root.enterDeleteMode(modelData.name);
-                                            root.expandedItemIndex = -1;
-                                        }
-                                    }
-                                ];
-
-                                if (modelData.isOfficial) {
-                                    // Only keep Update
-                                    return options.filter(o => o.text === "Update");
-                                }
-                                return options;
-                            }
+                            model: root.getPresetOptions(modelData)
                             currentIndex: root.selectedOptionIndex
                             highlightFollowsCurrentItem: true
                             highlightRangeMode: ListView.ApplyRange
@@ -1198,22 +1221,22 @@ Item {
 
                         Component {
                             id: normalText
-                            Text {
-                                text: {
-                                    if (isInDeleteMode && !modelData.isCreateButton && !modelData.isCreateSpecificButton) {
-                                        return `Delete "${root.presetToDelete}"?`;
-                                    } else if (isInUpdateMode && !modelData.isCreateButton && !modelData.isCreateSpecificButton) {
-                                        return `Update "${root.presetToUpdate}"`;
-                                    } else {
-                                        return modelData.name;
+                                Text {
+                                    text: {
+                                        if (isInDeleteMode && !modelData.isCreateButton && !modelData.isCreateSpecificButton) {
+                                            return `Delete "${root.presetToDelete}"?`;
+                                        } else if (isInUpdateMode && !modelData.isCreateButton && !modelData.isCreateSpecificButton) {
+                                            return `Update "${root.presetToUpdate}"`;
+                                        } else {
+                                            return modelData.name;
+                                        }
                                     }
+                                    color: textColor
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Config.theme.fontSize
+                                    font.weight: isInDeleteMode || isActive ? Font.Bold : (modelData.isCreateButton ? Font.Medium : Font.Bold)
+                                    elide: Text.ElideRight
                                 }
-                                color: textColor
-                                font.family: Config.theme.font
-                                font.pixelSize: Config.theme.fontSize
-                                font.weight: isInDeleteMode || isActive ? Font.Bold : (modelData.isCreateButton ? Font.Medium : Font.Bold)
-                                elide: Text.ElideRight
-                            }
                         }
 
                         Component {
@@ -1266,10 +1289,9 @@ Item {
                             visible: !isInRenameMode && !isInUpdateMode
                             text: {
                                 if (modelData.isCreateButton || modelData.isCreateSpecificButton) {
-                                    return "Create a new preset";
-                                } else {
-                                    return `${modelData.configFiles.length} config files`;
+                                    return "Tap to create";
                                 }
+                                return modelData.author ? modelData.author : "Unknown";
                             }
                             color: root.selectedIndex === index ? Styling.srItem("primary") : Colors.outline
                             opacity: 0.7
@@ -1322,7 +1344,9 @@ Item {
                 height: {
                     let baseHeight = 48;
                     if (resultsList.currentIndex === root.expandedItemIndex && !root.deleteMode && !root.renameMode && !root.updateMode) {
-                        var listHeight = 36 * 3;
+                        let pItem = presetsModel.get(resultsList.currentIndex);
+                        let optCount = pItem && pItem.presetData ? root.getPresetOptions(pItem.presetData).length : 3;
+                        var listHeight = 36 * optCount;
                         return baseHeight + 4 + listHeight + 8;
                     }
                     return baseHeight;
@@ -1333,7 +1357,9 @@ Item {
                     for (var i = 0; i < resultsList.currentIndex && i < presetsModel.count; i++) {
                         var itemHeight = 48;
                         if (i === root.expandedItemIndex && !root.deleteMode && !root.renameMode && !root.updateMode) {
-                            var listHeight = 36 * 3;
+                            let pItem = presetsModel.get(i);
+                            let optCount = pItem && pItem.presetData ? root.getPresetOptions(pItem.presetData).length : 3;
+                            var listHeight = 36 * optCount;
                             itemHeight = 48 + 4 + listHeight + 8;
                         }
                         yPos += itemHeight;
@@ -1414,9 +1440,32 @@ Item {
                         return false;
 
                     var itemY = activeIndex * 48;
+                    // Correct Y calculation requires summing previous heights, as they are variable
+                    if (activeIndex > 0) {
+                         // This simple calculation (activeIndex * 48) is WRONG when items have variable heights.
+                         // However, since only ONE item can be expanded at a time:
+                         // 1. If the expanded item is BEFORE activeIndex, activeIndex will be pushed down.
+                         // 2. If the expanded item IS activeIndex, its top is normal (unless pushed by previous).
+                         
+                         // Re-calculate itemY correctly:
+                         itemY = 0;
+                         for (var i = 0; i < activeIndex; i++) {
+                             var h = 48;
+                             if (i === root.expandedItemIndex) { // logic for expanded item
+                                 let pItem = presetsModel.get(i);
+                                 let optCount = pItem && pItem.presetData ? root.getPresetOptions(pItem.presetData).length : 3;
+                                 var lHeight = 36 * optCount;
+                                 h = 48 + 4 + lHeight + 8;
+                             }
+                             itemY += h;
+                         }
+                    }
+
                     var itemHeight = 48;
                     if (isExpanded) {
-                        var listHeight = 36 * 3;
+                        let pItem = presetsModel.get(activeIndex);
+                        let optCount = pItem && pItem.presetData ? root.getPresetOptions(pItem.presetData).length : 3;
+                        var listHeight = 36 * optCount;
                         itemHeight = 48 + 4 + listHeight + 8;
                     }
 

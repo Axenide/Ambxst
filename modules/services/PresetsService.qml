@@ -67,6 +67,8 @@ Singleton {
         
         for (const configFile of preset.configFiles) {
              const jsonFile = configFile.replace('.js', '.json')
+             if (jsonFile === 'system.json') continue; // Skip system.json
+
              const srcPath = presetPath + "/" + jsonFile
              const dstPath = configDir + "/config/" + jsonFile
              copyCmd += `cp "${srcPath}" "${dstPath}" && `
@@ -110,6 +112,8 @@ Singleton {
         let copyCmd = ""
         for (const configFile of configFiles) {
             const jsonFile = configFile.replace('.js', '.json')
+            if (jsonFile === 'system.json') continue; // Skip system.json
+
             // The source is configDir (~/.config/Ambxst), NOT configDir/config
             // But wait, the configDir property is defined as ~/.config/Ambxst below?
             // Let's check the property definition.
@@ -128,6 +132,12 @@ Singleton {
             const dstPath = presetPath + "/" + jsonFile
             copyCmd += `cp "${srcPath}" "${dstPath}" && `
         }
+        
+        // Create info.json with default author
+        const infoContent = JSON.stringify({ author: "User", authorUrl: "" }, null, 4)
+        // Use printf to write info.json safely
+        copyCmd += `printf '${infoContent}' > "${presetPath}/info.json" && `
+
         copyCmd = copyCmd.slice(0, -4) // Remove last " && "
 
         const fullCmd = `${createCmd} && ${copyCmd}`
@@ -144,41 +154,86 @@ Singleton {
     Process {
         id: scanProcess
         // Find all JSON files in subdirectories of presetsDir (depth 2) and assetsPresetsDir
-        command: ["find", presetsDir, assetsPresetsDir, "-mindepth", "2", "-maxdepth", "2", "-name", "*.json"]
+        // Exclude system.json and info.json from the file list
+        // Then, read info.json files content using grep
+        command: ["sh", "-c", "find '" + presetsDir + "' '" + assetsPresetsDir + "' -mindepth 2 -maxdepth 2 -name '*.json' -not -name 'info.json' -not -name 'system.json'; echo '---METADATA---'; find '" + presetsDir + "' '" + assetsPresetsDir + "' -mindepth 2 -maxdepth 2 -name 'info.json' -exec grep -H . {} +"]
         running: false
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const files = text.trim().split('\n').filter(line => line.length > 0)
+                const lines = text.trim().split('\n');
                 const presetsMap = {}
+                const metadataMap = {} // key: presetPath, value: json string builder
 
-                for (const file of files) {
-                    // file: /path/to/presets/PresetName/config.json
-                    const parts = file.split('/')
-                    const configName = parts.pop() // remove config.json, parts is now the folder path
-                    
-                    // The path to the preset directory
-                    const presetPath = parts.join('/')
-                    // The name of the preset is the last folder name
-                    const presetName = parts[parts.length - 1]
-                    
-                    // Determine if official based on path prefix
-                    const isOfficial = file.startsWith(root.assetsPresetsDir)
+                let processingMetadata = false;
 
-                    // Use presetPath as key to ensure uniqueness per preset folder
-                    const key = presetPath
+                for (const line of lines) {
+                    if (line === '---METADATA---') {
+                        processingMetadata = true;
+                        continue;
+                    }
 
-                    if (!presetsMap[key]) {
-                        presetsMap[key] = {
-                            name: presetName,
-                            path: presetPath,
-                            isOfficial: isOfficial,
-                            configFiles: []
+                    if (!processingMetadata) {
+                        if (line.length === 0) continue;
+                        
+                        // Config file path
+                        const parts = line.split('/')
+                        const configName = parts.pop() // remove config.json, parts is now the folder path
+                        
+                        // The path to the preset directory
+                        const presetPath = parts.join('/')
+                        const presetName = parts[parts.length - 1]
+                        
+                        // Determine if official based on path prefix
+                        const isOfficial = line.startsWith(root.assetsPresetsDir)
+
+                        // Use presetPath as key to ensure uniqueness per preset folder
+                        const key = presetPath
+
+                        if (!presetsMap[key]) {
+                            presetsMap[key] = {
+                                name: presetName,
+                                path: presetPath,
+                                isOfficial: isOfficial,
+                                configFiles: [],
+                                author: "Unknown",
+                                authorUrl: ""
+                            }
+                        }
+                        
+                        // Convert .json to .js for UI display
+                        presetsMap[key].configFiles.push(configName.replace('.json', '.js'))
+                    } else {
+                        // Metadata line: path/to/info.json: content
+                        const idx = line.indexOf(':');
+                        if (idx !== -1) {
+                            const filePath = line.substring(0, idx);
+                            const content = line.substring(idx + 1);
+                            
+                            // Extract preset path from file path (remove /info.json)
+                            const parts = filePath.split('/');
+                            parts.pop(); // remove info.json
+                            const presetPath = parts.join('/');
+                            
+                            if (!metadataMap[presetPath]) {
+                                metadataMap[presetPath] = "";
+                            }
+                            metadataMap[presetPath] += content + "\n";
                         }
                     }
-                    
-                    // Convert .json to .js for UI display
-                    presetsMap[key].configFiles.push(configName.replace('.json', '.js'))
+                }
+
+                // Process metadata
+                for (const key in metadataMap) {
+                     if (presetsMap[key]) {
+                         try {
+                             const info = JSON.parse(metadataMap[key]);
+                             if (info.author) presetsMap[key].author = info.author;
+                             if (info.authorUrl) presetsMap[key].authorUrl = info.authorUrl;
+                         } catch (e) {
+                             console.warn("Failed to parse metadata for preset:", key, e);
+                         }
+                     }
                 }
 
                 // Convert map to array
@@ -256,6 +311,7 @@ Singleton {
         let copyCmd = ""
         for (const configFile of configFiles) {
             const jsonFile = configFile.replace('.js', '.json')
+            if (jsonFile === 'system.json') continue; // Skip system.json
             const srcPath = configDir + "/config/" + jsonFile
             const dstPath = presetPath + "/" + jsonFile
             copyCmd += `cp "${srcPath}" "${dstPath}" && `
