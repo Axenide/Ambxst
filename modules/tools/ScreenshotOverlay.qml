@@ -135,7 +135,7 @@ PanelWindow {
                 id: img
                 anchors.fill: parent
                 source: root.imagePath !== "" ? "file://" + root.imagePath : ""
-                fillMode: Image.PreserveAspectFit
+                fillMode: Image.PreserveAspectCrop
                 asynchronous: true
                 
                 // Invisible item to handle the Drag attached property state
