@@ -38,19 +38,20 @@ Item {
     property int currentIndex: 0
     // Contador para detectar cuando se añaden nuevas notificaciones
     property int lastNotificationCount: 0
+    // Contador para forzar actualización del timestamp (incrementa cada minuto)
+    property int timestampUpdateCounter: 0
 
     // Timer para forzar actualización del timestamp cada minuto
+    // Solo corre cuando el componente es visible y hay notificaciones
     Timer {
         id: timestampUpdateTimer
         interval: 60000 // 1 minuto
         repeat: true
-        running: true
-        triggeredOnStart: true
+        running: root.visible && currentNotification !== null
+        triggeredOnStart: false
         onTriggered: {
-            // Forzar actualización recreando el componente
-            if (currentNotification && notificationStack.currentItem) {
-                notificationStack.navigateToNotification(currentIndex, StackView.ReplaceTransition);
-            }
+            // Incrementar contador para forzar re-evaluación del binding del timestamp
+            root.timestampUpdateCounter++;
         }
     }
 
@@ -135,6 +136,31 @@ Item {
         }
     }
 
+    // Sincronizar estado cuando el componente cambia de visibilidad
+    onVisibleChanged: {
+        if (visible && Notifications.popupList.length > 0) {
+            // Ajustar índice si está fuera de rango
+            if (currentIndex >= Notifications.popupList.length) {
+                currentIndex = Math.max(0, Notifications.popupList.length - 1);
+            }
+            lastNotificationCount = Notifications.popupList.length;
+            // Actualizar el stack si es necesario
+            if (notificationStack.depth === 0) {
+                notificationStack.push(notificationComponent, {
+                    "notification": Notifications.popupList[currentIndex]
+                });
+            }
+        } else if (!visible) {
+            // Limpiar el stack cuando se oculta para evitar acumulación
+            // Usar clear(StackView.Immediate) para evitar animaciones pendientes
+            if (notificationStack.depth > 0) {
+                notificationStack.clear(StackView.Immediate);
+            }
+            // Resetear contadores
+            timestampUpdateCounter = 0;
+        }
+    }
+
     Column {
         id: mainColumn
         anchors.fill: parent
@@ -199,8 +225,9 @@ Item {
                     }
 
                     // Actualizar cuando cambie la lista de notificaciones
+                    // Solo activo cuando el componente es visible para evitar trabajo duplicado
                     Connections {
-                        target: Notifications
+                        target: root.visible ? Notifications : null
                         function onPopupListChanged() {
                             if (Notifications.popupList.length === 0) {
                                 notificationStack.clear();
@@ -488,7 +515,8 @@ Item {
                                                     // Timestamp a la derecha
                                                     Text {
                                                         id: timestampText
-                                                        text: notification ? NotificationUtils.getFriendlyNotifTimeString(notification.time) : ""
+                                                        // Usar timestampUpdateCounter para forzar re-evaluación cada minuto
+                                                        text: notification ? (root.timestampUpdateCounter, NotificationUtils.getFriendlyNotifTimeString(notification.time)) : ""
                                                         font.family: Config.theme.font
                                                         font.pixelSize: Config.theme.fontSize
                                                         font.weight: Font.Bold

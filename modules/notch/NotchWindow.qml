@@ -374,7 +374,8 @@ PanelWindow {
                 id: notificationPopup
                 anchors.fill: parent
                 anchors.margins: 16
-                opacity: notificationPopupContainer.shouldShowNotificationPopup ? 1 : 0
+                visible: notificationPopupContainer.shouldShowNotificationPopup
+                opacity: visible ? 1 : 0
                 notchHovered: notificationPopupContainer.popupHovered
 
                 Behavior on opacity {

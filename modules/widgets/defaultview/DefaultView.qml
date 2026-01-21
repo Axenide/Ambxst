@@ -136,7 +136,8 @@ Item {
                 anchors.leftMargin: notificationPadding
                 anchors.rightMargin: notificationPadding
                 anchors.bottomMargin: notificationPaddingBottom
-                opacity: hasActiveNotifications ? 1 : 0
+                visible: hasActiveNotifications
+                opacity: visible ? 1 : 0
                 notchHovered: expandedState
                 onIsNavigatingChanged: root.isNavigating = isNavigating
 
