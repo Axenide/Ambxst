@@ -176,7 +176,6 @@ Rectangle {
             SearchInput {
                 id: searchInput
                 Layout.fillWidth: true
-                Layout.preferredHeight: 36
                 placeholderText: "Search..."
                 clearOnEscape: true
 
