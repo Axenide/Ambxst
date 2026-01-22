@@ -14,8 +14,48 @@ QtObject {
     property int battery: -1
     property bool batteryAvailable: battery >= 0
     property bool connecting: false
+    
+    // Battery notification tracking
+    property int previousBattery: -1
+    property bool notified15: false
+    property bool notified5: false
 
     signal infoUpdated()
+    
+    // Battery low notification - only send once per threshold crossing
+    onBatteryChanged: {
+        if (battery >= 0 && connected) {
+            // Only notify at 15% if not already notified and battery is between 6-15%
+            if (battery <= 15 && battery > 5 && !notified15) {
+                notified15 = true;
+                sendLowBatteryNotification(15);
+            }
+            // Only notify at 5% if not already notified and battery is 5% or below
+            if (battery <= 5 && !notified5) {
+                notified5 = true;
+                sendLowBatteryNotification(5);
+            }
+            // Reset flags when battery goes back up
+            if (battery > 15) {
+                notified15 = false;
+                notified5 = false;
+            } else if (battery > 5) {
+                notified5 = false;
+            }
+        }
+        previousBattery = battery;
+    }
+    
+    function sendLowBatteryNotification(percent) {
+        const urgency = percent <= 5 ? "critical" : "normal";
+        Quickshell.execDetached([
+            "notify-send",
+            "-u", urgency,
+            "-i", "battery-low",
+            "Bluetooth Battery Low",
+            `${name} battery is at ${battery}%`
+        ]);
+    }
 
     // Connect with auto-trust for new devices
     function connect() {
