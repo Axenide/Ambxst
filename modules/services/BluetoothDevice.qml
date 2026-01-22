@@ -24,14 +24,19 @@ QtObject {
     
     // Battery low notification - only send once per threshold crossing
     onBatteryChanged: {
+        // Skip if battery value hasn't actually changed
+        if (battery === previousBattery) {
+            return;
+        }
+        
         if (battery >= 0 && connected) {
-            // Only notify at 15% if not already notified and battery is between 6-15%
-            if (battery <= 15 && battery > 5 && !notified15) {
+            // Only notify at 15% if crossing threshold from above
+            if (previousBattery > 15 && battery <= 15 && battery > 5 && !notified15) {
                 notified15 = true;
                 sendLowBatteryNotification(15);
             }
-            // Only notify at 5% if not already notified and battery is 5% or below
-            if (battery <= 5 && !notified5) {
+            // Only notify at 5% if crossing threshold from above
+            if (previousBattery > 5 && battery <= 5 && !notified5) {
                 notified5 = true;
                 sendLowBatteryNotification(5);
             }
