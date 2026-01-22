@@ -141,11 +141,16 @@ Rectangle {
         }
     }
 
+    // Update chart when becoming visible
+    onVisibleChanged: {
+        if (visible) chartCanvas.requestPaint();
+    }
+
     // Watch for history changes to repaint chart
     Connections {
         target: SystemResources
         function onCpuHistoryChanged() {
-            chartCanvas.requestPaint();
+            if (root.visible) chartCanvas.requestPaint();
         }
     }
 

@@ -430,6 +430,7 @@ Item {
                 ListView {
                     id: chatView
                     visible: !mainChatArea.isWelcome
+                    cacheBuffer: 1000
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     clip: true

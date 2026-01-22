@@ -1064,7 +1064,7 @@ Rectangle {
             // Tab 1: Clipboard (with prefix from config)
             Loader {
                 id: clipboardLoader
-                active: currentTab === 1
+                active: currentTab === 1 || item !== null
                 sourceComponent: Component {
                     ClipboardTab {
                         leftPanelWidth: root.leftPanelWidth
@@ -1094,7 +1094,7 @@ Rectangle {
                 id: emojiLoader
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                active: currentTab === 2
+                active: currentTab === 2 || item !== null
                 sourceComponent: Component {
                     EmojiTab {
                         anchors.fill: parent
@@ -1118,7 +1118,7 @@ Rectangle {
             // Tab 3: Tmux (with prefix from config)
             Loader {
                 id: tmuxLoader
-                active: currentTab === 3
+                active: currentTab === 3 || item !== null
                 sourceComponent: Component {
                     TmuxTab {
                         leftPanelWidth: root.leftPanelWidth
@@ -1143,7 +1143,7 @@ Rectangle {
                 id: notesLoader
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                active: currentTab === 4
+                active: currentTab === 4 || item !== null
                 sourceComponent: Component {
                     NotesTab {
                         anchors.fill: parent

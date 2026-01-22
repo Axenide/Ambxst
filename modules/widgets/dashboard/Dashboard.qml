@@ -36,6 +36,9 @@ NotchAnimationBehavior {
     implicitWidth: nonAnimWidth
     implicitHeight: 430
 
+    // Track which tabs have been loaded (for lazy loading)
+    property var loadedTabs: ({0: true}) // Tab 0 (widgets) loaded by default
+
     focus: true
 
     // Usar el comportamiento estándar de animaciones del notch
@@ -292,7 +295,7 @@ NotchAnimationBehavior {
             vert: true
         }
 
-        // Content area
+            // Content area
         Rectangle {
             id: viewWrapper
 
@@ -303,34 +306,24 @@ NotchAnimationBehavior {
 
             clip: true
 
-            StackView {
+            // Custom Tab View with Lazy Loading + Persistence
+            Item {
                 id: stack
                 anchors.fill: parent
 
-                // Array de componentes para cargar dinámicamente
-                property var components: [unifiedLauncherComponent, wallpapersComponent, metricsComponent, assistantComponent, quickSettingsComponent]
+                property int currentIndex: GlobalStates.dashboardCurrentTab
 
-                // Cargar directamente el componente correcto según GlobalStates
-                initialItem: components[GlobalStates.dashboardCurrentTab]
-
-                // Handler para cuando el item actual cambia
-                onCurrentItemChanged: {
-                    if (currentItem) {
-                        if (currentItem.focusSearchInput) {
-                            focusUnifiedLauncherTimer.restart();
-                        }
+                // Update internal index when global changes
+                Connections {
+                    target: GlobalStates
+                    function onDashboardCurrentTabChanged() {
+                        stack.navigateToTab(GlobalStates.dashboardCurrentTab);
                     }
                 }
 
-                // Función para navegar a un tab específico
+                // Function to navigate to a specific tab
                 function navigateToTab(index) {
-                    if (index >= 0 && index < components.length && index !== root.state.currentTab) {
-                        let targetComponent = components[index];
-
-                        let direction = index > root.state.currentTab ? StackView.PushTransition : StackView.PopTransition;
-
-                        stack.replace(targetComponent, {}, direction);
-
+                    if (index >= 0 && index < 5 && index !== root.state.currentTab) {
                         // Reset launcher state when leaving unified launcher tab (tab 0)
                         if (root.state.currentTab === 0 && index !== 0) {
                             GlobalStates.clearLauncherState();
@@ -346,71 +339,89 @@ NotchAnimationBehavior {
                     }
                 }
 
-                pushEnter: Transition {
-                    PropertyAnimation {
-                        property: "y"
-                        from: stack.height
-                        to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                // Generic Tab Loader Component
+                component TabLoader : Loader {
+                    anchors.fill: parent
+                    // Load if current, keep loaded afterwards (Persistence)
+                    active: root.state.currentTab === index || item !== null
+                    
+                    // Visibility handles the "switching"
+                    visible: root.state.currentTab === index
+                    
+                    // Transitions
+                    opacity: visible ? 1 : 0
+                    transform: Translate {
+                        y: visible ? 0 : (root.state.currentTab > index ? -20 : 20)
+                        Behavior on y {
+                             enabled: Config.animDuration > 0
+                             NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart } 
+                        }
                     }
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 0
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+
+                    Behavior on opacity {
+                        enabled: Config.animDuration > 0
+                        NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart }
+                    }
+
+                    // Forward focus
+                    onLoaded: {
+                        if (visible && item && item.focusSearchInput) {
+                            focusUnifiedLauncherTimer.restart();
+                        }
+                    }
+                    
+                    // Ensure focus when becoming visible
+                    onVisibleChanged: {
+                        if (visible && item && item.focusSearchInput) {
+                            focusUnifiedLauncherTimer.restart();
+                        }
                     }
                 }
 
-                pushExit: Transition {
-                    PropertyAnimation {
-                        property: "y"
-                        from: 0
-                        to: -stack.height
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
-                    }
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 1
-                        to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                // Tab 0: Unified Launcher
+                TabLoader {
+                    property int index: 0
+                    sourceComponent: unifiedLauncherComponent
+                    z: visible ? 1 : 0
                 }
 
-                popEnter: Transition {
-                    PropertyAnimation {
-                        property: "y"
-                        from: -stack.height
-                        to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
-                    }
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 0
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                // Tab 1: Wallpapers
+                TabLoader {
+                    property int index: 1
+                    sourceComponent: wallpapersComponent
+                    z: visible ? 1 : 0
                 }
 
-                popExit: Transition {
-                    PropertyAnimation {
-                        property: "y"
-                        from: 0
-                        to: stack.height
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
-                    }
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 1
-                        to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                // Tab 2: Metrics
+                TabLoader {
+                    property int index: 2
+                    sourceComponent: metricsComponent
+                    z: visible ? 1 : 0
+                }
+
+                // Tab 3: Assistant
+                TabLoader {
+                    property int index: 3
+                    sourceComponent: assistantComponent
+                    z: visible ? 1 : 0
+                }
+
+                // Tab 4: Settings
+                TabLoader {
+                    property int index: 4
+                    sourceComponent: quickSettingsComponent
+                    z: visible ? 1 : 0
+                }
+                
+                // Helper to access current item for focus
+                property var currentItem: {
+                    switch(root.state.currentTab) {
+                        case 0: return children[0].item;
+                        case 1: return children[1].item;
+                        case 2: return children[2].item;
+                        case 3: return children[3].item;
+                        case 4: return children[4].item;
+                        default: return null;
                     }
                 }
 
@@ -421,13 +432,16 @@ NotchAnimationBehavior {
                     property real startX: 0
                     property bool swiping: false
                     property real swipeThreshold: 50
-                    property real swipeProgress: 0
+                    
+                    // Allow clicking through to tabs
+                    propagateComposedEvents: true
+                    preventStealing: false
 
                     onPressed: mouse => {
                         startY = mouse.y;
                         startX = mouse.x;
                         swiping = false;
-                        swipeProgress = 0;
+                        mouse.accepted = false; // Let children handle clicks
                     }
 
                     onPositionChanged: mouse => {
@@ -437,7 +451,6 @@ NotchAnimationBehavior {
                         // Solo considerar swipe vertical si el movimiento horizontal es mínimo
                         if (Math.abs(deltaY) > 20 && deltaX < 30) {
                             swiping = true;
-                            swipeProgress = Math.max(-1, Math.min(1, deltaY / (parent.height * 0.3)));
                         }
                     }
 
@@ -453,13 +466,9 @@ NotchAnimationBehavior {
                                 stack.navigateToTab(root.state.currentTab - 1);
                             }
                         }
-
                         swiping = false;
-                        swipeProgress = 0;
+                        mouse.accepted = false;
                     }
-
-                    // Pasar eventos de click a los elementos internos
-                    propagateComposedEvents: true
                 }
             }
         }
