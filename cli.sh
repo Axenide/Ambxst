@@ -283,14 +283,30 @@ brightness)
 			bash "${SCRIPT_DIR}/scripts/brightness_list.sh" >"${BRIGHTNESS_SAVE_FILE}.tmp" 2>/dev/null || {
 				echo "Warning: Could not query current brightness"
 			}
+			# Skip saving if brightness is 0 (screen off state) and we already have a save
 			if [ -f "${BRIGHTNESS_SAVE_FILE}.tmp" ]; then
-				while IFS=: read -r name bright method; do
-					if [ -n "$name" ] && [ -n "$bright" ]; then
-						echo "${name}:${bright}"
+				# Check if all values are 0 or very low (screen off state)
+				ALL_ZERO=true
+				while IFS=: read -r name bright; do
+					if [ -n "$bright" ] && [ "$bright" -gt 5 ]; then
+						ALL_ZERO=false
+						break
 					fi
-				done <"${BRIGHTNESS_SAVE_FILE}.tmp" >"$BRIGHTNESS_SAVE_FILE"
-				rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
-				echo "Saved current brightness for all monitors"
+				done <"${BRIGHTNESS_SAVE_FILE}.tmp"
+				
+				# Only save if not all zero, OR if no previous save exists
+				if [ "$ALL_ZERO" = true ] && [ -f "$BRIGHTNESS_SAVE_FILE" ]; then
+					echo "Skipped saving - brightness at 0 (keeping previous save)"
+					rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
+				else
+					while IFS=: read -r name bright; do
+						if [ -n "$name" ] && [ -n "$bright" ]; then
+							echo "${name}:${bright}"
+						fi
+					done <"${BRIGHTNESS_SAVE_FILE}.tmp" >"$BRIGHTNESS_SAVE_FILE"
+					rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
+					echo "Saved current brightness for all monitors"
+				fi
 			fi
 		else
 			# Save specific monitor
@@ -352,14 +368,30 @@ brightness)
 				echo "Warning: Could not query current brightness"
 			}
 			# Convert format from name:brightness:method to name:brightness
+			# Skip saving if brightness is 0 (screen off state) and we already have a save
 			if [ -f "${BRIGHTNESS_SAVE_FILE}.tmp" ]; then
-				while IFS=: read -r name bright method; do
-					if [ -n "$name" ] && [ -n "$bright" ]; then
-						echo "${name}:${bright}"
+				# Check if all values are 0 or very low (screen off state)
+				ALL_ZERO=true
+				while IFS=: read -r name bright; do
+					if [ -n "$bright" ] && [ "$bright" -gt 5 ]; then
+						ALL_ZERO=false
+						break
 					fi
-				done <"${BRIGHTNESS_SAVE_FILE}.tmp" >"$BRIGHTNESS_SAVE_FILE"
-				rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
-				echo "Saved current brightness for all monitors"
+				done <"${BRIGHTNESS_SAVE_FILE}.tmp"
+				
+				# Only save if not all zero, OR if no previous save exists
+				if [ "$ALL_ZERO" = true ] && [ -f "$BRIGHTNESS_SAVE_FILE" ]; then
+					echo "Skipped saving - brightness at 0 (keeping previous save)"
+					rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
+				else
+					while IFS=: read -r name bright; do
+						if [ -n "$name" ] && [ -n "$bright" ]; then
+							echo "${name}:${bright}"
+						fi
+					done <"${BRIGHTNESS_SAVE_FILE}.tmp" >"$BRIGHTNESS_SAVE_FILE"
+					rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
+					echo "Saved current brightness for all monitors"
+				fi
 			fi
 		else
 			# Save specific monitor
