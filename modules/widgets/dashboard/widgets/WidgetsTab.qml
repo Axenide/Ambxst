@@ -38,9 +38,11 @@ Rectangle {
             if (currentTab === 0) {
                 appLauncher.focusSearchInput();
             } else {
-                let currentItem = internalStack.itemAt(currentTab);
-                if (currentItem && currentItem.focusSearchInput) {
-                    currentItem.focusSearchInput();
+                // Fix: Access the Loader from StackLayout (index = currentTab - 1)
+                // and call focusSearchInput on the loaded item, not the Loader itself
+                let loader = internalStack.itemAt(currentTab - 1);
+                if (loader && loader.item && loader.item.focusSearchInput) {
+                    loader.item.focusSearchInput();
                 }
             }
         });
