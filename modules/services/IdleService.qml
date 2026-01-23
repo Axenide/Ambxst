@@ -60,6 +60,8 @@ Singleton {
     // Master Idle Logic
     property int elapsedIdleTime: 0
     property var triggeredListeners: [] // Keeps track of indices that have fired
+    property bool resumeCooldown: false // Prevent immediate resume after listener triggers
+    property bool pendingReset: false // Track if reset was requested during cooldown
 
     // Master Monitor: Detects "absence of activity" almost immediately
     IdleMonitor {
@@ -72,6 +74,26 @@ Singleton {
                 idleTimer.start();
             } else {
                 idleTimer.stop();
+                // If in cooldown, defer the reset
+                if (root.resumeCooldown) {
+                    root.pendingReset = true;
+                } else {
+                    root.resetIdleState();
+                }
+            }
+        }
+    }
+    
+    // Cooldown timer - prevents resume for a short period after listener triggers
+    Timer {
+        id: cooldownTimer
+        interval: 1500 // 1.5 seconds - enough for lockscreen to fully load
+        repeat: false
+        onTriggered: {
+            root.resumeCooldown = false;
+            // Execute pending reset if activity happened during cooldown and user is still active
+            if (root.pendingReset && !masterMonitor.isIdle) {
+                root.pendingReset = false;
                 root.resetIdleState();
             }
         }
@@ -99,6 +121,10 @@ Singleton {
                     console.log("Idle timer " + tVal + "s reached: " + listener.onTimeout);
                     executionProc.command = ["sh", "-c", listener.onTimeout];
                     executionProc.running = true;
+                    
+                    // Activate cooldown to prevent immediate resume from listener-caused activity
+                    root.resumeCooldown = true;
+                    cooldownTimer.restart();
                 }
                 root.triggeredListeners.push(i);
             }
