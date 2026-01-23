@@ -37,7 +37,7 @@ Item {
             case "dashboard-wallpapers": toggleDashboardTab(1); break;
             case "dashboard-kanban": toggleDashboardTab(2); break;
             case "dashboard-assistant": toggleDashboardTab(3); break;
-            case "dashboard-controls": toggleDashboardTab(4); break;
+            case "dashboard-controls": GlobalStates.settingsWindowVisible = !GlobalStates.settingsWindowVisible; break;
             case "dashboard-clipboard": toggleDashboardWithPrefix(Config.prefix.clipboard + " "); break;
             case "dashboard-emoji": toggleDashboardWithPrefix(Config.prefix.emoji + " "); break;
             case "dashboard-tmux": toggleDashboardWithPrefix(Config.prefix.tmux + " "); break;

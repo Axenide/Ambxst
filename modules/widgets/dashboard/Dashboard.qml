@@ -27,7 +27,7 @@ NotchAnimationBehavior {
     }
 
     readonly property var tabModel: [Icons.widgets, Icons.wallpapers, Icons.heartbeat, Icons.assistant]
-    readonly property int tabCount: tabModel.length + 1  // +1 for controls tab at bottom
+    readonly property int tabCount: tabModel.length
     readonly property int tabSpacing: 8
 
     readonly property int tabWidth: 48
@@ -323,7 +323,7 @@ NotchAnimationBehavior {
 
                 // Function to navigate to a specific tab
                 function navigateToTab(index) {
-                    if (index >= 0 && index < 5 && index !== root.state.currentTab) {
+                    if (index >= 0 && index < root.tabCount && index !== root.state.currentTab) {
                         // Reset launcher state when leaving unified launcher tab (tab 0)
                         if (root.state.currentTab === 0 && index !== 0) {
                             GlobalStates.clearLauncherState();
