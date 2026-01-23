@@ -6,6 +6,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import qs.config
+import qs.modules.services
 
 Singleton {
     id: root
@@ -110,6 +111,12 @@ Singleton {
     }
 
     function checkListeners() {
+        // Skip idle actions if media is playing (YouTube, Spotify, etc.)
+        if (MprisController.isPlaying) {
+            root.elapsedIdleTime = 0; // Reset timer while media plays
+            return;
+        }
+        
         let listeners = Config.system.idle.listeners;
         for (let i = 0; i < listeners.length; i++) {
             let listener = listeners[i];
