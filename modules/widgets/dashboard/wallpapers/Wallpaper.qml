@@ -329,7 +329,13 @@ PanelWindow {
     // Función para re-ejecutar Matugen con el wallpaper actual
     function setMatugenScheme(scheme) {
         wallpaperConfig.adapter.matugenScheme = scheme;
-        runMatugenForCurrentWallpaper();
+        
+        if (wallpaperConfig.adapter.activeColorPreset) {
+            console.log("Switching to Matugen scheme, clearing preset");
+            wallpaperConfig.adapter.activeColorPreset = "";
+        } else {
+            runMatugenForCurrentWallpaper();
+        }
     }
 
     function runMatugenForCurrentWallpaper() {
@@ -345,6 +351,14 @@ PanelWindow {
             var matugenSource = getColorSource(currentWallpaper);
 
             console.log("Using source for matugen:", matugenSource, "(type:", fileType + ")");
+
+            // Stop existing processes if running to prioritize new request
+            if (matugenProcessWithConfig.running) {
+                matugenProcessWithConfig.running = false;
+            }
+            if (matugenProcessNormal.running) {
+                matugenProcessNormal.running = false;
+            }
 
             // Ejecutar matugen con configuración específica
             var commandWithConfig = ["matugen", "image", matugenSource, "-c", decodeURIComponent(Qt.resolvedUrl("../../../../assets/matugen/config.toml").toString().replace("file://", "")), "-t", wallpaperConfig.adapter.matugenScheme];

@@ -245,7 +245,6 @@ Item {
                                 if (item.type === "preset") {
                                     GlobalStates.wallpaperManager.setColorPreset(item.id);
                                 } else {
-                                    GlobalStates.wallpaperManager.setColorPreset(""); // Clear preset
                                     GlobalStates.wallpaperManager.setMatugenScheme(item.id);
                                 }
                             }
@@ -382,7 +381,6 @@ Item {
                                     if (modelData.type === "preset") {
                                         GlobalStates.wallpaperManager.setColorPreset(modelData.id);
                                     } else {
-                                        GlobalStates.wallpaperManager.setColorPreset(""); // Clear preset
                                         GlobalStates.wallpaperManager.setMatugenScheme(modelData.id);
                                     }
                                     schemeListExpanded = false;
@@ -427,7 +425,6 @@ Item {
                                         if (modelData.type === "preset") {
                                             GlobalStates.wallpaperManager.setColorPreset(modelData.id);
                                         } else {
-                                            GlobalStates.wallpaperManager.setColorPreset(""); // Clear preset
                                             GlobalStates.wallpaperManager.setMatugenScheme(modelData.id);
                                         }
                                         schemeListExpanded = false;
