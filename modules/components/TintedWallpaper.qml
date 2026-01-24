@@ -57,7 +57,7 @@ Item {
     // Container for masking (rounded corners)
     Item {
         anchors.fill: parent
-        layer.enabled: true
+        layer.enabled: root.radius > 0
         layer.effect: MultiEffect {
             maskEnabled: true
             maskThresholdMin: 0.5
@@ -87,7 +87,7 @@ Item {
                 property real texWidth: rawImage.width
                 property real texHeight: rawImage.height
 
-                fragmentShader: "../dashboard/wallpapers/palette.frag.qsb"
+                fragmentShader: "../widgets/dashboard/wallpapers/palette.frag.qsb"
             }
         }
     }

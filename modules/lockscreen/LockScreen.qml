@@ -54,15 +54,13 @@ WlSessionLockSurface {
         }
     }
 
-    // Wallpaper background (oculto - solo usado como source del MultiEffect)
-    Image {
+    // Wallpaper background con Blur integrado
+    TintedWallpaper {
         id: wallpaperBackground
         anchors.fill: parent
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        smooth: true
-        visible: false  // Nunca visible directamente, solo a través del MultiEffect
-        z: 1
+        z: 2
+        radius: 0
+        tintEnabled: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.tintEnabled : false
 
         property string lockscreenFramePath: {
             if (!GlobalStates.wallpaperManager)
@@ -72,44 +70,9 @@ WlSessionLockSurface {
 
         source: lockscreenFramePath ? "file://" + lockscreenFramePath : ""
 
-        onStatusChanged: {
-            if (status === Image.Ready) {
-                console.log("Lockscreen using wallpaper:", lockscreenFramePath);
-            } else if (status === Image.Error) {
-                console.warn("Failed to load lockscreen wallpaper:", lockscreenFramePath);
-            }
-        }
-    }
-
-    // Blur effect
-    MultiEffect {
-        id: blurEffect
-        anchors.fill: parent
-        source: wallpaperBackground
-        autoPaddingEnabled: false
-        blurEnabled: true
-        blur: startAnim ? 1 : 0
-        blurMax: 64
-        visible: true
+        // Animación de opacidad (visibilidad)
         opacity: startAnim ? 1 : 0
-        z: 2
-
-        property real zoomScale: startAnim ? 1.25 : 1.0
-
-        transform: Scale {
-            origin.x: blurEffect.width / 2
-            origin.y: blurEffect.height / 2
-            xScale: blurEffect.zoomScale
-            yScale: blurEffect.zoomScale
-        }
-
-        Behavior on blur {
-            enabled: Config.animDuration > 0
-            NumberAnimation {
-                duration: Config.animDuration * 2
-                easing.type: Easing.OutExpo
-            }
-        }
+        visible: true
 
         Behavior on opacity {
             enabled: Config.animDuration > 0
@@ -117,6 +80,23 @@ WlSessionLockSurface {
                 duration: Config.animDuration * 2
                 easing.type: Easing.OutQuint
             }
+        }
+
+        // Efecto de Blur y Zoom mediante capa
+        layer.enabled: true
+        layer.effect: MultiEffect {
+            blurEnabled: true
+            blur: startAnim ? 1 : 0
+            blurMax: 64
+        }
+
+        // Zoom animation
+        property real zoomScale: startAnim ? 1.25 : 1.0
+        transform: Scale {
+            origin.x: wallpaperBackground.width / 2
+            origin.y: wallpaperBackground.height / 2
+            xScale: wallpaperBackground.zoomScale
+            yScale: wallpaperBackground.zoomScale
         }
 
         Behavior on zoomScale {
