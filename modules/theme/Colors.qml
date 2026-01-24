@@ -26,6 +26,10 @@ FileView {
         id: pywalGenerator
     }
 
+    property KittyGenerator kittyGenerator: KittyGenerator {
+        id: kittyGenerator
+    }
+
     property Timer generationTimer: Timer {
         id: generationTimer
         interval: 100
@@ -34,6 +38,7 @@ FileView {
             qtCtGenerator.generate(colors)
             gtkGenerator.generate(colors)
             pywalGenerator.generate(colors)
+            kittyGenerator.generate(colors)
         }
     }
 
