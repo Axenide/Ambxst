@@ -50,14 +50,19 @@ StyledRect {
         }
     }
 
+    // Function to sync seekBar with current media position
+    function syncSeekBarPosition() {
+        if (!seekBar.isDragging && !player.isSeeking && player.hasActivePlayer) {
+            seekBar.value = player.length > 0 ? player.position / player.length : 0;
+        }
+    }
+
     Timer {
         running: player.isPlaying
         interval: 1000
         repeat: true
         onTriggered: {
-            if (!seekBar.isDragging && !player.isSeeking && player.hasActivePlayer) {
-                seekBar.value = player.length > 0 ? player.position / player.length : 0;
-            }
+            syncSeekBarPosition();
             MprisController.activePlayer?.positionChanged();
         }
     }
@@ -65,9 +70,27 @@ StyledRect {
     Connections {
         target: MprisController.activePlayer
         function onPositionChanged() {
-            if (!seekBar.isDragging && !player.isSeeking && player.hasActivePlayer) {
-                seekBar.value = player.length > 0 ? player.position / player.length : 0;
-            }
+            syncSeekBarPosition();
+        }
+    }
+
+    // Immediate sync when component becomes visible or when active player changes
+    Component.onCompleted: {
+        syncSeekBarPosition();
+    }
+
+    Connections {
+        target: MprisController
+        function onActivePlayerChanged() {
+            // Small delay to ensure player properties are updated
+            Qt.callLater(syncSeekBarPosition);
+        }
+    }
+
+    // Also sync when the component's visibility changes (dashboard opens/closes)
+    onVisibleChanged: {
+        if (visible) {
+            syncSeekBarPosition();
         }
     }
 
