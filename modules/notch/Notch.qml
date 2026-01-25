@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Effects
+import QtQuick.Shapes
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.components
@@ -447,179 +448,180 @@ Item {
     property bool isShowingNotifications: false
     property bool isShowingDefault: false
 
-    // Unified outline canvas (single continuous stroke around silhouette)
-    Canvas {
-        id: outlineCanvas
-        anchors.centerIn: parent
-        width: parent.implicitWidth
-        height: parent.implicitHeight
+    // Unified outline shape (single continuous stroke)
+    Shape {
+        id: outlineShape
+        anchors.fill: parent
         z: 5000
-        antialiasing: true
+        visible: Config.notchTheme === "default" && borderWidth > 0
         
         readonly property var borderData: Config.theme.srBg.border
         readonly property int borderWidth: borderData[1]
         readonly property color borderColor: Config.resolveColor(borderData[0])
         
-        visible: Config.notchTheme === "default" && borderWidth > 0
+        readonly property real offset: borderWidth / 2
         
-        onPaint: {
-            if (Config.notchTheme !== "default")
-                return; // Only draw for default theme
-            var ctx = getContext("2d");
-            ctx.clearRect(0, 0, width, height);
+        // "Corner" radius (the smooth connection to the screen edge)
+        readonly property real rCorner: Config.roundness > 0 ? Config.roundness + 4 : 0
+        readonly property real wCenter: notchRect.width
+        
+        // Adjusted radii for the path (inner radius of the stroke)
+        readonly property real bl: Math.max(0, notchRect.bottomLeftRadius - offset)
+        readonly property real br: Math.max(0, notchRect.bottomRightRadius - offset)
+        readonly property real tl: Math.max(0, notchRect.topLeftRadius - offset)
+        readonly property real tr: Math.max(0, notchRect.topRightRadius - offset)
+        
+        // Connection corner radius
+        readonly property real rc: Math.max(0, rCorner - offset)
+        
+        readonly property real yBottom: height - offset
+        readonly property real yTop: offset
+
+        // ShapePath for Position "Top"
+        ShapePath {
+            // Using logic binding for visibility to avoid painting when not needed
+            strokeWidth: outlineShape.borderWidth
+            fillColor: "transparent"
+            capStyle: ShapePath.RoundCap
+            joinStyle: ShapePath.RoundJoin
             
-            if (borderWidth <= 0)
-                return; // No outline when borderWidth is 0
+            // Only visible when position is top
             
-            ctx.strokeStyle = borderColor;
-            ctx.lineWidth = borderWidth;
-            ctx.lineJoin = "round";
-            ctx.lineCap = "round";
-
-            // Offset to move path inward by half the border width
-            var offset = borderWidth / 2;
+            // We can't easily toggle "visible" on ShapePath, but if the Shape is visible, it draws all paths.
+            // We can move the startX/Y to something offscreen or make color transparent? 
+            // Actually, let's use strokeColor: visible ? color : "transparent"
+            strokeColor: notchContainer.position === "top" ? outlineShape.borderColor : "transparent"
             
-            // "Corner" radius (the smooth connection to the screen edge)
-            var rCorner = Config.roundness > 0 ? Config.roundness + 4 : 0;
-            var wCenter = notchRect.width;
+            startX: outlineShape.offset
+            startY: outlineShape.offset
+            
+            // Top Left Connection
+            PathArc {
+                x: outlineShape.rCorner
+                y: outlineShape.rCorner
+                radiusX: outlineShape.rc
+                radiusY: outlineShape.rc
+                useLargeArc: false
+                direction: PathArc.Clockwise
+            }
+            
+            // Left Vertical Line
+            PathLine {
+                x: outlineShape.rCorner
+                y: outlineShape.yBottom - outlineShape.bl
+            }
+            
+            // Bottom Left Corner
+            PathArc {
+                x: outlineShape.rCorner + outlineShape.bl
+                y: outlineShape.yBottom
+                radiusX: outlineShape.bl
+                radiusY: outlineShape.bl
+                useLargeArc: false
+                direction: PathArc.CounterClockwise
+            }
+            
+            // Bottom Horizontal Line
+            PathLine {
+                x: outlineShape.rCorner + outlineShape.wCenter - outlineShape.br
+                y: outlineShape.yBottom
+            }
+            
+            // Bottom Right Corner
+            PathArc {
+                x: outlineShape.rCorner + outlineShape.wCenter
+                y: outlineShape.yBottom - outlineShape.br
+                radiusX: outlineShape.br
+                radiusY: outlineShape.br
+                useLargeArc: false
+                direction: PathArc.CounterClockwise
+            }
+            
+            // Right Vertical Line
+            PathLine {
+                x: outlineShape.rCorner + outlineShape.wCenter
+                y: outlineShape.rCorner
+            }
+            
+            // Top Right Connection
+            PathArc {
+                x: parent.width - outlineShape.offset
+                y: outlineShape.offset
+                radiusX: outlineShape.rc
+                radiusY: outlineShape.rc
+                useLargeArc: false
+                direction: PathArc.Clockwise
+            }
+        }
 
-            ctx.beginPath();
-
-            if (notchContainer.position === "top") {
-                var bl = notchRect.bottomLeftRadius;
-                var br = notchRect.bottomRightRadius;
-                var yBottom = height - offset;
-
-                if (rCorner > 0) {
-                    // Start at top-left, adjusted inward
-                    ctx.moveTo(offset, offset);
-                    // Left top corner arc - center at (offset, rCorner), radius reduced by offset
-                    ctx.arc(offset, rCorner, rCorner - offset, 3 * Math.PI / 2, 2 * Math.PI);
-                    // This ends at (rCorner, rCorner)
-                } else {
-                    ctx.moveTo(offset, offset);
-                    ctx.lineTo(rCorner, rCorner);
-                }
-                // Left vertical line down
-                ctx.lineTo(rCorner, yBottom - bl);
-                // Bottom left corner
-                if (bl > 0) {
-                    ctx.arcTo(rCorner, yBottom, rCorner + bl, yBottom, bl - offset);
-                }
-                // Bottom horizontal line
-                ctx.lineTo(rCorner + wCenter - br, yBottom);
-                // Bottom right corner
-                if (br > 0) {
-                    ctx.arcTo(rCorner + wCenter, yBottom, rCorner + wCenter, yBottom - br, br - offset);
-                }
-                // Right vertical line up
-                ctx.lineTo(rCorner + wCenter, rCorner);
-                // Right top corner arc - center at (width - offset, rCorner), from 180° to 270°
-                if (rCorner > 0) {
-                    ctx.arc(width - offset, rCorner, rCorner - offset, Math.PI, 3 * Math.PI / 2);
-                }
-            } else { // Bottom position
-                var tl = notchRect.topLeftRadius;
-                var tr = notchRect.topRightRadius;
-                var yTop = offset;
-                var yBottom = height - offset;
-
-                if (rCorner > 0) {
-                    // Start at bottom-left
-                    ctx.moveTo(offset, yBottom);
-                    // Left bottom corner arc (concave)
-                    ctx.arc(offset, height - rCorner, rCorner - offset, Math.PI / 2, 0, true); 
-                    // Note: Canvas arc is clockwise by default. To emulate the "RoundCorner" feel (inverted), 
-                    // we need to draw it such that it curves from (offset, yBottom) inwards to (rCorner, height-rCorner).
-                    // Actually, let's mirror the top logic:
-                    // Center at (offset, height - rCorner)
-                    // Start angle: PI/2 (90 deg - bottom)
-                    // End angle: 0 (0 deg - right)
-                    // Counter-clockwise (true) to curve "in"
-                } else {
-                    ctx.moveTo(offset, yBottom);
-                    ctx.lineTo(rCorner, height - rCorner);
-                }
-                
-                // Left vertical line up
-                ctx.lineTo(rCorner, yTop + tl);
-                
-                // Top left corner
-                if (tl > 0) {
-                    ctx.arcTo(rCorner, yTop, rCorner + tl, yTop, tl - offset);
-                }
-                
-                // Top horizontal line
-                ctx.lineTo(rCorner + wCenter - tr, yTop);
-                
-                // Top right corner
-                if (tr > 0) {
-                    ctx.arcTo(rCorner + wCenter, yTop, rCorner + wCenter, yTop + tr, tr - offset);
-                }
-                
-                // Right vertical line down
-                ctx.lineTo(rCorner + wCenter, height - rCorner);
-                
-                // Right bottom corner arc
-                if (rCorner > 0) {
-                     ctx.arc(width - offset, height - rCorner, rCorner - offset, Math.PI, Math.PI / 2, true);
-                }
+        // ShapePath for Position "Bottom"
+        ShapePath {
+            strokeWidth: outlineShape.borderWidth
+            fillColor: "transparent"
+            capStyle: ShapePath.RoundCap
+            joinStyle: ShapePath.RoundJoin
+            
+            strokeColor: notchContainer.position === "bottom" ? outlineShape.borderColor : "transparent"
+            
+            startX: outlineShape.offset
+            startY: outlineShape.yBottom
+            
+            // Bottom Left Connection
+            PathArc {
+                x: outlineShape.rCorner
+                y: parent.height - outlineShape.rCorner
+                radiusX: outlineShape.rc
+                radiusY: outlineShape.rc
+                useLargeArc: false
+                direction: PathArc.CounterClockwise
             }
-
-            ctx.stroke();
-        }
-        Connections {
-            target: Colors
-            function onPrimaryChanged() {
-                outlineCanvas.requestPaint();
+            
+            // Left Vertical Line Up
+            PathLine {
+                x: outlineShape.rCorner
+                y: outlineShape.yTop + outlineShape.tl
             }
-        }
-        Connections {
-            target: Config.theme.srBg
-            function onBorderChanged() {
-                outlineCanvas.requestPaint();
+            
+            // Top Left Corner
+            PathArc {
+                x: outlineShape.rCorner + outlineShape.tl
+                y: outlineShape.yTop
+                radiusX: outlineShape.tl
+                radiusY: outlineShape.tl
+                useLargeArc: false
+                direction: PathArc.Clockwise
             }
-        }
-        Connections {
-            target: notchRect
-            function onBottomLeftRadiusChanged() {
-                outlineCanvas.requestPaint();
+            
+            // Top Horizontal Line
+            PathLine {
+                x: outlineShape.rCorner + outlineShape.wCenter - outlineShape.tr
+                y: outlineShape.yTop
             }
-            function onBottomRightRadiusChanged() {
-                outlineCanvas.requestPaint();
+            
+            // Top Right Corner
+            PathArc {
+                x: outlineShape.rCorner + outlineShape.wCenter
+                y: outlineShape.yTop + outlineShape.tr
+                radiusX: outlineShape.tr
+                radiusY: outlineShape.tr
+                useLargeArc: false
+                direction: PathArc.Clockwise
             }
-            function onWidthChanged() {
-                outlineCanvas.requestPaint();
+            
+            // Right Vertical Line Down
+            PathLine {
+                x: outlineShape.rCorner + outlineShape.wCenter
+                y: parent.height - outlineShape.rCorner
             }
-            function onHeightChanged() {
-                outlineCanvas.requestPaint();
-            }
-        }
-        Connections {
-            target: notchContainer
-            function onImplicitWidthChanged() {
-                outlineCanvas.requestPaint();
-            }
-            function onImplicitHeightChanged() {
-                outlineCanvas.requestPaint();
-            }
-        }
-        Connections {
-            target: Config
-            function onNotchThemeChanged() {
-                outlineCanvas.requestPaint();
-            }
-        }
-        Connections {
-            target: leftCornerMaskPart
-            function onWidthChanged() {
-                outlineCanvas.requestPaint();
-            }
-        }
-        Connections {
-            target: rightCornerMaskPart
-            function onWidthChanged() {
-                outlineCanvas.requestPaint();
+            
+            // Bottom Right Connection
+            PathArc {
+                x: parent.width - outlineShape.offset
+                y: parent.height - outlineShape.offset
+                radiusX: outlineShape.rc
+                radiusY: outlineShape.rc
+                useLargeArc: false
+                direction: PathArc.CounterClockwise
             }
         }
     }
