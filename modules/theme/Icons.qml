@@ -260,4 +260,6 @@ QtObject {
     readonly property string thermometer: temperature
     readonly property string windowsLogo: terminalWindow
     readonly property string frameCorners: crop
+    readonly property string calculate: plus
+    readonly property string history: clock
 }

@@ -14,13 +14,18 @@ import "../dashboard/clipboard"
 import "../dashboard/emoji"
 import "../dashboard/tmux"
 import "../dashboard/notes"
+import "../dashboard/calculator"
 
 Rectangle {
     id: root
     color: "transparent"
     
     readonly property bool isCompact: currentTab === 0 || currentTab === 2
-    implicitWidth: isCompact ? 464 : 900
+    implicitWidth: {
+        if (currentTab === 0 || currentTab === 2) return 464;
+        if (currentTab === 5) return 600; // Calculator: slightly wider than launcher
+        return 900;
+    }
     implicitHeight: isCompact ? 296 : 392
     
     focus: true
@@ -88,14 +93,15 @@ Rectangle {
         let emojiPrefix = Config.prefix.emoji + " ";
         let tmuxPrefix = Config.prefix.tmux + " ";
         let notesPrefix = Config.prefix.notes + " ";
+        let mathPrefix = Config.prefix.math + " ";
 
         // If prefix was manually disabled, don't re-enable until conditions are met
         if (prefixDisabled) {
             // Only re-enable prefix if user deletes the prefix text or adds valid content
-            if (text === clipPrefix || text === emojiPrefix || text === tmuxPrefix || text === notesPrefix) {
+            if (text === clipPrefix || text === emojiPrefix || text === tmuxPrefix || text === notesPrefix || text === mathPrefix) {
                 // Still at exact prefix - keep disabled
                 return 0;
-            } else if (!text.startsWith(clipPrefix) && !text.startsWith(emojiPrefix) && !text.startsWith(tmuxPrefix) && !text.startsWith(notesPrefix)) {
+            } else if (!text.startsWith(clipPrefix) && !text.startsWith(emojiPrefix) && !text.startsWith(tmuxPrefix) && !text.startsWith(notesPrefix) && !text.startsWith(mathPrefix)) {
                 // User deleted the prefix - re-enable detection
                 prefixDisabled = false;
                 return 0;
@@ -114,6 +120,8 @@ Rectangle {
             return 3;
         } else if (text === notesPrefix) {
             return 4;
+        } else if (text === mathPrefix) {
+            return 5;
         }
         return 0;
     }
@@ -291,6 +299,8 @@ Rectangle {
                         prefixLength = Config.prefix.tmux.length + 1;
                     else if (searchText.startsWith(Config.prefix.notes + " "))
                         prefixLength = Config.prefix.notes.length + 1;
+                    else if (searchText.startsWith(Config.prefix.math + " "))
+                        prefixLength = Config.prefix.math.length + 1;
 
                     let remainingText = searchText.substring(prefixLength);
 
@@ -307,6 +317,8 @@ Rectangle {
                             targetLoader = tmuxLoader;
                         } else if (detectedTab === 4) {
                             targetLoader = notesLoader;
+                        } else if (detectedTab === 5) {
+                            targetLoader = calculatorLoader;
                         }
 
                         // If loader is ready, use it immediately
@@ -1197,6 +1209,32 @@ Rectangle {
             }
             onLoaded: {
                 if (currentTab === 4 && item && item.focusSearchInput) {
+                    root.focusSearchInput();
+                }
+            }
+        }
+
+        // Tab 5: Calculator
+        Loader {
+            id: calculatorLoader
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            active: currentTab === 5 || item !== null
+            sourceComponent: Component {
+                CalculatorTab {
+                    anchors.fill: parent
+                    leftPanelWidth: root.leftPanelWidth
+                    prefixIcon: Icons.calculate
+                    onBackspaceOnEmpty: {
+                        prefixDisabled = true;
+                        currentTab = 0;
+                        GlobalStates.launcherSearchText = Config.prefix.math + " ";
+                        root.focusSearchInput();
+                    }
+                }
+            }
+            onLoaded: {
+                if (currentTab === 5 && item && item.focusSearchInput) {
                     root.focusSearchInput();
                 }
             }

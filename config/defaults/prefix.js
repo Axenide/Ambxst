@@ -5,5 +5,6 @@ var data = {
     "emoji": "ee",
     "tmux": "tt",
     "wallpapers": "ww",
-    "notes": "nn"
+    "notes": "nn",
+    "math": "qq"
 }
