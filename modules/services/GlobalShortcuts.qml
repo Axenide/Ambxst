@@ -37,6 +37,7 @@ Item {
             case "emoji": toggleLauncherWithPrefix(2, Config.prefix.emoji + " "); break;
             case "tmux": toggleLauncherWithPrefix(3, Config.prefix.tmux + " "); break;
             case "notes": toggleLauncherWithPrefix(4, Config.prefix.notes + " "); break;
+            case "calculator": toggleLauncherWithPrefix(5, Config.prefix.math + " "); break;
 
             // Dashboard
             case "dashboard": toggleDashboardTab(0); break;
@@ -280,6 +281,14 @@ Item {
         description: "Open launcher notes"
 
         onPressed: toggleLauncherWithPrefix(4, Config.prefix.notes + " ")
+    }
+
+    GlobalShortcut {
+        appid: root.appId
+        name: "calculator"
+        description: "Open launcher calculator"
+
+        onPressed: toggleLauncherWithPrefix(5, Config.prefix.math + " ")
     }
 
     // Dashboard shortcuts
