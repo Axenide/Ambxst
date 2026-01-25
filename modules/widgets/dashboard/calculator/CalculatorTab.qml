@@ -204,11 +204,17 @@ Item {
                 visible: resultList.currentIndex >= 0
                 z: -1
                 
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                Behavior on y { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                Behavior on opacity { 
+                    enabled: Config.animDuration > 0
+                    NumberAnimation { duration: Config.animDuration / 2 } 
+                }
+                Behavior on y { 
+                    enabled: Config.animDuration > 0
+                    NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic } 
+                }
             }
             highlightFollowsCurrentItem: true
-            highlightMoveDuration: 150
+            highlightMoveDuration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
 
             delegate: Rectangle {
                 id: delegateRoot
@@ -240,17 +246,26 @@ Item {
                     anchors.margins: 8
                     spacing: 12
                     
-                    // Icon container
-                    Item {
+                    // Icon
+                    Text {
                         Layout.preferredWidth: 32
                         Layout.preferredHeight: 32
+                        Layout.alignment: Qt.AlignVCenter
                         
-                        Text {
-                            anchors.centerIn: parent
-                            text: model.icon === "calculate" ? Icons.calculate : Icons.history
-                            font.family: Icons.font
-                            font.pixelSize: 20
-                            color: delegateRoot.dynamicTextColor
+                        text: model.icon === "calculate" ? Icons.calculate : Icons.history
+                        font.family: Icons.font
+                        font.pixelSize: 20
+                        color: delegateRoot.dynamicTextColor
+                        
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        
+                        Behavior on color {
+                            enabled: Config.animDuration > 0
+                            ColorAnimation {
+                                duration: Config.animDuration / 2
+                                easing.type: Easing.OutQuart
+                            }
                         }
                     }
 
@@ -266,6 +281,14 @@ Item {
                             color: delegateRoot.dynamicTextColor
                             opacity: 0.7
                             elide: Text.ElideRight
+                            
+                            Behavior on color {
+                                enabled: Config.animDuration > 0
+                                ColorAnimation {
+                                    duration: Config.animDuration / 2
+                                    easing.type: Easing.OutQuart
+                                }
+                            }
                         }
                         Text {
                             Layout.fillWidth: true
@@ -276,6 +299,14 @@ Item {
                             font.pixelSize: Config.theme.fontSize
                             color: delegateRoot.dynamicTextColor
                             elide: Text.ElideRight
+                            
+                            Behavior on color {
+                                enabled: Config.animDuration > 0
+                                ColorAnimation {
+                                    duration: Config.animDuration / 2
+                                    easing.type: Easing.OutQuart
+                                }
+                            }
                         }
                     }
                 }
