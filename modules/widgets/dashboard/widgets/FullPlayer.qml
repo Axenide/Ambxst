@@ -7,6 +7,7 @@ import Quickshell.Services.Mpris
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.services
+import qs.modules.globals
 import qs.config
 
 StyledRect {
@@ -87,10 +88,14 @@ StyledRect {
         }
     }
 
-    // Also sync when the component's visibility changes (dashboard opens/closes)
-    onVisibleChanged: {
-        if (visible) {
-            syncSeekBarPosition();
+    // Sync when dashboard opens/closes by connecting to GlobalStates
+    Connections {
+        target: GlobalStates
+        function onDashboardOpenChanged() {
+            if (GlobalStates.dashboardOpen) {
+                // Small delay to ensure component is fully rendered
+                Qt.callLater(syncSeekBarPosition);
+            }
         }
     }
 
