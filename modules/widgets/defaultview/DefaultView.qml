@@ -26,11 +26,53 @@ Item {
     readonly property string notchPosition: Config.notchPosition ?? "top"
     readonly property bool isBottom: notchPosition === "bottom"
 
-    HoverHandler {
-        id: contentHoverHandler
+    MouseArea {
+        id: interactiveArea
+        anchors.fill: parent
+        hoverEnabled: true
+        preventStealing: true
+        
+        onWheel: (wheel) => {
+            console.log("[DefaultView] MouseArea wheel event. delta:", wheel.angleDelta.y, "x:", wheel.x, "root.width:", root.width);
+            var delta = wheel.angleDelta.y;
+            if (delta === 0) return;
+            
+            var isUp = delta > 0;
+            var step = 0.05;
+
+            // Left half: Brightness
+            if (wheel.x < width / 2) {
+                 console.log("[DefaultView] MouseArea Brightness");
+                var win = Window.window;
+                // Try to find monitor for this screen
+                var monitor = Brightness.getMonitorForScreen(win.screen);
+                
+                // If not found, just use the first available monitor (common case for single screen or main screen)
+                if (!monitor && Brightness.monitors.length > 0) {
+                     monitor = Brightness.monitors[0];
+                }
+
+                if (monitor) {
+                    var newBrightness = isUp 
+                        ? Math.min(1.0, monitor.brightness + step)
+                        : Math.max(0.01, monitor.brightness - step);
+                    monitor.setBrightness(newBrightness);
+                } else {
+                    console.log("[DefaultView] Monitor not found");
+                }
+            } 
+            // Right half: Volume
+            else {
+                 console.log("[DefaultView] MouseArea Volume");
+                var newVolume = isUp 
+                    ? Math.min(Audio.hardMaxValue, Audio.value + step)
+                    : Math.max(0.0, Audio.value - step);
+                Audio.setVolume(newVolume);
+            }
+        }
     }
 
-    readonly property bool expandedState: contentHoverHandler.hovered || notchHovered || isNavigating || Visibilities.playerMenuOpen
+    readonly property bool expandedState: interactiveArea.containsMouse || notchHovered || isNavigating || Visibilities.playerMenuOpen
 
     property real mainRowMargin: 16
 

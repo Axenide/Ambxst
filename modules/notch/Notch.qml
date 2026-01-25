@@ -193,7 +193,7 @@ Item {
         width: parent.implicitWidth - totalCornerWidth
         height: parent.implicitHeight
 
-    readonly property bool preventCornerChange: visibilities ? (visibilities.powermenu || visibilities.tools || visibilities.launcher) : false
+    readonly property bool preventCornerChange: screenNotchOpen
 
         property int defaultRadius: Config.roundness > 0 ? (screenNotchOpen || (hasActiveNotifications && !preventCornerChange) ? Config.roundness + 20 : Config.roundness + 4) : 0
         property int islandRadius: Config.roundness > 0 ? (screenNotchOpen || (hasActiveNotifications && !preventCornerChange) ? Config.roundness + 20 : Config.roundness + 4) : 0
