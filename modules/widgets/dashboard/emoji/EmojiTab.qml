@@ -421,8 +421,8 @@ Rectangle {
         }
     }
 
-    implicitWidth: 400
-    implicitHeight: mainLayout.implicitHeight
+    implicitWidth: 480
+    implicitHeight: 296
     color: "transparent"
 
     Behavior on height {

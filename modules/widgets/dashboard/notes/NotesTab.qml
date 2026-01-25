@@ -1039,7 +1039,7 @@ Item {
     }
 
     implicitWidth: 400
-    implicitHeight: 7 * 48 + 56
+    implicitHeight: 392
 
     RowLayout {
         id: mainLayout
