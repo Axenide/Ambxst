@@ -60,7 +60,7 @@ PanelWindow {
     // Fullscreen detection - check if active toplevel is fullscreen
     readonly property bool activeWindowFullscreen: {
         const toplevel = ToplevelManager.activeToplevel;
-        if (!toplevel || !toplevel.activated)
+        if (!toplevel || !toplevel.activated || toplevel.screens[0] != screen)
             return false;
         return toplevel.fullscreen === true;
     }
@@ -95,7 +95,7 @@ PanelWindow {
         
         // Show on desktop (no active window) - but NOT if fullscreen mode forced auto-hide
         // (activeWindowFullscreen implies there IS an active window)
-        if (!activeWindowFullscreen && !ToplevelManager.activeToplevel?.activated) {
+        if (!activeWindowFullscreen && !ToplevelManager.activeToplevel?.activated && ToplevelManager.activeToplevel?.screens[0] == screen) {
             return true;
         }
         

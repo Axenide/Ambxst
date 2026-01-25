@@ -98,7 +98,7 @@ Scope {
             // Fullscreen detection - check if active toplevel is fullscreen on this screen
             readonly property bool activeWindowFullscreen: {
                 const toplevel = ToplevelManager.activeToplevel;
-                if (!toplevel || !toplevel.activated)
+                if (!toplevel || !toplevel.activated || toplevel.screens[0] != screen)
                     return false;
                 // Check if the toplevel is fullscreen
                 return toplevel.fullscreen === true;
@@ -112,7 +112,7 @@ Scope {
                 }
 
                 // Normal behavior
-                return root.pinned || (Config.dock?.hoverToReveal && dockMouseArea.containsMouse) || !ToplevelManager.activeToplevel?.activated
+                return root.pinned || (Config.dock?.hoverToReveal && dockMouseArea.containsMouse) || !ToplevelManager.activeToplevel?.activated && ToplevelManager.activeToplevel?.screens[0] == screen
             }
 
             anchors {

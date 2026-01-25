@@ -33,7 +33,7 @@ PanelWindow {
     // Fullscreen detection - check if active toplevel is fullscreen on this screen
     readonly property bool activeWindowFullscreen: {
         const toplevel = ToplevelManager.activeToplevel;
-        if (!toplevel || !toplevel.activated)
+        if (!toplevel || !toplevel.activated || toplevel.screens[0] != screen)
             return false;
         // Check if the toplevel is fullscreen
         return toplevel.fullscreen === true;
@@ -76,7 +76,7 @@ PanelWindow {
         }
 
         // Show if: hovering (when enabled), notch hovering (when at top), notch open, or no active window
-        return hoverActive || notchHoverActive || notchOpen || !ToplevelManager.activeToplevel?.activated;
+        return hoverActive || notchHoverActive || notchOpen || !ToplevelManager.activeToplevel?.activated && ToplevelManager.activeToplevel?.screens[0] == screen;
     }
 
     // Timer to delay hiding the bar after mouse leaves
