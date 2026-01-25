@@ -1,3 +1,4 @@
 .qmlls.ini
 .ruff_cache/
 scripts/__pycache__
+.sisyphus/notepads/visual-refinement

@@ -126,6 +126,20 @@ Item {
 
     property real handleSpacing: 10 // Increased to ensure gap is visible with thicker handle
     property real handleSize: 8 
+    
+    property bool wavy: false // New property to enable wavy progress
+    property real wavePhase: 0
+    property real waveFrequency: 12 // Adjust for visual density
+    property real waveAmplitude: 2.5 // Pixel amplitude
+
+    // Animation for the wave
+    NumberAnimation on wavePhase {
+        from: 0
+        to: Math.PI * 2
+        duration: 2000
+        loops: Animation.Infinite
+        running: root.wavy && root.enabled
+    }
 
     Item {
         id: progressCanvas
@@ -157,11 +171,7 @@ Item {
                 let currentSpan = spanRad * progressCanvas.progress;
                 
                 // Calculate gap in radians based on handleSpacing (pixels)
-                // Circumference = 2 * PI * radius
-                // Angle per pixel = 360 / Circumference
-                // Gap angle = handleSpacing * Angle per pixel
-                let handleGapRad = root.handleSpacing * (2 * Math.PI) / (2 * Math.PI * radius); 
-                // Simplified: handleSpacing / radius
+                let handleGapRad = root.handleSpacing / radius;
                 
                 // Draw track (background part)
                 // Starts after current position + gap
@@ -184,17 +194,42 @@ Item {
                     ctx.strokeStyle = root.accentColor;
                     ctx.lineWidth = lineWidth;
                     ctx.beginPath();
-                    ctx.arc(centerX, centerY, radius, startRad, progressEnd, false);
+                    
+                    if (root.wavy) {
+                        // Wavy Draw Logic
+                        let step = 0.03; // ~1.7 degrees per step
+                        let amp = root.waveAmplitude;
+                        let freq = root.waveFrequency;
+                        let phase = root.wavePhase;
+                        
+                        // We iterate through the angle
+                        for (let a = startRad; a <= progressEnd; a += step) {
+                            // Calculate perturbed radius
+                            // We use (a - startRad) to make the wave consistent relative to start
+                            let r = radius + amp * Math.sin(freq * (a - startRad) + phase);
+                            
+                            let x = centerX + r * Math.cos(a);
+                            let y = centerY + r * Math.sin(a);
+                            
+                            if (a === startRad) ctx.moveTo(x, y);
+                            else ctx.lineTo(x, y);
+                        }
+                        
+                        // Ensure we connect to the exact end point
+                        let finalR = radius + amp * Math.sin(freq * (progressEnd - startRad) + phase);
+                        ctx.lineTo(centerX + finalR * Math.cos(progressEnd), centerY + finalR * Math.sin(progressEnd));
+                    } else {
+                        // Standard Arc
+                        ctx.arc(centerX, centerY, radius, startRad, progressEnd, false);
+                    }
+                    
                     ctx.stroke();
                 }
 
                 // Draw handle (radial line at current position)
                 if (root.enabled) {
                     let handleAngle = startRad + currentSpan;
-                    // Handle Dimensions:
-                    // Height: Animated offset (6 -> 12)
-                    // Width: Animated width (lineWidth -> lineWidth * 0.5)
-                    
+                    // Handle Dimensions
                     let innerRadius = radius - root.animatedHandleOffset;
                     let outerRadius = radius + root.animatedHandleOffset;
 
@@ -214,22 +249,16 @@ Item {
             
             Connections {
                 target: progressCanvas
-                function onProgressChanged() {
-                    canvas.requestPaint();
-                }
+                function onProgressChanged() { canvas.requestPaint(); }
             }
-
+            
             Connections {
                 target: root
-                function onAccentColorChanged() {
-                    canvas.requestPaint();
-                }
-                function onValueEdited() {
-                     // Force repaint even if root.value didn't change (e.g. click in same spot)
-                     canvas.requestPaint();
-                }
+                function onAccentColorChanged() { canvas.requestPaint(); }
+                function onValueEdited() { canvas.requestPaint(); }
                 function onAnimatedHandleOffsetChanged() { canvas.requestPaint(); }
                 function onAnimatedHandleWidthChanged() { canvas.requestPaint(); }
+                function onWavePhaseChanged() { if(root.wavy) canvas.requestPaint(); }
             }
         }
 

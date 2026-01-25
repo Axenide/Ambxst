@@ -98,6 +98,9 @@ StyledRect {
                 accentColor: Colors.primary
                 trackColor: Colors.outline
                 lineWidth: 6
+                wavy: true // Enable wavy progress
+                waveAmplitude: 3
+                waveFrequency: 24
                 
                 // Half circle (Top) from 9 o'clock (180) to 3 o'clock (360)
                 startAngleDeg: 180
