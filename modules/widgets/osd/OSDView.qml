@@ -80,6 +80,7 @@ Item {
             
             StyledSlider {
                 id: volumeSlider
+                stepSize: 0.01
                 anchors.fill: parent
                 anchors.margins: 4
                 anchors.leftMargin: 12
@@ -125,6 +126,7 @@ Item {
             
             StyledSlider {
                 id: micSlider
+                stepSize: 0.01
                 anchors.fill: parent
                 anchors.margins: 4
                 anchors.leftMargin: 12
@@ -169,6 +171,7 @@ Item {
             
             StyledSlider {
                 id: brightnessSlider
+                stepSize: 0.01
                 anchors.fill: parent
                 anchors.margins: 4
                 anchors.leftMargin: 12

@@ -38,7 +38,7 @@ Item {
             if (delta === 0) return;
             
             var isUp = delta > 0;
-            var step = 0.05;
+            var step = 0.01;
 
             // Left half: Brightness
             if (wheel.x < width / 2) {
