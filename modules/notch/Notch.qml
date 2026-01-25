@@ -19,6 +19,7 @@ Item {
     property Component powermenuViewComponent
     property Component toolsMenuViewComponent
     property Component notificationViewComponent
+    property Component osdViewComponent
     property var stackView: stackViewInternal
     property bool isExpanded: stackViewInternal.depth > 1
     property bool isHovered: false

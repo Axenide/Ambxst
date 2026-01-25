@@ -23,7 +23,7 @@ QtObject {
             return barInstances[0].orientation || "horizontal";
         }
         const position = Config.bar.position || "top";
-        return (position === "left" || position === "right") ? "vertical" : "horizontal";
+        return (position === "left" || position === "right") ? "horizontal" : "horizontal";
     }
 
     property Timer applyTimer: Timer {
