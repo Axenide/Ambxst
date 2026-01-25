@@ -99,12 +99,37 @@ StyledRect {
         }
     }
 
+    Item {
+        anchors.fill: parent
+        visible: player.hasArtwork
+
+        Image {
+            id: bgArt
+            anchors.fill: parent
+            source: MprisController.activePlayer?.trackArtUrl ?? ""
+            fillMode: Image.PreserveAspectCrop
+            visible: false
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            source: bgArt
+            blurEnabled: true
+            blurMax: 64
+            blur: 0.5
+            opacity: 1
+            saturation: 0.8
+        }
+    }
+
+
     StyledRect {
         id: innerPlayer
         variant: "internalbg"
         anchors.fill: parent
         anchors.margins: 4
         radius: player.radius - 4
+        backgroundOpacity: 0.5
 
         implicitHeight: mainLayout.implicitHeight + mainLayout.anchors.margins * 2
 
