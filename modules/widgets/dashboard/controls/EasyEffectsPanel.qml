@@ -12,6 +12,8 @@ import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
@@ -28,44 +30,26 @@ Item {
             id: mainColumn
             width: mainFlickable.width
             spacing: 8
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             // Header wrapper
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: titlebar.height
+                Layout.preferredHeight: titlebar.visible ? titlebar.height : 0
 
                 PanelTitlebar {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: "EasyEffects"
+                    title: I18n.t("EasyEffects")
+                    showTitle: false
                     statusText: EasyEffectsService.bypassed ? "Bypassed" : ""
                     statusColor: Colors.error
-                    showToggle: EasyEffectsService.available
-                    toggleChecked: !EasyEffectsService.bypassed
-
-                    actions: EasyEffectsService.available ? [
-                        {
-                            icon: Icons.popOpen,
-                            tooltip: "Open EasyEffects",
-                            onClicked: function () {
-                                EasyEffectsService.openApp();
-                            }
-                        },
-                        {
-                            icon: Icons.sync,
-                            tooltip: "Refresh",
-                            onClicked: function () {
-                                EasyEffectsService.refresh();
-                            }
-                        }
-                    ] : []
-
-                    onToggleChanged: checked => {
-                        if (checked !== !EasyEffectsService.bypassed) {
-                            EasyEffectsService.setBypass(!checked);
-                        }
-                    }
+                    showToggle: false
+                    toggleChecked: false
+                    actions: []
+                    visible: false
                 }
             }
 
@@ -79,11 +63,13 @@ Item {
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 12
+                    LayoutMirroring.enabled: I18n.isRtl
+                    LayoutMirroring.childrenInherit: true
 
                     // Not available state
                     Text {
                         visible: !EasyEffectsService.available
-                        text: "EasyEffects not installed"
+                        text: I18n.t("EasyEffects not installed")
                         font.family: Config.theme.font
                         font.pixelSize: Config.theme.fontSize
                         color: Colors.overSurfaceVariant
@@ -98,16 +84,20 @@ Item {
                         visible: EasyEffectsService.available && EasyEffectsService.outputPresets.length > 0
 
                         Text {
-                            text: "Output Presets"
+                            text: I18n.t("Output Presets")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
                             color: Colors.overSurfaceVariant
+                            Layout.fillWidth: true
+                            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                         }
 
                         Flow {
                             Layout.fillWidth: true
                             spacing: 6
+                            LayoutMirroring.enabled: I18n.isRtl
+                            LayoutMirroring.childrenInherit: true
 
                             Repeater {
                                 model: EasyEffectsService.outputPresets
@@ -130,6 +120,7 @@ Item {
                                         rightPadding: 12
                                         topPadding: 6
                                         bottomPadding: 6
+                                        layoutDirection: I18n.isRtl ? Qt.RightToLeft : Qt.LeftToRight
 
                                         Behavior on spacing {
                                             enabled: Config.animDuration > 0
@@ -195,16 +186,20 @@ Item {
                         visible: EasyEffectsService.available && EasyEffectsService.inputPresets.length > 0
 
                         Text {
-                            text: "Input Presets"
+                            text: I18n.t("Input Presets")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
                             color: Colors.overSurfaceVariant
+                            Layout.fillWidth: true
+                            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                         }
 
                         Flow {
                             Layout.fillWidth: true
                             spacing: 6
+                            LayoutMirroring.enabled: I18n.isRtl
+                            LayoutMirroring.childrenInherit: true
 
                             Repeater {
                                 model: EasyEffectsService.inputPresets
@@ -227,6 +222,7 @@ Item {
                                         rightPadding: 12
                                         topPadding: 6
                                         bottomPadding: 6
+                                        layoutDirection: I18n.isRtl ? Qt.RightToLeft : Qt.LeftToRight
 
                                         Behavior on spacing {
                                             enabled: Config.animDuration > 0
@@ -288,7 +284,7 @@ Item {
                     // Empty state
                     Text {
                         visible: EasyEffectsService.available && EasyEffectsService.outputPresets.length === 0 && EasyEffectsService.inputPresets.length === 0
-                        text: "No presets configured"
+                        text: I18n.t("No presets configured")
                         font.family: Config.theme.font
                         font.pixelSize: Config.theme.fontSize
                         color: Colors.overSurfaceVariant
@@ -304,16 +300,20 @@ Item {
                         visible: EasyEffectsService.available && (EasyEffectsService.activeOutputPreset || EasyEffectsService.activeInputPreset)
 
                         Text {
-                            text: "Active"
+                            text: I18n.t("Active")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
                             color: Colors.overSurfaceVariant
+                            Layout.fillWidth: true
+                            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                         }
 
                         RowLayout {
                             spacing: 16
                             visible: EasyEffectsService.activeOutputPreset
+                            LayoutMirroring.enabled: I18n.isRtl
+                            LayoutMirroring.childrenInherit: true
 
                             Text {
                                 text: Icons.speakerHigh
@@ -332,6 +332,8 @@ Item {
                         RowLayout {
                             spacing: 16
                             visible: EasyEffectsService.activeInputPreset
+                            LayoutMirroring.enabled: I18n.isRtl
+                            LayoutMirroring.childrenInherit: true
 
                             Text {
                                 text: Icons.mic

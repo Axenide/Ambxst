@@ -150,6 +150,17 @@ Item {
                 }
             }
 
+            AnimatedImage {
+                id: playingGif
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                fillMode: Image.PreserveAspectFit
+                source: Qt.resolvedUrl("../../../assets/gifs/bongo-cat-transparent.gif")
+                visible: compactPlayer.isPlaying && (Config.bar?.showBongoCat ?? true)
+                playing: visible
+                speed: 0.65
+            }
+
             Item {
                 id: artworkContainer
                 Layout.preferredWidth: 24

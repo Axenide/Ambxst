@@ -14,7 +14,6 @@ import "."
 
 PanelWindow {
     id: overviewPopup
-
     anchors {
         top: true
         bottom: true

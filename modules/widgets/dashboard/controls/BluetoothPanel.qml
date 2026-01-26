@@ -39,41 +39,17 @@ Item {
 
         header: Item {
             width: deviceList.width
-            height: titlebar.height + 8
+            height: titlebar.visible ? titlebar.height + 8 : 0
 
             PanelTitlebar {
                 id: titlebar
                 width: root.contentWidth
                 anchors.horizontalCenter: parent.horizontalCenter
-                title: "Bluetooth"
-                showToggle: true
-                toggleChecked: BluetoothService.enabled
-
-                actions: [
-                    {
-                        icon: Icons.popOpen,
-                        tooltip: "Open Blueman",
-                        onClicked: function () {
-                            Quickshell.execDetached(["blueman-manager"]);
-                        }
-                    },
-                    {
-                        icon: Icons.sync,
-                        tooltip: "Scan for devices",
-                        enabled: BluetoothService.enabled,
-                        loading: BluetoothService.discovering,
-                        onClicked: function () {
-                            BluetoothService.startDiscovery();
-                        }
-                    }
-                ]
-
-                onToggleChanged: checked => {
-                    BluetoothService.setEnabled(checked);
-                    if (checked) {
-                        BluetoothService.startDiscovery();
-                    }
-                }
+                title: I18n.t("Bluetooth")
+                showTitle: false
+                showToggle: false
+                actions: []
+                visible: false
             }
         }
 

@@ -11,7 +11,6 @@ import qs.config
 
 PanelWindow {
     id: root
-
     // Screen property to be set by the Loader
     required property var targetScreen
     screen: targetScreen

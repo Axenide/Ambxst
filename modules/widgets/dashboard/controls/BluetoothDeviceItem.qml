@@ -10,6 +10,8 @@ import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     required property BluetoothDevice device
 
@@ -47,12 +49,16 @@ Item {
         anchors.rightMargin: 12
         anchors.topMargin: 8
         spacing: 8
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         // Main row with device info
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
             spacing: 12
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             // Device icon
             Text {
@@ -96,6 +102,7 @@ Item {
                     font.weight: Font.Medium
                     color: Colors.overBackground
                     elide: Text.ElideRight
+                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                 }
 
                 Text {
@@ -121,6 +128,7 @@ Item {
                     font.pixelSize: Styling.fontSize(-2)
                     color: Colors.overSurfaceVariant
                     elide: Text.ElideRight
+                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
 
                     Behavior on opacity {
                         enabled: Config.animDuration > 0
@@ -171,6 +179,8 @@ Item {
             visible: root.expanded
             spacing: 8
             opacity: root.expanded ? 1 : 0
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             Behavior on opacity {
                 enabled: Config.animDuration > 0
@@ -193,7 +203,7 @@ Item {
                 }
 
                 contentItem: Text {
-                    text: "Forget"
+                    text: I18n.t("Forget")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: Styling.srItem("error")

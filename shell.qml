@@ -28,6 +28,8 @@ import "modules/tools"
 ShellRoot {
     id: root
 
+    // LayoutMirroring drives RTL; avoid touching Qt.application.layoutDirection (read-only here).
+
     ContextMenu {
         id: contextMenu
         screen: Quickshell.screens[0]
@@ -143,6 +145,26 @@ ShellRoot {
             required property ShellScreen modelData
             sourceComponent: OverviewPopup {
                 screen: overviewLoader.modelData
+            }
+        }
+    }
+
+    // Special workspace overview (auto when special workspace is open)
+    Variants {
+        model: {
+            const screens = Quickshell.screens;
+            const list = Config.bar.screenList;
+            if (!list || list.length === 0)
+                return screens;
+            return screens.filter(screen => list.includes(screen.name));
+        }
+
+        Loader {
+            id: specialOverviewLoader
+            active: true
+            required property ShellScreen modelData
+            sourceComponent: SpecialOverviewPopup {
+                screen: specialOverviewLoader.modelData
             }
         }
     }

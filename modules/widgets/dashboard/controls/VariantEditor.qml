@@ -7,6 +7,7 @@ import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -192,7 +193,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "Opacity"
+                                text: I18n.t("Opacity")
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Styling.fontSize(-2)
                                 font.bold: true
@@ -277,7 +278,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "Border"
+                                text: I18n.t("Border")
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Styling.fontSize(-2)
                                 font.bold: true
@@ -345,7 +346,7 @@ Item {
                     spacing: 2
 
                     Text {
-                        text: "Angle"
+                        text: I18n.t("Angle")
                         font.family: Styling.defaultFont
                         font.pixelSize: Styling.fontSize(-2)
                         font.bold: true
@@ -407,7 +408,7 @@ Item {
                     spacing: 12
 
                     Text {
-                        text: "X"
+                        text: I18n.t("X")
                         font.family: Styling.defaultFont
                         font.pixelSize: Styling.fontSize(0)
                         font.bold: true
@@ -453,7 +454,7 @@ Item {
                     spacing: 12
 
                     Text {
-                        text: "Y"
+                        text: I18n.t("Y")
                         font.family: Styling.defaultFont
                         font.pixelSize: Styling.fontSize(0)
                         font.bold: true
@@ -578,7 +579,7 @@ Item {
                         }
 
                         Text {
-                            text: "Angle"
+                            text: I18n.t("Angle")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             font.bold: true
@@ -634,7 +635,7 @@ Item {
                         }
 
                         Text {
-                            text: "Size"
+                            text: I18n.t("Size")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             font.bold: true
@@ -674,7 +675,7 @@ Item {
                         }
 
                         Text {
-                            text: "-"
+                            text: I18n.t("-")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             color: Colors.overBackground
@@ -727,7 +728,7 @@ Item {
                         }
 
                         Text {
-                            text: "Range"
+                            text: I18n.t("Range")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             font.bold: true
@@ -764,7 +765,7 @@ Item {
                         }
 
                         Text {
-                            text: "-"
+                            text: I18n.t("-")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             color: Colors.overBackground

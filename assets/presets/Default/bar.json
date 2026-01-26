@@ -6,6 +6,7 @@
     "launcherIconSize": 18,
     "screenList": [],
     "enableFirefoxPlayer": false,
+    "showBongoCat": true,
     "barColor": [
         [
             "surface",

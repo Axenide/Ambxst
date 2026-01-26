@@ -6,10 +6,13 @@ import QtQuick.Layouts
 import Quickshell.Io
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
@@ -55,6 +58,7 @@ Item {
     property int editingIndex: -1
     property var editingBind: null
     property bool isEditingAmbxst: false
+    property string searchQuery: ""
     property bool isCreatingNew: false
 
     // Edit form state - new format with keys[] and actions[]
@@ -375,6 +379,11 @@ Item {
             icon: Icons.widgets
         },
         {
+            id: "apps",
+            label: I18n.t("Default Apps"),
+            icon: Icons.apps
+        },
+        {
             id: "custom",
             label: "Custom",
             icon: Icons.gear
@@ -406,6 +415,41 @@ Item {
         return mods ? mods + " + " + bind.key : bind.key;
     }
 
+    function filterBinds(binds, isAmbxst) {
+        const query = searchQuery.trim().toLowerCase();
+        if (!query)
+            return binds;
+
+        return binds.filter(bindItem => {
+            if (!bindItem)
+                return false;
+
+            if (isAmbxst) {
+                const name = (bindItem.name || "").toLowerCase();
+                const category = (bindItem.category || "").toLowerCase();
+                const path = (bindItem.path || "").toLowerCase();
+                const dispatcher = (bindItem.bind && bindItem.bind.dispatcher || "").toLowerCase();
+                const argument = (bindItem.bind && bindItem.bind.argument || "").toLowerCase();
+                const keys = formatKeybind(bindItem.bind || {}).toLowerCase();
+                return name.includes(query)
+                    || category.includes(query)
+                    || path.includes(query)
+                    || dispatcher.includes(query)
+                    || argument.includes(query)
+                    || keys.includes(query);
+            }
+
+            const name = (bindItem.name || "").toLowerCase();
+            const dispatcher = (bindItem.dispatcher || (bindItem.actions && bindItem.actions[0] && bindItem.actions[0].dispatcher) || "").toLowerCase();
+            const argument = (bindItem.argument || (bindItem.actions && bindItem.actions[0] && bindItem.actions[0].argument) || "").toLowerCase();
+            const keys = formatKeybind(bindItem).toLowerCase();
+            return name.includes(query)
+                || dispatcher.includes(query)
+                || argument.includes(query)
+                || keys.includes(query);
+        });
+    }
+
     // Get ambxst binds as a flat list
     function getAmbxstBinds() {
         const adapter = Config.keybindsLoader.adapter;
@@ -430,18 +474,50 @@ Item {
             }
         }
 
-            // System binds
-            if (ambxst.system) {
-                const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
-                for (const key of systemKeys) {
-                    if (ambxst.system[key]) {
-                        binds.push({
-                            category: "System",
+        // System binds
+        if (ambxst.system) {
+            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
+            for (const key of systemKeys) {
+                if (ambxst.system[key]) {
+                    binds.push({
+                        category: "System",
                         name: key.charAt(0).toUpperCase() + key.slice(1),
                         path: "ambxst.system." + key,
                         bind: ambxst.system[key]
                     });
                 }
+            }
+        }
+
+        return binds;
+    }
+
+    function getAppBinds() {
+        const adapter = Config.keybindsLoader.adapter;
+        if (!adapter || !adapter.ambxst || !adapter.ambxst.apps)
+            return [];
+
+        const binds = [];
+        const appKeys = ["music", "communication", "browser", "files", "terminal"];
+        const appLabelFallbacks = {
+            "music": I18n.t("Music"),
+            "communication": I18n.t("Communication"),
+            "browser": I18n.t("Browser"),
+            "files": I18n.t("Files"),
+            "terminal": I18n.t("Terminal")
+        };
+
+        for (const key of appKeys) {
+            if (adapter.ambxst.apps[key]) {
+                const appLabel = (Config.apps && Config.apps[key] && Config.apps[key].label)
+                    ? Config.apps[key].label
+                    : (appLabelFallbacks[key] || key);
+                binds.push({
+                    category: "Default Apps",
+                    name: appLabel,
+                    path: "ambxst.apps." + key,
+                    bind: adapter.ambxst.apps[key]
+                });
             }
         }
 
@@ -553,31 +629,48 @@ Item {
         // Header
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: titlebar.height
+            Layout.preferredHeight: titlebar.visible ? titlebar.height : 0
 
             PanelTitlebar {
                 id: titlebar
                 width: root.contentWidth
                 anchors.horizontalCenter: parent.horizontalCenter
-                title: "Keybinds"
+                title: I18n.t("Keybinds")
+                showTitle: false
                 statusText: ""
+                actions: []
+                visible: false
+            }
+        }
 
-                actions: [
-                    {
-                        icon: Icons.plus,
-                        tooltip: "Add keybind",
-                        onClicked: function () {
-                            root.addNewBind();
-                        }
-                    },
-                    {
-                        icon: Icons.sync,
-                        tooltip: "Reload binds",
-                        onClicked: function () {
-                            Config.keybindsLoader.reload();
-                        }
+    StyledRect {
+        variant: "common"
+        radius: Styling.radius(-6)
+        Layout.fillWidth: true
+        Layout.preferredHeight: 36
+        width: root.contentWidth
+        anchors.horizontalCenter: parent.horizontalCenter
+
+        TextField {
+            id: bindSearchInput
+            anchors.fill: parent
+            anchors.margins: 8
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(0)
+            color: Colors.overBackground
+            placeholderText: I18n.t("Search binds...")
+            placeholderTextColor: Colors.overSurfaceVariant
+            selectByMouse: true
+            background: null
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            onTextChanged: root.searchQuery = text
+
+                Keys.onEscapePressed: {
+                    if (text.length > 0) {
+                        text = "";
+                        event.accepted = true;
                     }
-                ]
+                }
             }
         }
 
@@ -691,7 +784,29 @@ Item {
             // Ambxst binds view
             Repeater {
                 id: ambxstRepeater
-                model: root.currentCategory === "ambxst" ? root.getAmbxstBinds() : []
+                model: root.currentCategory === "ambxst" ? root.filterBinds(root.getAmbxstBinds(), true) : []
+
+                delegate: BindItem {
+                    required property var modelData
+                    required property int index
+
+                    Layout.fillWidth: true
+                    bindName: modelData.name
+                    keybindText: root.formatKeybind(modelData.bind)
+                    dispatcher: modelData.bind.dispatcher
+                    argument: modelData.bind.argument || ""
+                    isAmbxst: true
+
+                    onEditRequested: {
+                        root.openEditDialog(modelData, index, true);
+                    }
+                }
+            }
+
+            // Default apps binds view
+            Repeater {
+                id: appsRepeater
+                model: root.currentCategory === "apps" ? root.filterBinds(root.getAppBinds(), true) : []
 
                 delegate: BindItem {
                     required property var modelData
@@ -713,7 +828,7 @@ Item {
             // Custom binds view
             Repeater {
                 id: customRepeater
-                model: root.currentCategory === "custom" ? root.getCustomBinds() : []
+                model: root.currentCategory === "custom" ? root.filterBinds(root.getCustomBinds(), false) : []
 
                 delegate: BindItem {
                     required property var modelData
@@ -780,7 +895,9 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
                 visible: (root.currentCategory === "ambxst" && ambxstRepeater.count === 0) || (root.currentCategory === "custom" && customRepeater.count === 0)
-                text: root.currentCategory === "ambxst" ? "No Ambxst binds configured" : "No custom binds configured"
+                text: root.currentCategory === "ambxst"
+                    ? I18n.t("No Ambxst binds configured")
+                    : I18n.t("No custom binds configured")
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(0)
                 color: Colors.overSurfaceVariant
@@ -864,7 +981,7 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: Icons.caretLeft
+                                text: I18n.isRtl ? Icons.caretRight : Icons.caretLeft
                                 font.family: Icons.font
                                 font.pixelSize: 16
                                 color: backButton.item
@@ -881,7 +998,7 @@ Item {
 
                         // Title
                         Text {
-                            text: root.isCreatingNew ? "New Keybind" : "Edit Keybind"
+                            text: root.isCreatingNew ? I18n.t("New Keybind") : I18n.t("Edit Keybind")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(0)
                             font.weight: Font.Medium
@@ -916,7 +1033,7 @@ Item {
 
                             StyledToolTip {
                                 visible: deleteButtonArea.containsMouse
-                                tooltipText: "Delete keybind"
+                                tooltipText: I18n.t("Delete keybind")
                             }
                         }
 
@@ -943,7 +1060,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Reset to default"
+                                    text: I18n.t("Reset to default")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     font.weight: Font.Medium
@@ -1008,7 +1125,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Save"
+                                    text: I18n.t("Save")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     font.weight: Font.Medium
@@ -1046,7 +1163,7 @@ Item {
                             visible: !root.isEditingAmbxst
 
                             Text {
-                                text: "Name (optional)"
+                                text: I18n.t("Name (optional)")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1068,6 +1185,7 @@ Item {
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                                     selectByMouse: true
                                     onTextChanged: {
                                         if (root.editName !== text) {
@@ -1078,7 +1196,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !nameInput.text && !nameInput.activeFocus
-                                        text: "e.g. Open Terminal, Switch to Workspace 1..."
+                                        text: I18n.t("e.g. Open Terminal, Switch to Workspace 1...")
                                         font: nameInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -1140,7 +1258,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Key Combination"
+                                    text: I18n.t("Key Combination")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.Medium
@@ -1184,7 +1302,7 @@ Item {
 
                                     StyledToolTip {
                                         visible: removeKeyBtnArea.containsMouse
-                                        tooltipText: "Remove this key"
+                                        tooltipText: I18n.t("Remove this key")
                                     }
                                 }
 
@@ -1200,7 +1318,7 @@ Item {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: Icons.caretLeft
+                                        text: I18n.isRtl ? Icons.caretRight : Icons.caretLeft
                                         font.family: Icons.font
                                         font.pixelSize: 12
                                         color: prevKeyBtn.item
@@ -1231,7 +1349,7 @@ Item {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: Icons.caretRight
+                                        text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
                                         font.family: Icons.font
                                         font.pixelSize: 12
                                         color: nextKeyBtn.item
@@ -1277,7 +1395,7 @@ Item {
 
                                     StyledToolTip {
                                         visible: addKeyBtnArea.containsMouse
-                                        tooltipText: "Add another key"
+                                        tooltipText: I18n.t("Add another key")
                                     }
                                 }
                             }
@@ -1341,6 +1459,7 @@ Item {
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                                     selectByMouse: true
                                     onTextChanged: {
                                         if (root.editKeys.length > root.currentKeyPage) {
@@ -1355,7 +1474,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !keyInput.text && !keyInput.activeFocus
-                                        text: "e.g. R, TAB, ESCAPE, mouse:272..."
+                                        text: I18n.t("e.g. R, TAB, ESCAPE, mouse:272...")
                                         font: keyInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -1377,7 +1496,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Action"
+                                    text: I18n.t("Action")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.Medium
@@ -1421,7 +1540,7 @@ Item {
 
                                     StyledToolTip {
                                         visible: removeActionBtnArea.containsMouse
-                                        tooltipText: "Remove this action"
+                                        tooltipText: I18n.t("Remove this action")
                                     }
                                 }
 
@@ -1437,7 +1556,7 @@ Item {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: Icons.caretLeft
+                                        text: I18n.isRtl ? Icons.caretRight : Icons.caretLeft
                                         font.family: Icons.font
                                         font.pixelSize: 12
                                         color: prevActionBtn.item
@@ -1468,7 +1587,7 @@ Item {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: Icons.caretRight
+                                        text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
                                         font.family: Icons.font
                                         font.pixelSize: 12
                                         color: nextActionBtn.item
@@ -1514,7 +1633,7 @@ Item {
 
                                     StyledToolTip {
                                         visible: addActionBtnArea.containsMouse
-                                        tooltipText: "Add another action"
+                                        tooltipText: I18n.t("Add another action")
                                     }
                                 }
                             }
@@ -1536,6 +1655,7 @@ Item {
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                                     selectByMouse: true
                                     readOnly: root.isEditingAmbxst
                                     onTextChanged: {
@@ -1553,7 +1673,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !dispatcherInput.text && !dispatcherInput.activeFocus
-                                        text: "e.g. exec, workspace, killactive..."
+                                        text: I18n.t("e.g. exec, workspace, killactive...")
                                         font: dispatcherInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -1562,7 +1682,7 @@ Item {
 
                             // Argument input
                             Text {
-                                text: "Argument"
+                                text: I18n.t("Argument")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1586,6 +1706,7 @@ Item {
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                                     selectByMouse: true
                                     readOnly: root.isEditingAmbxst
                                     onTextChanged: {
@@ -1603,7 +1724,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !argumentInput.text && !argumentInput.activeFocus
-                                        text: "e.g. kitty, 1, playerctl play-pause..."
+                                        text: I18n.t("e.g. kitty, 1, playerctl play-pause...")
                                         font: argumentInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -1612,7 +1733,7 @@ Item {
 
                             // Flags input
                             Text {
-                                text: "Flags (optional)"
+                                text: I18n.t("Flags (optional)")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1635,6 +1756,7 @@ Item {
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     verticalAlignment: Text.AlignVCenter
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                                     selectByMouse: true
                                     onTextChanged: {
                                         if (root.editActions.length > root.currentActionPage) {
@@ -1651,7 +1773,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !flagsInput.text && !flagsInput.activeFocus
-                                        text: "e.g. m, l, e, le..."
+                                        text: I18n.t("e.g. m, l, e, le...")
                                         font: flagsInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -1659,7 +1781,7 @@ Item {
                             }
 
                             Text {
-                                text: "l=locked, e=repeat, m=mouse, r=release"
+                                text: I18n.t("l=locked, e=repeat, m=mouse, r=release")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
                                 color: Colors.overSurfaceVariant
@@ -1669,7 +1791,7 @@ Item {
                             // LAYOUT SELECTOR (for Hyprland)
                             // =====================
                             Text {
-                                text: "Layouts (Hyprland)"
+                                text: I18n.t("Layouts (Hyprland)")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1678,7 +1800,7 @@ Item {
                             }
 
                             Text {
-                                text: "Leave all unselected to work in all layouts"
+                                text: I18n.t("Leave all unselected to work in all layouts")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
                                 color: Colors.overSurfaceVariant
@@ -1780,6 +1902,8 @@ Item {
     // BindItem component
     component BindItem: StyledRect {
         id: bindItem
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         property string customName: ""  // User-friendly name, if set shows only this
         property string bindName: ""
@@ -1935,7 +2059,11 @@ Item {
 
                                 StyledToolTip {
                                     visible: layoutBadge.isHovered
-                                    tooltipText: layoutBadge.modelData.charAt(0).toUpperCase() + layoutBadge.modelData.slice(1) + " layout"
+                                    tooltipText: I18n.t(
+                                        "{0} layout",
+                                        "{0} layout",
+                                        [layoutBadge.modelData.charAt(0).toUpperCase() + layoutBadge.modelData.slice(1)]
+                                    )
                                 }
                             }
                         }

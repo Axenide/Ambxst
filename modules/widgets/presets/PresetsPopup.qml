@@ -14,7 +14,6 @@ import qs.modules.widgets.presets
 
 PanelWindow {
     id: presetsPopup
-
     anchors {
         top: true
         bottom: true

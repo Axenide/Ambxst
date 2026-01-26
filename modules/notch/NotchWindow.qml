@@ -17,7 +17,6 @@ import "./NotchNotificationView.qml"
 
 PanelWindow {
     id: notchPanel
-
     anchors {
         top: true
         bottom: true
@@ -35,6 +34,8 @@ PanelWindow {
 
     // Get the bar position for this screen
     readonly property string barPosition: Config.bar?.position ?? "top"
+    readonly property int frameThickness: (Config.bar?.frameEnabled ?? false) ? (Config.bar?.frameThickness ?? 0) : 0
+    readonly property int notchFrameOffset: Math.max(0, frameThickness - 2)
 
     // Get the bar panel for this screen to check its state
     readonly property var barPanelRef: Visibilities.barPanels[screen.name]
@@ -203,6 +204,7 @@ PanelWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
+        anchors.topMargin: notchPanel.notchFrameOffset
 
         Behavior on height {
             enabled: Config.animDuration > 0 && notchPanel.shouldAutoHide
@@ -223,6 +225,7 @@ PanelWindow {
         id: notchRegionContainer
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
+        anchors.topMargin: notchPanel.notchFrameOffset
         width: Math.max(notchAnimationContainer.width, notificationPopupContainer.visible ? notificationPopupContainer.width : 0)
         height: notchAnimationContainer.height + (notificationPopupContainer.visible ? notificationPopupContainer.height + notificationPopupContainer.anchors.topMargin : 0)
 
@@ -270,8 +273,7 @@ PanelWindow {
 
                 anchors.topMargin: (Config.notchTheme === "default" ? 0 : (Config.notchTheme === "island" ? 4 : 0))
 
-                layer.enabled: true
-                layer.effect: Shadow {}
+                layer.enabled: false
 
                 defaultViewComponent: defaultViewComponent
                 dashboardViewComponent: dashboardViewComponent

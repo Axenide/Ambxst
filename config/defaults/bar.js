@@ -8,6 +8,7 @@ var data = {
     "launcherIconSize": 18,
     "screenList": [],
     "enableFirefoxPlayer": false,
+    "showBongoCat": true,
     "barColor": [["surface", 0.0]],
     "frameEnabled": false,
     "frameThickness": 6,

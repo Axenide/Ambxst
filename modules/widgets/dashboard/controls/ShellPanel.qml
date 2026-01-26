@@ -7,10 +7,13 @@ import Quickshell
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
@@ -47,6 +50,131 @@ Item {
     }
 
     property string currentSection: ""
+    property string highlightKey: ""
+    property int highlightNonce: 0
+    property var highlightRegistry: ({})
+    property string pendingScrollKey: ""
+
+    function flashOption(key) {
+        if (!key)
+            return;
+        highlightKey = key;
+        highlightNonce++;
+        queueScrollToHighlight(key);
+    }
+
+    function queueScrollToHighlight(key) {
+        pendingScrollKey = key;
+        scrollToHighlightAttempts = 0;
+        scrollToHighlightTimer.start();
+    }
+
+    function scrollToHighlight(key) {
+        if (!key || !highlightRegistry[key])
+            return;
+        const target = highlightRegistry[key];
+        Qt.callLater(() => {
+            if (!target || !mainFlickable)
+                return;
+            const localPos = target.mapToItem(mainFlickable.contentItem, 0, 0);
+            const padding = 16;
+            const targetY = Math.max(0, localPos.y - padding);
+            const maxY = Math.max(0, mainFlickable.contentHeight - mainFlickable.height);
+            mainFlickable.contentY = Math.min(targetY, maxY);
+        });
+    }
+
+    Timer {
+        id: scrollToHighlightTimer
+        interval: 80
+        repeat: true
+        onTriggered: {
+            if (!pendingScrollKey) {
+                stop();
+                return;
+            }
+            scrollToHighlightAttempts++;
+            scrollToHighlight(pendingScrollKey);
+            if (scrollToHighlightAttempts >= 6) {
+                stop();
+            }
+        }
+    }
+
+    property int scrollToHighlightAttempts: 0
+
+    component HighlightRow: Item {
+        id: highlightRowRoot
+        property string highlightId: ""
+        property int highlightNonce: root.highlightNonce
+        property real pulseOpacity: 0.35
+        property int pulseDuration: 160
+        property int pulsePause: 120
+        default property alias content: contentLayout.data
+
+        Layout.fillWidth: true
+        implicitHeight: Math.max(contentLayout.implicitHeight, 0)
+        implicitWidth: Math.max(contentLayout.implicitWidth, 0)
+        Layout.preferredHeight: implicitHeight
+
+        Rectangle {
+            id: highlightRect
+            anchors.fill: parent
+            anchors.margins: -2
+            radius: Styling.radius(-2)
+            color: Styling.srItem("overprimary")
+            opacity: 0
+            z: 0
+        }
+
+        ColumnLayout {
+            id: contentLayout
+            anchors.fill: parent
+            spacing: 0
+            z: 1
+        }
+
+        SequentialAnimation {
+            id: highlightPulse
+            running: false
+            loops: 2
+
+            NumberAnimation {
+                target: highlightRect
+                property: "opacity"
+                from: 0
+                to: highlightRowRoot.pulseOpacity
+                duration: highlightRowRoot.pulseDuration
+                easing.type: Easing.OutCubic
+            }
+            NumberAnimation {
+                target: highlightRect
+                property: "opacity"
+                from: highlightRowRoot.pulseOpacity
+                to: 0
+                duration: highlightRowRoot.pulseDuration + highlightRowRoot.pulsePause
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        onHighlightNonceChanged: {
+            if (highlightId !== "" && highlightId === root.highlightKey) {
+                highlightPulse.restart();
+            }
+        }
+
+        Component.onCompleted: {
+            if (highlightId !== "") {
+                root.highlightRegistry[highlightId] = highlightRowRoot;
+            }
+        }
+
+        Component.onDestruction: {
+            if (highlightId !== "" && root.highlightRegistry[highlightId] === highlightRowRoot) {
+                delete root.highlightRegistry[highlightId];
+            }
+        }
+    }
 
     component SectionButton: StyledRect {
         id: sectionBtn
@@ -59,6 +187,8 @@ Item {
         Layout.fillWidth: true
         Layout.preferredHeight: 56
         radius: Styling.radius(0)
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         RowLayout {
             anchors.fill: parent
@@ -72,10 +202,11 @@ Item {
                 font.bold: true
                 color: Colors.overBackground
                 Layout.fillWidth: true
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
             }
 
             Text {
-                text: Icons.caretRight
+                text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
                 font.family: Icons.font
                 font.pixelSize: 20
                 color: Colors.overSurfaceVariant
@@ -111,7 +242,9 @@ Item {
         }
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: toggleRowRoot.label
@@ -119,11 +252,15 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
             Layout.fillWidth: true
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         Switch {
             id: toggleSwitch
             checked: toggleRowRoot.checked
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             onCheckedChanged: {
                 if (!toggleRowRoot._updating && checked !== toggleRowRoot.checked) {
@@ -179,7 +316,9 @@ Item {
         signal valueEdited(int newValue)
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: numberInputRowRoot.label
@@ -187,6 +326,9 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
             Layout.fillWidth: true
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         StyledRect {
@@ -194,6 +336,7 @@ Item {
             Layout.preferredWidth: 60
             Layout.preferredHeight: 32
             radius: Styling.radius(-2)
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             TextInput {
                 id: numberTextInput
@@ -236,6 +379,7 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overSurfaceVariant
             visible: suffix !== ""
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
         }
     }
 
@@ -248,14 +392,19 @@ Item {
         signal valueEdited(string newValue)
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: textInputRowRoot.label
             font.family: Config.theme.font
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
-            Layout.preferredWidth: 100
+            Layout.preferredWidth: Math.max(100, implicitWidth)
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         StyledRect {
@@ -263,6 +412,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
             radius: Styling.radius(-2)
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             TextInput {
                 id: textInputField
@@ -274,6 +424,7 @@ Item {
                 selectByMouse: true
                 clip: true
                 verticalAlignment: TextInput.AlignVCenter
+                horizontalAlignment: I18n.isRtl ? TextInput.AlignRight : TextInput.AlignLeft
 
                 // Sync text when external value changes
                 readonly property string configValue: textInputRowRoot.value
@@ -292,6 +443,7 @@ Item {
                     font.pixelSize: Styling.fontSize(0)
                     color: Colors.overSurfaceVariant
                     visible: textInputField.text === ""
+                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                 }
 
                 onEditingFinished: {
@@ -318,7 +470,9 @@ Item {
         }
 
         Layout.fillWidth: true
-        spacing: 4
+        spacing: 6
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: selectorRowRoot.label
@@ -327,11 +481,14 @@ Item {
             font.weight: Font.Medium
             color: Colors.overSurfaceVariant
             visible: selectorRowRoot.label !== ""
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
         }
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 6
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             Repeater {
                 model: selectorRowRoot.options
@@ -352,8 +509,10 @@ Item {
 
                     Text {
                         id: optionIcon
-                        anchors.left: parent.left
-                        anchors.leftMargin: 12
+                        anchors.left: I18n.isRtl ? undefined : parent.left
+                        anchors.right: I18n.isRtl ? parent.right : undefined
+                        anchors.leftMargin: I18n.isRtl ? 0 : 12
+                        anchors.rightMargin: I18n.isRtl ? 12 : 0
                         anchors.verticalCenter: parent.verticalCenter
                         text: optionButton.modelData.icon ?? ""
                         font.family: Icons.font
@@ -369,6 +528,7 @@ Item {
                         font.pixelSize: Styling.fontSize(0)
                         font.bold: true
                         color: optionButton.item
+                        horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                     }
 
                     MouseArea {
@@ -389,12 +549,14 @@ Item {
     // Inline component for screen list selection
     component ScreenListRow: ColumnLayout {
         id: screenListRowRoot
-        property string label: "Screens"
+        property string label: I18n.t("Screens")
         property var selectedScreens: []  // Array of screen names
         signal screensChanged(var newList)
 
         Layout.fillWidth: true
         spacing: 4
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: screenListRowRoot.label
@@ -402,14 +564,16 @@ Item {
             font.pixelSize: Styling.fontSize(-1)
             font.weight: Font.Medium
             color: Colors.overSurfaceVariant
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
         }
 
         Text {
-            text: "Empty = all screens"
+            text: I18n.t("Empty = all screens")
             font.family: Config.theme.font
             font.pixelSize: Styling.fontSize(-2)
             color: Colors.outline
             Layout.bottomMargin: 4
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
         }
 
         Flow {
@@ -506,56 +670,6 @@ Item {
             width: mainFlickable.width
             spacing: 8
 
-            // Header wrapper
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: titlebar.height
-
-                PanelTitlebar {
-                    id: titlebar
-                    width: root.contentWidth
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "Shell" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
-                    statusText: GlobalStates.shellHasChanges ? "Unsaved changes" : ""
-                    statusColor: Colors.error
-
-                    actions: {
-                        let baseActions = [
-                            {
-                                icon: Icons.arrowCounterClockwise,
-                                tooltip: "Discard changes",
-                                enabled: GlobalStates.shellHasChanges,
-                                onClicked: function () {
-                                    GlobalStates.discardShellChanges();
-                                }
-                            },
-                            {
-                                icon: Icons.disk,
-                                tooltip: "Apply changes",
-                                enabled: GlobalStates.shellHasChanges,
-                                onClicked: function () {
-                                    GlobalStates.applyShellChanges();
-                                }
-                            }
-                        ];
-
-                        if (root.currentSection !== "") {
-                            return [
-                                {
-                                    icon: Icons.arrowLeft,
-                                    tooltip: "Back",
-                                    onClicked: function () {
-                                        root.currentSection = "";
-                                    }
-                                }
-                            ].concat(baseActions);
-                        }
-
-                        return baseActions;
-                    }
-                }
-            }
-
             // Content wrapper - centered
             Item {
                 Layout.fillWidth: true
@@ -576,39 +690,39 @@ Item {
                         spacing: 8
 
                         SectionButton {
-                            text: "Bar"
+                            text: I18n.t("Bar")
                             sectionId: "bar"
                         }
                         SectionButton {
-                            text: "Frame"
+                            text: I18n.t("Frame")
                             sectionId: "frame"
                         }
                         SectionButton {
-                            text: "Notch"
+                            text: I18n.t("Notch")
                             sectionId: "notch"
                         }
                         SectionButton {
-                            text: "Workspaces"
+                            text: I18n.t("Workspaces")
                             sectionId: "workspaces"
                         }
                         SectionButton {
-                            text: "Overview"
+                            text: I18n.t("Overview")
                             sectionId: "overview"
                         }
                         SectionButton {
-                            text: "Dock"
+                            text: I18n.t("Dock")
                             sectionId: "dock"
                         }
                         SectionButton {
-                            text: "Lockscreen"
+                            text: I18n.t("Lockscreen")
                             sectionId: "lockscreen"
                         }
                         SectionButton {
-                            text: "Desktop"
+                            text: I18n.t("Desktop")
                             sectionId: "desktop"
                         }
                         SectionButton {
-                            text: "System"
+                            text: I18n.t("System")
                             sectionId: "system"
                         }
                     }
@@ -621,103 +735,133 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Bar"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "bar.position"
 
-                        SelectorRow {
-                            label: ""
-                            options: [
-                                {
-                                    label: "Top",
-                                    value: "top",
-                                    icon: Icons.arrowUp
-                                },
-                                {
-                                    label: "Bottom",
-                                    value: "bottom",
-                                    icon: Icons.arrowDown
-                                },
-                                {
-                                    label: "Left",
-                                    value: "left",
-                                    icon: Icons.arrowLeft
-                                },
-                                {
-                                    label: "Right",
-                                    value: "right",
-                                    icon: Icons.arrowRight
-                                }
-                            ]
-                            value: Config.bar.position ?? "top"
-                            onValueSelected: newValue => {
-                                if (newValue !== Config.bar.position) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.position = newValue;
+                            SelectorRow {
+                                label: ""
+                                options: [
+                                    {
+                                        label: I18n.t("Top"),
+                                        value: "top",
+                                        icon: Icons.arrowUp
+                                    },
+                                    {
+                                        label: I18n.t("Bottom"),
+                                        value: "bottom",
+                                        icon: Icons.arrowDown
+                                    },
+                                    {
+                                        label: I18n.t("Left"),
+                                        value: "left",
+                                        icon: Icons.arrowLeft
+                                    },
+                                    {
+                                        label: I18n.t("Right"),
+                                        value: "right",
+                                        icon: Icons.arrowRight
+                                    }
+                                ]
+                                value: Config.bar.position ?? "top"
+                                onValueSelected: newValue => {
+                                    if (newValue !== Config.bar.position) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.position = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        TextInputRow {
-                            label: "Launcher Icon"
-                            value: Config.bar.launcherIcon ?? ""
-                            placeholder: "Symbol or path to icon..."
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.bar.launcherIcon) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.launcherIcon = newValue;
+                        HighlightRow {
+                            highlightId: "bar.launcherIcon"
+
+                            TextInputRow {
+                                label: I18n.t("Launcher Icon")
+                                value: Config.bar.launcherIcon ?? ""
+                                placeholder: I18n.t("Symbol or path to icon...")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.bar.launcherIcon) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.launcherIcon = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Launcher Icon Tint"
-                            checked: Config.bar.launcherIconTint ?? true
-                            onToggled: value => {
-                                if (value !== Config.bar.launcherIconTint) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.launcherIconTint = value;
+                        HighlightRow {
+                            highlightId: "bar.launcherIconTint"
+
+                            ToggleRow {
+                                label: I18n.t("Launcher Icon Tint")
+                                checked: Config.bar.launcherIconTint ?? true
+                                onToggled: value => {
+                                    if (value !== Config.bar.launcherIconTint) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.launcherIconTint = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Launcher Icon Full Tint"
-                            checked: Config.bar.launcherIconFullTint ?? true
-                            onToggled: value => {
-                                if (value !== Config.bar.launcherIconFullTint) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.launcherIconFullTint = value;
+                        HighlightRow {
+                            highlightId: "bar.launcherIconFullTint"
+
+                            ToggleRow {
+                                label: I18n.t("Launcher Icon Full Tint")
+                                checked: Config.bar.launcherIconFullTint ?? true
+                                onToggled: value => {
+                                    if (value !== Config.bar.launcherIconFullTint) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.launcherIconFullTint = value;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Launcher Icon Size"
-                            value: Config.bar.launcherIconSize ?? 24
-                            minValue: 12
-                            maxValue: 64
-                            suffix: "px"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.bar.launcherIconSize) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.launcherIconSize = newValue;
+                        HighlightRow {
+                            highlightId: "bar.launcherIconSize"
+
+                            NumberInputRow {
+                                label: I18n.t("Launcher Icon Size")
+                                value: Config.bar.launcherIconSize ?? 24
+                                minValue: 12
+                                maxValue: 64
+                                suffix: I18n.t("px")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.bar.launcherIconSize) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.launcherIconSize = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Enable Firefox Player"
-                            checked: Config.bar.enableFirefoxPlayer ?? false
-                            onToggled: value => {
-                                if (value !== Config.bar.enableFirefoxPlayer) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.enableFirefoxPlayer = value;
+                        HighlightRow {
+                            highlightId: "bar.enableFirefoxPlayer"
+
+                            ToggleRow {
+                                label: I18n.t("Enable Firefox Player")
+                                checked: Config.bar.enableFirefoxPlayer ?? false
+                                onToggled: value => {
+                                    if (value !== Config.bar.enableFirefoxPlayer) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.enableFirefoxPlayer = value;
+                                    }
+                                }
+                            }
+                        }
+
+                        HighlightRow {
+                            highlightId: "bar.showBongoCat"
+
+                            ToggleRow {
+                                label: I18n.t("Show Bongo Cat")
+                                checked: Config.bar.showBongoCat ?? true
+                                onToggled: value => {
+                                    if (value !== Config.bar.showBongoCat) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.showBongoCat = value;
+                                    }
                                 }
                             }
                         }
@@ -727,7 +871,7 @@ Item {
                         }
 
                         Text {
-                            text: "Auto-hide"
+                            text: I18n.t("Auto-hide")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -735,70 +879,94 @@ Item {
                             Layout.bottomMargin: -4
                         }
 
-                        ToggleRow {
-                            label: "Pinned on Startup"
-                            checked: Config.bar.pinnedOnStartup ?? true
-                            onToggled: value => {
-                                if (value !== Config.bar.pinnedOnStartup) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.pinnedOnStartup = value;
+                        HighlightRow {
+                            highlightId: "bar.pinnedOnStartup"
+
+                            ToggleRow {
+                                label: I18n.t("Pinned on Startup")
+                                checked: Config.bar.pinnedOnStartup ?? true
+                                onToggled: value => {
+                                    if (value !== Config.bar.pinnedOnStartup) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.pinnedOnStartup = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Hover to Reveal"
-                            checked: Config.bar.hoverToReveal ?? true
-                            onToggled: value => {
-                                if (value !== Config.bar.hoverToReveal) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.hoverToReveal = value;
+                        HighlightRow {
+                            highlightId: "bar.hoverToReveal"
+
+                            ToggleRow {
+                                label: I18n.t("Hover to Reveal")
+                                checked: Config.bar.hoverToReveal ?? true
+                                onToggled: value => {
+                                    if (value !== Config.bar.hoverToReveal) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.hoverToReveal = value;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Hover Region Height"
-                            value: Config.bar.hoverRegionHeight ?? 8
-                            minValue: 0
-                            maxValue: 32
-                            suffix: "px"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.bar.hoverRegionHeight) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.hoverRegionHeight = newValue;
+                        HighlightRow {
+                            highlightId: "bar.hoverRegionHeight"
+
+                            NumberInputRow {
+                                label: I18n.t("Hover Region Height")
+                                value: Config.bar.hoverRegionHeight ?? 8
+                                minValue: 0
+                                maxValue: 32
+                                suffix: I18n.t("px")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.bar.hoverRegionHeight) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.hoverRegionHeight = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Show Pin Button"
-                            checked: Config.bar.showPinButton ?? true
-                            onToggled: value => {
-                                if (value !== Config.bar.showPinButton) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.showPinButton = value;
+                        HighlightRow {
+                            highlightId: "bar.showPinButton"
+
+                            ToggleRow {
+                                label: I18n.t("Show Pin Button")
+                                checked: Config.bar.showPinButton ?? true
+                                onToggled: value => {
+                                    if (value !== Config.bar.showPinButton) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.showPinButton = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Available on Fullscreen"
-                            checked: Config.bar.availableOnFullscreen ?? false
-                            onToggled: value => {
-                                if (value !== Config.bar.availableOnFullscreen) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.availableOnFullscreen = value;
+                        HighlightRow {
+                            highlightId: "bar.availableOnFullscreen"
+
+                            ToggleRow {
+                                label: I18n.t("Available on Fullscreen")
+                                checked: Config.bar.availableOnFullscreen ?? false
+                                onToggled: value => {
+                                    if (value !== Config.bar.availableOnFullscreen) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.availableOnFullscreen = value;
+                                    }
                                 }
                             }
                         }
 
-                        ScreenListRow {
-                            label: "Screens"
-                            selectedScreens: Config.bar.screenList ?? []
-                            onScreensChanged: newList => {
-                                GlobalStates.markShellChanged();
-                                Config.bar.screenList = newList;
+                        HighlightRow {
+                            highlightId: "bar.screenList"
+
+                            ScreenListRow {
+                                label: I18n.t("Screens")
+                                selectedScreens: Config.bar.screenList ?? []
+                                onScreensChanged: newList => {
+                                    GlobalStates.markShellChanged();
+                                    Config.bar.screenList = newList;
+                                }
                             }
                         }
                     }
@@ -811,36 +979,35 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Frame"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "frame.enabled"
 
-                        ToggleRow {
-                            label: "Enabled"
-                            checked: Config.bar.frameEnabled ?? false
-                            onToggled: value => {
-                                if (value !== Config.bar.frameEnabled) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.frameEnabled = value;
+                            ToggleRow {
+                                label: I18n.t("Enabled")
+                                checked: Config.bar.frameEnabled ?? false
+                                onToggled: value => {
+                                    if (value !== Config.bar.frameEnabled) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.frameEnabled = value;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Thickness"
-                            value: Config.bar.frameThickness ?? 6
-                            minValue: 1
-                            maxValue: 40
-                            suffix: "px"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.bar.frameThickness) {
-                                    GlobalStates.markShellChanged();
-                                    Config.bar.frameThickness = newValue;
+                        HighlightRow {
+                            highlightId: "frame.thickness"
+
+                            NumberInputRow {
+                                label: I18n.t("Thickness")
+                                value: Config.bar.frameThickness ?? 6
+                                minValue: 1
+                                maxValue: 40
+                                suffix: I18n.t("px")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.bar.frameThickness) {
+                                        GlobalStates.markShellChanged();
+                                        Config.bar.frameThickness = newValue;
+                                    }
                                 }
                             }
                         }
@@ -859,46 +1026,45 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Notch"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "notch.theme"
 
-                        SelectorRow {
-                            label: ""
-                            options: [
-                                {
-                                    label: "Default",
-                                    value: "default"
-                                },
-                                {
-                                    label: "Island",
-                                    value: "island"
-                                }
-                            ]
-                            value: Config.notch.theme ?? "default"
-                            onValueSelected: newValue => {
-                                if (newValue !== Config.notch.theme) {
-                                    GlobalStates.markShellChanged();
-                                    Config.notch.theme = newValue;
+                            SelectorRow {
+                                label: ""
+                                options: [
+                                    {
+                                        label: I18n.t("Default"),
+                                        value: "default"
+                                    },
+                                    {
+                                        label: I18n.t("Island"),
+                                        value: "island"
+                                    }
+                                ]
+                                value: Config.notch.theme ?? "default"
+                                onValueSelected: newValue => {
+                                    if (newValue !== Config.notch.theme) {
+                                        GlobalStates.markShellChanged();
+                                        Config.notch.theme = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Hover Region Height"
-                            value: Config.notch.hoverRegionHeight ?? 8
-                            minValue: 0
-                            maxValue: 32
-                            suffix: "px"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.notch.hoverRegionHeight) {
-                                    GlobalStates.markShellChanged();
-                                    Config.notch.hoverRegionHeight = newValue;
+                        HighlightRow {
+                            highlightId: "notch.hoverRegionHeight"
+
+                            NumberInputRow {
+                                label: I18n.t("Hover Region Height")
+                                value: Config.notch.hoverRegionHeight ?? 8
+                                minValue: 0
+                                maxValue: 32
+                                suffix: I18n.t("px")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.notch.hoverRegionHeight) {
+                                        GlobalStates.markShellChanged();
+                                        Config.notch.hoverRegionHeight = newValue;
+                                    }
                                 }
                             }
                         }
@@ -917,68 +1083,79 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Workspaces"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "workspaces.shown"
 
-                        NumberInputRow {
-                            label: "Shown"
-                            value: Config.workspaces.shown ?? 10
-                            minValue: 1
-                            maxValue: 20
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.workspaces.shown) {
-                                    GlobalStates.markShellChanged();
-                                    Config.workspaces.shown = newValue;
+                            NumberInputRow {
+                                label: I18n.t("Shown")
+                                value: Config.workspaces.shown ?? 10
+                                minValue: 1
+                                maxValue: 20
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.workspaces.shown) {
+                                        GlobalStates.markShellChanged();
+                                        Config.workspaces.shown = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Show App Icons"
-                            checked: Config.workspaces.showAppIcons ?? true
-                            onToggled: value => {
-                                if (value !== Config.workspaces.showAppIcons) {
-                                    GlobalStates.markShellChanged();
-                                    Config.workspaces.showAppIcons = value;
+                        HighlightRow {
+                            highlightId: "workspaces.showAppIcons"
+
+                            ToggleRow {
+                                label: I18n.t("Show App Icons")
+                                checked: Config.workspaces.showAppIcons ?? true
+                                onToggled: value => {
+                                    if (value !== Config.workspaces.showAppIcons) {
+                                        GlobalStates.markShellChanged();
+                                        Config.workspaces.showAppIcons = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Always Show Numbers"
-                            checked: Config.workspaces.alwaysShowNumbers ?? false
-                            onToggled: value => {
-                                if (value !== Config.workspaces.alwaysShowNumbers) {
-                                    GlobalStates.markShellChanged();
-                                    Config.workspaces.alwaysShowNumbers = value;
+                        HighlightRow {
+                            highlightId: "workspaces.alwaysShowNumbers"
+
+                            ToggleRow {
+                                label: I18n.t("Always Show Numbers")
+                                checked: Config.workspaces.alwaysShowNumbers ?? false
+                                onToggled: value => {
+                                    if (value !== Config.workspaces.alwaysShowNumbers) {
+                                        GlobalStates.markShellChanged();
+                                        Config.workspaces.alwaysShowNumbers = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Show Numbers"
-                            checked: Config.workspaces.showNumbers ?? false
-                            onToggled: value => {
-                                if (value !== Config.workspaces.showNumbers) {
-                                    GlobalStates.markShellChanged();
-                                    Config.workspaces.showNumbers = value;
+                        HighlightRow {
+                            highlightId: "workspaces.showNumbers"
+
+                            ToggleRow {
+                                label: I18n.t("Show Numbers")
+                                checked: Config.workspaces.showNumbers ?? false
+                                onToggled: value => {
+                                    if (value !== Config.workspaces.showNumbers) {
+                                        GlobalStates.markShellChanged();
+                                        Config.workspaces.showNumbers = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Dynamic"
-                            checked: Config.workspaces.dynamic ?? false
-                            onToggled: value => {
-                                if (value !== Config.workspaces.dynamic) {
-                                    GlobalStates.markShellChanged();
-                                    Config.workspaces.dynamic = value;
+                        HighlightRow {
+                            highlightId: "workspaces.dynamic"
+
+                            ToggleRow {
+                                label: I18n.t("Dynamic")
+                                checked: Config.workspaces.dynamic ?? false
+                                onToggled: value => {
+                                    if (value !== Config.workspaces.dynamic) {
+                                        GlobalStates.markShellChanged();
+                                        Config.workspaces.dynamic = value;
+                                    }
                                 }
                             }
                         }
@@ -997,102 +1174,108 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Overview"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "overview.rows"
 
-                        NumberInputRow {
-                            label: "Rows"
-                            value: Config.overview.rows ?? 2
-                            minValue: 1
-                            maxValue: 5
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.overview.rows) {
-                                    GlobalStates.markShellChanged();
-                                    Config.overview.rows = newValue;
-                                }
-                            }
-                        }
-
-                        NumberInputRow {
-                            label: "Columns"
-                            value: Config.overview.columns ?? 5
-                            minValue: 1
-                            maxValue: 10
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.overview.columns) {
-                                    GlobalStates.markShellChanged();
-                                    Config.overview.columns = newValue;
-                                }
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
-
-                            Text {
-                                text: "Scale"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(0)
-                                color: Colors.overBackground
-                                Layout.preferredWidth: 100
-                            }
-
-                            StyledSlider {
-                                id: overviewScaleSlider
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 20
-                                progressColor: Styling.srItem("overprimary")
-                                tooltipText: `${(value * 0.2).toFixed(2)}`
-                                scroll: true
-                                stepSize: 0.05  // 0.05 * 0.2 = 0.01 scale steps
-                                snapMode: "always"
-
-                                readonly property real configValue: (Config.overview.scale ?? 0.15) / 0.2
-
-                                onConfigValueChanged: {
-                                    if (Math.abs(value - configValue) > 0.001) {
-                                        value = configValue;
-                                    }
-                                }
-
-                                Component.onCompleted: value = configValue
-
-                                onValueChanged: {
-                                    let newScale = Math.round(value * 0.2 * 100) / 100;  // Round to 2 decimals
-                                    if (Math.abs(newScale - (Config.overview.scale ?? 0.15)) > 0.001) {
+                            NumberInputRow {
+                                label: I18n.t("Rows")
+                                value: Config.overview.rows ?? 2
+                                minValue: 1
+                                maxValue: 5
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.overview.rows) {
                                         GlobalStates.markShellChanged();
-                                        Config.overview.scale = newScale;
+                                        Config.overview.rows = newValue;
                                     }
                                 }
                             }
+                        }
 
-                            Text {
-                                text: ((Config.overview.scale ?? 0.15)).toFixed(2)
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(0)
-                                color: Colors.overBackground
-                                horizontalAlignment: Text.AlignRight
-                                Layout.preferredWidth: 40
+                        HighlightRow {
+                            highlightId: "overview.columns"
+
+                            NumberInputRow {
+                                label: I18n.t("Columns")
+                                value: Config.overview.columns ?? 5
+                                minValue: 1
+                                maxValue: 10
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.overview.columns) {
+                                        GlobalStates.markShellChanged();
+                                        Config.overview.columns = newValue;
+                                    }
+                                }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Workspace Spacing"
-                            value: Config.overview.workspaceSpacing ?? 4
-                            minValue: 0
-                            maxValue: 20
-                            suffix: "px"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.overview.workspaceSpacing) {
-                                    GlobalStates.markShellChanged();
-                                    Config.overview.workspaceSpacing = newValue;
+                        HighlightRow {
+                            highlightId: "overview.scale"
+
+                            RowLayout {
+                                spacing: 8
+
+                                Text {
+                                    text: I18n.t("Scale")
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                    Layout.preferredWidth: 100
+                                }
+
+                                StyledSlider {
+                                    id: overviewScaleSlider
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 20
+                                    progressColor: Styling.srItem("overprimary")
+                                    tooltipText: `${(value * 0.2).toFixed(2)}`
+                                    scroll: true
+                                    stepSize: 0.05  // 0.05 * 0.2 = 0.01 scale steps
+                                    snapMode: "always"
+
+                                    readonly property real configValue: (Config.overview.scale ?? 0.15) / 0.2
+
+                                    onConfigValueChanged: {
+                                        if (Math.abs(value - configValue) > 0.001) {
+                                            value = configValue;
+                                        }
+                                    }
+
+                                    Component.onCompleted: value = configValue
+
+                                    onValueChanged: {
+                                        let newScale = Math.round(value * 0.2 * 100) / 100;  // Round to 2 decimals
+                                        if (Math.abs(newScale - (Config.overview.scale ?? 0.15)) > 0.001) {
+                                            GlobalStates.markShellChanged();
+                                            Config.overview.scale = newScale;
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: ((Config.overview.scale ?? 0.15)).toFixed(2)
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                    horizontalAlignment: Text.AlignRight
+                                    Layout.preferredWidth: 40
+                                }
+                            }
+                        }
+
+                        HighlightRow {
+                            highlightId: "overview.workspaceSpacing"
+
+                            NumberInputRow {
+                                label: I18n.t("Workspace Spacing")
+                                value: Config.overview.workspaceSpacing ?? 4
+                                minValue: 0
+                                maxValue: 20
+                                suffix: I18n.t("px")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.overview.workspaceSpacing) {
+                                        GlobalStates.markShellChanged();
+                                        Config.overview.workspaceSpacing = newValue;
+                                    }
                                 }
                             }
                         }
@@ -1111,236 +1294,299 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Dock"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "dock.enabled"
 
-                        ToggleRow {
-                            label: "Enabled"
-                            checked: Config.dock.enabled ?? false
-                            onToggled: value => {
-                                if (value !== Config.dock.enabled) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.enabled = value;
-                                }
-                            }
-                        }
-
-                        SelectorRow {
-                            label: ""
-                            options: [
-                                {
-                                    label: "Default",
-                                    value: "default"
-                                },
-                                {
-                                    label: "Floating",
-                                    value: "floating"
-                                },
-                                {
-                                    label: "Integrated",
-                                    value: "integrated"
-                                }
-                            ]
-                            value: Config.dock.theme ?? "default"
-                            onValueSelected: newValue => {
-                                if (newValue !== Config.dock.theme) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.theme = newValue;
-                                }
-                            }
-                        }
-
-                        SelectorRow {
-                            label: ""
-                            options: {
-                                const isIntegrated = (Config.dock.theme ?? "default") === "integrated";
-                                return [
-                                    {
-                                        label: isIntegrated ? "Start" : "Left",
-                                        value: "left",
-                                        icon: isIntegrated ? Icons.alignLeft : Icons.arrowLeft
-                                    },
-                                    {
-                                        label: isIntegrated ? "Center" : "Bottom",
-                                        value: "bottom",
-                                        icon: isIntegrated ? Icons.alignCenter : Icons.arrowDown
-                                    },
-                                    {
-                                        label: isIntegrated ? "End" : "Right",
-                                        value: "right",
-                                        icon: isIntegrated ? Icons.alignRight : Icons.arrowRight
+                            ToggleRow {
+                                label: I18n.t("Enabled")
+                                checked: Config.dock.enabled ?? false
+                                onToggled: value => {
+                                    if (value !== Config.dock.enabled) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.enabled = value;
                                     }
-                                ];
-                            }
-                            value: Config.dock.position ?? "bottom"
-                            onValueSelected: newValue => {
-                                if (newValue !== Config.dock.position) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.position = newValue;
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Height"
-                            value: Config.dock.height ?? 56
-                            minValue: 32
-                            maxValue: 128
-                            suffix: "px"
-                            visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.dock.height) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.height = newValue;
+                        HighlightRow {
+                            highlightId: "dock.theme"
+
+                            SelectorRow {
+                                label: ""
+                                options: [
+                                    {
+                                        label: I18n.t("Default"),
+                                        value: "default"
+                                    },
+                                    {
+                                        label: I18n.t("Floating"),
+                                        value: "floating"
+                                    },
+                                    {
+                                        label: I18n.t("Integrated"),
+                                        value: "integrated"
+                                    }
+                                ]
+                                value: Config.dock.theme ?? "default"
+                                onValueSelected: newValue => {
+                                    if (newValue !== Config.dock.theme) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.theme = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Icon Size"
-                            value: Config.dock.iconSize ?? 40
-                            minValue: 16
-                            maxValue: 96
-                            suffix: "px"
-                            visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.dock.iconSize) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.iconSize = newValue;
+                        HighlightRow {
+                            highlightId: "dock.position"
+
+                            SelectorRow {
+                                label: ""
+                                options: {
+                                    const isIntegrated = (Config.dock.theme ?? "default") === "integrated";
+                                    return [
+                                        {
+                                            label: isIntegrated ? "Start" : "Left",
+                                            value: "left",
+                                            icon: isIntegrated ? Icons.alignLeft : Icons.arrowLeft
+                                        },
+                                        {
+                                            label: isIntegrated ? "Center" : "Bottom",
+                                            value: "bottom",
+                                            icon: isIntegrated ? Icons.alignCenter : Icons.arrowDown
+                                        },
+                                        {
+                                            label: isIntegrated ? "End" : "Right",
+                                            value: "right",
+                                            icon: isIntegrated ? Icons.alignRight : Icons.arrowRight
+                                        }
+                                    ];
+                                }
+                                value: Config.dock.position ?? "bottom"
+                                onValueSelected: newValue => {
+                                    if (newValue !== Config.dock.position) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.position = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Spacing"
-                            value: Config.dock.spacing ?? 4
-                            minValue: 0
-                            maxValue: 24
-                            suffix: "px"
+                        HighlightRow {
+                            highlightId: "dock.height"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.dock.spacing) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.spacing = newValue;
+
+                            NumberInputRow {
+                                label: I18n.t("Height")
+                                value: Config.dock.height ?? 56
+                                minValue: 32
+                                maxValue: 128
+                                suffix: I18n.t("px")
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.dock.height) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.height = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Margin"
-                            value: Config.dock.margin ?? 8
-                            minValue: 0
-                            maxValue: 32
-                            suffix: "px"
+                        HighlightRow {
+                            highlightId: "dock.iconSize"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.dock.margin) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.margin = newValue;
+
+                            NumberInputRow {
+                                label: I18n.t("Icon Size")
+                                value: Config.dock.iconSize ?? 40
+                                minValue: 16
+                                maxValue: 96
+                                suffix: I18n.t("px")
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.dock.iconSize) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.iconSize = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Hover Region Height"
-                            value: Config.dock.hoverRegionHeight ?? 4
-                            minValue: 0
-                            maxValue: 32
-                            suffix: "px"
+                        HighlightRow {
+                            highlightId: "dock.spacing"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.dock.hoverRegionHeight) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.hoverRegionHeight = newValue;
+
+                            NumberInputRow {
+                                label: I18n.t("Spacing")
+                                value: Config.dock.spacing ?? 4
+                                minValue: 0
+                                maxValue: 24
+                                suffix: I18n.t("px")
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.dock.spacing) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.spacing = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Pinned on Startup"
-                            checked: Config.dock.pinnedOnStartup ?? false
+                        HighlightRow {
+                            highlightId: "dock.margin"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onToggled: value => {
-                                if (value !== Config.dock.pinnedOnStartup) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.pinnedOnStartup = value;
+
+                            NumberInputRow {
+                                label: I18n.t("Margin")
+                                value: Config.dock.margin ?? 8
+                                minValue: 0
+                                maxValue: 32
+                                suffix: I18n.t("px")
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.dock.margin) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.margin = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Hover to Reveal"
-                            checked: Config.dock.hoverToReveal ?? true
+                        HighlightRow {
+                            highlightId: "dock.hoverRegionHeight"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onToggled: value => {
-                                if (value !== Config.dock.hoverToReveal) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.hoverToReveal = value;
+
+                            NumberInputRow {
+                                label: I18n.t("Hover Region Height")
+                                value: Config.dock.hoverRegionHeight ?? 4
+                                minValue: 0
+                                maxValue: 32
+                                suffix: I18n.t("px")
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.dock.hoverRegionHeight) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.hoverRegionHeight = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Available on Fullscreen"
-                            checked: Config.dock.availableOnFullscreen ?? false
+                        HighlightRow {
+                            highlightId: "dock.pinnedOnStartup"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onToggled: value => {
-                                if (value !== Config.dock.availableOnFullscreen) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.availableOnFullscreen = value;
+
+                            ToggleRow {
+                                label: I18n.t("Pinned on Startup")
+                                checked: Config.dock.pinnedOnStartup ?? false
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onToggled: value => {
+                                    if (value !== Config.dock.pinnedOnStartup) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.pinnedOnStartup = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Show Running Indicators"
-                            checked: Config.dock.showRunningIndicators ?? true
+                        HighlightRow {
+                            highlightId: "dock.hoverToReveal"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onToggled: value => {
-                                if (value !== Config.dock.showRunningIndicators) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.showRunningIndicators = value;
+
+                            ToggleRow {
+                                label: I18n.t("Hover to Reveal")
+                                checked: Config.dock.hoverToReveal ?? true
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onToggled: value => {
+                                    if (value !== Config.dock.hoverToReveal) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.hoverToReveal = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Show Pin Button"
-                            checked: Config.dock.showPinButton ?? true
+                        HighlightRow {
+                            highlightId: "dock.availableOnFullscreen"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onToggled: value => {
-                                if (value !== Config.dock.showPinButton) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.showPinButton = value;
+
+                            ToggleRow {
+                                label: I18n.t("Available on Fullscreen")
+                                checked: Config.dock.availableOnFullscreen ?? false
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onToggled: value => {
+                                    if (value !== Config.dock.availableOnFullscreen) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.availableOnFullscreen = value;
+                                    }
                                 }
                             }
                         }
 
-                        ToggleRow {
-                            label: "Show Overview Button"
-                            checked: Config.dock.showOverviewButton ?? true
+                        HighlightRow {
+                            highlightId: "dock.showRunningIndicators"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            onToggled: value => {
-                                if (value !== Config.dock.showOverviewButton) {
-                                    GlobalStates.markShellChanged();
-                                    Config.dock.showOverviewButton = value;
+
+                            ToggleRow {
+                                label: I18n.t("Show Running Indicators")
+                                checked: Config.dock.showRunningIndicators ?? true
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onToggled: value => {
+                                    if (value !== Config.dock.showRunningIndicators) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.showRunningIndicators = value;
+                                    }
                                 }
                             }
                         }
 
-                        ScreenListRow {
-                            label: "Screens"
+                        HighlightRow {
+                            highlightId: "dock.showPinButton"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            selectedScreens: Config.dock.screenList ?? []
-                            onScreensChanged: newList => {
-                                GlobalStates.markShellChanged();
-                                Config.dock.screenList = newList;
+
+                            ToggleRow {
+                                label: I18n.t("Show Pin Button")
+                                checked: Config.dock.showPinButton ?? true
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onToggled: value => {
+                                    if (value !== Config.dock.showPinButton) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.showPinButton = value;
+                                    }
+                                }
+                            }
+                        }
+
+                        HighlightRow {
+                            highlightId: "dock.showOverviewButton"
+                            visible: (Config.dock.theme ?? "default") !== "integrated"
+
+                            ToggleRow {
+                                label: I18n.t("Show Overview Button")
+                                checked: Config.dock.showOverviewButton ?? true
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                onToggled: value => {
+                                    if (value !== Config.dock.showOverviewButton) {
+                                        GlobalStates.markShellChanged();
+                                        Config.dock.showOverviewButton = value;
+                                    }
+                                }
+                            }
+                        }
+
+                        HighlightRow {
+                            highlightId: "dock.screenList"
+                            visible: (Config.dock.theme ?? "default") !== "integrated"
+
+                            ScreenListRow {
+                                label: I18n.t("Screens")
+                                visible: (Config.dock.theme ?? "default") !== "integrated"
+                                selectedScreens: Config.dock.screenList ?? []
+                                onScreensChanged: newList => {
+                                    GlobalStates.markShellChanged();
+                                    Config.dock.screenList = newList;
+                                }
                             }
                         }
                     }
@@ -1358,34 +1604,29 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Lockscreen"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "lockscreen.position"
 
-                        SelectorRow {
-                            label: ""
-                            options: [
-                                {
-                                    label: "Top",
-                                    value: "top",
-                                    icon: Icons.arrowUp
-                                },
-                                {
-                                    label: "Bottom",
-                                    value: "bottom",
-                                    icon: Icons.arrowDown
-                                }
-                            ]
-                            value: Config.lockscreen.position ?? "bottom"
-                            onValueSelected: newValue => {
-                                if (newValue !== Config.lockscreen.position) {
-                                    GlobalStates.markShellChanged();
-                                    Config.lockscreen.position = newValue;
+                            SelectorRow {
+                                label: ""
+                                options: [
+                                    {
+                                        label: I18n.t("Top"),
+                                        value: "top",
+                                        icon: Icons.arrowUp
+                                    },
+                                    {
+                                        label: I18n.t("Bottom"),
+                                        value: "bottom",
+                                        icon: Icons.arrowDown
+                                    }
+                                ]
+                                value: Config.lockscreen.position ?? "bottom"
+                                onValueSelected: newValue => {
+                                    if (newValue !== Config.lockscreen.position) {
+                                        GlobalStates.markShellChanged();
+                                        Config.lockscreen.position = newValue;
+                                    }
                                 }
                             }
                         }
@@ -1404,190 +1645,216 @@ Item {
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Desktop"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
+                        HighlightRow {
+                            highlightId: "desktop.enabled"
 
-                        ToggleRow {
-                            label: "Enabled"
-                            checked: Config.desktop.enabled ?? false
-                            onToggled: value => {
-                                if (value !== Config.desktop.enabled) {
-                                    GlobalStates.markShellChanged();
-                                    Config.desktop.enabled = value;
+                            ToggleRow {
+                                label: I18n.t("Enabled")
+                                checked: Config.desktop.enabled ?? false
+                                onToggled: value => {
+                                    if (value !== Config.desktop.enabled) {
+                                        GlobalStates.markShellChanged();
+                                        Config.desktop.enabled = value;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Icon Size"
-                            value: Config.desktop.iconSize ?? 40
-                            minValue: 24
-                            maxValue: 96
-                            suffix: "px"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.desktop.iconSize) {
-                                    GlobalStates.markShellChanged();
-                                    Config.desktop.iconSize = newValue;
+                        HighlightRow {
+                            highlightId: "desktop.iconSize"
+
+                            NumberInputRow {
+                                label: I18n.t("Icon Size")
+                                value: Config.desktop.iconSize ?? 40
+                                minValue: 24
+                                maxValue: 96
+                                suffix: I18n.t("px")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.desktop.iconSize) {
+                                        GlobalStates.markShellChanged();
+                                        Config.desktop.iconSize = newValue;
+                                    }
                                 }
                             }
                         }
 
-                        NumberInputRow {
-                            label: "Vertical Spacing"
-                            value: Config.desktop.spacingVertical ?? 16
-                            minValue: 0
-                            maxValue: 48
-                            suffix: "px"
-                            onValueEdited: newValue => {
-                                if (newValue !== Config.desktop.spacingVertical) {
-                                    GlobalStates.markShellChanged();
-                                    Config.desktop.spacingVertical = newValue;
+                        HighlightRow {
+                            highlightId: "desktop.spacingVertical"
+
+                            NumberInputRow {
+                                label: I18n.t("Vertical Spacing")
+                                value: Config.desktop.spacingVertical ?? 16
+                                minValue: 0
+                                maxValue: 48
+                                suffix: I18n.t("px")
+                                onValueEdited: newValue => {
+                                    if (newValue !== Config.desktop.spacingVertical) {
+                                        GlobalStates.markShellChanged();
+                                        Config.desktop.spacingVertical = newValue;
+                                    }
                                 }
                             }
                         }
 
                         // Text Color with ColorButton
-                        RowLayout {
-                            Layout.fillWidth: true
-                            spacing: 8
+                        HighlightRow {
+                            highlightId: "desktop.textColor"
 
-                            Text {
-                                text: "Text Color"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(0)
-                                color: Colors.overBackground
-                                Layout.preferredWidth: 100
-                            }
-
-                            ColorButton {
-                                id: desktopTextColorButton
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 48
-                                colorNames: root.colorNames
-                                currentColor: Config.desktop.textColor ?? "overBackground"
-                                dialogTitle: "Desktop Text Color"
-                                compact: false
-
-                                onOpenColorPicker: (colorNames, currentColor, dialogTitle) => {
-                                    root.openColorPicker(colorNames, currentColor, dialogTitle, function (color) {
-                                        if (color !== Config.desktop.textColor) {
-                                            GlobalStates.markShellChanged();
-                                            Config.desktop.textColor = color;
-                                        }
-                                    });
-                                }
-                            }
-
-                            Separator {
-                                Layout.fillWidth: true
-                                visible: false
-                            }
-
-                            // ═══════════════════════════════════════════════════════════════
-                            // SYSTEM SECTION
-                            // ═══════════════════════════════════════════════════════════════
-                            ColumnLayout {
-                                visible: root.currentSection === "system"
+                            RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 8
 
                                 Text {
-                                    text: "System"
+                                    text: I18n.t("Text Color")
                                     font.family: Config.theme.font
-                                    font.pixelSize: Styling.fontSize(-1)
-                                    font.weight: Font.Medium
-                                    color: Colors.overSurfaceVariant
-                                    Layout.bottomMargin: -4
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                    Layout.preferredWidth: 100
                                 }
 
-                                Text {
-                                    text: "OCR Languages"
-                                    font.family: Config.theme.font
-                                    font.pixelSize: Styling.fontSize(-2)
-                                    color: Styling.srItem("overprimary")
-                                    font.bold: true
-                                    Layout.topMargin: 8
-                                }
+                                ColorButton {
+                                    id: desktopTextColorButton
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 48
+                                    colorNames: root.colorNames
+                                    currentColor: Config.desktop.textColor ?? "overBackground"
+                                    dialogTitle: "Desktop Text Color"
+                                    compact: false
 
-                                ToggleRow {
-                                    label: "English"
-                                    checked: Config.system.ocr.eng ?? true
-                                    onToggled: value => {
-                                        if (value !== Config.system.ocr.eng) {
-                                            GlobalStates.markShellChanged();
-                                            Config.system.ocr.eng = value;
-                                        }
+                                    onOpenColorPicker: (colorNames, currentColor, dialogTitle) => {
+                                        root.openColorPicker(colorNames, currentColor, dialogTitle, function (color) {
+                                            if (color !== Config.desktop.textColor) {
+                                                GlobalStates.markShellChanged();
+                                                Config.desktop.textColor = color;
+                                            }
+                                        });
                                     }
                                 }
 
-                                ToggleRow {
-                                    label: "Spanish"
-                                    checked: Config.system.ocr.spa ?? true
-                                    onToggled: value => {
-                                        if (value !== Config.system.ocr.spa) {
-                                            GlobalStates.markShellChanged();
-                                            Config.system.ocr.spa = value;
-                                        }
-                                    }
+                                Separator {
+                                    Layout.fillWidth: true
+                                    visible: false
                                 }
 
-                                ToggleRow {
-                                    label: "Latin"
-                                    checked: Config.system.ocr.lat ?? false
-                                    onToggled: value => {
-                                        if (value !== Config.system.ocr.lat) {
-                                            GlobalStates.markShellChanged();
-                                            Config.system.ocr.lat = value;
+                                // ═══════════════════════════════════════════════════════════════
+                                // SYSTEM SECTION
+                                // ═══════════════════════════════════════════════════════════════
+                                ColumnLayout {
+                                    visible: root.currentSection === "system"
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        text: I18n.t("OCR Languages")
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        color: Styling.srItem("overprimary")
+                                        font.bold: true
+                                        Layout.topMargin: 8
+                                    }
+
+                                    HighlightRow {
+                                        highlightId: "system.ocr.eng"
+
+                                        ToggleRow {
+                                            label: I18n.t("English")
+                                            checked: Config.system.ocr.eng ?? true
+                                            onToggled: value => {
+                                                if (value !== Config.system.ocr.eng) {
+                                                    GlobalStates.markShellChanged();
+                                                    Config.system.ocr.eng = value;
+                                                }
+                                            }
                                         }
                                     }
-                                }
 
-                                ToggleRow {
-                                    label: "Japanese"
-                                    checked: Config.system.ocr.jpn ?? false
-                                    onToggled: value => {
-                                        if (value !== Config.system.ocr.jpn) {
-                                            GlobalStates.markShellChanged();
-                                            Config.system.ocr.jpn = value;
+                                    HighlightRow {
+                                        highlightId: "system.ocr.spa"
+
+                                        ToggleRow {
+                                            label: I18n.t("Spanish")
+                                            checked: Config.system.ocr.spa ?? true
+                                            onToggled: value => {
+                                                if (value !== Config.system.ocr.spa) {
+                                                    GlobalStates.markShellChanged();
+                                                    Config.system.ocr.spa = value;
+                                                }
+                                            }
                                         }
                                     }
-                                }
 
-                                ToggleRow {
-                                    label: "Chinese (Simplified)"
-                                    checked: Config.system.ocr.chi_sim ?? false
-                                    onToggled: value => {
-                                        if (value !== Config.system.ocr.chi_sim) {
-                                            GlobalStates.markShellChanged();
-                                            Config.system.ocr.chi_sim = value;
+                                    HighlightRow {
+                                        highlightId: "system.ocr.lat"
+
+                                        ToggleRow {
+                                            label: I18n.t("Latin")
+                                            checked: Config.system.ocr.lat ?? false
+                                            onToggled: value => {
+                                                if (value !== Config.system.ocr.lat) {
+                                                    GlobalStates.markShellChanged();
+                                                    Config.system.ocr.lat = value;
+                                                }
+                                            }
                                         }
                                     }
-                                }
 
-                                ToggleRow {
-                                    label: "Chinese (Traditional)"
-                                    checked: Config.system.ocr.chi_tra ?? false
-                                    onToggled: value => {
-                                        if (value !== Config.system.ocr.chi_tra) {
-                                            GlobalStates.markShellChanged();
-                                            Config.system.ocr.chi_tra = value;
+                                    HighlightRow {
+                                        highlightId: "system.ocr.jpn"
+
+                                        ToggleRow {
+                                            label: I18n.t("Japanese")
+                                            checked: Config.system.ocr.jpn ?? false
+                                            onToggled: value => {
+                                                if (value !== Config.system.ocr.jpn) {
+                                                    GlobalStates.markShellChanged();
+                                                    Config.system.ocr.jpn = value;
+                                                }
+                                            }
                                         }
                                     }
-                                }
 
-                                ToggleRow {
-                                    label: "Korean"
-                                    checked: Config.system.ocr.kor ?? false
-                                    onToggled: value => {
-                                        if (value !== Config.system.ocr.kor) {
-                                            GlobalStates.markShellChanged();
-                                            Config.system.ocr.kor = value;
+                                    HighlightRow {
+                                        highlightId: "system.ocr.chi_sim"
+
+                                        ToggleRow {
+                                            label: I18n.t("Chinese (Simplified)")
+                                            checked: Config.system.ocr.chi_sim ?? false
+                                            onToggled: value => {
+                                                if (value !== Config.system.ocr.chi_sim) {
+                                                    GlobalStates.markShellChanged();
+                                                    Config.system.ocr.chi_sim = value;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    HighlightRow {
+                                        highlightId: "system.ocr.chi_tra"
+
+                                        ToggleRow {
+                                            label: I18n.t("Chinese (Traditional)")
+                                            checked: Config.system.ocr.chi_tra ?? false
+                                            onToggled: value => {
+                                                if (value !== Config.system.ocr.chi_tra) {
+                                                    GlobalStates.markShellChanged();
+                                                    Config.system.ocr.chi_tra = value;
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    HighlightRow {
+                                        highlightId: "system.ocr.kor"
+
+                                        ToggleRow {
+                                            label: I18n.t("Korean")
+                                            checked: Config.system.ocr.kor ?? false
+                                            onToggled: value => {
+                                                if (value !== Config.system.ocr.kor) {
+                                                    GlobalStates.markShellChanged();
+                                                    Config.system.ocr.kor = value;
+                                                }
+                                            }
                                         }
                                     }
                                 }

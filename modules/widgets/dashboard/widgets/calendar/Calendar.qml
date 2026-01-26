@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 import "layout.js" as CalendarLayout
 
@@ -80,7 +81,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: Icons.caretLeft
+                            text: I18n.isRtl ? Icons.caretRight : Icons.caretLeft
                             font.pixelSize: 16
                             color: leftButton.buttonItem
                         }
@@ -105,7 +106,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: Icons.caretRight
+                            text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
                             font.pixelSize: 16
                             color: rightButton.buttonItem
                         }

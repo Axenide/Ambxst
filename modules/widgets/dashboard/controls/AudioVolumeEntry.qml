@@ -7,10 +7,13 @@ import Quickshell.Services.Pipewire
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.services
+import qs.modules.services
 import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     required property PwNode node
     property string icon: ""
@@ -30,11 +33,15 @@ Item {
     ColumnLayout {
         anchors.fill: parent
         spacing: 4
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         // First row: Icon + Slider
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             // Mute button with icon
             Button {
@@ -120,6 +127,8 @@ Item {
         RowLayout {
             Layout.fillWidth: true
             spacing: 8
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             // Source name
             Text {
@@ -144,7 +153,7 @@ Item {
 
                 StyledToolTip {
                     visible: parent.visible && protectionIndicatorMa.containsMouse
-                    tooltipText: "Volume protection active"
+                    tooltipText: I18n.t("Volume protection active")
                 }
 
                 MouseArea {
@@ -160,7 +169,7 @@ Item {
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-2)
                 color: Colors.overSurfaceVariant
-                horizontalAlignment: Text.AlignRight
+                horizontalAlignment: I18n.isRtl ? Text.AlignLeft : Text.AlignRight
             }
         }
     }

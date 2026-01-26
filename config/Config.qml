@@ -18,6 +18,7 @@ import "defaults/desktop.js" as DesktopDefaults
 import "defaults/lockscreen.js" as LockscreenDefaults
 import "defaults/prefix.js" as PrefixDefaults
 import "defaults/system.js" as SystemDefaults
+import "defaults/apps.js" as AppsDefaults
 import "defaults/dock.js" as DockDefaults
 import "defaults/ai.js" as AiDefaults
 import "ConfigValidator.js" as ConfigValidator
@@ -43,11 +44,12 @@ Singleton {
     property bool lockscreenReady: false
     property bool prefixReady: false
     property bool systemReady: false
+    property bool appsReady: false
     property bool dockReady: false
     property bool aiReady: false
     property bool keybindsInitialLoadComplete: false
 
-    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && hyprlandReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady
+    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && hyprlandReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && appsReady && dockReady && aiReady
 
     // Aliases for backward compatibility
     property alias loader: themeLoader
@@ -76,6 +78,7 @@ Singleton {
             [ ! -f lockscreen.json ] && MISSING="$MISSING lockscreen"
             [ ! -f prefix.json ] && MISSING="$MISSING prefix"
             [ ! -f system.json ] && MISSING="$MISSING system"
+            [ ! -f apps.json ] && MISSING="$MISSING apps"
             [ ! -f dock.json ] && MISSING="$MISSING dock"
             [ ! -f ai.json ] && MISSING="$MISSING ai"
             echo "$MISSING"
@@ -143,6 +146,11 @@ Singleton {
                     console.log("system.json missing, creating default...");
                     systemRawLoader.setText(JSON.stringify(SystemDefaults.data, null, 4));
                     root.systemReady = true;
+                }
+                if (missing.includes("apps")) {
+                    console.log("apps.json missing, creating default...");
+                    appsRawLoader.setText(JSON.stringify(AppsDefaults.data, null, 4));
+                    root.appsReady = true;
                 }
                 if (missing.includes("dock")) {
                     console.log("dock.json missing, creating default...");
@@ -591,6 +599,7 @@ Singleton {
             property int launcherIconSize: 24
             property list<string> screenList: []
             property bool enableFirefoxPlayer: false
+            property bool showBongoCat: true
             property list<var> barColor: [["surface", 0.0]]
             property bool frameEnabled: false
             property int frameThickness: 6
@@ -1029,6 +1038,7 @@ Singleton {
 
         adapter: JsonAdapter {
             property list<string> disks: ["/"]
+            property string language: "en"
             property JsonObject idle: JsonObject {
                 property JsonObject general: JsonObject {
                     property string lock_cmd: "ambxst lock"
@@ -1064,6 +1074,91 @@ Singleton {
                 property bool chi_sim: false
                 property bool chi_tra: false
                 property bool kor: false
+            }
+        }
+    }
+
+    // ============================================
+    // APPS MODULE
+    // ============================================
+    FileView {
+        id: appsRawLoader
+        path: root.configDir + "/apps.json"
+        onLoaded: {
+            if (!root.appsReady) {
+                try {
+                    const raw = appsRawLoader.text();
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        let changed = false;
+                        for (const key in parsed) {
+                            if (parsed[key] && parsed[key].class !== undefined && parsed[key].windowClass === undefined) {
+                                parsed[key].windowClass = parsed[key].class;
+                                delete parsed[key].class;
+                                changed = true;
+                            }
+                        }
+                        if (changed) {
+                            appsRawLoader.setText(JSON.stringify(parsed, null, 4));
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Failed to migrate apps.json:", e);
+                }
+                validateModule("apps", appsRawLoader, AppsDefaults.data, () => {
+                    root.appsReady = true;
+                });
+            }
+        }
+    }
+
+    FileView {
+        id: appsLoader
+        path: root.configDir + "/apps.json"
+        atomicWrites: true
+        watchChanges: true
+        onFileChanged: {
+            root.pauseAutoSave = true;
+            reload();
+            root.pauseAutoSave = false;
+        }
+        onPathChanged: reload()
+        onAdapterUpdated: {
+            if (root.appsReady && !root.pauseAutoSave) {
+                appsLoader.writeAdapter();
+            }
+        }
+
+        adapter: JsonAdapter {
+            property JsonObject music: JsonObject {
+                property string label: "Music"
+                property string command: "spotify"
+                property string windowClass: "Spotify"
+                property string workspace: "special:music"
+            }
+            property JsonObject communication: JsonObject {
+                property string label: "Communication"
+                property string command: "discord"
+                property string windowClass: "Discord"
+                property string workspace: "special:communication"
+            }
+            property JsonObject browser: JsonObject {
+                property string label: "Browser"
+                property string command: "firefox"
+                property string windowClass: "firefox"
+                property string workspace: "special:browser"
+            }
+            property JsonObject files: JsonObject {
+                property string label: "Files"
+                property string command: "thunar"
+                property string windowClass: "Thunar"
+                property string workspace: "special:files"
+            }
+            property JsonObject terminal: JsonObject {
+                property string label: "Terminal"
+                property string command: "foot"
+                property string windowClass: "foot"
+                property string workspace: ""
             }
         }
     }
@@ -1247,6 +1342,7 @@ Singleton {
         try {
             const current = JSON.parse(raw);
             let needsUpdate = false;
+            let keybindsMigrated = false;
 
             // Ensure ambxst structure exists
             if (!current.ambxst) {
@@ -1259,6 +1355,10 @@ Singleton {
             }
             if (!current.ambxst.system) {
                 current.ambxst.system = {};
+                needsUpdate = true;
+            }
+            if (!current.ambxst.apps) {
+                current.ambxst.apps = {};
                 needsUpdate = true;
             }
 
@@ -1287,6 +1387,18 @@ Singleton {
                 }
             }
 
+            const tmuxBind = current.ambxst.dashboard.tmux;
+            if (tmuxBind
+                && tmuxBind.key === "T"
+                && Array.isArray(tmuxBind.modifiers)
+                && tmuxBind.modifiers.length === 1
+                && tmuxBind.modifiers[0] === "SUPER"
+                && tmuxBind.dispatcher === "exec"
+                && tmuxBind.argument === "ambxst run dashboard-tmux") {
+                tmuxBind.modifiers = ["SUPER", "SHIFT"];
+                keybindsMigrated = true;
+            }
+
             // Check system binds
             const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
             for (const key of systemKeys) {
@@ -1297,7 +1409,85 @@ Singleton {
                 }
             }
 
-            if (needsUpdate) {
+            const toolsBind = current.ambxst.system.tools;
+            if (toolsBind
+                && toolsBind.key === "S"
+                && Array.isArray(toolsBind.modifiers)
+                && toolsBind.modifiers.length === 1
+                && toolsBind.modifiers[0] === "SUPER"
+                && toolsBind.dispatcher === "exec"
+                && toolsBind.argument === "ambxst run tools") {
+                toolsBind.modifiers = ["SUPER", "ALT"];
+                toolsBind.key = "T";
+                keybindsMigrated = true;
+            }
+            if (toolsBind
+                && toolsBind.key === "S"
+                && Array.isArray(toolsBind.modifiers)
+                && toolsBind.modifiers.length === 2
+                && toolsBind.modifiers[0] === "SUPER"
+                && toolsBind.modifiers[1] === "ALT"
+                && toolsBind.dispatcher === "exec"
+                && toolsBind.argument === "ambxst run tools") {
+                toolsBind.key = "T";
+                keybindsMigrated = true;
+            }
+
+            // Check app binds
+            const appKeys = ["music", "communication", "browser", "files", "terminal"];
+            for (const key of appKeys) {
+                if (!current.ambxst.apps[key] && adapter.ambxst.apps && adapter.ambxst.apps[key]) {
+                    console.log("Adding missing app bind:", key);
+                    current.ambxst.apps[key] = createCleanBind(adapter.ambxst.apps[key]);
+                    needsUpdate = true;
+                }
+            }
+
+            const customBinds = current.custom;
+            if (Array.isArray(customBinds)) {
+                for (let i = 0; i < customBinds.length; i++) {
+                    const bind = customBinds[i];
+                    if (bind && bind.name === "Toggle Special Workspace" && Array.isArray(bind.keys)) {
+                        for (let k = 0; k < bind.keys.length; k++) {
+                            const keyObj = bind.keys[k];
+                            if (keyObj
+                                && keyObj.key === "V"
+                                && Array.isArray(keyObj.modifiers)
+                                && keyObj.modifiers.length === 2
+                                && keyObj.modifiers[0] === "SUPER"
+                                && keyObj.modifiers[1] === "SHIFT") {
+                                keyObj.modifiers = ["SUPER"];
+                                keyObj.key = "S";
+                                keybindsMigrated = true;
+                            }
+                        }
+                    }
+                    if (bind && bind.name === "Toggle Special Workspace" && Array.isArray(bind.actions) && bind.actions.length > 0) {
+                        const action = bind.actions[0];
+                        if (action.dispatcher === "togglespecialworkspace") {
+                            action.dispatcher = "exec";
+                            action.argument = "ambxst run special-toggle";
+                            action.flags = "";
+                            keybindsMigrated = true;
+                        }
+                    }
+                    if (bind && bind.name === "Move to Special Workspace" && Array.isArray(bind.keys)) {
+                        for (let k = 0; k < bind.keys.length; k++) {
+                            const keyObj = bind.keys[k];
+                            if (!keyObj)
+                                continue;
+                            const modifiers = Array.isArray(keyObj.modifiers) ? keyObj.modifiers : [];
+                            const isSuperAlt = modifiers.length === 2 && modifiers[0] === "SUPER" && modifiers[1] === "ALT";
+                            if (isSuperAlt && keyObj.key !== "S") {
+                                keyObj.key = "S";
+                                keybindsMigrated = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (needsUpdate || keybindsMigrated) {
                 console.log("Auto-repairing binds.json: adding missing binds");
                 keybindsRawLoader.setText(JSON.stringify(current, null, 4));
             }
@@ -1433,7 +1623,7 @@ Singleton {
                         property string argument: "ambxst run dashboard-notes"
                     }
                     property JsonObject tmux: JsonObject {
-                        property list<string> modifiers: ["SUPER"]
+                        property list<string> modifiers: ["SUPER", "SHIFT"]
                         property string key: "T"
                         property string dispatcher: "exec"
                         property string argument: "ambxst run dashboard-tmux"
@@ -1482,8 +1672,8 @@ Singleton {
                         property string flags: ""
                     }
                     property JsonObject tools: JsonObject {
-                        property list<string> modifiers: ["SUPER"]
-                        property string key: "S"
+                        property list<string> modifiers: ["SUPER", "ALT"]
+                        property string key: "T"
                         property string dispatcher: "exec"
                         property string argument: "ambxst run tools"
                         property string flags: ""
@@ -1524,6 +1714,43 @@ Singleton {
                         property string flags: ""
                     }
                 }
+                property JsonObject apps: JsonObject {
+                    property JsonObject music: JsonObject {
+                        property list<string> modifiers: ["SUPER", "ALT"]
+                        property string key: "M"
+                        property string dispatcher: "exec"
+                        property string argument: "ambxst run app-music"
+                        property string flags: ""
+                    }
+                    property JsonObject communication: JsonObject {
+                        property list<string> modifiers: ["SUPER", "ALT"]
+                        property string key: "D"
+                        property string dispatcher: "exec"
+                        property string argument: "ambxst run app-communication"
+                        property string flags: ""
+                    }
+                    property JsonObject browser: JsonObject {
+                        property list<string> modifiers: ["SUPER", "ALT"]
+                        property string key: "W"
+                        property string dispatcher: "exec"
+                        property string argument: "ambxst run app-browser"
+                        property string flags: ""
+                    }
+                    property JsonObject files: JsonObject {
+                        property list<string> modifiers: ["SUPER", "ALT"]
+                        property string key: "E"
+                        property string dispatcher: "exec"
+                        property string argument: "ambxst run app-files"
+                        property string flags: ""
+                    }
+                    property JsonObject terminal: JsonObject {
+                        property list<string> modifiers: ["SUPER"]
+                        property string key: "T"
+                        property string dispatcher: "exec"
+                        property string argument: "foot"
+                        property string flags: ""
+                    }
+                }
             }
             // Functions to get defaults
             readonly property var defaultAmbxstBinds: {
@@ -1532,7 +1759,7 @@ Singleton {
                     "clipboard": { "modifiers": ["SUPER"], "key": "V", "dispatcher": "exec", "argument": "ambxst run dashboard-clipboard", "flags": "" },
                     "emoji": { "modifiers": ["SUPER"], "key": "PERIOD", "dispatcher": "exec", "argument": "ambxst run dashboard-emoji", "flags": "" },
                     "notes": { "modifiers": ["SUPER"], "key": "N", "dispatcher": "exec", "argument": "ambxst run dashboard-notes", "flags": "" },
-                    "tmux": { "modifiers": ["SUPER"], "key": "T", "dispatcher": "exec", "argument": "ambxst run dashboard-tmux", "flags": "" },
+                    "tmux": { "modifiers": ["SUPER", "SHIFT"], "key": "T", "dispatcher": "exec", "argument": "ambxst run dashboard-tmux", "flags": "" },
                     "wallpapers": { "modifiers": ["SUPER"], "key": "COMMA", "dispatcher": "exec", "argument": "ambxst run dashboard-wallpapers", "flags": "" },
                     "widgets": { "modifiers": ["SUPER"], "key": "Super_L", "dispatcher": "exec", "argument": "ambxst run dashboard-widgets", "flags": "r" }
                 },
@@ -1541,12 +1768,19 @@ Singleton {
                     "lockscreen": { "modifiers": ["SUPER"], "key": "L", "dispatcher": "exec", "argument": "loginctl lock-session", "flags": "" },
                     "overview": { "modifiers": ["SUPER"], "key": "TAB", "dispatcher": "exec", "argument": "ambxst run overview", "flags": "" },
                     "powermenu": { "modifiers": ["SUPER"], "key": "ESCAPE", "dispatcher": "exec", "argument": "ambxst run powermenu", "flags": "" },
-                    "tools": { "modifiers": ["SUPER"], "key": "S", "dispatcher": "exec", "argument": "ambxst run tools", "flags": "" },
+                    "tools": { "modifiers": ["SUPER", "ALT"], "key": "T", "dispatcher": "exec", "argument": "ambxst run tools", "flags": "" },
                     "screenshot": { "modifiers": ["SUPER", "SHIFT"], "key": "S", "dispatcher": "exec", "argument": "ambxst run screenshot", "flags": "" },
                     "screenrecord": { "modifiers": ["SUPER", "SHIFT"], "key": "R", "dispatcher": "exec", "argument": "ambxst run screenrecord", "flags": "" },
                     "lens": { "modifiers": ["SUPER", "SHIFT"], "key": "A", "dispatcher": "exec", "argument": "ambxst run lens", "flags": "" },
                     "reload": { "modifiers": ["SUPER", "ALT"], "key": "B", "dispatcher": "exec", "argument": "ambxst reload", "flags": "" },
                     "quit": { "modifiers": ["SUPER", "CTRL", "ALT"], "key": "B", "dispatcher": "exec", "argument": "ambxst quit", "flags": "" }
+                },
+                "apps": {
+                    "music": { "modifiers": ["SUPER", "ALT"], "key": "M", "dispatcher": "exec", "argument": "ambxst run app-music", "flags": "" },
+                    "communication": { "modifiers": ["SUPER", "ALT"], "key": "D", "dispatcher": "exec", "argument": "ambxst run app-communication", "flags": "" },
+                    "browser": { "modifiers": ["SUPER", "ALT"], "key": "W", "dispatcher": "exec", "argument": "ambxst run app-browser", "flags": "" },
+                    "files": { "modifiers": ["SUPER", "ALT"], "key": "E", "dispatcher": "exec", "argument": "ambxst run app-files", "flags": "" },
+                    "terminal": { "modifiers": ["SUPER"], "key": "T", "dispatcher": "exec", "argument": "foot", "flags": "" }
                 }
             }
 
@@ -2428,14 +2662,14 @@ Singleton {
                     "name": "Toggle Special Workspace",
                     "keys": [
                         {
-                            "modifiers": ["SUPER", "SHIFT"],
-                            "key": "V"
+                            "modifiers": ["SUPER"],
+                            "key": "S"
                         }
                     ],
                     "actions": [
                         {
-                            "dispatcher": "togglespecialworkspace",
-                            "argument": "",
+                            "dispatcher": "exec",
+                            "argument": "ambxst run special-toggle",
                             "flags": "",
                             "compositor": {
                                 "type": "hyprland",
@@ -2450,7 +2684,7 @@ Singleton {
                     "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
-                            "key": "V"
+                            "key": "S"
                         }
                     ],
                     "actions": [
@@ -3360,6 +3594,9 @@ Singleton {
     // System configuration
     property QtObject system: systemLoader.adapter
 
+    // Apps configuration
+    property QtObject apps: appsLoader.adapter
+
     // Dock configuration
     property QtObject dock: dockLoader.adapter
 
@@ -3381,6 +3618,9 @@ Singleton {
     }
     function saveNotch() {
         notchLoader.writeAdapter();
+    }
+    function saveApps() {
+        appsLoader.writeAdapter();
     }
     function saveHyprland() {
         hyprlandLoader.writeAdapter();

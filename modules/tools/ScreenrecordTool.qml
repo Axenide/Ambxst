@@ -11,7 +11,6 @@ import qs.config
 
 PanelWindow {
     id: screenrecordPopup
-
     anchors {
         top: true
         bottom: true

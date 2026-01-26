@@ -3,11 +3,12 @@ import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import qs.modules.globals
+import qs.modules.services
+import qs.modules.components
 import qs.config
 
 PanelWindow {
     id: wallpaper
-
     anchors {
         top: true
         left: true

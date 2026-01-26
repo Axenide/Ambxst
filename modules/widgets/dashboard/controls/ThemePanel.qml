@@ -6,12 +6,15 @@ import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import Quickshell
 import Quickshell.Io
 import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
@@ -36,6 +39,8 @@ Item {
             anchors.fill: parent
             anchors.margins: 16
             spacing: 16
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             Text {
                 text: sectionBtn.text
@@ -44,10 +49,11 @@ Item {
                 font.bold: true
                 color: Colors.overBackground
                 Layout.fillWidth: true
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
             }
 
             Text {
-                text: Icons.caretRight
+                text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
                 font.family: Icons.font
                 font.pixelSize: 20
                 color: Colors.overSurfaceVariant
@@ -173,55 +179,24 @@ Item {
         ColumnLayout {
             id: mainColumn
             width: mainFlickable.width
-            spacing: 8
+            spacing: 12
 
             // Header wrapper
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: titlebar.height
+                Layout.preferredHeight: titlebar.visible ? titlebar.height : 0
 
                 PanelTitlebar {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "Theme" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
+                    title: root.currentSection === "" ? I18n.t("Theme")
+                        : I18n.t(root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
+                    showTitle: false
                     statusText: GlobalStates.themeHasChanges ? "Unsaved changes" : ""
                     statusColor: Colors.error
-
-                    actions: {
-                        let baseActions = [
-                            {
-                                icon: Icons.arrowCounterClockwise,
-                                tooltip: "Discard changes",
-                                enabled: GlobalStates.themeHasChanges,
-                                onClicked: function () {
-                                    GlobalStates.discardThemeChanges();
-                                }
-                            },
-                            {
-                                icon: Icons.disk,
-                                tooltip: "Apply changes",
-                                enabled: GlobalStates.themeHasChanges,
-                                onClicked: function () {
-                                    GlobalStates.applyThemeChanges();
-                                }
-                            }
-                        ];
-
-                        if (root.currentSection !== "") {
-                            return [
-                                {
-                                    icon: Icons.arrowLeft,
-                                    tooltip: "Back",
-                                    onClicked: function () {
-                                        root.currentSection = "";
-                                    }
-                                }
-                            ].concat(baseActions);
-                        }
-
-                        return baseActions;
-                    }
+                    actions: []
+                    visible: false
                 }
             }
 
@@ -242,18 +217,18 @@ Item {
                     ColumnLayout {
                         visible: root.currentSection === ""
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 12
 
                         SectionButton {
-                            text: "General"
+                            text: I18n.t("General")
                             sectionId: "general"
                         }
                         SectionButton {
-                            text: "Shadow"
+                            text: I18n.t("Shadow")
                             sectionId: "shadow"
                         }
                         SectionButton {
-                            text: "Colors"
+                            text: I18n.t("Colors")
                             sectionId: "colors"
                         }
                     }
@@ -269,10 +244,10 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            spacing: 8
+                            spacing: 12
 
                             Text {
-                                text: "General"
+                                text: I18n.t("General")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -283,14 +258,19 @@ Item {
                             // Wallpaper Path
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
 
                                 Text {
-                                    text: "Wallpapers"
+                                    text: I18n.t("Wallpapers")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledRect {
@@ -309,15 +289,17 @@ Item {
                                         selectByMouse: true
                                         clip: true
                                         verticalAlignment: TextInput.AlignVCenter
+                                        horizontalAlignment: I18n.isRtl ? TextInput.AlignRight : TextInput.AlignLeft
 
                                         // Placeholder for default path
                                         Text {
                                             anchors.fill: parent
                                             verticalAlignment: Text.AlignVCenter
-                                            text: "Default"
+                                            text: I18n.t("Default")
                                             font: parent.font
                                             color: Colors.overSurfaceVariant
                                             visible: !parent.text && !parent.activeFocus
+                                            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                                         }
 
                                         text: wallpaperConfig.adapter.wallPath
@@ -335,14 +317,19 @@ Item {
                             // Tint Icons toggle
                             RowLayout {
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
 
                                 Text {
-                                    text: "Tint Icons"
+                                    text: I18n.t("Tint Icons")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.fillWidth: true
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 Switch {
@@ -403,15 +390,20 @@ Item {
 
                             // Enable Corners toggle
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Enable Corners"
+                                    text: I18n.t("Enable Corners")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.fillWidth: true
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 Switch {
@@ -472,15 +464,20 @@ Item {
 
                             // Animation Duration slider
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Animation"
+                                    text: I18n.t("Animation")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledSlider {
@@ -527,7 +524,7 @@ Item {
                             }
 
                             Text {
-                                text: "Fonts"
+                                text: I18n.t("Fonts")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -537,15 +534,20 @@ Item {
 
                             // UI Font row
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "UI Font"
+                                    text: I18n.t("UI Font")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledRect {
@@ -564,6 +566,7 @@ Item {
                                         selectByMouse: true
                                         clip: true
                                         verticalAlignment: TextInput.AlignVCenter
+                                        horizontalAlignment: I18n.isRtl ? TextInput.AlignRight : TextInput.AlignLeft
 
                                         readonly property string configValue: Config.theme.font
 
@@ -627,7 +630,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "px"
+                                    text: I18n.t("px")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overSurfaceVariant
@@ -636,15 +639,20 @@ Item {
 
                             // Mono Font row
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Mono Font"
+                                    text: I18n.t("Mono Font")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledRect {
@@ -663,6 +671,7 @@ Item {
                                         selectByMouse: true
                                         clip: true
                                         verticalAlignment: TextInput.AlignVCenter
+                                        horizontalAlignment: I18n.isRtl ? TextInput.AlignRight : TextInput.AlignLeft
 
                                         readonly property string configValue: Config.theme.monoFont
 
@@ -726,7 +735,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "px"
+                                    text: I18n.t("px")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overSurfaceVariant
@@ -738,7 +747,7 @@ Item {
                             }
 
                             Text {
-                                text: "Roundness"
+                                text: I18n.t("Roundness")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -747,8 +756,10 @@ Item {
                             }
 
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 StyledSlider {
                                     id: roundnessSlider
@@ -804,10 +815,10 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            spacing: 8
+                            spacing: 12
 
                             Text {
-                                text: "Shadow"
+                                text: I18n.t("Shadow")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -817,15 +828,20 @@ Item {
 
                             // Opacity row
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Opacity"
+                                    text: I18n.t("Opacity")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledSlider {
@@ -868,15 +884,20 @@ Item {
 
                             // Blur row
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Blur"
+                                    text: I18n.t("Blur")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledSlider {
@@ -920,15 +941,20 @@ Item {
 
                             // Offset row (X and Y)
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Offset X"
+                                    text: I18n.t("Offset X")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledSlider {
@@ -971,15 +997,20 @@ Item {
                             }
 
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Offset Y"
+                                    text: I18n.t("Offset Y")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledSlider {
@@ -1023,15 +1054,20 @@ Item {
 
                             // Color row
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
 
                                 Text {
-                                    text: "Color"
+                                    text: I18n.t("Color")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
                                     Layout.preferredWidth: 80
+                                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                                    elide: Text.ElideRight
+                                    wrapMode: Text.NoWrap
                                 }
 
                                 StyledRect {
@@ -1044,10 +1080,12 @@ Item {
                                     property bool isHovered: false
 
                                     RowLayout {
+                                        LayoutMirroring.enabled: I18n.isRtl
+                                        LayoutMirroring.childrenInherit: true
                                         anchors.fill: parent
                                         anchors.leftMargin: 8
                                         anchors.rightMargin: 8
-                                        spacing: 8
+                                        spacing: 12
 
                                         Rectangle {
                                             Layout.preferredWidth: 16
@@ -1124,10 +1162,10 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            spacing: 8
+                            spacing: 12
 
                             Text {
-                                text: "Variant"
+                                text: I18n.t("Variant")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1136,8 +1174,10 @@ Item {
                             }
 
                             RowLayout {
+                                LayoutMirroring.enabled: I18n.isRtl
+                                LayoutMirroring.childrenInherit: true
                                 Layout.fillWidth: true
-                                spacing: 8
+                                spacing: 12
                                 Layout.alignment: Qt.AlignTop
 
                                 // Collapsed mode: horizontal scrollable row with scrollbar
@@ -1475,10 +1515,10 @@ Item {
                             anchors.left: parent.left
                             anchors.right: parent.right
                             anchors.top: parent.top
-                            spacing: 8
+                            spacing: 12
 
                             Text {
-                                text: "Editor - " + root.getVariantLabel(root.selectedVariant)
+                                text: I18n.t("Editor - {0}", "Editor - {0}", [root.getVariantLabel(root.selectedVariant)])
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium

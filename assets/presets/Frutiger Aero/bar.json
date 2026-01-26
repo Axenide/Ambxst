@@ -6,6 +6,7 @@
         ]
     ],
     "enableFirefoxPlayer": false,
+    "showBongoCat": true,
     "launcherIcon": "",
     "launcherIconFullTint": true,
     "launcherIconSize": 18,

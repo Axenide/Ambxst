@@ -2,6 +2,7 @@
 
 var data = {
     "disks": ["/"],
+    "language": "en",
     "idle": {
         "general": {
             "lock_cmd": "ambxst lock",

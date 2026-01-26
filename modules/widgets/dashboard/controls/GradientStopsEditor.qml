@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 import "../../../../config/defaults/theme.js" as ThemeDefaults
 
@@ -101,7 +102,7 @@ Item {
             spacing: 8
 
             Text {
-                text: "Gradient Stops (" + root.stops.length + ")"
+                text: I18n.t("Gradient Stops ({0})", "Gradient Stops ({0})", [root.stops.length])
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.weight: Font.Medium
@@ -113,7 +114,7 @@ Item {
             }
 
             Text {
-                text: "Stop " + (root.selectedStopIndex + 1)
+                text: I18n.t("Stop {0}", "Stop {0}", [root.selectedStopIndex + 1])
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.weight: Font.Medium
@@ -167,7 +168,7 @@ Item {
 
                 StyledToolTip {
                     visible: addMouseArea.containsMouse
-                    tooltipText: "Add Stop"
+                    tooltipText: I18n.t("Add Stop")
                 }
             }
 
@@ -404,7 +405,7 @@ Item {
 
                 StyledToolTip {
                     visible: resetMouseArea.containsMouse
-                    tooltipText: "Reset Gradient"
+                    tooltipText: I18n.t("Reset Gradient")
                 }
             }
         }
@@ -459,7 +460,7 @@ Item {
 
                     // Position label
                     Text {
-                        text: "Position"
+                        text: I18n.t("Position")
                         font.family: Styling.defaultFont
                         font.pixelSize: Styling.fontSize(-2)
                         font.bold: true
@@ -552,7 +553,7 @@ Item {
 
                             StyledToolTip {
                                 visible: deleteMouseArea.containsMouse
-                                text: "Delete stop"
+                                text: I18n.t("Delete stop")
                             }
                         }
                     }

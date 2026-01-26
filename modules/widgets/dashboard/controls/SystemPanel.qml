@@ -6,16 +6,32 @@ import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
     readonly property real sideMargin: (width - contentWidth) / 2
 
     property string currentSection: ""
+
+    readonly property var languageOptions: [
+        { id: "en", label: I18n.t("English") },
+        { id: "ar", label: I18n.t("Arabic") }
+    ]
+
+    function languageIndexFor(langId) {
+        for (let i = 0; i < languageOptions.length; i++) {
+            if (languageOptions[i].id === langId)
+                return i;
+        }
+        return 0;
+    }
 
     component SectionButton: StyledRect {
         id: sectionBtn
@@ -28,6 +44,8 @@ Item {
         Layout.fillWidth: true
         Layout.preferredHeight: 56
         radius: Styling.radius(0)
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         RowLayout {
             anchors.fill: parent
@@ -41,10 +59,11 @@ Item {
                 font.bold: true
                 color: Colors.overBackground
                 Layout.fillWidth: true
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
             }
 
             Text {
-                text: Icons.caretRight
+                text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
                 font.family: Icons.font
                 font.pixelSize: 20
                 color: Colors.overSurfaceVariant
@@ -77,29 +96,22 @@ Item {
             // Header wrapper
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: titlebar.height
+                Layout.preferredHeight: titlebar.visible ? titlebar.height : 0
 
                 PanelTitlebar {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "System" : (root.currentSection === "system" ? "System Resources" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1)))
+                    title: root.currentSection === ""
+                        ? I18n.t("System")
+                        : (root.currentSection === "system"
+                            ? I18n.t("System Resources")
+                            : I18n.t(root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1)))
+                    showTitle: false
                     statusText: ""
 
-                    actions: {
-                        if (root.currentSection !== "") {
-                            return [
-                                {
-                                    icon: Icons.arrowLeft,
-                                    tooltip: "Back",
-                                    onClicked: function () {
-                                        root.currentSection = "";
-                                    }
-                                }
-                            ];
-                        }
-                        return [];
-                    }
+                    actions: []
+                    visible: false
                 }
             }
 
@@ -123,24 +135,28 @@ Item {
                         spacing: 8
 
                         SectionButton {
-                            text: "Prefixes"
+                            text: I18n.t("Prefixes")
                             sectionId: "prefixes"
                         }
                         SectionButton {
-                            text: "Weather"
+                            text: I18n.t("Weather")
                             sectionId: "weather"
                         }
                         SectionButton {
-                            text: "Performance"
+                            text: I18n.t("Performance")
                             sectionId: "performance"
                         }
                         SectionButton {
-                            text: "System Resources"
+                            text: I18n.t("System Resources")
                             sectionId: "system"
                         }
                         SectionButton {
-                            text: "Idle"
+                            text: I18n.t("Idle")
                             sectionId: "idle"
+                        }
+                        SectionButton {
+                            text: I18n.t("Language")
+                            sectionId: "language"
                         }
                     }
 
@@ -153,7 +169,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Prefixes"
+                            text: I18n.t("Prefixes")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -162,7 +178,7 @@ Item {
                         }
 
                         Text {
-                            text: "Keyboard shortcuts for quick actions in launcher"
+                            text: I18n.t("Keyboard shortcuts for quick actions in launcher")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overSurfaceVariant
@@ -229,7 +245,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Weather"
+                            text: I18n.t("Weather")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -243,7 +259,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Location"
+                                text: I18n.t("Location")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overBackground
@@ -286,7 +302,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !locationInput.text && !locationInput.activeFocus
-                                        text: "e.g. Buenos Aires, Tokyo..."
+                                        text: I18n.t("e.g. Buenos Aires, Tokyo...")
                                         font: locationInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -300,7 +316,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Unit"
+                                text: I18n.t("Unit")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overBackground
@@ -368,7 +384,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Performance"
+                            text: I18n.t("Performance")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -377,7 +393,7 @@ Item {
                         }
 
                         Text {
-                            text: "Toggle visual effects to improve performance"
+                            text: I18n.t("Toggle visual effects to improve performance")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overSurfaceVariant
@@ -427,7 +443,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "System Resources"
+                            text: I18n.t("System Resources")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -436,7 +452,7 @@ Item {
                         }
 
                         Text {
-                            text: "Configure which disks to monitor"
+                            text: I18n.t("Configure which disks to monitor")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overSurfaceVariant
@@ -489,7 +505,7 @@ Item {
                                             Text {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 visible: !diskInput.text && !diskInput.activeFocus
-                                                text: "e.g. /, /home..."
+                                                text: I18n.t("e.g. /, /home...")
                                                 font: diskInput.font
                                                 color: Colors.overSurfaceVariant
                                             }
@@ -527,7 +543,7 @@ Item {
 
                                         StyledToolTip {
                                             visible: removeDiskArea.containsMouse
-                                            tooltipText: "Remove disk"
+                                            tooltipText: I18n.t("Remove disk")
                                         }
                                     }
                                 }
@@ -555,7 +571,7 @@ Item {
                                     }
 
                                     Text {
-                                        text: "Add Disk"
+                                        text: I18n.t("Add Disk")
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(0)
                                         color: addDiskButton.item
@@ -587,7 +603,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Idle"
+                            text: I18n.t("Idle")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -632,7 +648,7 @@ Item {
                         }
 
                         Text {
-                            text: "Listeners"
+                            text: I18n.t("Listeners")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(0)
                             color: Colors.overBackground
@@ -660,7 +676,7 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Text {
-                                        text: "Listener " + (index + 1)
+                                        text: I18n.t("Listener {0}", "Listener {0}", [index + 1])
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-1)
                                         font.bold: true
@@ -752,7 +768,7 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "Add Listener"
+                                text: I18n.t("Add Listener")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 font.bold: true
@@ -775,6 +791,65 @@ Item {
                                     });
                                     Config.system.idle.listeners = list;
                                     GlobalStates.markShellChanged();
+                                }
+                            }
+                        }
+                    }
+
+                    // =====================
+                    // LANGUAGE SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "language"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: I18n.t("Language")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: I18n.t("Interface language")
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(0)
+                                color: Colors.overBackground
+                                Layout.preferredWidth: 140
+                            }
+
+                            ComboBox {
+                                id: languageCombo
+                                Layout.fillWidth: true
+                                model: root.languageOptions
+                                textRole: "label"
+
+                                readonly property string configValue: Config.system.language ?? "en"
+
+                                onConfigValueChanged: {
+                                    const idx = root.languageIndexFor(configValue);
+                                    if (currentIndex !== idx) {
+                                        currentIndex = idx;
+                                    }
+                                }
+
+                                Component.onCompleted: {
+                                    currentIndex = root.languageIndexFor(configValue);
+                                }
+
+                                onActivated: {
+                                    const selected = root.languageOptions[currentIndex];
+                                    if (selected && selected.id !== Config.system.language) {
+                                        GlobalStates.markShellChanged();
+                                        Config.system.language = selected.id;
+                                    }
                                 }
                             }
                         }
@@ -805,7 +880,9 @@ Item {
         signal valueEdited(int newValue)
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: numberInputRowRoot.label
@@ -813,6 +890,9 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
             Layout.fillWidth: true
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         StyledRect {
@@ -820,6 +900,7 @@ Item {
             Layout.preferredWidth: 60
             Layout.preferredHeight: 32
             radius: Styling.radius(-2)
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             TextInput {
                 id: numberTextInput
@@ -862,6 +943,7 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overSurfaceVariant
             visible: suffix !== ""
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
         }
     }
 
@@ -874,7 +956,9 @@ Item {
         signal valueEdited(string newValue)
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: textInputRowRoot.label
@@ -882,6 +966,9 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
             Layout.preferredWidth: 100
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         StyledRect {
@@ -889,6 +976,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
             radius: Styling.radius(-2)
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             TextInput {
                 id: textInputField
@@ -900,6 +988,7 @@ Item {
                 selectByMouse: true
                 clip: true
                 verticalAlignment: TextInput.AlignVCenter
+                horizontalAlignment: I18n.isRtl ? TextInput.AlignRight : TextInput.AlignLeft
 
                 // Sync text when external value changes
                 readonly property string configValue: textInputRowRoot.value
@@ -918,6 +1007,7 @@ Item {
                     font.pixelSize: Styling.fontSize(0)
                     color: Colors.overSurfaceVariant
                     visible: textInputField.text === ""
+                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                 }
 
                 onEditingFinished: {
@@ -934,7 +1024,9 @@ Item {
         property string prefixValue: ""
         signal prefixEdited(string newValue)
 
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: prefixRow.label
@@ -942,6 +1034,9 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
             Layout.preferredWidth: 100
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         StyledRect {
@@ -984,7 +1079,9 @@ Item {
         property bool checked: false
         signal toggled(bool checked)
 
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         ColumnLayout {
             Layout.fillWidth: true
@@ -995,6 +1092,7 @@ Item {
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(0)
                 color: Colors.overBackground
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
             }
 
             Text {
@@ -1004,6 +1102,7 @@ Item {
                 font.pixelSize: Styling.fontSize(-2)
                 color: Colors.overSurfaceVariant
                 opacity: 0.7
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
             }
         }
 
@@ -1011,6 +1110,7 @@ Item {
         Item {
             Layout.preferredWidth: 32
             Layout.preferredHeight: 32
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             Rectangle {
                 anchors.fill: parent

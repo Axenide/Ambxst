@@ -3,11 +3,12 @@ import Quickshell
 import Quickshell.Wayland
 import qs.modules.corners
 import qs.modules.theme
+import qs.modules.services
+import qs.modules.components
 import qs.config
 
 PanelWindow {
     id: screenCorners
-
     visible: Config.theme.enableCorners
 
     color: "transparent"

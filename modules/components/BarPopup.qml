@@ -7,13 +7,13 @@ import Quickshell.Wayland
 import Quickshell.Hyprland
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 
 // BarPopup: A popup component that anchors to bar elements
 // Inspired by end-4/dots-hyprland BarPopup implementation
 PopupWindow {
     id: root
-
     // Required: the item this popup anchors to
     required property Item anchorItem
     // Required: the bar panel for position detection

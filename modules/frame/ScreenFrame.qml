@@ -3,11 +3,12 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.modules.components
+import qs.modules.services
+import qs.modules.theme
 import qs.config
 
 Item {
     id: root
-
     required property ShellScreen targetScreen
 
     readonly property bool frameEnabled: Config.bar?.frameEnabled ?? false
@@ -20,6 +21,7 @@ Item {
         return Math.max(1, Math.min(Math.round(value), 40));
     }
     readonly property int innerRadius: Math.max(Config.roundness + 4, thickness * 2)
+    readonly property int outerRadius: Math.max(0, Styling.radius(4))
 
     Item {
         id: noInputRegion
@@ -154,13 +156,25 @@ Item {
                     const h = height;
                     const t = root.thickness;
                     const r = Math.min(root.innerRadius, Math.min(w, h) / 2);
+                    const outerR = Math.min(root.outerRadius, Math.min(w, h) / 2);
 
                     ctx.clearRect(0, 0, w, h);
                     if (w <= 0 || h <= 0 || t <= 0)
                         return;
 
                     ctx.fillStyle = "white";
-                    ctx.fillRect(0, 0, w, h);
+                    if (outerR > 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(outerR, 0);
+                        ctx.arcTo(w, 0, w, h, outerR);
+                        ctx.arcTo(w, h, 0, h, outerR);
+                        ctx.arcTo(0, h, 0, 0, outerR);
+                        ctx.arcTo(0, 0, w, 0, outerR);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else {
+                        ctx.fillRect(0, 0, w, h);
+                    }
 
                     const innerX = t;
                     const innerY = t;
@@ -188,6 +202,7 @@ Item {
             target: root
             function onThicknessChanged() { frameCanvas.requestPaint(); }
             function onInnerRadiusChanged() { frameCanvas.requestPaint(); }
+            function onOuterRadiusChanged() { frameCanvas.requestPaint(); }
         }
 
         onWidthChanged: frameCanvas.requestPaint()

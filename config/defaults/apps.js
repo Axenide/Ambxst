@@ -1,0 +1,34 @@
+.pragma library
+
+var data = {
+    "music": {
+        "label": "Music",
+        "command": "spotify",
+        "windowClass": "Spotify",
+        "workspace": "special:music"
+    },
+    "communication": {
+        "label": "Communication",
+        "command": "discord",
+        "windowClass": "Discord",
+        "workspace": "special:communication"
+    },
+    "browser": {
+        "label": "Browser",
+        "command": "firefox",
+        "windowClass": "firefox",
+        "workspace": "special:browser"
+    },
+    "files": {
+        "label": "Files",
+        "command": "thunar",
+        "windowClass": "Thunar",
+        "workspace": "special:files"
+    },
+    "terminal": {
+        "label": "Terminal",
+        "command": "foot",
+        "windowClass": "foot",
+        "workspace": ""
+    }
+}

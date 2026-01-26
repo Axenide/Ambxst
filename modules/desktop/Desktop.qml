@@ -5,11 +5,11 @@ import Quickshell.Wayland
 import qs.modules.desktop
 import qs.modules.services
 import qs.modules.theme
+import qs.modules.components
 import qs.config
 
 PanelWindow {
     id: desktop
-
     property int barSize: Config.showBackground ? 44 : 40
     property int bottomTextMargin: 32
     property string barPosition: ["top", "bottom", "left", "right"].includes(Config.bar.position) ? Config.bar.position : "top"
