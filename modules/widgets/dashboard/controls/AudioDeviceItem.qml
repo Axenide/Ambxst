@@ -11,6 +11,8 @@ import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     required property PwNode node
     property bool isOutput: true
@@ -49,6 +51,8 @@ Item {
         anchors.topMargin: 8
         anchors.bottomMargin: 8
         spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         // Device icon
         Text {
@@ -67,6 +71,7 @@ Item {
             font.weight: root.isSelected ? Font.Bold : Font.Normal
             color: root.isSelected ? Styling.srItem("primary") : Colors.overBackground
             elide: Text.ElideRight
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
         }
 
         // Selected indicator

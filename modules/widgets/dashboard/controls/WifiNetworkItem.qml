@@ -10,6 +10,8 @@ import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     required property WifiAccessPoint network
 
@@ -47,12 +49,16 @@ Item {
         anchors.rightMargin: 12
         anchors.topMargin: 8
         spacing: 8
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         // Main row with network info
         RowLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 32
             spacing: 12
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             // Wi-Fi signal icon with security indicator
             Item {
@@ -102,6 +108,7 @@ Item {
                     font.weight: Font.Medium
                     color: Colors.overBackground
                     elide: Text.ElideRight
+                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                 }
 
                 Text {
@@ -118,6 +125,7 @@ Item {
                     font.pixelSize: Styling.fontSize(-2)
                     color: Colors.overSurfaceVariant
                     elide: Text.ElideRight
+                    horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
 
                     Behavior on opacity {
                         enabled: Config.animDuration > 0
@@ -138,7 +146,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "5G"
+                    text: I18n.t("5G")
                     font.family: Config.theme.font
                     font.pixelSize: 10
                     font.weight: Font.Bold
@@ -153,6 +161,8 @@ Item {
             visible: root.expanded
             spacing: 8
             opacity: root.expanded ? 1 : 0
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             Behavior on opacity {
                 enabled: Config.animDuration > 0
@@ -166,7 +176,7 @@ Item {
                 id: passwordInput
                 Layout.fillWidth: true
                 visible: root.network?.askingPassword ?? false
-                placeholderText: "Enter password..."
+                placeholderText: I18n.t("Enter password...")
                 passwordMode: true
                 implicitHeight: 40
                 variant: "internalbg"
@@ -183,6 +193,8 @@ Item {
             RowLayout {
                 Layout.fillWidth: true
                 spacing: 8
+                LayoutMirroring.enabled: I18n.isRtl
+                LayoutMirroring.childrenInherit: true
 
                 Item {
                     Layout.fillWidth: true

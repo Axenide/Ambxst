@@ -31,51 +31,18 @@ Item {
 
         header: Item {
             width: networkList.width
-            height: titlebar.height + 8
+            height: titlebar.visible ? titlebar.height + 8 : 0
 
             PanelTitlebar {
                 id: titlebar
                 width: root.contentWidth
                 anchors.horizontalCenter: parent.horizontalCenter
-                title: "Wi-Fi"
-                statusText: NetworkService.wifiConnecting ? "Connecting..." : (NetworkService.wifiStatus === "limited" ? "Limited" : "")
-                statusColor: NetworkService.wifiStatus === "limited" ? Colors.warning : Styling.srItem("overprimary")
-                showToggle: true
-                toggleChecked: NetworkService.wifiStatus !== "disabled"
-
-                actions: [
-                    {
-                        icon: Icons.globe,
-                        tooltip: "Open captive portal",
-                        enabled: NetworkService.wifiStatus === "limited",
-                        onClicked: function () {
-                            NetworkService.openPublicWifiPortal();
-                        }
-                    },
-                    {
-                        icon: Icons.popOpen,
-                        tooltip: "Network settings",
-                        onClicked: function () {
-                            Quickshell.execDetached(["nm-connection-editor"]);
-                        }
-                    },
-                    {
-                        icon: Icons.sync,
-                        tooltip: "Rescan networks",
-                        enabled: NetworkService.wifiEnabled,
-                        loading: NetworkService.wifiScanning,
-                        onClicked: function () {
-                            NetworkService.rescanWifi();
-                        }
-                    }
-                ]
-
-                onToggleChanged: checked => {
-                    NetworkService.enableWifi(checked);
-                    if (checked) {
-                        NetworkService.rescanWifi();
-                    }
-                }
+                title: I18n.t("Wi-Fi")
+                showTitle: false
+                statusText: ""
+                showToggle: false
+                actions: []
+                visible: false
             }
         }
 

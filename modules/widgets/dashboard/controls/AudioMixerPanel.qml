@@ -13,6 +13,8 @@ import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
@@ -31,127 +33,23 @@ Item {
             id: contentColumn
             width: flickable.width
             spacing: 8
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             // Header wrapper
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: titlebar.height
+                Layout.preferredHeight: titlebar.visible ? titlebar.height : 0
 
                 PanelTitlebar {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: "Sound"
-
-                    actions: [
-                        {
-                            icon: Audio.protectionEnabled ? Icons.shieldCheck : Icons.shield,
-                            tooltip: Audio.protectionEnabled ? "Volume protection enabled" : "Volume protection disabled",
-                            onClicked: function () {
-                                Audio.setProtectionEnabled(!Audio.protectionEnabled);
-                            }
-                        },
-                        {
-                            icon: Icons.popOpen,
-                            tooltip: "Open PipeWire Volume Control",
-                            onClicked: function () {
-                                Quickshell.execDetached(["pwvucontrol"]);
-                            }
-                        }
-                    ]
-
-                    // Output/Input toggle buttons
-                    RowLayout {
-                        spacing: 4
-
-                        // Output Button
-                        StyledRect {
-                            id: outputBtn
-                            property bool isSelected: root.showOutput
-                            property bool isHovered: false
-                            
-                            variant: isSelected ? "primary" : (isHovered ? "focus" : "common")
-                            Layout.preferredHeight: 32
-                            Layout.preferredWidth: outputContent.width + 24
-                            radius: isSelected ? Styling.radius(-4) : Styling.radius(0)
-                            
-                            Row {
-                                id: outputContent
-                                anchors.centerIn: parent
-                                spacing: 8
-                                
-                                Text {
-                                    text: Icons.speakerHigh
-                                    font.family: Icons.font
-                                    font.pixelSize: 14
-                                    color: outputBtn.item
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                                
-                                Text {
-                                    text: "Output"
-                                    font.family: Config.theme.font
-                                    font.pixelSize: Styling.fontSize(-1)
-                                    font.weight: Font.Medium
-                                    color: outputBtn.item
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-                            
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: outputBtn.isHovered = true
-                                onExited: outputBtn.isHovered = false
-                                onClicked: root.showOutput = true
-                            }
-                        }
-
-                        // Input Button
-                        StyledRect {
-                            id: inputBtn
-                            property bool isSelected: !root.showOutput
-                            property bool isHovered: false
-                            
-                            variant: isSelected ? "primary" : (isHovered ? "focus" : "common")
-                            Layout.preferredHeight: 32
-                            Layout.preferredWidth: inputContent.width + 24
-                            radius: isSelected ? Styling.radius(-4) : Styling.radius(0)
-                            
-                            Row {
-                                id: inputContent
-                                anchors.centerIn: parent
-                                spacing: 8
-                                
-                                Text {
-                                    text: Icons.mic
-                                    font.family: Icons.font
-                                    font.pixelSize: 14
-                                    color: inputBtn.item
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                                
-                                Text {
-                                    text: "Input"
-                                    font.family: Config.theme.font
-                                    font.pixelSize: Styling.fontSize(-1)
-                                    font.weight: Font.Medium
-                                    color: inputBtn.item
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-                            
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onEntered: inputBtn.isHovered = true
-                                onExited: inputBtn.isHovered = false
-                                onClicked: root.showOutput = false
-                            }
-                        }
-                    }
+                    title: I18n.t("Sound")
+                    showTitle: false
+                    showToggle: false
+                    actions: []
+                    visible: false
                 }
             }
 
@@ -165,6 +63,8 @@ Item {
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 8
+                    LayoutMirroring.enabled: I18n.isRtl
+                    LayoutMirroring.childrenInherit: true
 
                     // Section: Devices
                     Text {
@@ -173,6 +73,8 @@ Item {
                         font.pixelSize: Styling.fontSize(-1)
                         font.weight: Font.Medium
                         color: Colors.overSurfaceVariant
+                        Layout.fillWidth: true
+                        horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                     }
 
                     // Device list
@@ -203,11 +105,13 @@ Item {
 
                     // Section: Volume Mixer
                     Text {
-                        text: "Volume Mixer"
+                        text: I18n.t("Volume Mixer")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         font.weight: Font.Medium
                         color: Colors.overSurfaceVariant
+                        Layout.fillWidth: true
+                        horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                     }
 
                     // Main volume control
@@ -233,12 +137,13 @@ Item {
                     // Empty state for apps
                     Text {
                         visible: (root.showOutput ? Audio.outputAppNodes : Audio.inputAppNodes).length === 0
-                        text: "No applications using audio"
+                        text: I18n.t("No applications using audio")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         color: Colors.outline
                         Layout.alignment: Qt.AlignHCenter
                         Layout.topMargin: 16
+                        horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
                     }
                 }
             }

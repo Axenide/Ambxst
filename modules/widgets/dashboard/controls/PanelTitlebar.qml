@@ -5,13 +5,17 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 
 // Titlebar for control panels with title, status, toggle and action buttons
 RowLayout {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property string title: ""
+    property bool showTitle: true
     property string statusText: ""
     property color statusColor: Styling.srItem("overprimary")
     property bool showToggle: false
@@ -37,6 +41,10 @@ RowLayout {
         font.pixelSize: Styling.fontSize(0)
         font.weight: Font.Medium
         color: Colors.overBackground
+        visible: root.showTitle && root.title !== ""
+        Layout.fillWidth: root.showTitle
+        Layout.preferredWidth: visible ? implicitWidth : 0
+        horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
     }
 
     // Status text (e.g., "Connecting...", "Bypassed")
@@ -46,6 +54,7 @@ RowLayout {
         font.family: Config.theme.font
         font.pixelSize: Styling.fontSize(-2)
         color: root.statusColor
+        horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
     }
 
     Item {

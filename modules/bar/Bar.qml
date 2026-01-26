@@ -23,7 +23,6 @@ import "." as Bar
 
 PanelWindow {
     id: panel
-
     property string barPosition: ["top", "bottom", "left", "right"].includes(Config.bar.position) ? Config.bar.position : "top"
     property string orientation: barPosition === "left" || barPosition === "right" ? "vertical" : "horizontal"
 
@@ -382,11 +381,13 @@ PanelWindow {
                 }
 
                 Workspaces {
+                    id: workspacesRow
                     orientation: panel.orientation
                     bar: QtObject {
                         property var screen: panel.screen
                     }
                 }
+
 
                 LayoutSelectorButton {
                     id: layoutSelectorButton
@@ -523,9 +524,6 @@ PanelWindow {
                     layerEnabled: Config.showBackground
                 }
 
-                PowerButton {
-                    id: powerButton
-                }
             }
 
             ColumnLayout {
@@ -683,10 +681,6 @@ PanelWindow {
                     layerEnabled: Config.showBackground
                 }
 
-                PowerButton {
-                    id: powerButtonVert
-                    Layout.preferredHeight: 36
-                }
             }
         }
     }

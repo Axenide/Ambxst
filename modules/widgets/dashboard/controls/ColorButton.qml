@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 
 // Reusable color picker button with preview and label
@@ -37,6 +38,8 @@ StyledRect {
         anchors.fill: parent
         anchors.margins: root.compact ? 6 : 8
         spacing: root.compact ? 6 : 8
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         // Color preview
         Rectangle {
@@ -61,6 +64,8 @@ StyledRect {
                 color: root.item
                 opacity: 0.6
                 visible: root.label !== ""
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+                Layout.fillWidth: true
             }
 
             Text {
@@ -71,11 +76,12 @@ StyledRect {
                 color: root.item
                 elide: Text.ElideRight
                 Layout.fillWidth: true
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
             }
         }
 
         Text {
-            text: Icons.caretRight
+            text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
             font.family: Icons.font
             font.pixelSize: root.compact ? 12 : 14
             color: root.item

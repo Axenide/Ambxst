@@ -847,7 +847,11 @@ Item {
                                 Text {
                                     id: modelIndicator
                                     visible: !isUser && !isSystem && (modelData.model ? true : false)
-                                    text: retryMode ? "Retry with another model " + Icons.caretRight : (modelData.model || "")
+                                    text: retryMode
+                                        ? (I18n.isRtl ? Icons.caretLeft + " " : "")
+                                            + I18n.t("Retry with another model")
+                                            + (I18n.isRtl ? "" : " " + Icons.caretRight)
+                                        : (modelData.model || "")
                                     color: Colors.outline
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-2)
@@ -855,8 +859,10 @@ Item {
 
                                     anchors.top: bubble.bottom
                                     anchors.topMargin: 4
-                                    anchors.left: bubble.left
-                                    anchors.leftMargin: 4
+                                    anchors.left: I18n.isRtl ? undefined : bubble.left
+                                    anchors.right: I18n.isRtl ? bubble.right : undefined
+                                    anchors.leftMargin: I18n.isRtl ? 0 : 4
+                                    anchors.rightMargin: I18n.isRtl ? 4 : 0
 
                                     MouseArea {
                                         anchors.fill: parent

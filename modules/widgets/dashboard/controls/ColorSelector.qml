@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import qs.modules.theme
+import qs.modules.services
 import qs.config
 
 Item {
@@ -208,7 +209,7 @@ Item {
                 spacing: 4
 
                 Text {
-                    text: "#"
+                    text: I18n.t("#")
                     font.family: "monospace"
                     font.pixelSize: Styling.fontSize(0)
                     color: Colors.overBackground
@@ -307,14 +308,14 @@ Item {
             onClicked: colorDialog.open()
 
             ToolTip.visible: hovered
-            ToolTip.text: "Open color picker"
+            ToolTip.text: I18n.t("Open color picker")
             ToolTip.delay: 500
         }
     }
 
     ColorDialog {
         id: colorDialog
-        title: "Select Color"
+        title: I18n.t("Select Color")
         selectedColor: Config.resolveColor(root.currentValueStr)
 
         onAccepted: {

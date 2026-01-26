@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import qs.modules.theme
+import qs.modules.services
 import qs.config
 
 Popup {
@@ -68,7 +69,7 @@ Popup {
                 }
 
                 Text {
-                    text: "#"
+                    text: I18n.t("#")
                     font.family: "monospace"
                     font.pixelSize: Styling.fontSize(0)
                     color: Colors.overBackground
@@ -125,7 +126,7 @@ Popup {
                 }
 
                 Text {
-                    text: "Custom"
+                    text: I18n.t("Custom")
                     font.family: Styling.defaultFont
                     font.pixelSize: Styling.fontSize(-1)
                     color: Colors.overBackground
@@ -154,7 +155,7 @@ Popup {
                     onClicked: colorDialog.open()
 
                     ToolTip.visible: hovered
-                    ToolTip.text: "Color picker"
+                    ToolTip.text: I18n.t("Color picker")
                     ToolTip.delay: 500
                 }
             }

@@ -16,6 +16,7 @@ import qs.modules.widgets.overview
 import qs.modules.widgets.presets
 import qs.modules.services
 import qs.modules.corners
+import qs.modules.frame
 import qs.modules.components
 import qs.modules.desktop
 import qs.modules.lockscreen
@@ -26,6 +27,8 @@ import "modules/tools"
 
 ShellRoot {
     id: root
+
+    // LayoutMirroring drives RTL; avoid touching Qt.application.layoutDirection (read-only here).
 
     ContextMenu {
         id: contextMenu
@@ -146,6 +149,26 @@ ShellRoot {
         }
     }
 
+    // Special workspace overview (auto when special workspace is open)
+    Variants {
+        model: {
+            const screens = Quickshell.screens;
+            const list = Config.bar.screenList;
+            if (!list || list.length === 0)
+                return screens;
+            return screens.filter(screen => list.includes(screen.name));
+        }
+
+        Loader {
+            id: specialOverviewLoader
+            active: true
+            required property ShellScreen modelData
+            sourceComponent: SpecialOverviewPopup {
+                screen: specialOverviewLoader.modelData
+            }
+        }
+    }
+
     // Presets popup window
     Variants {
         model: {
@@ -175,6 +198,19 @@ ShellRoot {
             required property ShellScreen modelData
             sourceComponent: ScreenCorners {
                 screen: cornersLoader.modelData
+            }
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+
+        Loader {
+            id: frameLoader
+            active: Config.bar?.frameEnabled ?? false
+            required property ShellScreen modelData
+            sourceComponent: ScreenFrame {
+                targetScreen: frameLoader.modelData
             }
         }
     }

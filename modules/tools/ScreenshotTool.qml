@@ -12,7 +12,6 @@ import qs.config
 
 PanelWindow {
     id: screenshotPopup
-    
     // Screen property to be set by the Loader
     required property var targetScreen
     screen: targetScreen

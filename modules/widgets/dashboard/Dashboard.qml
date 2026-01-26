@@ -8,7 +8,6 @@ import qs.modules.globals
 import qs.modules.services
 import qs.modules.notch
 import qs.modules.widgets.dashboard.widgets
-import qs.modules.widgets.dashboard.controls
 import qs.modules.widgets.dashboard.wallpapers
 import qs.modules.widgets.dashboard.assistant
 import qs.modules.widgets.dashboard.tmux
@@ -19,7 +18,6 @@ import qs.config
 
 NotchAnimationBehavior {
     id: root
-
     property int leftPanelWidth
 
     property var state: QtObject {
@@ -27,7 +25,7 @@ NotchAnimationBehavior {
     }
 
     readonly property var tabModel: [Icons.widgets, Icons.wallpapers, Icons.heartbeat, Icons.assistant]
-    readonly property int tabCount: tabModel.length + 1  // +1 for controls tab at bottom
+    readonly property int tabCount: tabModel.length
     readonly property int tabSpacing: 8
 
     readonly property int tabWidth: 48
@@ -43,6 +41,8 @@ NotchAnimationBehavior {
 
     // Navegar a la pestaña seleccionada cuando se abre el dashboard
     Component.onCompleted: {
+        if (GlobalStates.dashboardCurrentTab >= tabCount)
+            GlobalStates.dashboardCurrentTab = 0;
         root.state.currentTab = GlobalStates.dashboardCurrentTab;
     }
 
@@ -78,8 +78,9 @@ NotchAnimationBehavior {
     Connections {
         target: GlobalStates
         function onDashboardCurrentTabChanged() {
-            if (GlobalStates.dashboardCurrentTab !== root.state.currentTab) {
-                stack.navigateToTab(GlobalStates.dashboardCurrentTab);
+            const targetTab = Math.min(GlobalStates.dashboardCurrentTab, root.tabCount - 1);
+            if (targetTab !== root.state.currentTab) {
+                stack.navigateToTab(targetTab);
             }
         }
 
@@ -140,12 +141,7 @@ NotchAnimationBehavior {
 
                 // Calcular posición Y para un índice dado
                 function getYForIndex(idx) {
-                    if (idx <= 3) {
-                        return idx * (width + root.tabSpacing);
-                    } else {
-                        // Tab 4 (controls) está en la parte inferior
-                        return controlsButtonContainer.y;
-                    }
+                    return idx * (width + root.tabSpacing);
                 }
 
                 property real targetY1: getYForIndex(idx1)
@@ -228,30 +224,8 @@ NotchAnimationBehavior {
                 }
             }
 
-            // Controls button (separate at bottom)
-            StyledRect {
-                id: controlsButtonContainer
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                height: width
-                radius: Styling.radius(4)
-                variant: controlsButton.hovered ? "focus" : "common"
-                z: -1
-
-                opacity: root.state.currentTab === 4 ? 0 : 1
-
-                Behavior on opacity {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
-                    }
-                }
-            }
-
             Button {
-                id: controlsButton
+                id: settingsButton
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
@@ -269,7 +243,7 @@ NotchAnimationBehavior {
                     font.family: Icons.font
                     font.pixelSize: 20
                     font.weight: Font.Medium
-                    color: root.state.currentTab === 4 ? Styling.srItem("primary") : Colors.overBackground
+                    color: settingsButton.hovered ? Styling.srItem("primary") : Colors.overBackground
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
 
@@ -282,7 +256,10 @@ NotchAnimationBehavior {
                     }
                 }
 
-                onClicked: stack.navigateToTab(4)
+                onClicked: {
+                    GlobalStates.openSettings();
+                    Visibilities.setActiveModule("");
+                }
             }
         }
 
@@ -308,7 +285,7 @@ NotchAnimationBehavior {
                 anchors.fill: parent
 
                 // Array de componentes para cargar dinámicamente
-                property var components: [unifiedLauncherComponent, wallpapersComponent, metricsComponent, assistantComponent, quickSettingsComponent]
+                property var components: [unifiedLauncherComponent, wallpapersComponent, metricsComponent, assistantComponent]
 
                 // Cargar directamente el componente correcto según GlobalStates
                 initialItem: components[GlobalStates.dashboardCurrentTab]
@@ -526,11 +503,6 @@ NotchAnimationBehavior {
         WidgetsTab {
             leftPanelWidth: root.leftPanelWidth
         }
-    }
-
-    Component {
-        id: quickSettingsComponent
-        SettingsTab {}
     }
 
     Component {

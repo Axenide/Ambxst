@@ -10,7 +10,6 @@ import qs.config
 
 PanelWindow {
     id: contextWindow
-
     property var menuHandle: null
     property var customItems: []
     property int menuWidth: 160

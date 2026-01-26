@@ -29,6 +29,53 @@ Item {
         }
     }
 
+    property var pendingAppConfig: null
+    property string pendingCurrentSpecial: ""
+
+    Process {
+        id: appClientsProcess
+        command: ["hyprctl", "-j", "clients"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.handleAppClients(text);
+            }
+        }
+    }
+
+    Process {
+        id: appMonitorsProcess
+        command: ["hyprctl", "-j", "monitors"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.handleAppMonitors(text);
+            }
+        }
+    }
+
+    Process {
+        id: appDispatchProcess
+    }
+
+    Process {
+        id: specialToggleMonitorsProcess
+        command: ["hyprctl", "-j", "monitors"]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.handleSpecialToggleMonitors(text);
+            }
+        }
+    }
+
+    Process {
+        id: specialToggleDispatchProcess
+    }
+
     function run(command) {
         console.log("IPC run command received:", command);
         switch (command) {
@@ -64,6 +111,15 @@ Item {
                 break;
             case "media-next": MprisController.next(); break;
             case "media-prev": MprisController.previous(); break;
+
+            // Apps
+            case "app-music": runAppShortcut("music"); break;
+            case "app-communication": runAppShortcut("communication"); break;
+            case "app-browser": runAppShortcut("browser"); break;
+            case "app-files": runAppShortcut("files"); break;
+            case "app-terminal": runAppShortcut("terminal"); break;
+
+            case "special-toggle": toggleSpecialWorkspace(); break;
                 
             default: console.warn("Unknown IPC command:", command);
         }
@@ -75,6 +131,168 @@ Item {
         function run(command: string) {
             root.run(command);
         }
+    }
+
+    function normalizeWorkspaceName(workspace) {
+        if (!workspace)
+            return "";
+        if (workspace.startsWith("special:"))
+            return workspace;
+        return "special:" + workspace;
+    }
+
+    function specialWorkspaceName(workspace) {
+        if (!workspace)
+            return "";
+        if (workspace.startsWith("special:"))
+            return workspace.slice("special:".length);
+        return workspace;
+    }
+
+    function runAppShortcut(appKey) {
+        const appConfig = Config.apps && Config.apps[appKey] ? Config.apps[appKey] : null;
+        if (!appConfig) {
+            console.warn("App shortcut config missing:", appKey);
+            return;
+        }
+        if (appClientsProcess.running || appMonitorsProcess.running) {
+            return;
+        }
+        pendingAppConfig = appConfig;
+        appMonitorsProcess.running = true;
+    }
+
+    function handleAppMonitors(rawText) {
+        let currentSpecial = "";
+        try {
+            const data = JSON.parse(rawText || "[]");
+            if (data.length > 0) {
+                const mon = data[0];
+                const special = mon && mon.specialWorkspace ? mon.specialWorkspace : null;
+                if (special && special.name) {
+                    currentSpecial = special.name;
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to parse Hyprland monitors:", e);
+        }
+
+        pendingCurrentSpecial = currentSpecial || "";
+        appClientsProcess.running = true;
+    }
+
+    function handleAppClients(rawText) {
+        const appConfig = pendingAppConfig;
+        pendingAppConfig = null;
+        if (!appConfig)
+            return;
+
+        let clients = [];
+        try {
+            clients = JSON.parse(rawText) || [];
+        } catch (e) {
+            console.warn("Failed to parse Hyprland clients:", e);
+            return;
+        }
+
+        const matchValue = (appConfig.windowClass || "").toLowerCase();
+        const targetWorkspace = normalizeWorkspaceName(appConfig.workspace);
+        const currentSpecial = pendingCurrentSpecial;
+        pendingCurrentSpecial = "";
+        let matchedClient = null;
+
+        if (matchValue.length > 0) {
+            for (let i = 0; i < clients.length; i++) {
+                const client = clients[i];
+                const className = ((client && (client.class || client.initialClass)) || "").toLowerCase();
+                if (className && className.indexOf(matchValue) !== -1) {
+                    matchedClient = client;
+                    break;
+                }
+            }
+        }
+
+        if (matchedClient && matchedClient.address) {
+            const commands = [];
+            const specialName = specialWorkspaceName(targetWorkspace);
+            const clientWorkspace = matchedClient.workspace && matchedClient.workspace.name
+                ? String(matchedClient.workspace.name)
+                : "";
+
+            if (targetWorkspace) {
+                commands.push(`movetoworkspacesilent ${targetWorkspace}, address:${matchedClient.address}`);
+
+                if (specialName.length > 0) {
+                    if (currentSpecial && currentSpecial !== targetWorkspace) {
+                        commands.push(`togglespecialworkspace ${currentSpecial.slice(8)}`);
+                    }
+                    commands.push(`togglespecialworkspace ${specialName}`);
+                } else {
+                    commands.push(`workspace ${targetWorkspace}`);
+                }
+            }
+
+            if (!(clientWorkspace.startsWith("special:") && clientWorkspace === targetWorkspace)) {
+                commands.push(`focuswindow address:${matchedClient.address}`);
+            }
+
+            runHyprBatch(commands);
+            return;
+        }
+
+        if (!appConfig.command || appConfig.command.trim().length === 0) {
+            console.warn("App command missing for shortcut:", appConfig.label || "app");
+            return;
+        }
+
+        const launchCommands = [];
+        if (targetWorkspace) {
+            if (currentSpecial && currentSpecial !== targetWorkspace) {
+                launchCommands.push(`togglespecialworkspace ${currentSpecial.slice(8)}`);
+            }
+            launchCommands.push(`workspace ${targetWorkspace}`);
+            launchCommands.push(`exec [workspace ${targetWorkspace}] ${appConfig.command}`);
+        } else {
+            launchCommands.push(`exec ${appConfig.command}`);
+        }
+        runHyprBatch(launchCommands);
+    }
+
+    function runHyprBatch(commands) {
+        if (!commands || commands.length === 0)
+            return;
+        const batch = commands.map(cmd => "dispatch " + cmd).join("; ");
+        appDispatchProcess.command = ["hyprctl", "--batch", batch];
+        appDispatchProcess.running = true;
+    }
+
+    function toggleSpecialWorkspace() {
+        if (specialToggleMonitorsProcess.running) {
+            return;
+        }
+        specialToggleMonitorsProcess.running = true;
+    }
+
+    function handleSpecialToggleMonitors(rawText) {
+        let currentSpecial = "";
+        try {
+            const data = JSON.parse(rawText || "[]");
+            if (data.length > 0) {
+                const mon = data[0];
+                const special = mon && mon.specialWorkspace ? mon.specialWorkspace : null;
+                if (special && special.name) {
+                    currentSpecial = special.name;
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to parse Hyprland monitors for special toggle:", e);
+        }
+
+        const specialName = currentSpecial && currentSpecial.startsWith("special:")
+            ? currentSpecial.slice(8)
+            : "special";
+        specialToggleDispatchProcess.command = ["hyprctl", "dispatch", "togglespecialworkspace", specialName];
+        specialToggleDispatchProcess.running = true;
     }
 
     function toggleSimpleModule(moduleName) {

@@ -202,7 +202,12 @@ Rectangle {
             function executeApp(appId) {
                 let app = appsById[appId];
                 if (app && app.execute) {
-                    app.execute();
+                    if (specialLaunchMonitorsProcess.running) {
+                        app.execute();
+                    } else {
+                        pendingAppLaunch = app;
+                        specialLaunchMonitorsProcess.running = true;
+                    }
                     // Record usage for sorting priority
                     UsageTracker.recordUsage(appId);
                 }
@@ -1051,6 +1056,44 @@ Rectangle {
 
                 onExited: function (code) {}
             }
+
+            property var pendingAppLaunch: null
+
+            Process {
+                id: specialLaunchMonitorsProcess
+                running: false
+                command: ["/run/current-system/sw/bin/hyprctl", "-j", "monitors"]
+
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        let targetApp = appLauncher.pendingAppLaunch;
+                        appLauncher.pendingAppLaunch = null;
+                        try {
+                            const data = JSON.parse(text || "[]");
+                            let specialName = "";
+                            for (let i = 0; i < data.length; i++) {
+                                const ws = data[i]?.specialWorkspace || {};
+                                if (ws && ws.name) {
+                                    specialName = ws.name;
+                                    break;
+                                }
+                            }
+                            if (specialName) {
+                                Hyprland.dispatch(`workspace ${specialName}`);
+                                Qt.callLater(() => {
+                                    if (targetApp && targetApp.execute)
+                                        targetApp.execute();
+                                });
+                                return;
+                            }
+                        } catch (e) {
+                            console.warn("Launcher: failed to parse hyprctl monitors", e);
+                        }
+                        if (targetApp && targetApp.execute)
+                            targetApp.execute();
+                    }
+                }
+            }
         }
 
         // StackLayout for other tabs (clipboard, emoji, tmux, notes)
@@ -1418,18 +1461,13 @@ Rectangle {
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
-                                let wasActive = Brightness.syncBrightness;
                                 Brightness.syncBrightness = !Brightness.syncBrightness;
 
-                                // Only show sync feedback animation when activating
                                 if (Brightness.syncBrightness) {
-                                    // Show sync icon instantly and start rotation
                                     iconContainer.showingSyncFeedback = true;
                                     brightnessIcon.iconOpacity = 1;
                                     brightnessIcon.syncIconRotation = 0;
                                     brightnessIcon.syncIconRotation = 360;
-
-                                    // Hold sync icon
                                     syncHoldTimer.start();
                                 }
                             }
@@ -1457,7 +1495,7 @@ Rectangle {
                             onTriggered: {
                                 iconContainer.showingSyncFeedback = false;
                                 brightnessIcon.iconOpacity = 1;
-                                brightnessIcon.syncIconRotation = 0; // Reset rotation
+                                brightnessIcon.syncIconRotation = 0;
                             }
                         }
                     }
@@ -1516,7 +1554,6 @@ Rectangle {
                             brightnessIcon.brightnessIconScale = 0.8 + (value / 1.0) * 0.2;
 
                             if (Brightness.syncBrightness) {
-                                // Sync all monitors
                                 for (let i = 0; i < Brightness.monitors.length; i++) {
                                     let mon = Brightness.monitors[i];
                                     if (mon && mon.ready) {
@@ -1524,7 +1561,6 @@ Rectangle {
                                     }
                                 }
                             } else {
-                                // Only current monitor
                                 if (currentMonitor && currentMonitor.ready) {
                                     currentMonitor.setBrightness(value);
                                 }
@@ -1624,6 +1660,7 @@ Rectangle {
                 }
             }
         }
+
     }
 
     Component.onCompleted: {

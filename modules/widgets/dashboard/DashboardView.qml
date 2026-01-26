@@ -6,7 +6,7 @@ Item {
     implicitWidth: 1000
     implicitHeight: 56 + 48 * 7
 
-    readonly property int leftPanelWidth: 270
+    readonly property int leftPanelWidth: 180
 
     Dashboard {
         id: dashboardItem

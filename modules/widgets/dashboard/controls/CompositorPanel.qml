@@ -8,10 +8,13 @@ import Quickshell
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
     id: root
+    LayoutMirroring.enabled: I18n.isRtl
+    LayoutMirroring.childrenInherit: true
 
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
@@ -35,6 +38,8 @@ Item {
             anchors.fill: parent
             anchors.margins: 16
             spacing: 16
+            LayoutMirroring.enabled: I18n.isRtl
+            LayoutMirroring.childrenInherit: true
 
             Text {
                 text: sectionBtn.text
@@ -43,10 +48,11 @@ Item {
                 font.bold: true
                 color: Colors.overBackground
                 Layout.fillWidth: true
+                horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
             }
 
             Text {
-                text: Icons.caretRight
+                text: I18n.isRtl ? Icons.caretLeft : Icons.caretRight
                 font.family: Icons.font
                 font.pixelSize: 20
                 color: Colors.overSurfaceVariant
@@ -115,7 +121,9 @@ Item {
         }
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
 
         Text {
             text: toggleRowRoot.label
@@ -123,11 +131,15 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
             Layout.fillWidth: true
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         Switch {
             id: toggleSwitch
             checked: toggleRowRoot.checked
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             onCheckedChanged: {
                 if (!toggleRowRoot._updating && checked !== toggleRowRoot.checked) {
@@ -183,7 +195,9 @@ Item {
         signal valueEdited(int newValue)
 
         Layout.fillWidth: true
-        spacing: 8
+        spacing: 12
+        LayoutMirroring.enabled: I18n.isRtl
+        LayoutMirroring.childrenInherit: true
         opacity: enabled ? 1.0 : 0.5
 
         Text {
@@ -192,6 +206,9 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
             Layout.fillWidth: true
+            horizontalAlignment: I18n.isRtl ? Text.AlignRight : Text.AlignLeft
+            elide: Text.ElideRight
+            wrapMode: Text.NoWrap
         }
 
         StyledRect {
@@ -199,6 +216,7 @@ Item {
             Layout.preferredWidth: 60
             Layout.preferredHeight: 32
             radius: Styling.radius(-2)
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
 
             TextInput {
                 id: numberTextInput
@@ -241,6 +259,7 @@ Item {
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overSurfaceVariant
             visible: suffix !== ""
+            Layout.alignment: I18n.isRtl ? Qt.AlignLeft : Qt.AlignRight
         }
     }
 
@@ -343,7 +362,7 @@ Item {
                 Layout.fillWidth: true
             }
             Text {
-                text: "Right click to remove"
+                text: I18n.t("Right click to remove")
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-2)
                 color: Colors.overSurfaceVariant
@@ -549,50 +568,20 @@ Item {
             // Header wrapper
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: titlebar.height
+                Layout.preferredHeight: titlebar.visible ? titlebar.height : 0
 
                 PanelTitlebar {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "Compositor" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
+                    title: root.currentSection === "" ? I18n.t("Compositor")
+                        : I18n.t(root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
+                    showTitle: false
                     statusText: GlobalStates.compositorHasChanges ? "Unsaved changes" : ""
                     statusColor: Colors.error
 
-                    actions: {
-                        let baseActions = [
-                            {
-                                icon: Icons.arrowCounterClockwise,
-                                tooltip: "Discard changes",
-                                enabled: GlobalStates.compositorHasChanges,
-                                onClicked: function () {
-                                    GlobalStates.discardCompositorChanges();
-                                }
-                            },
-                            {
-                                icon: Icons.disk,
-                                tooltip: "Apply changes",
-                                enabled: GlobalStates.compositorHasChanges,
-                                onClicked: function () {
-                                    GlobalStates.applyCompositorChanges();
-                                }
-                            }
-                        ];
-
-                        if (root.currentSection !== "") {
-                            return [
-                                {
-                                    icon: Icons.arrowLeft,
-                                    tooltip: "Back",
-                                    onClicked: function () {
-                                        root.currentSection = "";
-                                    }
-                                }
-                            ].concat(baseActions);
-                        }
-
-                        return baseActions;
-                    }
+                    actions: []
+                    visible: false
                 }
             }
 
@@ -649,19 +638,19 @@ Item {
                             spacing: 8
 
                             SectionButton {
-                                text: "General"
+                                text: I18n.t("General")
                                 sectionId: "general"
                             }
                             SectionButton {
-                                text: "Colors"
+                                text: I18n.t("Colors")
                                 sectionId: "colors"
                             }
                             SectionButton {
-                                text: "Shadows"
+                                text: I18n.t("Shadows")
                                 sectionId: "shadows"
                             }
                             SectionButton {
-                                text: "Blur"
+                                text: I18n.t("Blur")
                                 sectionId: "blur"
                             }
                         }
@@ -673,7 +662,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "General"
+                                text: I18n.t("General")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -786,7 +775,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Colors"
+                                text: I18n.t("Colors")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -839,7 +828,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Shadows"
+                                text: I18n.t("Shadows")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -979,7 +968,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Blur"
+                                text: I18n.t("Blur")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1139,7 +1128,7 @@ Item {
                             }
 
                             Text {
-                                text: "Coming Soon"
+                                text: I18n.t("Coming Soon")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(2)
                                 font.bold: true
@@ -1148,11 +1137,12 @@ Item {
                             }
 
                             Text {
-                                text: "Support for more compositors\nis planned for future updates."
+                                text: I18n.t("Support for more compositors is planned for future updates.")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overSurfaceVariant
                                 horizontalAlignment: Text.AlignHCenter
+                                wrapMode: Text.WordWrap
                                 Layout.alignment: Qt.AlignHCenter
                             }
                         }

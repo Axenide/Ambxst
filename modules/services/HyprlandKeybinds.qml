@@ -78,6 +78,13 @@ QtObject {
                 lens: cloneKeybind(ambxst.system.lens),
                 reload: ambxst.system.reload ? cloneKeybind(ambxst.system.reload) : null,
                 quit: ambxst.system.quit ? cloneKeybind(ambxst.system.quit) : null
+            },
+            apps: {
+                music: ambxst.apps && ambxst.apps.music ? cloneKeybind(ambxst.apps.music) : { modifiers: [], key: "" },
+                communication: ambxst.apps && ambxst.apps.communication ? cloneKeybind(ambxst.apps.communication) : { modifiers: [], key: "" },
+                browser: ambxst.apps && ambxst.apps.browser ? cloneKeybind(ambxst.apps.browser) : { modifiers: [], key: "" },
+                files: ambxst.apps && ambxst.apps.files ? cloneKeybind(ambxst.apps.files) : { modifiers: [], key: "" },
+                terminal: ambxst.apps && ambxst.apps.terminal ? cloneKeybind(ambxst.apps.terminal) : { modifiers: [], key: "" }
             }
         };
 
@@ -202,6 +209,13 @@ QtObject {
                 if (previousAmbxstBinds.system.quit) unbindCommands.push(createUnbindCommand(previousAmbxstBinds.system.quit));
             }
 
+            if (previousAmbxstBinds.apps) {
+                unbindCommands.push(createUnbindCommand(previousAmbxstBinds.apps.music));
+                unbindCommands.push(createUnbindCommand(previousAmbxstBinds.apps.communication));
+                unbindCommands.push(createUnbindCommand(previousAmbxstBinds.apps.browser));
+                unbindCommands.push(createUnbindCommand(previousAmbxstBinds.apps.files));
+            }
+
             // Unbind previous custom keybinds
             for (let i = 0; i < previousCustomBinds.length; i++) {
                 const prev = previousCustomBinds[i];
@@ -259,6 +273,21 @@ QtObject {
         batchCommands.push(createBindCommand(system.lens, system.lens.flags || ""));
         if (system.reload) batchCommands.push(createBindCommand(system.reload, system.reload.flags || ""));
         if (system.quit) batchCommands.push(createBindCommand(system.quit, system.quit.flags || ""));
+
+        if (ambxst.apps) {
+            const apps = ambxst.apps;
+            unbindCommands.push(createUnbindCommand(apps.music));
+            unbindCommands.push(createUnbindCommand(apps.communication));
+            unbindCommands.push(createUnbindCommand(apps.browser));
+            unbindCommands.push(createUnbindCommand(apps.files));
+            unbindCommands.push(createUnbindCommand(apps.terminal));
+
+            batchCommands.push(createBindCommand(apps.music, apps.music.flags || ""));
+            batchCommands.push(createBindCommand(apps.communication, apps.communication.flags || ""));
+            batchCommands.push(createBindCommand(apps.browser, apps.browser.flags || ""));
+            batchCommands.push(createBindCommand(apps.files, apps.files.flags || ""));
+            batchCommands.push(createBindCommand(apps.terminal, apps.terminal.flags || ""));
+        }
 
         // Procesar custom keybinds (new format with keys[] and actions[])
         const customBinds = Config.keybindsLoader.adapter.custom;

@@ -8,11 +8,11 @@ import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 PanelWindow {
     id: root
-
     anchors {
         top: true
         bottom: true
