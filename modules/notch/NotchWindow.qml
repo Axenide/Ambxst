@@ -14,6 +14,7 @@ import qs.modules.services
 import qs.modules.components
 import qs.modules.widgets.launcher
 import qs.config
+import qs.modules.widgets.osd
 import "./NotchNotificationView.qml"
 
 PanelWindow {
@@ -80,6 +81,7 @@ PanelWindow {
 
     // Hover state with delay to prevent flickering
     property bool hoverActive: false
+    property bool showingOSD: false
 
     // Track if mouse is over any notch-related area
     readonly property bool isMouseOverNotch: notchMouseAreaHover.hovered || notchRegionHover.hovered
@@ -91,7 +93,7 @@ PanelWindow {
         
         // Show on interaction (hover, open, notifications)
         // This works even in fullscreen, ensuring hover always works
-        if (screenNotchOpen || hasActiveNotifications || hoverActive || barHoverActive) {
+        if (screenNotchOpen || hasActiveNotifications || hoverActive || barHoverActive || showingOSD) {
             return true;
         }
         
@@ -176,38 +178,182 @@ PanelWindow {
 
     // Default view component - user@host text
     Component {
-        id: defaultViewComponent
+        id: defaultViewComp
         DefaultView {}
     }
 
     // Launcher view component
     Component {
-        id: launcherViewComponent
+        id: launcherViewComp
         LauncherView {}
     }
 
     // Dashboard view component
     Component {
-        id: dashboardViewComponent
+        id: dashboardViewComp
         DashboardView {}
     }
 
     // Power menu view component
     Component {
-        id: powermenuViewComponent
+        id: powermenuViewComp
         PowerMenuView {}
     }
 
     // Tools menu view component
     Component {
-        id: toolsMenuViewComponent
+        id: toolsMenuViewComp
         ToolsMenuView {}
     }
 
     // Notification view component
     Component {
-        id: notificationViewComponent
+        id: notificationViewComp
         NotchNotificationView {}
+    }
+
+    // OSD view component
+    Component {
+        id: osdViewComp
+        OSDView {}
+    }
+
+    Timer {
+        id: osdTimer
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            if (notchPanel.isMouseOverNotch) {
+                osdTimer.restart();
+                return;
+            }
+
+            if (notchContainer.stackView.currentItem && notchContainer.stackView.currentItem.hasOwnProperty("showVolume")) {
+                notchContainer.stackView.pop();
+                
+                // Back to default view
+                notchContainer.isShowingDefault = true;
+                notchContainer.isShowingNotifications = false;
+                notchPanel.showingOSD = false;
+            }
+        }
+    }
+
+    property bool startupComplete: false
+    Timer {
+        id: startupTimer
+        interval: 3000
+        running: true
+        repeat: false
+        onTriggered: {
+            console.log("[NotchWindow] Startup complete");
+            notchPanel.startupComplete = true;
+        }
+    }
+
+    function showOSD(type, value, icon) {
+        console.log("[NotchWindow] showOSD called with type:", type, "value:", value);
+        // Do not show OSD if notch is already open with a menu
+        if (notchPanel.screenNotchOpen) {
+            console.log("[NotchWindow] OSD skipped: screenNotchOpen is true");
+            return;
+        }
+        
+        // Do not show OSD on startup
+        if (!notchPanel.startupComplete) {
+            console.log("[NotchWindow] OSD skipped: startup not complete");
+            return;
+        }
+
+        const currentItem = notchContainer.stackView.currentItem;
+        const isOSD = currentItem && currentItem.hasOwnProperty("showVolume"); // Check for OSDView property
+        console.log("[NotchWindow] Current item is OSD?", isOSD);
+
+        if (isOSD) {
+            console.log("[NotchWindow] Updating existing OSD");
+            // Update existing OSDView
+            if (type === "volume") {
+                currentItem.showVolume = true;
+                currentItem.volumeValue = value;
+            } else if (type === "mic") {
+                currentItem.showMic = true;
+                currentItem.micValue = value;
+            } else if (type === "brightness") {
+                currentItem.showBrightness = true;
+                currentItem.brightnessValue = value;
+            }
+            osdTimer.restart();
+            notchPanel.showingOSD = true;
+        } else {
+            // Not current, push new OSDView
+            if (notchContainer.stackView.depth === 1) {
+                var props = { 
+                    showVolume: false, 
+                    showMic: false, 
+                    showBrightness: false,
+                    volumeValue: 0, 
+                    micValue: 0, 
+                    brightnessValue: 0,
+                    onKeepAlive: () => osdTimer.restart() 
+                };
+                
+                if (type === "volume") {
+                    props.showVolume = true;
+                    props.volumeValue = value;
+                } else if (type === "mic") {
+                     props.showMic = true;
+                     props.micValue = value;
+                } else if (type === "brightness") {
+                     props.showBrightness = true;
+                     props.brightnessValue = value;
+                }
+                
+                notchContainer.stackView.push(osdViewComp, props);
+                notchContainer.isShowingDefault = false;
+                osdTimer.restart();
+                notchPanel.showingOSD = true;
+            }
+        }
+    }
+
+    Connections {
+        target: Audio
+        function onValueChanged() {
+             console.log("[NotchWindow] Audio.onValueChanged received, value:", Audio.value);
+             showOSD("volume", Audio.value, Audio.volumeIcon(Audio.value, Audio.muted));
+        }
+        function onMutedChanged() {
+             console.log("[NotchWindow] Audio.onMutedChanged received, muted:", Audio.muted);
+             showOSD("volume", Audio.value, Audio.volumeIcon(Audio.value, Audio.muted));
+        }
+    }
+
+    Connections {
+        target: Audio
+        function onMicValueChanged() {
+             console.log("[NotchWindow] Audio.onMicValueChanged received, value:", Audio.micValue);
+             showOSD("mic", Audio.micValue, Audio.micMuted ? Icons.microphoneOff : Icons.microphone);
+        }
+        function onMicMutedChanged() {
+             console.log("[NotchWindow] Audio.onMicMutedChanged received, muted:", Audio.micMuted);
+             showOSD("mic", Audio.micValue, Audio.micMuted ? Icons.microphoneOff : Icons.microphone);
+        }
+    }
+
+    Connections {
+        target: Brightness
+        function onBrightnessChanged() {
+             // Find internal screen monitor
+             const monitor = Brightness.monitors.find(m => Brightness.isInternalScreen(m.screen) && m.screen.name === screen.name);
+             if (monitor) {
+                 showOSD("brightness", monitor.brightness, Icons.sun);
+             } else {
+                 // Fallback to any monitor if needed, or just the first one associated
+                 if (Brightness.monitors.length > 0) {
+                      showOSD("brightness", Brightness.monitors[0].brightness, Icons.sun);
+                 }
+             }
+        }
     }
 
         // Hover region for detecting mouse when notch is hidden (doesn't block clicks)
@@ -305,12 +451,13 @@ PanelWindow {
                 layer.enabled: true
                 layer.effect: Shadow {}
 
-                defaultViewComponent: defaultViewComponent
-                launcherViewComponent: launcherViewComponent
-                dashboardViewComponent: dashboardViewComponent
-                powermenuViewComponent: powermenuViewComponent
-                toolsMenuViewComponent: toolsMenuViewComponent
-                notificationViewComponent: notificationViewComponent
+                defaultViewComponent: defaultViewComp
+                launcherViewComponent: launcherViewComp
+                dashboardViewComponent: dashboardViewComp
+                powermenuViewComponent: powermenuViewComp
+                toolsMenuViewComponent: toolsMenuViewComp
+                notificationViewComponent: notificationViewComp
+                osdViewComponent: osdViewComp
                 visibilities: screenVisibilities
 
                 // Handle global keyboard events
@@ -437,7 +584,7 @@ PanelWindow {
 
         function onLauncherChanged() {
             if (screenVisibilities.launcher) {
-                notchContainer.stackView.push(launcherViewComponent);
+                notchContainer.stackView.push(launcherViewComp);
                 Qt.callLater(() => {
                     if (notchContainer.stackView.currentItem) {
                         notchContainer.stackView.currentItem.forceActiveFocus();
@@ -454,7 +601,7 @@ PanelWindow {
 
         function onDashboardChanged() {
             if (screenVisibilities.dashboard) {
-                notchContainer.stackView.push(dashboardViewComponent);
+                notchContainer.stackView.push(dashboardViewComp);
                 Qt.callLater(() => {
                     if (notchContainer.stackView.currentItem) {
                         notchContainer.stackView.currentItem.forceActiveFocus();
@@ -471,7 +618,7 @@ PanelWindow {
 
         function onPowermenuChanged() {
             if (screenVisibilities.powermenu) {
-                notchContainer.stackView.push(powermenuViewComponent);
+                notchContainer.stackView.push(powermenuViewComp);
                 Qt.callLater(() => {
                     if (notchContainer.stackView.currentItem) {
                         notchContainer.stackView.currentItem.forceActiveFocus();
@@ -488,7 +635,7 @@ PanelWindow {
 
         function onToolsChanged() {
             if (screenVisibilities.tools) {
-                notchContainer.stackView.push(toolsMenuViewComponent);
+                notchContainer.stackView.push(toolsMenuViewComp);
                 Qt.callLater(() => {
                     if (notchContainer.stackView.currentItem) {
                         notchContainer.stackView.currentItem.forceActiveFocus();

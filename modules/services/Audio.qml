@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
 import qs.modules.services
+import qs.modules.theme
 
 /**
  * A nice wrapper for default Pipewire audio sink and source.
@@ -19,6 +20,9 @@ Singleton {
     property PwNode source: Pipewire.defaultAudioSource
     readonly property real hardMaxValue: 2.00
     property real value: sink?.audio?.volume ?? 0
+    property bool muted: sink?.audio?.muted ?? false
+    property real micValue: source?.audio?.volume ?? 0
+    property bool micMuted: source?.audio?.muted ?? false
 
     // Volume protection settings (persisted via StateService)
     property bool protectionEnabled: true
