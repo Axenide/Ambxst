@@ -41,7 +41,6 @@ Item {
         hideSource: true
         live: true
         smooth: true
-        recursive: true
     }
     
     // Pass 1: Horizontal Blur
