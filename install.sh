@@ -252,20 +252,35 @@ migrate_old_paths() {
 		mv "$OLD_STATE" "$NEW_STATE"
 	fi
 
-	# Cache migration (Wallpapers & Thumbnails)
+	# Cache migration
+	local OLD_CACHE_DIR="$HOME/.cache/Ambxst"
+	local NEW_CACHE_DIR="$HOME/.cache/ambxst"
+	if [[ -d "$OLD_CACHE_DIR" && ! -d "$NEW_CACHE_DIR" ]]; then
+		log_info "Migrating cache: $OLD_CACHE_DIR -> $NEW_CACHE_DIR"
+		mv "$OLD_CACHE_DIR" "$NEW_CACHE_DIR"
+	fi
+
+	# Legacy share -> cache migration (Wallpapers & Thumbnails)
 	local NEW_CACHE="$HOME/.cache/ambxst"
-	if [[ -d "$OLD_SHARE" ]]; then
+	if [[ -d "$NEW_SHARE" ]]; then
 		mkdir -p "$NEW_CACHE"
 
-		if [[ -f "$OLD_SHARE/wallpapers.json" && ! -f "$NEW_CACHE/wallpapers.json" ]]; then
+		if [[ -f "$NEW_SHARE/wallpapers.json" && ! -f "$NEW_CACHE/wallpapers.json" ]]; then
 			log_info "Migrating wallpapers.json to cache..."
-			cp "$OLD_SHARE/wallpapers.json" "$NEW_CACHE/wallpapers.json"
+			cp "$NEW_SHARE/wallpapers.json" "$NEW_CACHE/wallpapers.json"
 		fi
 
-		if [[ -d "$OLD_SHARE/thumbnails" && ! -d "$NEW_CACHE/thumbnails" ]]; then
+		if [[ -d "$NEW_SHARE/thumbnails" && ! -d "$NEW_CACHE/thumbnails" ]]; then
 			log_info "Migrating thumbnails to cache..."
-			cp -r "$OLD_SHARE/thumbnails" "$NEW_CACHE/thumbnails"
+			cp -r "$NEW_SHARE/thumbnails" "$NEW_CACHE/thumbnails"
 		fi
+	fi
+
+	# Config structure warning
+	if [[ -f "$NEW_CONFIG/config.json" && ! -d "$NEW_CONFIG/config" ]]; then
+		log_warn "Old single-file config detected."
+		log_info "Ambxst now uses a multi-file configuration in $NEW_CONFIG/config/"
+		log_info "Your old config.json remains at $NEW_CONFIG/config.json for reference."
 	fi
 }
 
@@ -278,6 +293,21 @@ setup_repo() {
 		mkdir -p "$(dirname "$INSTALL_PATH")"
 		git clone "$REPO_URL" "$INSTALL_PATH"
 		return
+	fi
+
+	# Check if it's a git repository
+	if [[ ! -d "$INSTALL_PATH/.git" ]]; then
+		log_warn "$INSTALL_PATH exists but is not a git repository."
+		log_info "Re-initializing repository..."
+		local TMP_DIR
+		TMP_DIR=$(mktemp -d)
+		# Move everything to tmp, avoiding . and ..
+		find "$INSTALL_PATH" -mindepth 1 -maxdepth 1 -exec mv -t "$TMP_DIR" {} +
+		rm -rf "$INSTALL_PATH"
+		git clone "$REPO_URL" "$INSTALL_PATH"
+		log_info "Restoring files from old directory..."
+		cp -rn "$TMP_DIR"/* "$INSTALL_PATH/" 2>/dev/null || true
+		rm -rf "$TMP_DIR"
 	fi
 
 	log_info "Checking repository status..."

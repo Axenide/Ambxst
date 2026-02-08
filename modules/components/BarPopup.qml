@@ -62,8 +62,7 @@ PopupWindow {
     readonly property bool frameEnabled: Config.bar?.frameEnabled ?? false
     readonly property bool containBar: Config.bar?.containBar ?? false
     readonly property int frameThickness: Config.bar?.frameThickness ?? 0
-    readonly property int borderSize: Config.theme?.srBg.border[1] ?? 0
-    readonly property int frameOffset: (frameEnabled && containBar) ? (frameThickness + borderSize) : 0
+    readonly property int frameOffset: (frameEnabled && containBar) ? frameThickness : 0
     readonly property int effectiveFrameOffset: (frameEnabled && containBar) ? frameOffset : 0
 
     // Anchor positioning

@@ -136,13 +136,15 @@ Item {
         NumberAnimation { duration: 300; easing.type: Easing.OutCubic }
     }
 
-    // Animation for the wave
+    // Animation for the wave - only when visible AND amplitude > 0 to save GPU
+    property bool animationsEnabled: true
     NumberAnimation on wavePhase {
         from: 0
         to: Math.PI * 2
         duration: 2000
         loops: Animation.Infinite
-        running: root.wavy && root.enabled
+        // Don't animate invisible waves (amplitude 0 = paused music)
+        running: root.wavy && root.enabled && root.visible && root.animationsEnabled && root.waveAmplitude > 0
     }
 
     Item {

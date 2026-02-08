@@ -67,7 +67,21 @@ Item {
                 id: internalSource
                 sourceItem: root.sourceItem
                 hideSource: true
-                live: true
+                live: false  // Static content - use scheduleUpdate() when source changes
+            }
+            
+            // Update texture when sourceItem changes
+            Connections {
+                target: root.sourceItem
+                function onSourceChanged() { internalSource.scheduleUpdate(); }
+                function onStatusChanged() { internalSource.scheduleUpdate(); }
+            }
+            
+            // Also update when this component becomes visible or sourceItem changes
+            Connections {
+                target: root
+                function onSourceItemChanged() { internalSource.scheduleUpdate(); }
+                function onVisibleChanged() { if (root.visible) internalSource.scheduleUpdate(); }
             }
 
             // Full tint fallback (solid color)

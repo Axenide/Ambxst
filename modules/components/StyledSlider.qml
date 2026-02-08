@@ -172,9 +172,7 @@ Item {
                 fullLength: parent.width
                 visible: root.wavy
                 z: 1
-                FrameAnimation {
-                    running: visible
-                }
+                // WavyLine manages its own animation internally
             }
             Rectangle {
                 anchors.left: parent.left
@@ -275,9 +273,7 @@ Item {
                     lineWidth: root.thickness
                     fullLength: vSliderItem.height
                     z: 1
-                    FrameAnimation {
-                        running: visible
-                    }
+                    // WavyLine manages its own animation internally
                 }
             }
             Rectangle {

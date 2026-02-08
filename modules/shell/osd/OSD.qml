@@ -110,7 +110,7 @@ PanelWindow {
                                     return "Brightness";
                                 return "";
                             }
-                            font.family: "Roboto Condensed"
+                            font.family: Config.theme.font
                             font.pixelSize: 15
                             font.bold: false
                             color: Colors.overBackground
@@ -123,7 +123,7 @@ PanelWindow {
 
                         Text {
                             text: Math.round(root.osdValue * 100)
-                            font.family: "Roboto Condensed"
+                            font.family: Config.theme.font
                             font.pixelSize: 15
                             font.bold: false
                             color: Colors.overBackground

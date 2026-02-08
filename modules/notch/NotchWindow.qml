@@ -5,6 +5,7 @@ import Quickshell.Hyprland
 import qs.modules.globals
 import qs.config
 
+/*
 PanelWindow {
     id: notchPanel
 
@@ -64,4 +65,9 @@ PanelWindow {
         anchors.fill: parent
         screen: notchPanel.screen
     }
+}
+*/
+Item {
+    id: notchPanel
+    visible: false
 }

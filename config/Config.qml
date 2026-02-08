@@ -25,6 +25,14 @@ import "ConfigValidator.js" as ConfigValidator
 Singleton {
     id: root
 
+    property string version: "0.0.0"
+
+    FileView {
+        id: versionFile
+        path: Qt.resolvedUrl("../version").toString().replace("file://", "")
+        onLoaded: root.version = text().trim()
+    }
+
     property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/config"
     property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/binds.json"
 

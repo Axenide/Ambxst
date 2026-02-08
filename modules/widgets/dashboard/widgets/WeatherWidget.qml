@@ -13,6 +13,10 @@ ClippingRectangle {
 
     // Configurable properties
     property bool showDebugControls: true
+    
+    // GPU optimization: animations only run when this widget is actually visible to user
+    // Parent components (popups, loaders) should bind this to their open/visible state
+    property bool animationsEnabled: true
 
     // Internal alias for celestial body position (used by sun rays)
     readonly property alias celestialBodyItem: celestialBody
@@ -158,7 +162,7 @@ ClippingRectangle {
 
                 SequentialAnimation on opacity {
                     loops: Animation.Infinite
-                    running: starsEffect.visible
+                    running: starsEffect.visible && root.animationsEnabled
 
                     NumberAnimation {
                         to: star.baseOpacity * 0.3
@@ -228,7 +232,7 @@ ClippingRectangle {
 
                 SequentialAnimation on opacity {
                     loops: Animation.Infinite
-                    running: sunRaysEffect.visible
+                    running: sunRaysEffect.visible && root.animationsEnabled
 
                     NumberAnimation {
                         to: 0.5
@@ -312,7 +316,7 @@ ClippingRectangle {
 
                 // Continuous movement animation
                 SequentialAnimation on x {
-                    running: cloudEffect.visible
+                    running: cloudEffect.visible && root.animationsEnabled
                     loops: Animation.Infinite
 
                     // Move across screen
@@ -331,7 +335,7 @@ ClippingRectangle {
 
                 // Fade in/out when entering/leaving screen
                 PropertyAnimation on opacity {
-                    running: cloudEffect.visible
+                    running: cloudEffect.visible && root.animationsEnabled
                     from: 0
                     to: 0.8
                     duration: 2000
@@ -384,7 +388,7 @@ ClippingRectangle {
 
                 // Continuous movement animation
                 SequentialAnimation on x {
-                    running: cloudEffect.visible
+                    running: cloudEffect.visible && root.animationsEnabled
                     loops: Animation.Infinite
 
                     // Move across screen
@@ -403,7 +407,7 @@ ClippingRectangle {
 
                 // Fade in/out when entering/leaving screen
                 PropertyAnimation on opacity {
-                    running: cloudEffect.visible
+                    running: cloudEffect.visible && root.animationsEnabled
                     from: 0
                     to: 0.9
                     duration: 1500
@@ -456,7 +460,7 @@ ClippingRectangle {
                     to: 0
                     duration: 8000 + (fogWisp.index * 2000)
                     loops: Animation.Infinite
-                    running: fogEffect.visible
+                    running: fogEffect.visible && root.animationsEnabled
                     easing.type: Easing.InOutSine
                 }
 
@@ -465,7 +469,7 @@ ClippingRectangle {
                     to: 0.25
                     duration: 4000 + (fogWisp.index * 1000)
                     loops: Animation.Infinite
-                    running: fogEffect.visible
+                    running: fogEffect.visible && root.animationsEnabled
                     easing.type: Easing.InOutSine
                 }
             }
@@ -503,7 +507,7 @@ ClippingRectangle {
 
                 SequentialAnimation {
                     loops: Animation.Infinite
-                    running: rainEffect.visible
+                    running: rainEffect.visible && root.animationsEnabled
 
                     PauseAnimation {
                         duration: rainDrop.delay
@@ -565,7 +569,7 @@ ClippingRectangle {
 
                 SequentialAnimation on y {
                     loops: Animation.Infinite
-                    running: snowEffect.visible
+                    running: snowEffect.visible && root.animationsEnabled
 
                     PropertyAction {
                         value: -10 - Math.random() * 30
@@ -579,7 +583,7 @@ ClippingRectangle {
 
                 SequentialAnimation on x {
                     loops: Animation.Infinite
-                    running: snowEffect.visible
+                    running: snowEffect.visible && root.animationsEnabled
 
                     PropertyAction {
                         value: Math.random() * snowEffect.width
@@ -630,7 +634,7 @@ ClippingRectangle {
 
                 SequentialAnimation {
                     loops: Animation.Infinite
-                    running: thunderstormEffect.visible
+                    running: thunderstormEffect.visible && root.animationsEnabled
 
                     PauseAnimation {
                         duration: stormRainDrop.delay
@@ -675,7 +679,7 @@ ClippingRectangle {
 
             SequentialAnimation {
                 loops: Animation.Infinite
-                running: thunderstormEffect.visible
+                running: thunderstormEffect.visible && root.animationsEnabled
 
                 PauseAnimation {
                     duration: 3000 + Math.random() * 5000

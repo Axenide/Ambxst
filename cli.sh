@@ -37,6 +37,7 @@ Commands:
     brightness -r [monitor]           Restore saved brightness
     brightness -l                     List monitors and their brightness
     help                              Show this help message
+    version, -v, --version            Show Ambxst version
     goodbye                           Uninstall Ambxst :(
 
 Examples:
@@ -426,6 +427,9 @@ brightness)
 		}
 		echo "Set brightness to ${VALUE}% for $MONITOR"
 	fi
+	;;
+version | -v | --version)
+	echo "Ambxst $(cat "${SCRIPT_DIR}/version")"
 	;;
 goodbye)
 	echo "Uninstalling Ambxst..."

@@ -88,15 +88,14 @@ Item {
             fullLength: width
             visible: compactPlayer.player === null
             opacity: 1.0
+            // Disable animations - this is a static "no player" indicator
+            animationsEnabled: false
             Behavior on color {
                 enabled: Config.animDuration > 0
                 ColorAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
                 }
-            }
-            FrameAnimation {
-                running: noPlayerWavyLine.visible
             }
         }
 
@@ -117,7 +116,8 @@ Item {
             MultiEffect {
                 anchors.fill: backgroundArt
                 source: backgroundArt
-                blurEnabled: true
+                // Only enable blur when there's content to blur (saves GPU)
+                blurEnabled: hasArtwork || wallpaperPath !== ""
                 blurMax: 32
                 blur: 0.75
                 autoPaddingEnabled: false
@@ -181,6 +181,8 @@ Item {
                     MultiEffect {
                         anchors.fill: parent
                         source: artworkImage
+                        // Only enable blur when there's content to blur (saves GPU)
+                        blurEnabled: hasArtwork || wallpaperPath !== ""
                         blurMax: 32
                         blur: 0.75
                         opacity: (hasArtwork || wallpaperPath !== "") ? 1.0 : 0.0 // Simplificado

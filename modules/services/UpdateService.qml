@@ -8,7 +8,7 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string currentVersion: "1.0.0"
+    readonly property string currentVersion: Config.version
     readonly property string repoUrl: "https://api.github.com/repos/Axenide/Ambxst/tags"
     readonly property string changelogUrl: "https://axeni.de/ambxst/changelog"
     readonly property string cacheFile: Quickshell.cachePath("update_check.json")
@@ -49,7 +49,7 @@ Singleton {
 
     Timer {
         id: checkTimer
-        interval: 60000 // Every minute check if it's time
+        interval: 300000 // Every 5 minutes check if it's time
         running: true
         repeat: true
         triggeredOnStart: true

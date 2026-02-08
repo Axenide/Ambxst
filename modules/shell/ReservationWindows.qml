@@ -24,10 +24,6 @@ Item {
     property bool frameEnabled: false
     property int frameThickness: 6
 
-    // Theme data
-    readonly property var borderData: Config.theme.srBg.border
-    readonly property int borderWidth: borderData[1]
-
     // Force update when any state that affects reservation changes
     onBarEnabledChanged: updateAllZones()
     onBarPositionChanged: updateAllZones()
@@ -43,7 +39,6 @@ Item {
 
     onFrameEnabledChanged: updateAllZones()
     onFrameThicknessChanged: updateAllZones()
-    onBorderWidthChanged: updateAllZones()
 
     Connections {
         target: Config
@@ -58,31 +53,23 @@ Item {
         if (!Config.barReady)
             return 0;
 
-        // Base zone is frame + border (static area)
+        // Base zone is frame (static area)
         // This is the area that remains even if panels are hidden, IF frame is enabled.
-        let zone = actualFrameSize > 0 ? actualFrameSize + borderWidth : 0;
+        let zone = actualFrameSize;
 
         // Bar zone - only reserve if pinned (static)
         if (barEnabled && barPosition === side && barPinned) {
-            // If we don't have a frame, we still might have a border if the bar is present
-            if (zone === 0)
-                zone = borderWidth;
-
             zone += barSize + barOuterMargin;
 
             // Add extra thickness if containing bar (only if frame is actually enabled)
             if (containBar && frameEnabled) {
-                // zone already includes (actualFrameSize + borderWidth) from the start.
-                // When containing the bar, we add another frame thickness unit for the inner side,
-                // but NOT another border, as the border only exists at the screen edge.
+                // When containing the bar, we add another frame thickness unit for the inner side.
                 zone += actualFrameSize;
             }
         }
 
         // Dock zone - only reserve if pinned (static)
         if (dockEnabled && dockPosition === side && dockPinned) {
-            if (zone === 0)
-                zone = borderWidth;
             zone += dockHeight;
         }
 

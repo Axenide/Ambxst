@@ -93,13 +93,12 @@ Item {
 
     // --- Corner Logic ---
     
-    readonly property int borderWidth: Config.theme.srBg.border[1]
     readonly property real targetInnerRadius: {
-        if (!root.hasFullscreenWindow) return Styling.radius(4 + borderWidth);
+        if (!root.hasFullscreenWindow) return Styling.radius(4);
         if (!barHovered && !dockHovered) return 0;
         
         let progress = Math.max(_barAnimProgress, _dockAnimProgress, _notchAnimProgress);
-        return Styling.radius(4 + borderWidth) * progress;
+        return Styling.radius(4) * progress;
     }
     
     property real innerRadius: targetInnerRadius

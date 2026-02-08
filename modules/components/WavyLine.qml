@@ -14,6 +14,9 @@ Item {
     // Factor de supersampling optimizado
     readonly property real supersampleFactor: 2.0
 
+    // Control for animations - can be disabled from parent to save GPU
+    property bool animationsEnabled: true
+
     layer.enabled: true
     layer.smooth: true
     layer.samples: 4  // MSAA para el layer principal
@@ -65,7 +68,7 @@ Item {
 
             FrameAnimation {
                 id: animationFrameAnimation
-                running: Config.performance.wavyLine && wavyShader.visible
+                running: Config.performance.wavyLine && wavyShader.visible && root.visible && root.animationsEnabled
                 onTriggered: {
                     var deltaTime = 0.016; // ~60fps default
                     wavyShader.phase += root.speed * deltaTime;

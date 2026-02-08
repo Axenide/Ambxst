@@ -26,14 +26,9 @@ Item {
     readonly property real bgOpacity: Config.theme.srBarBg.opacity
     readonly property int padding: bgOpacity < 0.01 ? 0 : 4
 
-    // Displacement logic: only when !effectiveContainBar
-    // Uses Config.theme.srBg.border[1] as requested
-    readonly property int borderWidth: Config.theme.srBg.border[1]
-    readonly property int displacement: !effectiveContainBar ? borderWidth * (Config.bar.frameEnabled ? 2 : 1) : 0
-
     // Combined outer margin for screen/frame edges
     // This margin (4px) should only exist when bar is floating (!effectiveContainBar)
-    readonly property int outerMargin: !effectiveContainBar ? (4 + displacement) : 0
+    readonly property int outerMargin: !effectiveContainBar ? 4 : 0
 
     // StyledRect expanded that covers bar + corners
     StyledRect {

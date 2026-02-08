@@ -3,6 +3,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import qs.modules.globals
 
 Singleton {
     id: root
@@ -73,7 +74,7 @@ Singleton {
 
     property Timer sunPositionTimer: Timer {
         interval: 60000  // 1 minute
-        running: !SuspendManager.isSuspending
+        running: !SuspendManager.isSuspending && (GlobalStates.dashboardOpen || GlobalStates.launcherOpen || GlobalStates.overviewOpen)
         repeat: true
         onTriggered: root.calculateSunPosition()
     }

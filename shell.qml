@@ -271,11 +271,8 @@ ShellRoot {
             let _ = NightLightService.active;
             _ = GameModeService.toggled;
             _ = CaffeineService.inhibit;
-            _ = WeatherService.dataAvailable;
-            _ = SystemResources.cpuUsage;
             _ = IdleService.lockCmd; // Force init
             _ = GlobalShortcuts.appId; // Force init
-            _ = UpdateService.nextCheckTime; // Force init
         }
     }
 }

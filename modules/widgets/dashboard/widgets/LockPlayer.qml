@@ -54,7 +54,8 @@ StyledRect {
         MultiEffect {
             anchors.fill: parent
             source: lockPlayerBgArt
-            blurEnabled: true
+            // Only enable blur when there's content to blur (saves GPU)
+            blurEnabled: MprisController.activePlayer || wallpaperPath !== ""
             blurMax: 32
             blur: 0.75
             opacity: (MprisController.activePlayer || wallpaperPath !== "") ? 1.0 : 0.0
@@ -115,6 +116,8 @@ StyledRect {
             fullLength: width
             visible: true
             opacity: 1.0
+            // Disable animations - this is a static "no player" indicator
+            animationsEnabled: false
 
             Behavior on color {
                 enabled: Config.animDuration > 0
@@ -122,10 +125,6 @@ StyledRect {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
                 }
-            }
-
-            FrameAnimation {
-                running: noPlayerWavyLine.visible
             }
         }
     }
@@ -172,7 +171,8 @@ StyledRect {
                 MultiEffect {
                     anchors.fill: parent
                     source: albumArt
-                    blurEnabled: true
+                    // Only enable blur when hovered (saves GPU)
+                    blurEnabled: playPauseHover.hovered
                     blurMax: 32
                     blur: playPauseHover.hovered ? 0.75 : 0
 

@@ -336,6 +336,7 @@ Item {
                         width: 300
                         height: 140
                         showDebugControls: true
+                        animationsEnabled: clockPopup.isOpen
                     }
 
                     // 7-day forecast panel (below weather widget)

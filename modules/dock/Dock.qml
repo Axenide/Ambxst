@@ -13,6 +13,8 @@ Scope {
     property bool pinned: Config.dock?.pinnedOnStartup ?? false
 
     Variants {
+        model: [] // Disabled to prevent double dock windows (using UnifiedShellPanel)
+        /*
         model: {
             const screens = Quickshell.screens;
             const list = Config.dock?.screenList ?? [];
@@ -20,6 +22,7 @@ Scope {
                 return screens;
             return screens.filter(screen => list.includes(screen.name));
         }
+        */
 
         PanelWindow {
             id: dockWindow

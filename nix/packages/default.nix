@@ -40,7 +40,7 @@ let
   # Copy shell sources to the Nix store
   shellSrc = pkgs.stdenv.mkDerivation {
     pname = "ambxst-shell";
-    version = "0.1.0";
+    version = lib.removeSuffix "\n" (builtins.readFile ../../version);
     src = lib.cleanSource self;
     dontBuild = true;
     installPhase = ''

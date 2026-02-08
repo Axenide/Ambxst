@@ -4,6 +4,6 @@ var data = {
     "blurTransition": true,
     "windowPreview": true,
     "wavyLine": true,
-    "dashboardPersistTabs": true,
-    "dashboardMaxPersistentTabs": 4
+    "dashboardPersistTabs": false,
+    "dashboardMaxPersistentTabs": 2
 }

@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.modules.globals
 
 Singleton {
     id: root
@@ -186,11 +187,20 @@ Singleton {
 
     function performUpdate() {
         if (isUpdating) return;
+        
+        // If UI is closed, we can skip heavy updates or delay them
+        // But for now, let's just run them. The nmcli monitor is event based so it shouldn't spam too much.
+        // Optimization: Only update signal strength if UI is open
+        const uiOpen = GlobalStates.dashboardOpen || GlobalStates.launcherOpen || GlobalStates.overviewOpen;
+        
         isUpdating = true;
         updateConnectionType.startCheck();
         wifiStatusProcess.running = true;
         updateNetworkName.running = true;
-        updateNetworkStrength.running = true;
+        
+        if (uiOpen) {
+            updateNetworkStrength.running = true;
+        }
     }
 
     Process {
