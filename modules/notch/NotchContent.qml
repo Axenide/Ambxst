@@ -120,6 +120,17 @@ Item {
     // Track if mouse is over any notch-related area
     readonly property bool isMouseOverNotch: notchMouseAreaHover.hovered || notchRegionHover.hovered
 
+    readonly property real reportedNotchWidth: Math.max(
+        notchContainer.implicitWidth ?? 0,
+        notchContainer.width ?? 0,
+        notchRegionContainer.width ?? 0
+    )
+
+    onReportedNotchWidthChanged: {
+        if (root.screen && root.screen.name)
+            Visibilities.setNotchWidth(root.screen.name, reportedNotchWidth);
+    }
+
     // Reveal logic:
     readonly property bool reveal: {
         // If keepHidden is true, ONLY show on interaction
@@ -499,4 +510,15 @@ Item {
 
     // Export some internal items for Visibilities
     property alias notchContainerRef: notchContainer
+    property alias notchRegionWidth: notchRegionContainer.width
+
+    Component.onCompleted: {
+        if (root.screen && root.screen.name)
+            Visibilities.setNotchWidth(root.screen.name, reportedNotchWidth);
+    }
+
+    Component.onDestruction: {
+        if (root.screen && root.screen.name)
+            Visibilities.clearNotchWidth(root.screen.name);
+    }
 }

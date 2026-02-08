@@ -20,5 +20,12 @@ var data = {
     "use12hFormat": false,
     "containBar": false,
     "keepBarShadow": false,
-    "keepBarBorder": false
+    "keepBarBorder": false,
+    "itemsLeft": ["launcher", "workspaces", "layout", "pin"],
+    "itemsCenter": [],
+    "centerItemsSplitByNotch": false,
+    "itemsRight": ["presets", "tools", "systray", "controls", "battery", "clock", "power"],
+    "itemsLeftVertical": ["launcher", "systray", "tools", "presets"],
+    "itemsCenterVertical": ["layout", "workspaces", "pin"],
+    "itemsRightVertical": ["controls", "battery", "clock", "power"]
 }

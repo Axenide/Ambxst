@@ -14,6 +14,7 @@ Singleton {
     property var barPanels: ({})
     property var notches: ({})
     property var notchPanels: ({})
+    property var notchWidths: ({})
     property var docks: ({})
     property var dockPanels: ({})
     property string currentActiveModule: ""
@@ -98,6 +99,19 @@ Singleton {
 
     function getNotchForScreen(screenName) {
         return notches[screenName] || null;
+    }
+
+    function setNotchWidth(screenName, width) {
+        const safeWidth = Math.max(0, Math.round(width ?? 0));
+        notchWidths = _updateMap(notchWidths, screenName, safeWidth);
+    }
+
+    function clearNotchWidth(screenName) {
+        notchWidths = _updateMap(notchWidths, screenName, null);
+    }
+
+    function getNotchWidth(screenName) {
+        return notchWidths[screenName] ?? 0;
     }
 
     function registerNotchPanel(screenName, notchPanel) {

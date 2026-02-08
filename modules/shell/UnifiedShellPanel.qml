@@ -52,6 +52,15 @@ PanelWindow {
     readonly property alias notchHoverActive: notchContent.hoverActive
     readonly property alias notchOpen: notchContent.screenNotchOpen
     readonly property alias notchReveal: notchContent.reveal
+    readonly property real notchWidth: notchContent.notchContainerRef ? Math.max(
+        notchContent.notchContainerRef.implicitWidth ?? 0,
+        notchContent.notchContainerRef.width ?? 0,
+        notchContent.notchRegionWidth ?? 0
+    ) : 0
+    readonly property real notchHitboxWidth: notchContent.notchHitbox ? Math.max(
+        notchContent.notchHitbox.width ?? 0,
+        notchWidth
+    ) : notchWidth
 
     // Generic names for external compatibility (Visibilities expects these on the panel object)
     readonly property alias pinned: barContent.pinned
@@ -192,18 +201,8 @@ PanelWindow {
             screen: unifiedPanel.targetScreen
             z: 2
 
-            // Keep the masking logic to cut out the notch area from the bar
-            layer.enabled: true
-            layer.effect: MultiEffect {
-                maskEnabled: true
-                maskInverted: true
-                maskThresholdMin: 0.3
-                maskSpreadAtMin: 0.5
-                maskSource: ShaderEffectSource {
-                    sourceItem: notchContent
-                    hideSource: false
-                }
-            }
+            // Do not mask the entire bar; only center items should avoid the notch.
+            layer.enabled: false
         }
 
         DockContent {
