@@ -10,8 +10,8 @@ Rectangle {
     opacity: 0.1
     radius: Styling.radius(0)
 
-    implicitWidth: vert ? 2 : 20
-    implicitHeight: vert ? 20 : 2
+    implicitWidth: vert ? 3 : 20
+    implicitHeight: vert ? 5 : 2
 
     Layout.fillWidth: !vert
     Layout.fillHeight: vert

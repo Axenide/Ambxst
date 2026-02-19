@@ -613,6 +613,12 @@ Singleton {
             property bool containBar: false
             property bool keepBarShadow: false
             property bool keepBarBorder: false
+            property var itemsLeft: ["launcher", "workspaces", "layout", "pin"]
+            property var itemsCenter: ["dock"]
+            property var itemsRight: ["presets", "tools", "systray", "controls", "battery", "clock", "power"]
+            property var itemsLeftVertical: ["launcher", "systray", "tools", "presets"]
+            property var itemsCenterVertical: ["layout", "workspaces", "pin", "dock"]
+            property var itemsRightVertical: ["controls", "battery", "clock", "power"]
         }
     }
 

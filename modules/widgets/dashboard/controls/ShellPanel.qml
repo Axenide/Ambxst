@@ -8,6 +8,7 @@ import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
 import qs.config
+import "../../../bar/BarItemRegistry.js" as BarItems
 
 Item {
     id: root
@@ -47,6 +48,160 @@ Item {
     }
 
     property string currentSection: ""
+    readonly property var barItemDefs: BarItems.items
+    readonly property var barItemIds: BarItems.itemIds
+
+    Component.onCompleted: {
+        var barPos = Config.bar.position ?? "top";
+        if (barPos === "left" || barPos === "right")
+            ensureVerticalBarLists();
+    }
+
+    function sanitizeBarItems(list, allowedIds) {
+        if (list === undefined || list === null || typeof list.length === "undefined")
+            return [];
+
+        var seen = {};
+        var sanitized = [];
+        for (var i = 0; i < list.length; i++) {
+            var itemId = list[i];
+            if (!barItemIds.includes(itemId))
+                continue;
+            if (allowedIds && !allowedIds.includes(itemId))
+                continue;
+            if (seen[itemId])
+                continue;
+            seen[itemId] = true;
+            sanitized.push(itemId);
+        }
+        return sanitized;
+    }
+
+    function ensureVerticalBarLists() {
+        var changed = false;
+        if (Config.bar.itemsLeftVertical === undefined || Config.bar.itemsLeftVertical.length === 0) {
+            Config.bar.itemsLeftVertical = ["launcher", "systray", "tools", "presets"];
+            changed = true;
+        }
+        if (Config.bar.itemsCenterVertical === undefined || Config.bar.itemsCenterVertical.length === 0) {
+            Config.bar.itemsCenterVertical = ["layout", "workspaces", "pin"];
+            changed = true;
+        }
+        if (Config.bar.itemsRightVertical === undefined || Config.bar.itemsRightVertical.length === 0) {
+            Config.bar.itemsRightVertical = ["controls", "battery", "clock", "power"];
+            changed = true;
+        }
+        if (changed)
+            GlobalStates.markShellChanged();
+    }
+
+    function getBarItems(groupId) {
+        var barPos = Config.bar.position ?? "top";
+        var isVertical = (barPos === "left" || barPos === "right");
+        var verticalIds = BarItems.verticalItemIds || barItemIds;
+        if (isVertical)
+            ensureVerticalBarLists();
+        if (groupId === "left")
+            return isVertical
+                ? sanitizeBarItems(Config.bar.itemsLeftVertical ?? ["launcher", "systray", "tools", "presets"], verticalIds)
+                : sanitizeBarItems(Config.bar.itemsLeft);
+        if (groupId === "center") {
+            if (isVertical)
+                return sanitizeBarItems(Config.bar.itemsCenterVertical ?? ["layout", "workspaces", "pin"], verticalIds);
+            var centerItems = sanitizeBarItems(Config.bar.itemsCenter);
+            var notchPos = Config.notchPosition ?? "top";
+            if ((barPos === "top" && notchPos === "top") || (barPos === "bottom" && notchPos === "bottom")) {
+                if (Config.bar.centerItemsSplitByNotch === false)
+                    return centerItems;
+                if (!centerItems.includes("notch"))
+                    centerItems.push("notch");
+            }
+            return centerItems;
+        }
+        return isVertical
+            ? sanitizeBarItems(Config.bar.itemsRightVertical ?? ["controls", "battery", "clock", "power"], verticalIds)
+            : sanitizeBarItems(Config.bar.itemsRight);
+    }
+
+    function availableBarItems(groupId) {
+        var current = getBarItems(groupId);
+        var available = [];
+        var barPos = Config.bar.position ?? "top";
+        var isVertical = (barPos === "left" || barPos === "right");
+        var verticalIds = BarItems.verticalItemIds || barItemIds;
+        if (isVertical)
+            ensureVerticalBarLists();
+        for (var i = 0; i < barItemDefs.length; i++) {
+            var def = barItemDefs[i];
+            if (def.id === "notch" && (isVertical || groupId !== "center"))
+                continue;
+            if (isVertical && !verticalIds.includes(def.id))
+                continue;
+            if (!current.includes(def.id))
+                available.push(def);
+        }
+        return available;
+    }
+
+    function applyBarItemsUpdate(groupId, newItems) {
+        var barPos = Config.bar.position ?? "top";
+        var isVertical = (barPos === "left" || barPos === "right");
+        var verticalIds = BarItems.verticalItemIds || barItemIds;
+        if (isVertical)
+            ensureVerticalBarLists();
+        var cleaned = sanitizeBarItems(newItems, isVertical ? verticalIds : null);
+        var left = isVertical
+            ? sanitizeBarItems(Config.bar.itemsLeftVertical ?? [], verticalIds)
+            : sanitizeBarItems(Config.bar.itemsLeft);
+        var center = isVertical
+            ? sanitizeBarItems(Config.bar.itemsCenterVertical ?? [], verticalIds)
+            : sanitizeBarItems(Config.bar.itemsCenter);
+        var right = isVertical
+            ? sanitizeBarItems(Config.bar.itemsRightVertical ?? [], verticalIds)
+            : sanitizeBarItems(Config.bar.itemsRight);
+
+        if (groupId === "left") {
+            center = center.filter(itemId => !cleaned.includes(itemId));
+            right = right.filter(itemId => !cleaned.includes(itemId));
+            left = cleaned;
+        } else if (groupId === "center") {
+            left = left.filter(itemId => !cleaned.includes(itemId));
+            right = right.filter(itemId => !cleaned.includes(itemId));
+            center = cleaned;
+        } else {
+            left = left.filter(itemId => !cleaned.includes(itemId));
+            center = center.filter(itemId => !cleaned.includes(itemId));
+            right = cleaned;
+        }
+
+        if (!isVertical) {
+            var notchPos = Config.notchPosition ?? "top";
+            if ((barPos === "top" && notchPos === "top") || (barPos === "bottom" && notchPos === "bottom")) {
+                if (Config.bar.centerItemsSplitByNotch === false) {
+                    center = center.filter(itemId => itemId !== "notch");
+                } else if (!center.includes("notch")) {
+                    center.push("notch");
+                }
+            } else {
+                center = center.filter(itemId => itemId !== "notch");
+            }
+        } else {
+            center = center.filter(itemId => itemId !== "notch");
+        }
+
+        GlobalStates.markShellChanged();
+        if (isVertical) {
+            Config.bar.itemsLeftVertical = left;
+            Config.bar.itemsCenterVertical = center;
+            Config.bar.itemsRightVertical = right;
+        } else {
+            Config.bar.itemsLeft = left;
+            Config.bar.itemsCenter = center;
+            Config.bar.itemsRight = right;
+        }
+        if (typeof Config.saveBar === "function")
+            Config.saveBar();
+    }
 
     component SectionButton: StyledRect {
         id: sectionBtn
@@ -523,6 +678,309 @@ Item {
         }
     }
 
+    component StyledSelect: ComboBox {
+        id: styledSelectRoot
+        property string placeholder: ""
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: 32
+
+        background: StyledRect {
+            variant: styledSelectRoot.hovered ? "focus" : "common"
+            radius: Styling.radius(-2)
+            enableShadow: true
+        }
+
+        contentItem: Text {
+            text: {
+                if (styledSelectRoot.currentIndex < 0 || styledSelectRoot.currentText === "")
+                    return styledSelectRoot.placeholder;
+                return styledSelectRoot.currentText;
+            }
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(-1)
+            color: Colors.overBackground
+            elide: Text.ElideRight
+            verticalAlignment: Text.AlignVCenter
+            anchors.verticalCenter: parent.verticalCenter
+            anchors.left: parent.left
+            anchors.leftMargin: 10
+            anchors.right: parent.right
+            anchors.rightMargin: 24
+        }
+
+        indicator: Text {
+            x: styledSelectRoot.width - width - 10
+            anchors.verticalCenter: parent.verticalCenter
+            text: Icons.caretDown
+            font.family: Icons.font
+            font.pixelSize: 16
+            color: Colors.overSurfaceVariant
+        }
+
+        popup: Popup {
+            y: styledSelectRoot.height + 4
+            width: Math.max(styledSelectRoot.width, popupList.contentWidth + 8)
+            implicitHeight: popupList.contentHeight > 240 ? 240 : popupList.contentHeight
+            padding: 4
+            modal: true
+            focus: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+
+            background: StyledRect {
+                variant: "pane"
+                radius: Styling.radius(-1)
+                enableShadow: true
+            }
+
+            contentItem: ListView {
+                id: popupList
+                implicitWidth: styledSelectRoot.width
+                model: styledSelectRoot.model
+                clip: true
+                spacing: 4
+
+                delegate: StyledRect {
+                    id: optionRect
+                    required property var modelData
+                    required property int index
+
+                    property bool isHovered: false
+
+                    variant: styledSelectRoot.currentIndex === index ? "primary" : (optionRect.isHovered ? "focus" : "common")
+                    radius: Styling.radius(-2)
+                    height: 32
+                    width: popupList.width
+                    enableShadow: false
+
+                    Text {
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.left: parent.left
+                        anchors.leftMargin: 10
+                        text: (typeof optionRect.modelData === "string") ? optionRect.modelData : (optionRect.modelData && optionRect.modelData.text ? optionRect.modelData.text : "")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        color: optionRect.item
+                        elide: Text.ElideRight
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onEntered: optionRect.isHovered = true
+                        onExited: optionRect.isHovered = false
+                        onClicked: {
+                            styledSelectRoot.currentIndex = optionRect.index;
+                            styledSelectRoot.popup.close();
+                            styledSelectRoot.activated(optionRect.index);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    component BarItemsList: ColumnLayout {
+        id: barItemsListRoot
+        required property string label
+        required property string groupId
+        required property var items
+        required property var availableItems
+        property bool readOnly: false
+        signal itemsUpdated(var newList)
+
+        property int rowHeight: 40
+
+        Layout.fillWidth: true
+        spacing: 8
+
+        Text {
+            text: barItemsListRoot.label
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(-1)
+            font.weight: Font.Medium
+            color: Colors.overSurfaceVariant
+        }
+
+        ListView {
+            id: itemsList
+            Layout.fillWidth: true
+            Layout.preferredHeight: Math.max(barItemsListRoot.rowHeight, contentHeight)
+            Layout.minimumHeight: barItemsListRoot.rowHeight
+            spacing: 6
+            interactive: false
+            clip: true
+            model: barItemsListRoot.items ?? []
+
+            delegate: StyledRect {
+                id: delegateItem
+                required property string modelData
+                required property int index
+
+                property real originalY: 0
+                property bool held: dragArea.pressed
+
+                width: itemsList.width
+                height: barItemsListRoot.rowHeight
+                variant: "pane"
+                radius: Styling.radius(-2)
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 8
+
+                        Text {
+                            text: Icons.dotsNine
+                            font.family: Icons.font
+                            font.pixelSize: 14
+                            color: Colors.overSurfaceVariant
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                    Text {
+                        text: {
+                            for (var i = 0; i < barItemDefs.length; i++) {
+                                if (barItemDefs[i].id === delegateItem.modelData)
+                                    return barItemDefs[i].label;
+                            }
+                            return delegateItem.modelData;
+                        }
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(0)
+                        color: Colors.overBackground
+                        Layout.fillWidth: true
+                        elide: Text.ElideRight
+                    }
+
+                StyledRect {
+                    id: removeButton
+                    width: 28
+                    height: 28
+                    radius: Styling.radius(-2)
+                    variant: "common"
+                    visible: !barItemsListRoot.readOnly && delegateItem.modelData !== "notch"
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: Icons.trash
+                            font.family: Icons.font
+                            font.pixelSize: 14
+                            color: Colors.overSurfaceVariant
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                var newItems = barItemsListRoot.items.slice();
+                                newItems.splice(delegateItem.index, 1);
+                                barItemsListRoot.itemsUpdated(newItems);
+                            }
+                        }
+                    }
+                }
+
+                MouseArea {
+                    id: dragArea
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 48
+                    hoverEnabled: true
+                    cursorShape: Qt.SizeVerCursor
+                    enabled: !barItemsListRoot.readOnly
+                    drag.target: held ? delegateItem : undefined
+                    drag.axis: Drag.YAxis
+                    drag.minimumY: -delegateItem.height
+                    drag.maximumY: itemsList.height
+                    preventStealing: true
+
+                    onPressed: {
+                        delegateItem.z = 2;
+                        delegateItem.originalY = delegateItem.y;
+                    }
+                    onReleased: {
+                        delegateItem.z = 1;
+                        if (drag.active) {
+                            var newIndex = Math.round(delegateItem.y / (delegateItem.height + itemsList.spacing));
+                            newIndex = Math.max(0, Math.min(newIndex, barItemsListRoot.items.length - 1));
+                            if (newIndex !== delegateItem.index) {
+                                var newItems = barItemsListRoot.items.slice();
+                                var draggedItem = newItems.splice(delegateItem.index, 1)[0];
+                                newItems.splice(newIndex, 0, draggedItem);
+                                barItemsListRoot.itemsUpdated(newItems);
+                            }
+                        }
+                        delegateItem.x = 0;
+                        delegateItem.y = delegateItem.originalY;
+                    }
+                }
+
+                Behavior on y {
+                    enabled: !dragArea.held && !dragArea.drag.active
+                    NumberAnimation {
+                        duration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 32
+            spacing: 8
+            visible: !barItemsListRoot.readOnly
+
+            StyledSelect {
+                id: addComboBox
+                Layout.fillWidth: true
+                model: barItemsListRoot.availableItems.map(item => item.label)
+                currentIndex: 0
+                enabled: barItemsListRoot.availableItems.length > 0
+                placeholder: "Select item"
+            }
+
+            StyledRect {
+                id: addButton
+                Layout.preferredWidth: 80
+                Layout.preferredHeight: 32
+                radius: Styling.radius(-2)
+                variant: barItemsListRoot.availableItems.length > 0 ? "primary" : "common"
+                enableShadow: barItemsListRoot.availableItems.length > 0
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "Add"
+                    font.family: Config.theme.font
+                    font.pixelSize: Styling.fontSize(-1)
+                    font.weight: Font.Medium
+                    color: addButton.item
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: barItemsListRoot.availableItems.length > 0
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (barItemsListRoot.availableItems.length === 0)
+                            return;
+                        var selectedItem = barItemsListRoot.availableItems[addComboBox.currentIndex];
+                        if (!selectedItem)
+                            return;
+                        var newItems = (barItemsListRoot.items ?? []).slice();
+                        newItems.push(selectedItem.id);
+                        barItemsListRoot.itemsUpdated(newItems);
+                    }
+                }
+            }
+        }
+    }
+
     // Main content
     Flickable {
         id: mainFlickable
@@ -713,6 +1171,45 @@ Item {
                                     GlobalStates.markShellChanged();
                                     Config.bar.position = newValue;
                                 }
+                            }
+                        }
+
+                        Text {
+                            text: "Bar Items"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.topMargin: 8
+                        }
+
+                        BarItemsList {
+                            label: "Left Group"
+                            groupId: "left"
+                            items: root.getBarItems("left")
+                            availableItems: root.availableBarItems("left")
+                            onItemsUpdated: newList => {
+                                root.applyBarItemsUpdate("left", newList);
+                            }
+                        }
+
+                        BarItemsList {
+                            label: "Center Group"
+                            groupId: "center"
+                            items: root.getBarItems("center")
+                            availableItems: root.availableBarItems("center")
+                            onItemsUpdated: newList => {
+                                root.applyBarItemsUpdate("center", newList);
+                            }
+                        }
+
+                        BarItemsList {
+                            label: "Right Group"
+                            groupId: "right"
+                            items: root.getBarItems("right")
+                            availableItems: root.availableBarItems("right")
+                            onItemsUpdated: newList => {
+                                root.applyBarItemsUpdate("right", newList);
                             }
                         }
 
