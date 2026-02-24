@@ -49,6 +49,7 @@ QtObject {
     readonly property string terminalWindow: ""
     readonly property string clipboard: ""
     readonly property string emoji: ""
+    readonly property string calculate: "\ue538"
     readonly property string shortcut: ""
     readonly property string launch: ""
     readonly property string pin: ""

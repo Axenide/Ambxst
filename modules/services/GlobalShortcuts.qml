@@ -39,6 +39,7 @@ QtObject {
             case "emoji": toggleLauncherWithPrefix(2, Config.prefix.emoji + " "); break;
             case "tmux": toggleLauncherWithPrefix(3, Config.prefix.tmux + " "); break;
             case "notes": toggleLauncherWithPrefix(4, Config.prefix.notes + " "); break;
+            case "calculator": toggleLauncherWithPrefix(5, Config.prefix.calculator + " "); break;
 
             // Dashboard
             case "dashboard": toggleDashboardTab(0); break;
@@ -279,6 +280,13 @@ QtObject {
         name: "notes"
         description: "Open launcher notes"
         onPressed: toggleLauncherWithPrefix(4, Config.prefix.notes + " ")
+    }
+
+    property GlobalShortcut shortcutCalculator: GlobalShortcut {
+        appid: root.appId
+        name: "calculator"
+        description: "Open launcher calculator"
+        onPressed: toggleLauncherWithPrefix(5, Config.prefix.calculator + " ")
     }
 
     // Dashboard shortcuts
