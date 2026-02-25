@@ -727,6 +727,7 @@ Singleton {
             property bool rotateCoverArt: true
             property bool dashboardPersistTabs: true
             property int dashboardMaxPersistentTabs: 2
+            property bool obsidianEnabled: true
         }
     }
 

@@ -664,6 +664,10 @@ Item {
                             text: "System"
                             sectionId: "system"
                         }
+                        SectionButton {
+                            text: "Dashboard"
+                            sectionId: "dashboard"
+                        }
                     }
 
                     // ═══════════════════════════════════════════════════════════════
@@ -1846,6 +1850,35 @@ Item {
                                 if (value !== Config.system.ocr.kor) {
                                     GlobalStates.markShellChanged();
                                     Config.system.ocr.kor = value;
+                                }
+                            }
+                        }
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // DASHBOARD SECTION
+                    // ═══════════════════════════════════════════════════════════════
+                    ColumnLayout {
+                        visible: root.currentSection === "dashboard"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Notes"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        ToggleRow {
+                            label: "Obsidian Integration"
+                            checked: Config.performance.obsidianEnabled ?? true
+                            onToggled: value => {
+                                if (value !== Config.performance.obsidianEnabled) {
+                                    GlobalStates.markShellChanged();
+                                    Config.performance.obsidianEnabled = value;
                                 }
                             }
                         }
