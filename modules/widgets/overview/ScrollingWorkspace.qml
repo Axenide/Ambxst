@@ -389,11 +389,18 @@ Item {
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
                         color: windowDelegate.dragging ? Colors.surfaceBright : windowDelegate.hovered ? Colors.surface : Colors.background
-                        border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-                        border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
+                        border.color: (windowDelegate.isSelected || windowDelegate.isMatched || windowDelegate.hovered) ? (windowDelegate.isSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+                        border.width: windowDelegate.isSelected ? 3 : 2
                         visible: !Config.performance.windowPreview
 
                         Behavior on color {
+                            enabled: Config.animDuration > 0
+                            ColorAnimation {
+                                duration: Config.animDuration / 2
+                            }
+                        }
+
+                        Behavior on border.color {
                             enabled: Config.animDuration > 0
                             ColorAnimation {
                                 duration: Config.animDuration / 2
@@ -422,8 +429,8 @@ Item {
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
                         color: windowDelegate.dragging ? Qt.rgba(Colors.surfaceContainerHighest.r, Colors.surfaceContainerHighest.g, Colors.surfaceContainerHighest.b, 0.5) : windowDelegate.hovered ? Qt.rgba(Colors.surfaceContainer.r, Colors.surfaceContainer.g, Colors.surfaceContainer.b, 0.2) : "transparent"
-                        border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-                        border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
+                        border.color: (windowDelegate.isSelected || windowDelegate.isMatched || windowDelegate.hovered) ? (windowDelegate.isSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+                        border.width: windowDelegate.isSelected ? 3 : 2
                         visible: Config.performance.windowPreview && (windowDelegate.hovered || windowDelegate.dragging || windowDelegate.isMatched || windowDelegate.isSelected)
                         z: 5
                     }

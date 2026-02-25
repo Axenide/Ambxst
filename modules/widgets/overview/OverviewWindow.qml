@@ -147,8 +147,8 @@ Item {
         anchors.fill: parent
         radius: root.calculatedRadius
         color: pressed ? Colors.surfaceBright : hovered ? Colors.surface : Colors.background
-        border.color: root.isSearchSelected ? Colors.tertiary : root.isSearchMatch ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-        border.width: root.isSearchSelected ? 3 : root.isSearchMatch ? 2 : (hovered ? 2 : 0)
+        border.color: (root.isSearchSelected || root.isSearchMatch || hovered) ? (root.isSearchSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+        border.width: root.isSearchSelected ? 3 : 2
         visible: !windowPreview.hasContent || !Config.performance.windowPreview
 
         Behavior on color {
@@ -158,9 +158,9 @@ Item {
             }
         }
 
-        Behavior on border.width {
+        Behavior on border.color {
             enabled: Config.animDuration > 0
-            NumberAnimation {
+            ColorAnimation {
                 duration: Config.animDuration / 2
             }
         }
@@ -187,14 +187,14 @@ Item {
         anchors.fill: parent
         radius: root.calculatedRadius
         color: pressed ? Qt.rgba(Colors.surfaceContainerHighest.r, Colors.surfaceContainerHighest.g, Colors.surfaceContainerHighest.b, 0.5) : hovered ? Qt.rgba(Colors.surfaceContainer.r, Colors.surfaceContainer.g, Colors.surfaceContainer.b, 0.2) : "transparent"
-        border.color: root.isSearchSelected ? Colors.tertiary : root.isSearchMatch ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-        border.width: root.isSearchSelected ? 3 : root.isSearchMatch ? 2 : (hovered ? 2 : 0)
+        border.color: (root.isSearchSelected || root.isSearchMatch || hovered) ? (root.isSearchSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+        border.width: root.isSearchSelected ? 3 : 2
         visible: windowPreview.hasContent && Config.performance.windowPreview
         z: 5
 
-        Behavior on border.width {
+        Behavior on border.color {
             enabled: Config.animDuration > 0
-            NumberAnimation {
+            ColorAnimation {
                 duration: Config.animDuration / 2
             }
         }
