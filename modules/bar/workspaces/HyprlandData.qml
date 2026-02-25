@@ -58,7 +58,8 @@ Singleton {
             let ignoreList = [
                 "activewindow", "focusedmon", "monitoradded", 
                 "createworkspace", "destroyworkspace", "moveworkspace", 
-                "activespecial", "movewindow", "windowtitle"
+                "activespecial", "movewindow", "windowtitle",
+                "workspace"
             ]
             if (ignoreList.includes(event.name)) return
             updateWindowList()

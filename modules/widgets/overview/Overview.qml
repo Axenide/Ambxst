@@ -26,8 +26,10 @@ Item {
 
     // Use the screen's monitor instead of focused monitor for multi-monitor support
     property var currentScreen: null  // This will be set from parent
+    property int trackedWorkspaceId: 1
+    signal workspaceNavigated(int wsId)
     readonly property var monitor: currentScreen ? Hyprland.monitorFor(currentScreen) : Hyprland.focusedMonitor
-    readonly property int workspaceGroup: Math.floor((monitor?.activeWorkspace?.id - 1 || 0) / workspacesShown)
+    readonly property int workspaceGroup: Math.floor((trackedWorkspaceId - 1 || 0) / workspacesShown)
 
     // Cache these references
     readonly property var windowList: HyprlandData.windowList
@@ -236,7 +238,7 @@ Item {
 
                             implicitWidth: overviewRoot.workspaceImplicitWidth + workspacePadding
                             implicitHeight: overviewRoot.workspaceImplicitHeight + workspacePadding
-                            color: "transparent"
+                            color: Colors.background
                             radius: Styling.radius(2)
                             border.width: 2
                             border.color: hoveredWhileDragging ? hoveredBorderColor : "transparent"
@@ -263,15 +265,15 @@ Item {
                                 acceptedButtons: Qt.LeftButton
                                 onClicked: {
                                     if (overviewRoot.draggingTargetWorkspace === -1) {
-                                        // Only switch workspace, don't close overview
-                                        Hyprland.dispatch(`workspace ${workspaceValue}`);
+                                        overviewRoot.workspaceNavigated(workspaceValue);
                                     }
                                 }
                                 onDoubleClicked: {
                                     if (overviewRoot.draggingTargetWorkspace === -1) {
-                                        // Double click closes overview and switches workspace
                                         Visibilities.setActiveModule("");
-                                        Hyprland.dispatch(`workspace ${workspaceValue}`);
+                                        if (workspaceValue !== (overviewRoot.monitor?.activeWorkspace?.id || -1)) {
+                                            Hyprland.dispatch(`workspace ${workspaceValue}`);
+                                        }
                                     }
                                 }
                             }
@@ -302,16 +304,15 @@ Item {
             implicitWidth: workspaceColumnLayout.implicitWidth
             implicitHeight: workspaceColumnLayout.implicitHeight
 
-            // Pre-filter windows for this monitor and workspace group
+            // Pre-filter windows for workspace group (all monitors)
             readonly property var filteredWindowData: {
                 const minWs = overviewRoot.workspaceGroup * overviewRoot.workspacesShown;
                 const maxWs = (overviewRoot.workspaceGroup + 1) * overviewRoot.workspacesShown;
-                const monId = overviewRoot.monitorId;
                 const toplevels = ToplevelManager.toplevels.values;
 
                 return overviewRoot.windowList.filter(win => {
                     const wsId = win?.workspace?.id;
-                    return wsId > minWs && wsId <= maxWs && win.monitor === monId;
+                    return wsId > minWs && wsId <= maxWs;
                 }).map(win => ({
                             windowData: win,
                             toplevel: toplevels.find(t => `0x${t.HyprlandToplevel.address}` === win.address) || null
@@ -327,9 +328,28 @@ Item {
                     windowData: modelData.windowData
                     toplevel: modelData.toplevel
                     scale: overviewRoot.scale
+                    crossScaleX: {
+                        if (modelData.windowData.monitor === overviewRoot.monitorId) return 1.0;
+                        const winMon = overviewRoot.monitors.find(m => m.id === modelData.windowData.monitor);
+                        if (!winMon) return 1.0;
+                        const ovW = (overviewRoot.monitorData?.width || 1920) / (overviewRoot.monitorData?.scale || 1.0);
+                        const winW = (winMon.width || 1920) / (winMon.scale || 1.0);
+                        return ovW / winW;
+                    }
+                    crossScaleY: {
+                        if (modelData.windowData.monitor === overviewRoot.monitorId) return 1.0;
+                        const winMon = overviewRoot.monitors.find(m => m.id === modelData.windowData.monitor);
+                        if (!winMon) return 1.0;
+                        const ovH = (overviewRoot.monitorData?.height || 1080) / (overviewRoot.monitorData?.scale || 1.0);
+                        const winH = (winMon.height || 1080) / (winMon.scale || 1.0);
+                        return ovH / winH;
+                    }
                     availableWorkspaceWidth: overviewRoot.workspaceImplicitWidth
                     availableWorkspaceHeight: overviewRoot.workspaceImplicitHeight
-                    monitorData: overviewRoot.monitorData
+                    monitorData: {
+                        const winMon = overviewRoot.monitors.find(m => m.id === modelData.windowData.monitor);
+                        return winMon ?? overviewRoot.monitorData;
+                    }
                     barPosition: overviewRoot.barPosition
                     barReserved: overviewRoot.barReserved
 
@@ -350,23 +370,31 @@ Item {
                             Hyprland.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
                         }
                     }
-                    onWindowClicked: {
-                        // Close overview and focus the specific clicked window
-                        // Skip generic focus restoration since we're handling it specifically
+                    onWindowClicked: (clickSceneX, clickSceneY) => {
+                        // Capture values before closing — delegate gets destroyed after close
+                        var addr = windowData.address;
+                        var sameMonitor = (windowData.monitor === overviewRoot.monitorId);
+                        var absX = Math.round((overviewRoot.monitorData?.x || 0) + clickSceneX);
+                        var absY = Math.round((overviewRoot.monitorData?.y || 0) + clickSceneY);
                         Visibilities.setActiveModule("", true);
                         Qt.callLater(() => {
-                            Hyprland.dispatch(`focuswindow address:${windowData.address}`);
+                            Hyprland.dispatch(`focuswindow address:${addr}`);
+                            if (sameMonitor) {
+                                Hyprland.dispatch(`movecursor ${absX} ${absY}`);
+                            }
                         });
                     }
                     onWindowClosed: {
                         Hyprland.dispatch(`closewindow address:${windowData.address}`);
                     }
+                    onWorkspaceNavigated: wsId => overviewRoot.workspaceNavigated(wsId)
                 }
             }
 
             Rectangle {
                 id: focusedWorkspaceIndicator
-                property int activeWorkspaceInGroup: (monitor?.activeWorkspace?.id || 1) - (overviewRoot.workspaceGroup * overviewRoot.workspacesShown)
+                z: 10
+                property int activeWorkspaceInGroup: overviewRoot.trackedWorkspaceId - (overviewRoot.workspaceGroup * overviewRoot.workspacesShown)
                 property int activeWorkspaceRowIndex: Math.floor((activeWorkspaceInGroup - 1) / overviewRoot.columns)
                 property int activeWorkspaceColIndex: (activeWorkspaceInGroup - 1) % overviewRoot.columns
 

@@ -33,6 +33,8 @@ Item {
     property int draggingTargetWorkspace: -1
     property Item dragOverlay: null
     property Item overviewRoot: null
+    property var monitors: []
+    signal workspaceNavigated(int wsId)
 
     // Callbacks for search matching (set by parent)
     property var checkWindowMatched: function (addr) {
@@ -49,10 +51,10 @@ Item {
     readonly property real viewportWidth: workspaceWidth / 3
     readonly property real viewportOffset: viewportWidth  // Offset to center third
 
-    // Filter windows for this workspace and monitor
+    // Filter windows for this workspace (all monitors)
     readonly property var workspaceWindows: {
         return windowList.filter(win => {
-            return win?.workspace?.id === workspaceId && win.monitor === monitorId;
+            return win?.workspace?.id === workspaceId;
         });
     }
 
@@ -72,11 +74,16 @@ Item {
 
         for (const win of workspaceWindows) {
             // Calculate window position the same way as in the delegate
-            let baseX = (win?.at?.[0] || 0) - (monitorData?.x || 0);
+            const winMon = root.monitors.find(m => m.id === win?.monitor) ?? monitorData;
+            let baseX = (win?.at?.[0] || 0) - (winMon?.x || 0);
             if (barPosition === "left")
                 baseX -= barReserved;
-            const scaledX = baseX * scale_;
-            const winWidth = (win?.size?.[0] || 100) * scale_;
+            const isCrossMon = win?.monitor !== root.monitorId;
+            const crossScX = isCrossMon ? ((monitorData?.width || 1920) / (monitorData?.scale || 1.0)) / ((winMon?.width || 1920) / (winMon?.scale || 1.0)) : 1.0;
+            const crossScY = isCrossMon ? ((monitorData?.height || 1080) / (monitorData?.scale || 1.0)) / ((winMon?.height || 1080) / (winMon?.scale || 1.0)) : 1.0;
+            const crossScU = Math.min(crossScX, crossScY);
+            const scaledX = baseX * scale_ * crossScU;
+            const winWidth = (win?.size?.[0] || 100) * scale_ * crossScU;
 
             minX = Math.min(minX, scaledX);
             maxX = Math.max(maxX, scaledX + winWidth);
@@ -160,6 +167,13 @@ Item {
             id: backgroundLayer
             anchors.fill: parent
             clip: true
+
+            // Solid fallback behind wallpaper (prevents white bleed-through for cross-monitor tiles)
+            Rectangle {
+                anchors.fill: parent
+                radius: Styling.radius(1)
+                color: Colors.background
+            }
 
             // Wallpaper background
             TintedWallpaper {
@@ -265,8 +279,10 @@ Item {
             TapHandler {
                 acceptedButtons: Qt.LeftButton
                 onDoubleTapped: {
-                    Hyprland.dispatch(`workspace ${root.workspaceId}`);
                     Visibilities.setActiveModule("", true);
+                    if (root.overviewRoot && root.workspaceId !== (root.overviewRoot.monitor?.activeWorkspace?.id || -1)) {
+                        Hyprland.dispatch(`workspace ${root.workspaceId}`);
+                    }
                 }
             }
 
@@ -288,25 +304,47 @@ Item {
                     property real overrideBaseY: -1
                     property bool useOverridePosition: false
 
+                    // Per-window monitor data for cross-monitor windows
+                    readonly property var windowMonData: {
+                        if (windowData?.monitor === root.monitorId) return root.monitorData;
+                        const m = root.monitors.find(mon => mon.id === windowData?.monitor);
+                        return m ?? root.monitorData;
+                    }
+                    readonly property real crossScaleX: {
+                        if (windowData?.monitor === root.monitorId) return 1.0;
+                        const ovW = (root.monitorData?.width || 1920) / (root.monitorData?.scale || 1.0);
+                        const winW = (windowMonData?.width || 1920) / (windowMonData?.scale || 1.0);
+                        return ovW / winW;
+                    }
+                    readonly property real crossScaleY: {
+                        if (windowData?.monitor === root.monitorId) return 1.0;
+                        const ovH = (root.monitorData?.height || 1080) / (root.monitorData?.scale || 1.0);
+                        const winH = (windowMonData?.height || 1080) / (windowMonData?.scale || 1.0);
+                        return ovH / winH;
+                    }
+                    readonly property real crossScaleUniform: Math.min(crossScaleX, crossScaleY)
+                    readonly property real crossCenterX: crossScaleX > 0 ? ((root.monitorData?.width || 1920) / (root.monitorData?.scale || 1.0)) * root.scale_ * (1 - crossScaleUniform / crossScaleX) / 2 : 0
+                    readonly property real crossCenterY: crossScaleY > 0 ? ((root.monitorData?.height || 1080) / (root.monitorData?.scale || 1.0)) * root.scale_ * (1 - crossScaleUniform / crossScaleY) / 2 : 0
+
                     // Position calculations relative to center viewport
                     readonly property real baseX: {
                         if (useOverridePosition && overrideBaseX >= 0)
                             return overrideBaseX;
-                        let base = (windowData?.at?.[0] || 0) - (monitorData?.x || 0);
+                        let base = (windowData?.at?.[0] || 0) - (windowMonData?.x || 0);
                         if (barPosition === "left")
                             base -= barReserved;
-                        return (base * scale_) + root.viewportOffset + root.horizontalScrollOffset;
+                        return (base * scale_ * crossScaleUniform) + root.viewportOffset + root.horizontalScrollOffset + crossCenterX;
                     }
                     readonly property real baseY: {
                         if (useOverridePosition && overrideBaseY >= 0)
                             return overrideBaseY;
-                        let base = (windowData?.at?.[1] || 0) - (monitorData?.y || 0);
+                        let base = (windowData?.at?.[1] || 0) - (windowMonData?.y || 0);
                         if (barPosition === "top")
                             base -= barReserved;
-                        return Math.max(base * scale_, 0);
+                        return Math.max(base * scale_ * crossScaleUniform, 0) + crossCenterY;
                     }
-                    readonly property real targetWidth: Math.round((windowData?.size[0] || 100) * scale_)
-                    readonly property real targetHeight: Math.round((windowData?.size[1] || 100) * scale_)
+                    readonly property real targetWidth: Math.round((windowData?.size[0] || 100) * scale_ * crossScaleUniform)
+                    readonly property real targetHeight: Math.round((windowData?.size[1] || 100) * scale_ * crossScaleUniform)
                     readonly property bool compactMode: targetHeight < 60 || targetWidth < 60
                     readonly property string iconPath: AppSearch.guessIcon(windowData?.class || "")
                     readonly property int calculatedRadius: Styling.radius(-2)
@@ -386,11 +424,18 @@ Item {
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
                         color: windowDelegate.dragging ? Colors.surfaceBright : windowDelegate.hovered ? Colors.surface : Colors.background
-                        border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-                        border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
+                        border.color: (windowDelegate.isSelected || windowDelegate.isMatched || windowDelegate.hovered) ? (windowDelegate.isSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+                        border.width: windowDelegate.isSelected ? 3 : 2
                         visible: !Config.performance.windowPreview
 
                         Behavior on color {
+                            enabled: Config.animDuration > 0
+                            ColorAnimation {
+                                duration: Config.animDuration / 2
+                            }
+                        }
+
+                        Behavior on border.color {
                             enabled: Config.animDuration > 0
                             ColorAnimation {
                                 duration: Config.animDuration / 2
@@ -419,8 +464,8 @@ Item {
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
                         color: windowDelegate.dragging ? Qt.rgba(Colors.surfaceContainerHighest.r, Colors.surfaceContainerHighest.g, Colors.surfaceContainerHighest.b, 0.5) : windowDelegate.hovered ? Qt.rgba(Colors.surfaceContainer.r, Colors.surfaceContainer.g, Colors.surfaceContainer.b, 0.2) : "transparent"
-                        border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-                        border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
+                        border.color: (windowDelegate.isSelected || windowDelegate.isMatched || windowDelegate.hovered) ? (windowDelegate.isSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+                        border.width: windowDelegate.isSelected ? 3 : 2
                         visible: Config.performance.windowPreview && (windowDelegate.hovered || windowDelegate.dragging || windowDelegate.isMatched || windowDelegate.isSelected)
                         z: 5
                     }
@@ -428,16 +473,17 @@ Item {
                     // Corner icon when preview available
                     Image {
                         mipmap: true
+                        readonly property real badgeSize: Math.round(Math.max(Math.min(windowDelegate.targetWidth, windowDelegate.targetHeight) * 0.12, 12))
                         visible: windowPreview.hasContent && !windowDelegate.compactMode && Config.performance.windowPreview
                         anchors.bottom: parent.bottom
                         anchors.right: parent.right
-                        anchors.margins: 4
-                        width: 16
-                        height: 16
+                        anchors.margins: Math.round(badgeSize * 0.2)
+                        width: badgeSize
+                        height: badgeSize
                         source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
-                        sourceSize: Qt.size(16, 16)
+                        sourceSize: Qt.size(badgeSize, badgeSize)
                         asynchronous: true
-                        opacity: 0.8
+                        opacity: 0.9
                         z: 10
                     }
 
@@ -682,7 +728,7 @@ Item {
                             if (!windowDelegate.windowData)
                                 return;
                             if (mouse.button === Qt.LeftButton && !windowDelegate.dragging) {
-                                Hyprland.dispatch(`focuswindow address:${windowDelegate.windowData.address}`);
+                                root.workspaceNavigated(windowDelegate.windowData.workspace.id);
                             } else if (mouse.button === Qt.MiddleButton) {
                                 Hyprland.dispatch(`closewindow address:${windowDelegate.windowData.address}`);
                             }

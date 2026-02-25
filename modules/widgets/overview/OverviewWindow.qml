@@ -29,6 +29,13 @@ Item {
     property string barPosition: "top"
     property int barReserved: 0
 
+    // Cross-monitor scale correction (set by parent for windows on different monitors)
+    property real crossScaleX: 1.0
+    property real crossScaleY: 1.0
+    readonly property real crossScaleUniform: Math.min(crossScaleX, crossScaleY)
+    readonly property real crossCenterX: crossScaleX > 0 ? availableWorkspaceWidth * (1 - crossScaleUniform / crossScaleX) / 2 : 0
+    readonly property real crossCenterY: crossScaleY > 0 ? availableWorkspaceHeight * (1 - crossScaleUniform / crossScaleY) / 2 : 0
+
     // Search highlighting
     property bool isSearchMatch: false
     property bool isSearchSelected: false
@@ -46,7 +53,7 @@ Item {
         let base = (windowData?.at?.[0] || 0) - (monitorData?.x || 0);
         if (barPosition === "left")
             base -= barReserved;
-        return Math.round(Math.max(base * scale, 0) + xOffset);
+        return Math.round(Math.max(base * scale * crossScaleUniform, 0) + xOffset + crossCenterX);
     }
     readonly property real initY: {
         if (useOverridePosition && overrideY >= 0)
@@ -54,18 +61,19 @@ Item {
         let base = (windowData?.at?.[1] || 0) - (monitorData?.y || 0);
         if (barPosition === "top")
             base -= barReserved;
-        return Math.round(Math.max(base * scale, 0) + yOffset);
+        return Math.round(Math.max(base * scale * crossScaleUniform, 0) + yOffset + crossCenterY);
     }
-    readonly property real targetWindowWidth: Math.round((windowData?.size[0] || 100) * scale)
-    readonly property real targetWindowHeight: Math.round((windowData?.size[1] || 100) * scale)
+    readonly property real targetWindowWidth: Math.round((windowData?.size[0] || 100) * scale * crossScaleUniform)
+    readonly property real targetWindowHeight: Math.round((windowData?.size[1] || 100) * scale * crossScaleUniform)
     readonly property bool compactMode: targetWindowHeight < 60 || targetWindowWidth < 60
     readonly property string iconPath: AppSearch.guessIcon(windowData?.class || "")
     readonly property int calculatedRadius: Styling.radius(-2)
 
     signal dragStarted
     signal dragFinished(int targetWorkspace)
-    signal windowClicked
+    signal windowClicked(real clickSceneX, real clickSceneY)
     signal windowClosed
+    signal workspaceNavigated(int wsId)
 
     x: initX
     y: initY
@@ -146,8 +154,8 @@ Item {
         anchors.fill: parent
         radius: root.calculatedRadius
         color: pressed ? Colors.surfaceBright : hovered ? Colors.surface : Colors.background
-        border.color: root.isSearchSelected ? Colors.tertiary : root.isSearchMatch ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-        border.width: root.isSearchSelected ? 3 : root.isSearchMatch ? 2 : (hovered ? 2 : 0)
+        border.color: (root.isSearchSelected || root.isSearchMatch || hovered) ? (root.isSearchSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+        border.width: root.isSearchSelected ? 3 : 2
         visible: !windowPreview.hasContent || !Config.performance.windowPreview
 
         Behavior on color {
@@ -157,9 +165,9 @@ Item {
             }
         }
 
-        Behavior on border.width {
+        Behavior on border.color {
             enabled: Config.animDuration > 0
-            NumberAnimation {
+            ColorAnimation {
                 duration: Config.animDuration / 2
             }
         }
@@ -186,14 +194,14 @@ Item {
         anchors.fill: parent
         radius: root.calculatedRadius
         color: pressed ? Qt.rgba(Colors.surfaceContainerHighest.r, Colors.surfaceContainerHighest.g, Colors.surfaceContainerHighest.b, 0.5) : hovered ? Qt.rgba(Colors.surfaceContainer.r, Colors.surfaceContainer.g, Colors.surfaceContainer.b, 0.2) : "transparent"
-        border.color: root.isSearchSelected ? Colors.tertiary : root.isSearchMatch ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-        border.width: root.isSearchSelected ? 3 : root.isSearchMatch ? 2 : (hovered ? 2 : 0)
+        border.color: (root.isSearchSelected || root.isSearchMatch || hovered) ? (root.isSearchSelected ? Colors.tertiary : Styling.srItem("overprimary")) : "transparent"
+        border.width: root.isSearchSelected ? 3 : 2
         visible: windowPreview.hasContent && Config.performance.windowPreview
         z: 5
 
-        Behavior on border.width {
+        Behavior on border.color {
             enabled: Config.animDuration > 0
-            NumberAnimation {
+            ColorAnimation {
                 duration: Config.animDuration / 2
             }
         }
@@ -215,16 +223,17 @@ Item {
     // Overlay icon when preview is available (smaller, in corner)
     Image {
         mipmap: true
+        readonly property real badgeSize: Math.round(Math.max(Math.min(root.targetWindowWidth, root.targetWindowHeight) * 0.12, 12))
         visible: windowPreview.hasContent && !root.compactMode && Config.performance.windowPreview
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        anchors.margins: 4
-        width: 16
-        height: 16
+        anchors.margins: Math.round(badgeSize * 0.2)
+        width: badgeSize
+        height: badgeSize
         source: Quickshell.iconPath(root.iconPath, "image-missing")
-        sourceSize: Qt.size(16, 16)
+        sourceSize: Qt.size(badgeSize, badgeSize)
         asynchronous: true
-        opacity: 0.8
+        opacity: 0.9
         z: 10
     }
 
@@ -250,17 +259,6 @@ Item {
 
         onEntered: {
             root.hovered = true;
-            // Only focus window on hover if it's in the current workspace
-            if (root.windowData) {
-                // Get current active workspace from Hyprland
-                let currentWorkspace = Hyprland.focusedMonitor?.activeWorkspace?.id;
-                let windowWorkspace = root.windowData?.workspace?.id;
-
-                // Only focus if the window is in the current workspace
-                if (currentWorkspace && windowWorkspace && currentWorkspace === windowWorkspace) {
-                    Hyprland.dispatch(`focuswindow address:${windowData.address}`);
-                }
-            }
         }
         onExited: root.hovered = false
 
@@ -372,8 +370,7 @@ Item {
                 return;
 
             if (mouse.button === Qt.LeftButton) {
-                // Single click just focuses the window without closing overview
-                Hyprland.dispatch(`focuswindow address:${windowData.address}`);
+                root.workspaceNavigated(windowData.workspace.id);
             } else if (mouse.button === Qt.MiddleButton) {
                 root.windowClosed();
             }
@@ -384,8 +381,9 @@ Item {
                 return;
 
             if (mouse.button === Qt.LeftButton) {
-                // Double click closes overview and focuses window
-                root.windowClicked();
+                // Map click to scene coordinates (= screen-local, since popup is fullscreen)
+                var scenePos = dragArea.mapToItem(null, mouse.x, mouse.y);
+                root.windowClicked(scenePos.x, scenePos.y);
             }
         }
     }

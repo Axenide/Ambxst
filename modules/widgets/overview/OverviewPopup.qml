@@ -31,6 +31,9 @@ PanelWindow {
     readonly property var screenVisibilities: Visibilities.getForScreen(screen.name)
     readonly property bool overviewOpen: screenVisibilities ? screenVisibilities.overview : false
 
+    property int trackedWorkspaceId: 1
+    readonly property int navigableWorkspaces: Math.max(Config.workspaces.shown, 1)
+
     visible: overviewOpen
     exclusionMode: ExclusionMode.Ignore
 
@@ -192,34 +195,34 @@ PanelWindow {
                     }
 
                     onAccepted: {
-                        if (overviewLoader.item) {
-                            overviewLoader.item.navigateToSelectedWindow();
+                        if (searchInput.text.length > 0) {
+                            if (overviewLoader.item) {
+                                overviewLoader.item.navigateToSelectedWindow();
+                            }
+                        } else {
+                            Visibilities.setActiveModule("");
+                            var mon = overviewPopup.screen ? Hyprland.monitorFor(overviewPopup.screen) : null;
+                            if (overviewPopup.trackedWorkspaceId !== (mon?.activeWorkspace?.id || -1)) {
+                                Hyprland.dispatch("workspace " + overviewPopup.trackedWorkspaceId);
+                            }
                         }
                     }
 
                     onTabPressed: {
                         if (searchInput.text.length === 0) {
-                            const current = Hyprland.focusedWorkspace?.id || 1;
-                            const next = current + 1;
-                            if (next > Config.workspaces.shown) {
-                                Hyprland.dispatch("workspace 1");
-                            } else {
-                                Hyprland.dispatch("workspace r+1");
-                            }
+                            var next = overviewPopup.trackedWorkspaceId + 1;
+                            if (next > overviewPopup.navigableWorkspaces) next = 1;
+                            overviewPopup.trackedWorkspaceId = next;
                         } else if (overviewLoader.item) {
                             overviewLoader.item.selectNextMatch();
                         }
                     }
-                    
+
                     onShiftTabPressed: {
                         if (searchInput.text.length === 0) {
-                            const current = Hyprland.focusedWorkspace?.id || 1;
-                            const prev = current - 1;
-                            if (prev < 1) {
-                                Hyprland.dispatch("workspace " + Config.workspaces.shown);
-                            } else {
-                                Hyprland.dispatch("workspace r-1");
-                            }
+                            var prev = overviewPopup.trackedWorkspaceId - 1;
+                            if (prev < 1) prev = overviewPopup.navigableWorkspaces;
+                            overviewPopup.trackedWorkspaceId = prev;
                         } else if (overviewLoader.item) {
                             overviewLoader.item.selectPrevMatch();
                         }
@@ -250,13 +253,9 @@ PanelWindow {
 
                     onLeftPressed: {
                         if (searchInput.text.length === 0) {
-                            const current = Hyprland.focusedWorkspace?.id || 1;
-                            const prev = current - 1;
-                            if (prev < 1) {
-                                Hyprland.dispatch("workspace " + Config.workspaces.shown);
-                            } else {
-                                Hyprland.dispatch("workspace r-1");
-                            }
+                            var prev = overviewPopup.trackedWorkspaceId - 1;
+                            if (prev < 1) prev = overviewPopup.navigableWorkspaces;
+                            overviewPopup.trackedWorkspaceId = prev;
                         } else if (overviewLoader.item) {
                             overviewLoader.item.selectPrevMatch();
                         }
@@ -264,13 +263,9 @@ PanelWindow {
 
                     onRightPressed: {
                         if (searchInput.text.length === 0) {
-                            const current = Hyprland.focusedWorkspace?.id || 1;
-                            const next = current + 1;
-                            if (next > Config.workspaces.shown) {
-                                Hyprland.dispatch("workspace 1");
-                            } else {
-                                Hyprland.dispatch("workspace r+1");
-                            }
+                            var next = overviewPopup.trackedWorkspaceId + 1;
+                            if (next > overviewPopup.navigableWorkspaces) next = 1;
+                            overviewPopup.trackedWorkspaceId = next;
                         } else if (overviewLoader.item) {
                             overviewLoader.item.selectNextMatch();
                         }
@@ -307,7 +302,15 @@ PanelWindow {
 
                 sourceComponent: OverviewView {
                     currentScreen: overviewPopup.screen
+                    trackedWorkspaceId: overviewPopup.trackedWorkspaceId
                 }
+            }
+        }
+
+        Connections {
+            target: overviewLoader.item
+            function onWorkspaceNavigated(wsId) {
+                overviewPopup.trackedWorkspaceId = wsId;
             }
         }
 
@@ -388,6 +391,8 @@ PanelWindow {
     // Ensure focus when overview opens
     onOverviewOpenChanged: {
         if (overviewOpen) {
+            var mon = screen ? Hyprland.monitorFor(screen) : null;
+            trackedWorkspaceId = mon?.activeWorkspace?.id || 1;
             Qt.callLater(() => {
                 searchInput.clear();
                 if (overviewLoader.item) {

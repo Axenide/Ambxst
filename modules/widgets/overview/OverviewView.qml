@@ -7,6 +7,8 @@ import qs.config
 Item {
     id: root
     property var currentScreen
+    property int trackedWorkspaceId: 1
+    signal workspaceNavigated(int wsId)
 
     // Detect if we're in scrolling layout mode
     readonly property bool isScrollingLayout: GlobalStates.hyprlandLayout === "scrolling"
@@ -51,11 +53,17 @@ Item {
         sourceComponent: isScrollingLayout ? scrollingOverviewComponent : standardOverviewComponent
     }
 
+    Connections {
+        target: overviewLoader.item
+        function onWorkspaceNavigated(wsId) { root.workspaceNavigated(wsId) }
+    }
+
     // Standard grid overview
     Component {
         id: standardOverviewComponent
         Overview {
             currentScreen: root.currentScreen
+            trackedWorkspaceId: root.trackedWorkspaceId
 
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
@@ -75,6 +83,7 @@ Item {
         id: scrollingOverviewComponent
         ScrollingOverview {
             currentScreen: root.currentScreen
+            trackedWorkspaceId: root.trackedWorkspaceId
 
             Keys.onPressed: event => {
                 if (event.key === Qt.Key_Escape) {
