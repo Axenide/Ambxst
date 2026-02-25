@@ -52,13 +52,19 @@ PanelWindow {
         height: 0
     }
 
+    // Delay focus grab to ensure the PanelWindow surface is mapped before
+    // Hyprland processes the grab request (prevents immediate onCleared race)
+    Timer {
+        id: grabDelay
+        interval: 50
+        onTriggered: focusGrab.active = true
+    }
+
     HyprlandFocusGrab {
         id: focusGrab
         windows: [presetsPopup]
-        active: presetsOpen
 
         onCleared: {
-            // Use Qt.callLater to avoid potential race conditions
             Qt.callLater(() => {
                 if (presetsOpen) {
                     Visibilities.setActiveModule("");
@@ -222,12 +228,16 @@ PanelWindow {
     // Ensure focus when presets opens
     onPresetsOpenChanged: {
         if (presetsOpen) {
+            grabDelay.start();
             Qt.callLater(() => {
                 if (presetsLoader.item) {
                     presetsLoader.item.resetSearch();
                     presetsLoader.item.focusSearchInput();
                 }
             });
+        } else {
+            grabDelay.stop();
+            focusGrab.active = false;
         }
     }
 }

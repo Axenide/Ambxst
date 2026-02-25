@@ -52,13 +52,19 @@ PanelWindow {
         height: 0
     }
 
+    // Delay focus grab to ensure the PanelWindow surface is mapped before
+    // Hyprland processes the grab request (prevents immediate onCleared race)
+    Timer {
+        id: grabDelay
+        interval: 50
+        onTriggered: focusGrab.active = true
+    }
+
     HyprlandFocusGrab {
         id: focusGrab
         windows: [overviewPopup]
-        active: overviewOpen
 
         onCleared: {
-            // Use Qt.callLater to avoid potential race conditions
             Qt.callLater(() => {
                 if (overviewOpen) {
                     Visibilities.setActiveModule("");
@@ -388,6 +394,7 @@ PanelWindow {
     // Ensure focus when overview opens
     onOverviewOpenChanged: {
         if (overviewOpen) {
+            grabDelay.start();
             Qt.callLater(() => {
                 searchInput.clear();
                 if (overviewLoader.item) {
@@ -395,6 +402,9 @@ PanelWindow {
                 }
                 searchInput.focusInput();
             });
+        } else {
+            grabDelay.stop();
+            focusGrab.active = false;
         }
     }
 }
