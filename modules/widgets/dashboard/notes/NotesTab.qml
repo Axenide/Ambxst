@@ -21,11 +21,61 @@ Item {
 
     property int leftPanelWidth: 0
 
-    // Notes directory configuration
-    property string notesDir: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst-notes"
-    property string indexPath: notesDir + "/index.json"
-    property string notesPath: notesDir + "/notes"
-    property string noteExtension: ".html"  // Store as HTML for rich text (Markdown uses .md)
+    // Notes directory configuration - persistent via file
+    property string defaultVault: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst/notes"
+    property string vaultPathFile: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst-obsidian-path.txt"
+    property string notesDir: defaultVault // Will be overwritten on load
+    
+    // Process to read saved vault path
+    Process {
+        id: readVaultPathProcess
+        command: ["cat", vaultPathFile]
+        stdout: SplitParser {
+            onRead: data => {
+                if (data.trim() !== "") {
+                    root.notesDir = data.trim();
+                }
+            }
+        }
+        onExited: {
+            root.refreshNotes()
+        }
+    }
+    
+    Component.onCompleted: {
+        readVaultPathProcess.running = true;
+        initDirProcess.running = true;
+    }
+
+    Connections {
+        target: Config.performance
+        function onObsidianEnabledChanged() {
+            root.refreshNotes();
+        }
+    }
+
+    // Process to pick and save vault path
+    Process {
+        id: pickVaultProcess
+        command: ["zenity", "--file-selection", "--directory", "--title", "Select Obsidian Vault"]
+        stdout: SplitParser {
+            onRead: data => {
+                if (data.trim() !== "") {
+                    root.notesDir = data.trim();
+                    saveVaultPathProcess.command = ["bash", "-c", "echo '" + data.trim() + "' > '" + vaultPathFile + "'"];
+                    saveVaultPathProcess.running = true;
+                    root.refreshNotes();
+                }
+            }
+        }
+    }
+    
+    Process {
+        id: saveVaultPathProcess
+    }
+    property string indexPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst-notes-index.json"
+    property string notesPath: notesDir
+    property string noteExtension: ".md"  // Use Markdown for Obsidian
 
     // Search and selection state
     property string searchText: ""
@@ -534,6 +584,17 @@ Item {
                 noteNameToCreate: noteNameToCreate,
                 icon: "plus"
             });
+
+            // Add vault config button at the end if enabled
+            if (Config.performance.obsidianEnabled) {
+                newFilteredNotes.push({
+                    id: "__vault__",
+                    title: "Vault: " + notesDir.split("/").pop(),
+                    isVaultButton: true,
+                    isCreateButton: false,
+                    icon: "folder"
+                });
+            }
         }
 
         filteredNotes = newFilteredNotes;
@@ -599,16 +660,7 @@ Item {
 
     function confirmDeleteNote() {
         if (noteToDelete) {
-            // Find if note is markdown to use correct extension
-            var isMarkdown = false;
-            for (var i = 0; i < allNotes.length; i++) {
-                if (allNotes[i].id === noteToDelete) {
-                    isMarkdown = allNotes[i].isMarkdown || false;
-                    break;
-                }
-            }
-            var extension = isMarkdown ? ".md" : noteExtension;
-            // Store the ID before cancelDeleteMode clears it
+            var extension = ".md";
             deleteNoteProcess.deletedNoteId = noteToDelete;
             deleteNoteProcess.command = ["rm", "-f", notesPath + "/" + noteToDelete + extension];
             deleteNoteProcess.running = true;
@@ -658,16 +710,19 @@ Item {
     }
 
     function createNewNote(title, isMarkdown) {
-        var noteId = NotesUtils.generateUUID();
+        if (isMarkdown === undefined) isMarkdown = true; // Force true for Obsidian
+        
+        // Remove uuid generation, directly use title
         var noteTitle = title || "Untitled Note";
-        var extension = isMarkdown ? ".md" : noteExtension;
+        var noteId = noteTitle; // ID is the title directly
+        var extension = ".md";
 
         // Create the note file with appropriate content
-        var initialContent = isMarkdown ? "# " + noteTitle + "\n\n" : "<h1>" + noteTitle + "</h1><p></p>";
+        var initialContent = "# " + noteTitle + "\n\n";
 
         createNoteProcess.noteId = noteId;
         createNoteProcess.noteTitle = noteTitle;
-        createNoteProcess.noteIsMarkdown = isMarkdown || false;
+        createNoteProcess.noteIsMarkdown = isMarkdown;
         createNoteProcess.command = ["sh", "-c", "mkdir -p '" + notesPath + "' && printf '%s' '" + initialContent.replace(/'/g, "'\\''") + "' > '" + notesPath + "/" + noteId + extension + "'"];
         createNoteProcess.running = true;
     }
@@ -716,11 +771,11 @@ Item {
     }
 
     function updateNoteTitle(noteId, newTitle) {
-        // Read index, update title, save
-        readIndexForUpdateProcess.noteId = noteId;
-        readIndexForUpdateProcess.newTitle = newTitle;
-        readIndexForUpdateProcess.command = ["cat", indexPath];
-        readIndexForUpdateProcess.running = true;
+        // Just rename the file in shell
+        renameNoteProcess.oldNoteId = noteId;
+        renameNoteProcess.newNoteId = newTitle;
+        renameNoteProcess.command = ["mv", notesPath + "/" + noteId + ".md", notesPath + "/" + newTitle + ".md"];
+        renameNoteProcess.running = true;
     }
 
     function updateNoteModified(noteId) {
@@ -824,9 +879,7 @@ Item {
         saveIndexProcess.running = true;
     }
 
-    Component.onCompleted: {
-        initDirProcess.running = true;
-    }
+
 
     // --- Processes ---
 
@@ -840,10 +893,11 @@ Item {
         }
     }
 
-    // Read index.json
+    // Read notes from python backend
     Process {
         id: readIndexProcess
-        command: ["cat", indexPath]
+        // We pass the notesDir which is the Vault path
+        command: ["python3", Quickshell.env("HOME") + "/.local/src/ambxst/modules/widgets/dashboard/notes/obsidian_backend.py", root.notesDir]
         stdout: SplitParser {
             onRead: data => readIndexProcess.stdoutData += data + "\n"
         }
@@ -863,7 +917,7 @@ Item {
                         title: noteMeta.title || "Untitled",
                         created: noteMeta.created || "",
                         modified: noteMeta.modified || "",
-                        isMarkdown: noteMeta.isMarkdown || false,
+                        isMarkdown: noteMeta.isMarkdown !== undefined ? noteMeta.isMarkdown : true,
                         isCreateButton: false
                     });
                 }
@@ -976,64 +1030,41 @@ Item {
         onExited: code => {}
     }
 
-    // Read index for title update
+    // Read index for title update (removed because mv command handles this now)
     Process {
-        id: readIndexForUpdateProcess
-        property string noteId: ""
-        property string newTitle: ""
-        stdout: SplitParser {
-            onRead: data => readIndexForUpdateProcess.stdoutData += data + "\n"
-        }
-        property string stdoutData: ""
+        id: renameNoteProcess // Name changed to match updateNoteTitle script call
+        property string oldNoteId: ""
+        property string newNoteId: ""
 
         onExited: code => {
-            var indexData = NotesUtils.parseIndex(stdoutData.trim());
-            stdoutData = "";
-
-            if (indexData.notes[noteId]) {
-                indexData.notes[noteId].title = newTitle;
-                indexData.notes[noteId].modified = NotesUtils.getCurrentTimestamp();
-            }
-
-            // Update local allNotes
+            // Update local allNotes to reflect rename without reloading python purely for UX speed
             for (var i = 0; i < allNotes.length; i++) {
-                if (allNotes[i].id === noteId) {
-                    allNotes[i].title = newTitle;
+                if (allNotes[i].id === oldNoteId) {
+                    allNotes[i].title = newNoteId;
+                    allNotes[i].id = newNoteId;
                     allNotes[i].modified = NotesUtils.getCurrentTimestamp();
                     break;
                 }
             }
-
-            var jsonContent = NotesUtils.serializeIndex(indexData);
-            saveIndexProcess.command = ["sh", "-c", "printf '%s' '" + jsonContent.replace(/'/g, "'\\''") + "' > '" + indexPath + "'"];
-            saveIndexProcess.running = true;
-
             updateFilteredNotes();
-            noteId = "";
-            newTitle = "";
+
+            // Refocus if it was the currently open note
+            if (currentNoteId === oldNoteId) {
+                currentNoteId = newNoteId;
+                currentNoteTitle = newNoteId;
+            }
+
+            oldNoteId = "";
+            newNoteId = "";
         }
     }
 
-    // Read index for modified timestamp update
+    // Read index for modified timestamp update (removed because python parses it natively)
     Process {
         id: readIndexForModifiedProcess
         property string noteId: ""
-        stdout: SplitParser {
-            onRead: data => readIndexForModifiedProcess.stdoutData += data + "\n"
-        }
-        property string stdoutData: ""
 
         onExited: code => {
-            var indexData = NotesUtils.parseIndex(stdoutData.trim());
-            stdoutData = "";
-
-            if (indexData.notes[noteId]) {
-                indexData.notes[noteId].modified = NotesUtils.getCurrentTimestamp();
-            }
-
-            var jsonContent = NotesUtils.serializeIndex(indexData);
-            saveIndexProcess.command = ["sh", "-c", "printf '%s' '" + jsonContent.replace(/'/g, "'\\''") + "' > '" + indexPath + "'"];
-            saveIndexProcess.running = true;
             noteId = "";
         }
     }
@@ -1105,6 +1136,21 @@ Item {
                                     root.expandedItemIndex = -1;
                                     createOptions[root.selectedOptionIndex]();
                                 }
+                            } else if (note.isVaultButton) {
+                                // Vault config options
+                                let vaultOptions = [function () {
+                                        pickVaultProcess.running = true;
+                                    }, function () {
+                                        root.notesDir = root.defaultVault;
+                                        saveVaultPathProcess.command = ["bash", "-c", "echo '" + root.defaultVault + "' > '" + vaultPathFile + "'"];
+                                        saveVaultPathProcess.running = true;
+                                        root.refreshNotes();
+                                    }
+                                ];
+                                if (root.selectedOptionIndex >= 0 && root.selectedOptionIndex < vaultOptions.length) {
+                                    root.expandedItemIndex = -1;
+                                    vaultOptions[root.selectedOptionIndex]();
+                                }
                             } else {
                                 // Note options
                                 let options = [function () {
@@ -1126,8 +1172,8 @@ Item {
 
                     if (root.selectedIndex >= 0 && root.selectedIndex < filteredNotes.length) {
                         let note = filteredNotes[root.selectedIndex];
-                        if (note.isCreateButton || note.isCreateSpecificButton) {
-                            // Expand to show create options instead of creating directly
+                        if (note.isCreateButton || note.isCreateSpecificButton || note.isVaultButton) {
+                            // Expand to show options
                             root.expandedItemIndex = root.selectedIndex;
                             root.selectedOptionIndex = 0;
                             root.keyboardNavigation = true;
@@ -1185,9 +1231,10 @@ Item {
                         return;
                     }
                     if (root.expandedItemIndex >= 0) {
-                        // Max options: 2 for create button, 3 for notes
-                        var isCreateBtn = root.expandedItemIndex < filteredNotes.length && filteredNotes[root.expandedItemIndex].isCreateButton;
-                        var maxIndex = isCreateBtn ? 1 : 2;
+                        // Max options: 2 for create/vault buttons, 3 for notes
+                        var expandedNote = root.expandedItemIndex < filteredNotes.length ? filteredNotes[root.expandedItemIndex] : null;
+                        var isSmallMenu = expandedNote && (expandedNote.isCreateButton || expandedNote.isVaultButton);
+                        var maxIndex = isSmallMenu ? 1 : 2;
                         if (root.selectedOptionIndex < maxIndex) {
                             root.selectedOptionIndex++;
                             root.keyboardNavigation = true;
@@ -1242,7 +1289,7 @@ Item {
                         }
                     }
                 }
-            }
+            } // SearchInput end
 
             // Results list
             ListView {
@@ -1369,8 +1416,8 @@ Item {
                     height: {
                         let baseHeight = 48;
                         if (index === root.expandedItemIndex && !isInDeleteMode && !isInRenameMode) {
-                            // 2 options for create button, 3 for regular notes
-                            var optionCount = modelData.isCreateButton ? 2 : 3;
+                            // 2 options for create/vault buttons, 3 for regular notes
+                            var optionCount = (modelData.isCreateButton || modelData.isVaultButton) ? 2 : 3;
                             var listHeight = 36 * optionCount;
                             return baseHeight + 4 + listHeight + 8;
                         }
@@ -1434,7 +1481,7 @@ Item {
                                 }
 
                                 if (!root.deleteMode && !isExpanded) {
-                                    if (modelData.isCreateButton || modelData.isCreateSpecificButton) {
+                                    if (modelData.isCreateButton || modelData.isCreateSpecificButton || modelData.isVaultButton) {
                                         // Show create menu instead of creating directly
                                         if (root.expandedItemIndex === index) {
                                             root.expandedItemIndex = -1;
@@ -1673,6 +1720,8 @@ Item {
                                         return Icons.edit;
                                     } else if (modelData.isCreateButton) {
                                         return Icons.plus;
+                                    } else if (modelData.isVaultButton) {
+                                        return Icons.folder;
                                     } else if (modelData.isMarkdown) {
                                         return Icons.markdown;
                                     } else {
@@ -2007,9 +2056,35 @@ Item {
                             }
                         ]
 
+                        property var vaultOptions: [
+                            {
+                                text: "Selecionar Pasta",
+                                icon: Icons.folder,
+                                highlightColor: Styling.srItem("overprimary"),
+                                textColor: Styling.srItem("primary"),
+                                action: function () {
+                                    root.expandedItemIndex = -1;
+                                    pickVaultProcess.running = true;
+                                }
+                            },
+                            {
+                                text: "Restaurar Padrão",
+                                icon: Icons.arrowCounterClockwise,
+                                highlightColor: Colors.secondary,
+                                textColor: Styling.srItem("secondary"),
+                                action: function () {
+                                    root.expandedItemIndex = -1;
+                                    root.notesDir = root.defaultVault;
+                                    saveVaultPathProcess.command = ["bash", "-c", "echo '" + root.defaultVault + "' > '" + vaultPathFile + "'"];
+                                    saveVaultPathProcess.running = true;
+                                    root.refreshNotes();
+                                }
+                            }
+                        ]
+
                         ClippingRectangle {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 36 * (modelData.isCreateButton ? 2 : 3)
+                            Layout.preferredHeight: 36 * ((modelData.isCreateButton || modelData.isVaultButton) ? 2 : 3)
                             color: Colors.background
                             radius: Styling.radius(0)
 
@@ -2027,7 +2102,7 @@ Item {
                                 clip: true
                                 interactive: false
                                 boundsBehavior: Flickable.StopAtBounds
-                                model: modelData.isCreateButton ? expandedOptionsLayout.createOptions : expandedOptionsLayout.noteOptions
+                                model: modelData.isCreateButton ? expandedOptionsLayout.createOptions : (modelData.isVaultButton ? expandedOptionsLayout.vaultOptions : expandedOptionsLayout.noteOptions)
                                 currentIndex: root.selectedOptionIndex
                                 highlightFollowsCurrentItem: true
                                 highlightRangeMode: ListView.ApplyRange
