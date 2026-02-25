@@ -304,16 +304,15 @@ Item {
             implicitWidth: workspaceColumnLayout.implicitWidth
             implicitHeight: workspaceColumnLayout.implicitHeight
 
-            // Pre-filter windows for this monitor and workspace group
+            // Pre-filter windows for workspace group (all monitors)
             readonly property var filteredWindowData: {
                 const minWs = overviewRoot.workspaceGroup * overviewRoot.workspacesShown;
                 const maxWs = (overviewRoot.workspaceGroup + 1) * overviewRoot.workspacesShown;
-                const monId = overviewRoot.monitorId;
                 const toplevels = ToplevelManager.toplevels.values;
 
                 return overviewRoot.windowList.filter(win => {
                     const wsId = win?.workspace?.id;
-                    return wsId > minWs && wsId <= maxWs && win.monitor === monId;
+                    return wsId > minWs && wsId <= maxWs;
                 }).map(win => ({
                             windowData: win,
                             toplevel: toplevels.find(t => `0x${t.HyprlandToplevel.address}` === win.address) || null
@@ -329,9 +328,28 @@ Item {
                     windowData: modelData.windowData
                     toplevel: modelData.toplevel
                     scale: overviewRoot.scale
+                    crossScaleX: {
+                        if (modelData.windowData.monitor === overviewRoot.monitorId) return 1.0;
+                        const winMon = overviewRoot.monitors.find(m => m.id === modelData.windowData.monitor);
+                        if (!winMon) return 1.0;
+                        const ovW = (overviewRoot.monitorData?.width || 1920) / (overviewRoot.monitorData?.scale || 1.0);
+                        const winW = (winMon.width || 1920) / (winMon.scale || 1.0);
+                        return ovW / winW;
+                    }
+                    crossScaleY: {
+                        if (modelData.windowData.monitor === overviewRoot.monitorId) return 1.0;
+                        const winMon = overviewRoot.monitors.find(m => m.id === modelData.windowData.monitor);
+                        if (!winMon) return 1.0;
+                        const ovH = (overviewRoot.monitorData?.height || 1080) / (overviewRoot.monitorData?.scale || 1.0);
+                        const winH = (winMon.height || 1080) / (winMon.scale || 1.0);
+                        return ovH / winH;
+                    }
                     availableWorkspaceWidth: overviewRoot.workspaceImplicitWidth
                     availableWorkspaceHeight: overviewRoot.workspaceImplicitHeight
-                    monitorData: overviewRoot.monitorData
+                    monitorData: {
+                        const winMon = overviewRoot.monitors.find(m => m.id === modelData.windowData.monitor);
+                        return winMon ?? overviewRoot.monitorData;
+                    }
                     barPosition: overviewRoot.barPosition
                     barReserved: overviewRoot.barReserved
 

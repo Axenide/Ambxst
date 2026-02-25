@@ -33,6 +33,7 @@ Item {
     property int draggingTargetWorkspace: -1
     property Item dragOverlay: null
     property Item overviewRoot: null
+    property var monitors: []
     signal workspaceNavigated(int wsId)
 
     // Callbacks for search matching (set by parent)
@@ -50,10 +51,10 @@ Item {
     readonly property real viewportWidth: workspaceWidth / 3
     readonly property real viewportOffset: viewportWidth  // Offset to center third
 
-    // Filter windows for this workspace and monitor
+    // Filter windows for this workspace (all monitors)
     readonly property var workspaceWindows: {
         return windowList.filter(win => {
-            return win?.workspace?.id === workspaceId && win.monitor === monitorId;
+            return win?.workspace?.id === workspaceId;
         });
     }
 
@@ -73,11 +74,16 @@ Item {
 
         for (const win of workspaceWindows) {
             // Calculate window position the same way as in the delegate
-            let baseX = (win?.at?.[0] || 0) - (monitorData?.x || 0);
+            const winMon = root.monitors.find(m => m.id === win?.monitor) ?? monitorData;
+            let baseX = (win?.at?.[0] || 0) - (winMon?.x || 0);
             if (barPosition === "left")
                 baseX -= barReserved;
-            const scaledX = baseX * scale_;
-            const winWidth = (win?.size?.[0] || 100) * scale_;
+            const isCrossMon = win?.monitor !== root.monitorId;
+            const crossScX = isCrossMon ? ((monitorData?.width || 1920) / (monitorData?.scale || 1.0)) / ((winMon?.width || 1920) / (winMon?.scale || 1.0)) : 1.0;
+            const crossScY = isCrossMon ? ((monitorData?.height || 1080) / (monitorData?.scale || 1.0)) / ((winMon?.height || 1080) / (winMon?.scale || 1.0)) : 1.0;
+            const crossScU = Math.min(crossScX, crossScY);
+            const scaledX = baseX * scale_ * crossScU;
+            const winWidth = (win?.size?.[0] || 100) * scale_ * crossScU;
 
             minX = Math.min(minX, scaledX);
             maxX = Math.max(maxX, scaledX + winWidth);
@@ -161,6 +167,13 @@ Item {
             id: backgroundLayer
             anchors.fill: parent
             clip: true
+
+            // Solid fallback behind wallpaper (prevents white bleed-through for cross-monitor tiles)
+            Rectangle {
+                anchors.fill: parent
+                radius: Styling.radius(1)
+                color: Colors.background
+            }
 
             // Wallpaper background
             TintedWallpaper {
@@ -291,25 +304,47 @@ Item {
                     property real overrideBaseY: -1
                     property bool useOverridePosition: false
 
+                    // Per-window monitor data for cross-monitor windows
+                    readonly property var windowMonData: {
+                        if (windowData?.monitor === root.monitorId) return root.monitorData;
+                        const m = root.monitors.find(mon => mon.id === windowData?.monitor);
+                        return m ?? root.monitorData;
+                    }
+                    readonly property real crossScaleX: {
+                        if (windowData?.monitor === root.monitorId) return 1.0;
+                        const ovW = (root.monitorData?.width || 1920) / (root.monitorData?.scale || 1.0);
+                        const winW = (windowMonData?.width || 1920) / (windowMonData?.scale || 1.0);
+                        return ovW / winW;
+                    }
+                    readonly property real crossScaleY: {
+                        if (windowData?.monitor === root.monitorId) return 1.0;
+                        const ovH = (root.monitorData?.height || 1080) / (root.monitorData?.scale || 1.0);
+                        const winH = (windowMonData?.height || 1080) / (windowMonData?.scale || 1.0);
+                        return ovH / winH;
+                    }
+                    readonly property real crossScaleUniform: Math.min(crossScaleX, crossScaleY)
+                    readonly property real crossCenterX: crossScaleX > 0 ? ((root.monitorData?.width || 1920) / (root.monitorData?.scale || 1.0)) * root.scale_ * (1 - crossScaleUniform / crossScaleX) / 2 : 0
+                    readonly property real crossCenterY: crossScaleY > 0 ? ((root.monitorData?.height || 1080) / (root.monitorData?.scale || 1.0)) * root.scale_ * (1 - crossScaleUniform / crossScaleY) / 2 : 0
+
                     // Position calculations relative to center viewport
                     readonly property real baseX: {
                         if (useOverridePosition && overrideBaseX >= 0)
                             return overrideBaseX;
-                        let base = (windowData?.at?.[0] || 0) - (monitorData?.x || 0);
+                        let base = (windowData?.at?.[0] || 0) - (windowMonData?.x || 0);
                         if (barPosition === "left")
                             base -= barReserved;
-                        return (base * scale_) + root.viewportOffset + root.horizontalScrollOffset;
+                        return (base * scale_ * crossScaleUniform) + root.viewportOffset + root.horizontalScrollOffset + crossCenterX;
                     }
                     readonly property real baseY: {
                         if (useOverridePosition && overrideBaseY >= 0)
                             return overrideBaseY;
-                        let base = (windowData?.at?.[1] || 0) - (monitorData?.y || 0);
+                        let base = (windowData?.at?.[1] || 0) - (windowMonData?.y || 0);
                         if (barPosition === "top")
                             base -= barReserved;
-                        return Math.max(base * scale_, 0);
+                        return Math.max(base * scale_ * crossScaleUniform, 0) + crossCenterY;
                     }
-                    readonly property real targetWidth: Math.round((windowData?.size[0] || 100) * scale_)
-                    readonly property real targetHeight: Math.round((windowData?.size[1] || 100) * scale_)
+                    readonly property real targetWidth: Math.round((windowData?.size[0] || 100) * scale_ * crossScaleUniform)
+                    readonly property real targetHeight: Math.round((windowData?.size[1] || 100) * scale_ * crossScaleUniform)
                     readonly property bool compactMode: targetHeight < 60 || targetWidth < 60
                     readonly property string iconPath: AppSearch.guessIcon(windowData?.class || "")
                     readonly property int calculatedRadius: Styling.radius(-2)

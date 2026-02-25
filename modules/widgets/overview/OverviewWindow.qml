@@ -29,6 +29,13 @@ Item {
     property string barPosition: "top"
     property int barReserved: 0
 
+    // Cross-monitor scale correction (set by parent for windows on different monitors)
+    property real crossScaleX: 1.0
+    property real crossScaleY: 1.0
+    readonly property real crossScaleUniform: Math.min(crossScaleX, crossScaleY)
+    readonly property real crossCenterX: crossScaleX > 0 ? availableWorkspaceWidth * (1 - crossScaleUniform / crossScaleX) / 2 : 0
+    readonly property real crossCenterY: crossScaleY > 0 ? availableWorkspaceHeight * (1 - crossScaleUniform / crossScaleY) / 2 : 0
+
     // Search highlighting
     property bool isSearchMatch: false
     property bool isSearchSelected: false
@@ -46,7 +53,7 @@ Item {
         let base = (windowData?.at?.[0] || 0) - (monitorData?.x || 0);
         if (barPosition === "left")
             base -= barReserved;
-        return Math.round(Math.max(base * scale, 0) + xOffset);
+        return Math.round(Math.max(base * scale * crossScaleUniform, 0) + xOffset + crossCenterX);
     }
     readonly property real initY: {
         if (useOverridePosition && overrideY >= 0)
@@ -54,10 +61,10 @@ Item {
         let base = (windowData?.at?.[1] || 0) - (monitorData?.y || 0);
         if (barPosition === "top")
             base -= barReserved;
-        return Math.round(Math.max(base * scale, 0) + yOffset);
+        return Math.round(Math.max(base * scale * crossScaleUniform, 0) + yOffset + crossCenterY);
     }
-    readonly property real targetWindowWidth: Math.round((windowData?.size[0] || 100) * scale)
-    readonly property real targetWindowHeight: Math.round((windowData?.size[1] || 100) * scale)
+    readonly property real targetWindowWidth: Math.round((windowData?.size[0] || 100) * scale * crossScaleUniform)
+    readonly property real targetWindowHeight: Math.round((windowData?.size[1] || 100) * scale * crossScaleUniform)
     readonly property bool compactMode: targetWindowHeight < 60 || targetWindowWidth < 60
     readonly property string iconPath: AppSearch.guessIcon(windowData?.class || "")
     readonly property int calculatedRadius: Styling.radius(-2)

@@ -274,6 +274,7 @@ Item {
                         barPosition: scrollingOverviewRoot.barPosition
                         barReserved: scrollingOverviewRoot.barReserved
                         windowList: scrollingOverviewRoot.windowList
+                        monitors: scrollingOverviewRoot.monitors
                         isActive: scrollingOverviewRoot.trackedWorkspaceId === workspaceId
                         activeBorderColor: scrollingOverviewRoot.activeBorderColor
                         focusedWindowAddress: scrollingOverviewRoot.focusedWindowAddress
