@@ -140,7 +140,7 @@ QtObject {
         batchCommand += ` ; keyword general:col.active_border ${activeColorFormatted}`;
         batchCommand += ` ; keyword general:col.inactive_border ${inactiveColorFormatted}`;
         batchCommand += ` ; keyword general:layout ${GlobalStates.hyprlandLayout}`;
-        batchCommand += ` ; keyword decoration:rounding ${Config.hyprland.rounding}`;
+        batchCommand += ` ; keyword decoration:rounding ${Config.hyprlandRounding}`;
         batchCommand += ` ; keyword decoration:shadow:enabled ${Config.hyprland.shadowEnabled}`;
         batchCommand += ` ; keyword decoration:shadow:range ${Config.hyprland.shadowRange}`;
         batchCommand += ` ; keyword decoration:shadow:render_power ${Config.hyprland.shadowRenderPower}`;
