@@ -64,8 +64,9 @@ Item {
 
     signal dragStarted
     signal dragFinished(int targetWorkspace)
-    signal windowClicked
+    signal windowClicked(real clickSceneX, real clickSceneY)
     signal windowClosed
+    signal workspaceNavigated(int wsId)
 
     x: initX
     y: initY
@@ -215,16 +216,17 @@ Item {
     // Overlay icon when preview is available (smaller, in corner)
     Image {
         mipmap: true
+        readonly property real badgeSize: Math.round(Math.max(Math.min(root.targetWindowWidth, root.targetWindowHeight) * 0.12, 12))
         visible: windowPreview.hasContent && !root.compactMode && Config.performance.windowPreview
         anchors.bottom: parent.bottom
         anchors.right: parent.right
-        anchors.margins: 4
-        width: 16
-        height: 16
+        anchors.margins: Math.round(badgeSize * 0.2)
+        width: badgeSize
+        height: badgeSize
         source: Quickshell.iconPath(root.iconPath, "image-missing")
-        sourceSize: Qt.size(16, 16)
+        sourceSize: Qt.size(badgeSize, badgeSize)
         asynchronous: true
-        opacity: 0.8
+        opacity: 0.9
         z: 10
     }
 
@@ -250,17 +252,6 @@ Item {
 
         onEntered: {
             root.hovered = true;
-            // Only focus window on hover if it's in the current workspace
-            if (root.windowData) {
-                // Get current active workspace from Hyprland
-                let currentWorkspace = Hyprland.focusedMonitor?.activeWorkspace?.id;
-                let windowWorkspace = root.windowData?.workspace?.id;
-
-                // Only focus if the window is in the current workspace
-                if (currentWorkspace && windowWorkspace && currentWorkspace === windowWorkspace) {
-                    Hyprland.dispatch(`focuswindow address:${windowData.address}`);
-                }
-            }
         }
         onExited: root.hovered = false
 
@@ -372,8 +363,7 @@ Item {
                 return;
 
             if (mouse.button === Qt.LeftButton) {
-                // Single click just focuses the window without closing overview
-                Hyprland.dispatch(`focuswindow address:${windowData.address}`);
+                root.workspaceNavigated(windowData.workspace.id);
             } else if (mouse.button === Qt.MiddleButton) {
                 root.windowClosed();
             }
@@ -384,8 +374,9 @@ Item {
                 return;
 
             if (mouse.button === Qt.LeftButton) {
-                // Double click closes overview and focuses window
-                root.windowClicked();
+                // Map click to scene coordinates (= screen-local, since popup is fullscreen)
+                var scenePos = dragArea.mapToItem(null, mouse.x, mouse.y);
+                root.windowClicked(scenePos.x, scenePos.y);
             }
         }
     }

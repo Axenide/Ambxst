@@ -33,6 +33,7 @@ Item {
     property int draggingTargetWorkspace: -1
     property Item dragOverlay: null
     property Item overviewRoot: null
+    signal workspaceNavigated(int wsId)
 
     // Callbacks for search matching (set by parent)
     property var checkWindowMatched: function (addr) {
@@ -265,8 +266,10 @@ Item {
             TapHandler {
                 acceptedButtons: Qt.LeftButton
                 onDoubleTapped: {
-                    Hyprland.dispatch(`workspace ${root.workspaceId}`);
                     Visibilities.setActiveModule("", true);
+                    if (root.overviewRoot && root.workspaceId !== (root.overviewRoot.monitor?.activeWorkspace?.id || -1)) {
+                        Hyprland.dispatch(`workspace ${root.workspaceId}`);
+                    }
                 }
             }
 
@@ -428,16 +431,17 @@ Item {
                     // Corner icon when preview available
                     Image {
                         mipmap: true
+                        readonly property real badgeSize: Math.round(Math.max(Math.min(windowDelegate.targetWidth, windowDelegate.targetHeight) * 0.12, 12))
                         visible: windowPreview.hasContent && !windowDelegate.compactMode && Config.performance.windowPreview
                         anchors.bottom: parent.bottom
                         anchors.right: parent.right
-                        anchors.margins: 4
-                        width: 16
-                        height: 16
+                        anchors.margins: Math.round(badgeSize * 0.2)
+                        width: badgeSize
+                        height: badgeSize
                         source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
-                        sourceSize: Qt.size(16, 16)
+                        sourceSize: Qt.size(badgeSize, badgeSize)
                         asynchronous: true
-                        opacity: 0.8
+                        opacity: 0.9
                         z: 10
                     }
 
@@ -682,7 +686,7 @@ Item {
                             if (!windowDelegate.windowData)
                                 return;
                             if (mouse.button === Qt.LeftButton && !windowDelegate.dragging) {
-                                Hyprland.dispatch(`focuswindow address:${windowDelegate.windowData.address}`);
+                                root.workspaceNavigated(windowDelegate.windowData.workspace.id);
                             } else if (mouse.button === Qt.MiddleButton) {
                                 Hyprland.dispatch(`closewindow address:${windowDelegate.windowData.address}`);
                             }

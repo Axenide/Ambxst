@@ -14,6 +14,9 @@ import qs.config
 Item {
     id: scrollingOverviewRoot
 
+    property int trackedWorkspaceId: 1
+    signal workspaceNavigated(int wsId)
+
     // Config values
     readonly property real scale: Config.overview.scale
     readonly property int totalWorkspaces: Config.overview.rows * Config.overview.columns
@@ -211,7 +214,7 @@ Item {
     property bool isManualScrolling: false
 
     // Calculate target scroll position to center active workspace
-    readonly property int activeWorkspaceId: monitor?.activeWorkspace?.id || 1
+    readonly property int activeWorkspaceId: trackedWorkspaceId
     readonly property real workspaceRowHeight: workspaceHeight + workspaceSpacing
 
     // Scroll to center active workspace when it changes
@@ -271,7 +274,7 @@ Item {
                         barPosition: scrollingOverviewRoot.barPosition
                         barReserved: scrollingOverviewRoot.barReserved
                         windowList: scrollingOverviewRoot.windowList
-                        isActive: (scrollingOverviewRoot.monitor?.activeWorkspace?.id || 0) === workspaceId
+                        isActive: scrollingOverviewRoot.trackedWorkspaceId === workspaceId
                         activeBorderColor: scrollingOverviewRoot.activeBorderColor
                         focusedWindowAddress: scrollingOverviewRoot.focusedWindowAddress
 
@@ -298,6 +301,8 @@ Item {
                         dragOverlay: dragOverlayItem
                         overviewRoot: scrollingOverviewRoot
 
+                        onWorkspaceNavigated: wsId => scrollingOverviewRoot.workspaceNavigated(wsId)
+
                         width: scrollingOverviewRoot.workspaceWidth
                         height: scrollingOverviewRoot.workspaceHeight
                     }
@@ -307,7 +312,7 @@ Item {
             // Floating active workspace indicator (inside content, moves with scroll)
             Rectangle {
                 id: focusedWorkspaceIndicator
-                readonly property int activeWorkspaceId: scrollingOverviewRoot.monitor?.activeWorkspace?.id || 1
+                readonly property int activeWorkspaceId: scrollingOverviewRoot.trackedWorkspaceId
 
                 x: 0
                 y: (activeWorkspaceId - 1) * (workspaceHeight + workspaceSpacing)
