@@ -25,11 +25,27 @@ has_font() { fc-list 2>/dev/null | grep -qi "$1"; }
 
 # === Distro Detection ===
 detect_distro() {
-	[[ -f /etc/NIXOS ]] && echo "nixos" && return
-	has_cmd pacman && echo "arch" && return
-	has_cmd dnf && echo "fedora" && return
-	has_cmd apt && echo "debian" && return
-	echo "unknown"
+    if [[ -f /etc/os-release ]]; then
+        local id
+        id=$(. /etc/os-release && echo "${ID,,}")
+        case "$id" in
+            nixos)               echo "nixos"   ;;
+            arch | manjaro | endeavouros) echo "arch" ;;
+            fedora | rhel | centos | rocky | almalinux | alma) echo "fedora" ;;
+            debian | ubuntu | mint | pop)  echo "debian" ;;
+            *)                   echo "$id"     ;;
+        esac
+        return 0
+    else
+        #
+        # Fallbacks to original Ambxst detection method
+        #
+        [[ -f /etc/NIXOS ]] && echo "nixos" && return
+        has_cmd pacman && echo "arch" && return
+        has_cmd dnf && echo "fedora" && return
+        has_cmd apt && echo "debian" && return
+        echo "unknown"
+    fi
 }
 
 DISTRO=$(detect_distro)
