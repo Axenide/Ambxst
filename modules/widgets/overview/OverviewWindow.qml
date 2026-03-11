@@ -250,17 +250,6 @@ Item {
 
         onEntered: {
             root.hovered = true;
-            // Only focus window on hover if it's in the current workspace
-            if (root.windowData) {
-                // Get current active workspace from Hyprland
-                let currentWorkspace = Hyprland.focusedMonitor?.activeWorkspace?.id;
-                let windowWorkspace = root.windowData?.workspace?.id;
-
-                // Only focus if the window is in the current workspace
-                if (currentWorkspace && windowWorkspace && currentWorkspace === windowWorkspace) {
-                    Hyprland.dispatch(`focuswindow address:${windowData.address}`);
-                }
-            }
         }
         onExited: root.hovered = false
 
