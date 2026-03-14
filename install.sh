@@ -103,7 +103,7 @@ install_dependencies() {
 			nix profile upgrade Ambxst --refresh --impure
 		else
 			log_info "Installing Ambxst..."
-			nix profile add "$FLAKE_URI" --impure
+			nix profile install "$FLAKE_URI" --impure
 		fi
 		;;
 
