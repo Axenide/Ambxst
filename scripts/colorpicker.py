@@ -24,7 +24,7 @@ for dep in ("grim", "slurp", "magick", "wl-copy", "notify-send"):
         )
         sys.exit(1)
 
-coords = cmd("slurp", "-p").decode().strip()
+coords = cmd("slurp", "-p", "-b", "00000000").decode().strip()
 if not coords:
     sys.exit(0)
 
