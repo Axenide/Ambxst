@@ -41,11 +41,34 @@ An <i><b>Ax</b>tremely</i> customizable shell.
 
 ---
 
-<h2><sub><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="Package" width="32" height="32" /></sub> Installation</h2>
+<h2><sub><img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Animated-Fluent-Emojis/master/Emojis/Objects/Package.png" alt="Package" width="32" height="32" /></sub> Documentation :)</h2>
 
 ```bash
 curl -L get.axeni.de/ambxst | sh
 ```
+Autostart ambxst:
+Add this to your hyprland config:
+```bash
+exec-once ambxst
+```
+AI:
+If you want to use a local model you can just download it and it will work.
+To add your online AI you will need a key. Put this in your Hyprland config:
+```bash
+env = GEMINI_API_KEY,yourapikey
+```
+Customization:
+To customize ambxst hit META (Windows) + D and click the settings icon.
+You can customize the look and feel in Themes. If you wan't to customize the layout you will need to go
+to the ambxst tab in the settings.
+If you want to use the presets, click the wand icon on the bar (You can also save your own preset and share it. It is saved under ~/.config/ambxst/presets zip it and upload it to the discord :)). 
+
+(additional notes :)):
+If you are on a laptop or want to change the quickshell code even more it is found under ~/.local/src/ambxst . The wallpaper folder is also found there under the assets folder.
+
+Performance:
+Quickshell is a little bit recource heavy but if you don't mind 700 mb recource usage you should be fine.
+You can tweak the performance further in the settings under performance.
 
 Ambxst is currently supported on **Arch**, **Fedora**, and **NixOS**. This means both based and derivative distributions.
 
