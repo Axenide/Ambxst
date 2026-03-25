@@ -811,6 +811,17 @@ Item {
                             }
                         }
 
+                        ToggleRow {
+                            label: "Show Keyboard Layout"
+                            checked: Config.bar.showKeyboardLayout ?? true
+                            onToggled: value => {
+                                if (value !== Config.bar.showKeyboardLayout) {
+                                    GlobalStates.markShellChanged();
+                                    Config.bar.showKeyboardLayout = value;
+                                }
+                            }
+                        }
+
                         Separator {
                             Layout.fillWidth: true
                         }

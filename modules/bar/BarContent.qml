@@ -528,6 +528,20 @@ Item {
                             endRadius: root.innerRadius
                         }
 
+                        Loader {
+                            active: (Config.bar.showKeyboardLayout ?? true) && KeyboardLayoutService.availableLayouts.length > 1
+                            visible: active
+                            Layout.preferredWidth: active ? 36 : 0
+                            Layout.preferredHeight: active ? 36 : 0
+
+                            sourceComponent: KeyboardLayoutIndicator {
+                                bar: root
+                                layerEnabled: root.shadowsEnabled
+                                startRadius: root.innerRadius
+                                endRadius: root.innerRadius
+                            }
+                        }
+
                         Bar.BatteryIndicator {
                             id: batteryIndicator
                             bar: root
@@ -733,6 +747,21 @@ Item {
                             layerEnabled: root.shadowsEnabled
                             startRadius: root.outerRadius
                             endRadius: root.innerRadius
+                        }
+
+                        Loader {
+                            active: (Config.bar.showKeyboardLayout ?? true) && KeyboardLayoutService.availableLayouts.length > 1
+                            visible: active
+                            Layout.preferredWidth: active ? 36 : 0
+                            Layout.preferredHeight: active ? 36 : 0
+                            Layout.alignment: Qt.AlignHCenter
+
+                            sourceComponent: KeyboardLayoutIndicator {
+                                bar: root
+                                layerEnabled: root.shadowsEnabled
+                                startRadius: root.innerRadius
+                                endRadius: root.innerRadius
+                            }
                         }
 
                         Bar.BatteryIndicator {
