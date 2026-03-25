@@ -668,11 +668,9 @@ StyledRect {
         return Icons.player;
     }
 
-    // Volume scroll overlay (passes clicks through)
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.NoButton
-        z: 0
         onWheel: wheel => {
             if (wheel.angleDelta.y > 0)
                 Audio.incrementVolume();
