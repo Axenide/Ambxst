@@ -72,6 +72,15 @@ QtObject {
         command: ["mkdir", "-p", root.screenshotsDir]
     }
 
+    // Ensure screenshotsDir is set and the directory exists
+    function ensureScreenshotsDir() {
+        if (root.screenshotsDir === "") {
+            root.screenshotsDir = Quickshell.env("HOME") + "/Pictures/Screenshots"
+        }
+        ensureDirProcess.command = ["mkdir", "-p", root.screenshotsDir]
+        ensureDirProcess.running = true
+    }
+
     // Dynamic list of freeze processes, managed via bash for simplicity?
     // Or we can use a single shell script that forks grim for each monitor.
     // "grim -o name1 path1 & grim -o name2 path2 & wait"
@@ -301,9 +310,7 @@ QtObject {
         if (root.captureMode === "lens") {
             root.finalPath = root.lensPath;
         } else {
-            if (root.screenshotsDir === "") {
-                root.screenshotsDir = Quickshell.env("HOME") + "/Pictures/Screenshots"
-            }
+            root.ensureScreenshotsDir()
             var filename = "Screenshot_" + getTimestamp() + ".png"
             root.finalPath = root.screenshotsDir + "/" + filename
         }
@@ -366,9 +373,7 @@ QtObject {
         if (root.captureMode === "lens") {
             root.finalPath = root.lensPath;
         } else {
-            if (root.screenshotsDir === "") {
-                root.screenshotsDir = Quickshell.env("HOME") + "/Pictures/Screenshots"
-            }
+            root.ensureScreenshotsDir()
             var filename = "Screenshot_" + getTimestamp() + ".png"
             root.finalPath = root.screenshotsDir + "/" + filename
         }
@@ -405,9 +410,7 @@ QtObject {
          if (root.captureMode === "lens") {
             root.finalPath = root.lensPath;
         } else {
-            if (root.screenshotsDir === "") {
-                root.screenshotsDir = Quickshell.env("HOME") + "/Pictures/Screenshots"
-            }
+            root.ensureScreenshotsDir()
             var filename = "Screenshot_" + getTimestamp() + ".png"
             root.finalPath = root.screenshotsDir + "/" + filename
         }
