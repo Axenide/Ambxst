@@ -193,6 +193,12 @@ Item {
     // Shadow logic for bar components
     readonly property bool shadowsEnabled: Config.showBackground && (!actualContainBar || (Config.bar && Config.bar.keepBarShadow !== undefined ? Config.bar.keepBarShadow : false))
 
+    // Resource monitor placement — top-level bindings ensure reactive updates on config change
+    readonly property bool resourceMonitorEnabled: Config.system.resources ? Config.system.resources.enabled !== false : false
+    readonly property bool resourceMonitorInBar: resourceMonitorEnabled && (Config.system.resources ? Config.system.resources.location === "bar" : false)
+    readonly property bool resourceMonitorLeft: resourceMonitorInBar && (Config.system.resources ? Config.system.resources.barSide !== "right" : true)
+    readonly property bool resourceMonitorRight: resourceMonitorInBar && !resourceMonitorLeft
+
     // The hitbox for the mask
     property alias barHitbox: barMouseArea
 
@@ -459,6 +465,19 @@ Item {
                             }
                         }
 
+                        // Resource Monitor — left position (after pin button)
+                        Loader {
+                            active: root.resourceMonitorLeft
+                            visible: active
+                            Layout.alignment: Qt.AlignVCenter
+                            sourceComponent: BarResourceMonitor {
+                                bar: root
+                                layerEnabled: root.shadowsEnabled
+                                startRadius: root.outerRadius
+                                endRadius: root.outerRadius
+                            }
+                        }
+
                         Item {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
@@ -497,6 +516,19 @@ Item {
                         Item {
                             Layout.fillWidth: true
                             visible: !(root.orientation === "horizontal" && integratedDockEnabled)
+                        }
+
+                        // Resource Monitor — right position (before presets)
+                        Loader {
+                            active: root.resourceMonitorRight
+                            visible: active
+                            Layout.alignment: Qt.AlignVCenter
+                            sourceComponent: BarResourceMonitor {
+                                bar: root
+                                layerEnabled: root.shadowsEnabled
+                                startRadius: root.outerRadius
+                                endRadius: root.outerRadius
+                            }
                         }
 
                         PresetsButton {
