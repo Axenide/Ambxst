@@ -79,17 +79,17 @@ PanelWindow {
         {
             name: "region",
             icon: Icons.regionScreenshot,
-            tooltip: "Region"
+            tooltip: I18n.t("screenshot.region")
         },
         {
             name: "window",
             icon: Icons.windowScreenshot,
-            tooltip: "Window"
+            tooltip: I18n.t("screenshot.window")
         },
         {
             name: "screen",
             icon: Icons.fullScreenshot,
-            tooltip: "Screen"
+            tooltip: I18n.t("screenshot.screen")
         }
     ]
 

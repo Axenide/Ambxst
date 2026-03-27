@@ -374,7 +374,7 @@ StyledRect {
             Text {
                 Layout.fillWidth: true
                 Layout.preferredHeight: visible ? implicitHeight : 0
-                text: player.hasActivePlayer ? (MprisController.activePlayer?.trackTitle ?? "") : "Nothing Playing"
+                text: player.hasActivePlayer ? (MprisController.activePlayer?.trackTitle ?? "") : I18n.t("player.nothing_playing")
                 color: Colors.overBackground
                 font.pixelSize: Config.theme.fontSize + 2
                 font.weight: Font.Bold
@@ -388,7 +388,7 @@ StyledRect {
             Text {
                 Layout.fillWidth: true
                 Layout.preferredHeight: visible ? implicitHeight : 0
-                text: player.hasActivePlayer ? (MprisController.activePlayer?.trackAlbum ?? "") : "Enjoy the silence"
+                text: player.hasActivePlayer ? (MprisController.activePlayer?.trackAlbum ?? "") : I18n.t("player.enjoy_silence")
                 color: Colors.overBackground
                 font.pixelSize: Config.theme.fontSize
                 font.family: Config.theme.font
@@ -601,7 +601,7 @@ StyledRect {
 
                         Text {
                             Layout.fillWidth: true
-                            text: (modelData?.trackTitle || modelData?.identity || "Unknown Player")
+                            text: (modelData?.trackTitle || modelData?.identity || I18n.t("player.unknown_player"))
                             color: Colors.overBackground
                             font.family: Config.theme.font
                             elide: Text.ElideRight

@@ -186,7 +186,7 @@ Item {
 
         StyledToolTip {
             visible: root.isHovered && !root.popupOpen
-            tooltipText: Battery.available ? ("Battery: " + Math.round(Battery.percentage) + "%" + (Battery.isCharging ? " (Charging)" : "")) : ("Power Profile: " + PowerProfile.getProfileDisplayName(PowerProfile.currentProfile))
+            tooltipText: Battery.available ? I18n.t("battery.status", Math.round(Battery.percentage)) : I18n.t("battery.power_profile", PowerProfile.getProfileDisplayName(PowerProfile.currentProfile))
         }
     }
 
@@ -240,7 +240,7 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: Battery.isPluggedIn ? (Battery.isCharging ? "Charging" : "Full") : "On battery"
+                            text: Battery.isPluggedIn ? (Battery.isCharging ? I18n.t("battery.charging") : I18n.t("battery.full")) : I18n.t("battery.on_battery")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             font.bold: true
@@ -248,7 +248,7 @@ Item {
                         }
 
                         Text {
-                            text: Battery.isPluggedIn ? (Battery.timeToFull !== "" ? "Full in " + Battery.timeToFull : "Fully charged") : (Battery.timeToEmpty !== "" ? Battery.timeToEmpty + " remaining" : "")
+                            text: Battery.isPluggedIn ? (Battery.timeToFull !== "" ? I18n.t("battery.full_in", Battery.timeToFull) : I18n.t("battery.fully_charged")) : (Battery.timeToEmpty !== "" ? I18n.t("battery.remaining", Battery.timeToEmpty) : "")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(-1)
                             color: Colors.overBackground

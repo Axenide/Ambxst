@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell.Io
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 import "../../../../config/KeybindActions.js" as KeybindActions
 
@@ -76,7 +77,7 @@ Item {
     readonly property var actionOptions: {
         const options = KeybindActions.getActionOptions();
         if (editActionId === "legacy.dispatcher") {
-            return options.concat([{ id: "legacy.dispatcher", label: "Legacy Dispatcher", category: "Advanced" }]);
+            return options.concat([{ id: "legacy.dispatcher", label: I18n.t("binds.legacy_dispatcher"), category: "Advanced" }]);
         }
         return options;
     }
@@ -396,12 +397,12 @@ Item {
     readonly property var categories: [
         {
             id: "ambxst",
-            label: "Ambxst",
+            label: I18n.t("binds.ambxst"),
             icon: Icons.widgets
         },
         {
             id: "custom",
-            label: "Custom",
+            label: I18n.t("binds.custom"),
             icon: Icons.gear
         }
     ]
@@ -578,20 +579,20 @@ Item {
                 id: titlebar
                 width: root.contentWidth
                 anchors.horizontalCenter: parent.horizontalCenter
-                title: "Keybinds"
+                title: I18n.t("settings.binds")
                 statusText: ""
 
                 actions: [
                     {
                         icon: Icons.plus,
-                        tooltip: "Add keybind",
+                        tooltip: I18n.t("binds.add_keybind"),
                         onClicked: function () {
                             root.addNewBind();
                         }
                     },
                     {
                         icon: Icons.sync,
-                        tooltip: "Reload binds",
+                        tooltip: I18n.t("binds.reload_binds"),
                         onClicked: function () {
                             Config.keybindsLoader.reload();
                         }
@@ -935,7 +936,7 @@ Item {
 
                             StyledToolTip {
                                 visible: deleteButtonArea.containsMouse
-                                tooltipText: "Delete keybind"
+                                tooltipText: I18n.t("binds.delete_keybind")
                             }
                         }
 
@@ -962,7 +963,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Reset to default"
+                                    text: I18n.t("common.reset_default")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     font.weight: Font.Medium
@@ -1027,7 +1028,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Save"
+                                    text: I18n.t("common.save")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     font.weight: Font.Medium
@@ -1065,7 +1066,7 @@ Item {
                             visible: !root.isEditingAmbxst
 
                             Text {
-                                text: "Name (optional)"
+                                text: I18n.t("binds.name_optional")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1097,7 +1098,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !nameInput.text && !nameInput.activeFocus
-                                        text: "e.g. Open Terminal, Switch to Workspace 1..."
+                                        text: I18n.t("binds.keybind_name_placeholder")
                                         font: nameInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -1159,7 +1160,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Key Combination"
+                                    text: I18n.t("binds.key_combination")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.Medium
@@ -1296,7 +1297,7 @@ Item {
 
                                     StyledToolTip {
                                         visible: addKeyBtnArea.containsMouse
-                                        tooltipText: "Add another key"
+                                        tooltipText: I18n.t("binds.add_key")
                                     }
                                 }
                             }
@@ -1374,7 +1375,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !keyInput.text && !keyInput.activeFocus
-                                        text: "e.g. R, TAB, ESCAPE, mouse:272..."
+                                        text: I18n.t("binds.key_placeholder")
                                         font: keyInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -1396,7 +1397,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Action"
+                                    text: I18n.t("binds.action")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.Medium
@@ -1533,13 +1534,13 @@ Item {
 
                                     StyledToolTip {
                                         visible: addActionBtnArea.containsMouse
-                                        tooltipText: "Add another action"
+                                        tooltipText: I18n.t("binds.add_action")
                                     }
                                 }
                             }
 
                             Text {
-                                text: "Action"
+                                text: I18n.t("binds.action")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1690,7 +1691,7 @@ Item {
                             // LAYOUT SELECTOR (for AxctlService)
                             // =====================
                             Text {
-                                text: "Layouts (AxctlService)"
+                                text: I18n.t("binds.layouts_axctl")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1699,7 +1700,7 @@ Item {
                             }
 
                             Text {
-                                text: "Leave all unselected to work in all layouts"
+                                text: I18n.t("binds.layouts_hint")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
                                 color: Colors.overSurfaceVariant

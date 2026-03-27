@@ -16,7 +16,7 @@ ActionGrid {
         id: recordAction
         property string icon: ScreenRecorder.isRecording ? Icons.stop : Icons.recordScreen
         property string text: ScreenRecorder.isRecording ? ScreenRecorder.duration : ""
-        property string tooltip: ScreenRecorder.isRecording ? "Stop Recording" : "Screen Recorder"
+        property string tooltip: ScreenRecorder.isRecording ? I18n.t("tools.screenrecord_stop") : I18n.t("tools.screenrecord_start")
         property string command: ""
         property string variant: ScreenRecorder.isRecording ? "error" : "primary"
         property string type: "button"
@@ -30,12 +30,12 @@ ActionGrid {
     actions: [
         {
             icon: Icons.camera,
-            tooltip: "Screenshot",
+            tooltip: I18n.t("tools.screenshot"),
             command: ""
         },
         {
             icon: Icons.screenshots,
-            tooltip: "Open Screenshots",
+            tooltip: I18n.t("tools.screenshot_directory"),
             command: ""
         },
         {
@@ -44,7 +44,7 @@ ActionGrid {
         recordAction,
         {
             icon: Icons.recordings,
-            tooltip: "Open Recordings",
+            tooltip: I18n.t("tools.screenrecord_directory"),
             command: ""
         },
         {
@@ -52,27 +52,27 @@ ActionGrid {
         },
         {
             icon: Icons.picker,
-            tooltip: "Color Picker",
+            tooltip: I18n.t("tools.color_picker"),
             command: ""
         },
         {
             icon: Icons.textT,
-            tooltip: "OCR",
+            tooltip: I18n.t("tools.ocr"),
             command: ""
         },
         {
             icon: Icons.qrCode,
-            tooltip: "QR Code",
+            tooltip: I18n.t("tools.qr"),
             command: ""
         },
         {
             icon: Icons.google,
-            tooltip: "Google Lens",
+            tooltip: I18n.t("tools.google_lens"),
             command: ""
         },
         {
             icon: GlobalStates.mirrorWindowVisible ? Icons.webcamSlash : Icons.webcam,
-            tooltip: "Mirror",
+            tooltip: I18n.t("tools.mirror"),
             command: ""
         }
     ]
@@ -98,18 +98,18 @@ ActionGrid {
     onActionTriggered: action => {
         console.log("Tools action triggered:", action.tooltip);
 
-        if (action.tooltip === "Screenshot") {
+        if (action.tooltip === I18n.t("tools.screenshot")) {
             Screenshot.initialize();
             GlobalStates.screenshotToolVisible = true;
             root.itemSelected();
-        } else if (action.tooltip === "Screen Recorder") {
+        } else if (action.tooltip === I18n.t("tools.screenrecord_start")) {
             ScreenRecorder.initialize();
             GlobalStates.screenRecordToolVisible = true;
             root.itemSelected();
-        } else if (action.tooltip === "Stop Recording") {
+        } else if (action.tooltip === I18n.t("tools.screenrecord_stop")) {
             ScreenRecorder.toggleRecording();
             root.itemSelected();
-        } else if (action.tooltip === "Open Screenshots") {
+        } else if (action.tooltip === I18n.t("tools.screenshot_directory")) {
             // Usamos xdg-user-dir en el comando bash para respetar las rutas del sistema
             var cmd = "dir=\"$(xdg-user-dir PICTURES)/Screenshots\"; mkdir -p \"$dir\"; nohup xdg-open \"$dir\" > /dev/null 2>&1 &";
             
@@ -117,7 +117,7 @@ ActionGrid {
             openFolderProc.running = true;
             
             root.itemSelected();
-        } else if (action.tooltip === "Open Recordings") {
+        } else if (action.tooltip === I18n.t("tools.screenrecord_directory")) {
             // Usamos xdg-user-dir para videos, manteniendo la subcarpeta Recordings
             var cmd = "dir=\"$(xdg-user-dir VIDEOS)/Recordings\"; mkdir -p \"$dir\"; nohup xdg-open \"$dir\" > /dev/null 2>&1 &";
             
@@ -125,13 +125,13 @@ ActionGrid {
             openFolderProc.running = true;
             
              root.itemSelected();
-        } else if (action.tooltip === "Color Picker") {
+        } else if (action.tooltip === I18n.t("tools.color_picker")) {
             var scriptPath = Qt.resolvedUrl("../../../scripts/colorpicker.py").toString().replace("file://", "");
             // Run detached so it survives when the menu closes
             colorPickerProc.command = ["bash", "-c", "nohup python3 \"" + scriptPath + "\" > /dev/null 2>&1 &"];
             colorPickerProc.running = true;
             root.itemSelected();
-        } else if (action.tooltip === "OCR") {
+        } else if (action.tooltip === I18n.t("tools.ocr")) {
             var scriptPath = Qt.resolvedUrl("../../../scripts/ocr.sh").toString().replace("file://", "");
             
             // Build languages string from Config
@@ -146,6 +146,7 @@ ActionGrid {
                 if (ocrConfig.chi_sim === true) langs.push("chi_sim");
                 if (ocrConfig.chi_tra === true) langs.push("chi_tra");
                 if (ocrConfig.kor === true) langs.push("kor");
+                if (ocrConfig.rus === true) langs.push("rus");
             } else {
                 langs = ["eng", "spa"];
             }
@@ -156,16 +157,16 @@ ActionGrid {
             ocrProc.command = ["bash", "-c", "nohup \"" + scriptPath + "\" \"" + langString + "\" > /dev/null 2>&1 &"];
             ocrProc.running = true;
             root.itemSelected();
-        } else if (action.tooltip === "QR Code") {
+        } else if (action.tooltip === I18n.t("tools.qr")) {
             var scriptPath = Qt.resolvedUrl("../../../scripts/qr_scan.sh").toString().replace("file://", "");
             qrProc.command = ["bash", "-c", "nohup \"" + scriptPath + "\" > /dev/null 2>&1 &"];
             qrProc.running = true;
             root.itemSelected();
-        } else if (action.tooltip === "Google Lens") {
+        } else if (action.tooltip === I18n.t("tools.google_lens")) {
             Screenshot.captureMode = "lens";
             GlobalStates.screenshotToolVisible = true;
             root.itemSelected();
-        } else if (action.tooltip === "Mirror") {
+        } else if (action.tooltip === I18n.t("tools.mirror")) {
             GlobalStates.mirrorWindowVisible = !GlobalStates.mirrorWindowVisible;
         }
     }

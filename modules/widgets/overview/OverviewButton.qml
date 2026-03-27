@@ -7,7 +7,7 @@ import qs.modules.theme
 
 ToggleButton {
     buttonIcon: Icons.overview
-    tooltipText: "Open Window Overview"
+    tooltipText: I18n.t("bar.tooltip.overview")
 
     onToggle: function () {
         if (GlobalStates.overviewOpen) {

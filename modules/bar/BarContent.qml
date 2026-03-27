@@ -454,7 +454,7 @@ Item {
 
                                 StyledToolTip {
                                     show: pinButton.hovered
-                                    tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                    tooltipText: root.pinned ? I18n.t("bar.tooltip.unpin_bar") : I18n.t("bar.tooltip.pin_bar")
                                 }
                             }
                         }
@@ -708,7 +708,7 @@ Item {
 
                                         StyledToolTip {
                                             show: pinButtonV.hovered
-                                            tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                            tooltipText: root.pinned ? I18n.t("bar.tooltip.unpin_bar") : I18n.t("bar.tooltip.pin_bar")
                                         }
                                     }
                                 }

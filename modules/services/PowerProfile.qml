@@ -315,11 +315,11 @@ Singleton {
 
     function getProfileDisplayName(profileName) {
         if (profileName === "power-saver")
-            return "Power Save";
+            return I18n.t("power_profile.power_save");
         if (profileName === "balanced")
-            return "Balanced";
+            return I18n.t("power_profile.balanced");
         if (profileName === "performance")
-            return "Performance";
+            return I18n.t("power_profile.performance");
         return profileName;
     }
 }

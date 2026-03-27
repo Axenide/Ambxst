@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 import "layout.js" as CalendarLayout
 
@@ -20,13 +21,13 @@ Item {
         return (now.getDay() + 6) % 7;
     }
 
-    // Helper function to get localized day abbreviation
     function getDayAbbrev(dayIndex) {
-        // Create a date for a known Monday (e.g., 2024-01-01 was a Monday)
-        var d = new Date(2024, 0, 1 + dayIndex);
-        var dayName = d.toLocaleDateString(Qt.locale(), "ddd");
-        // Capitalize first letter and limit to 2 chars
-        return (dayName.charAt(0).toUpperCase() + dayName.slice(1, 2)).replace(".", "");
+        var keys = [
+            "calendar.day.mon", "calendar.day.tue", "calendar.day.wed",
+            "calendar.day.thu", "calendar.day.fri", "calendar.day.sat",
+            "calendar.day.sun"
+        ];
+        return I18n.t(keys[dayIndex]);
     }
 
     ColumnLayout {
@@ -60,7 +61,17 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: viewingDate.toLocaleDateString(Qt.locale(), "MMMM yyyy")
+                            text: {
+                                var monthKeys = [
+                                    "calendar.month.january", "calendar.month.february",
+                                    "calendar.month.march", "calendar.month.april",
+                                    "calendar.month.may", "calendar.month.june",
+                                    "calendar.month.july", "calendar.month.august",
+                                    "calendar.month.september", "calendar.month.october",
+                                    "calendar.month.november", "calendar.month.december"
+                                ];
+                                return I18n.t(monthKeys[viewingDate.getMonth()]) + " " + viewingDate.getFullYear();
+                            }
                             font.family: Config.defaultFont
                             font.pixelSize: Config.theme.fontSize
                             font.weight: Font.Bold

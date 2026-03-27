@@ -439,8 +439,17 @@ Singleton {
                                 var day = parseInt(dateParts[2]);
                                 
                                 var dayDate = new Date(year, month, day);
-                                var rawDayName = i === 0 ? "Today" : dayDate.toLocaleDateString(Qt.locale(), "ddd");
-                                var dayName = rawDayName.charAt(0).toUpperCase() + rawDayName.slice(1);
+                                var dayName;
+                                if (i === 0) {
+                                    dayName = I18n.t("weather.today");
+                                } else {
+                                    var dayKeys = [
+                                        "calendar.day.sun", "calendar.day.mon", "calendar.day.tue",
+                                        "calendar.day.wed", "calendar.day.thu", "calendar.day.fri",
+                                        "calendar.day.sat"
+                                    ];
+                                    dayName = I18n.t(dayKeys[dayDate.getDay()]);
+                                }
                                 forecastData.push({
                                     date: daily.time[i],
                                     dayName: dayName,

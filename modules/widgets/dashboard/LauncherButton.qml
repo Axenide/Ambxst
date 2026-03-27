@@ -9,7 +9,7 @@ ToggleButton {
     iconTint: Config.bar.launcherIconTint
     iconFullTint: Config.bar.launcherIconFullTint
     iconSize: Config.bar.launcherIconSize
-    tooltipText: "Open Launcher"
+    tooltipText: I18n.t("bar.tooltip.launcher")
 
     onToggle: function () {
         if (GlobalStates.launcherOpen) {

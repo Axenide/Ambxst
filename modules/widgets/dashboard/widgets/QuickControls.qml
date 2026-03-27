@@ -69,7 +69,7 @@ StyledRect {
                         return Icons.wifiHigh;
                     }
                     isActive: NetworkService.wifiEnabled || root.expandedPanel === 0
-                    tooltipText: NetworkService.wifiEnabled ? "Wi-Fi: On" : "Wi-Fi: Off"
+                    tooltipText: NetworkService.wifiEnabled ? I18n.t("wifi.tooltip_on") : I18n.t("wifi.tooltip_off")
                     onClicked: NetworkService.toggleWifi()
                     onRightClicked: root.togglePanel(0)
                     onLongPressed: root.togglePanel(0)
@@ -88,10 +88,10 @@ StyledRect {
                     isActive: BluetoothService.enabled || root.expandedPanel === 1
                     tooltipText: {
                         if (!BluetoothService.enabled)
-                            return "Bluetooth: Off";
+                            return I18n.t("controls.bluetooth_off");
                         if (BluetoothService.connected)
-                            return "Bluetooth: Connected";
-                        return "Bluetooth: On";
+                            return I18n.t("controls.bluetooth_connected");
+                        return I18n.t("controls.bluetooth_on");
                     }
                     onClicked: BluetoothService.toggle()
                     onRightClicked: root.togglePanel(1)
@@ -103,7 +103,7 @@ StyledRect {
                     Layout.preferredHeight: 48
                     iconName: Icons.nightLight
                     isActive: NightLightService.active
-                    tooltipText: NightLightService.active ? "Night Light: On" : "Night Light: Off"
+                    tooltipText: NightLightService.active ? I18n.t("controls.night_light_on") : I18n.t("controls.night_light_off")
                     onClicked: NightLightService.toggle()
                 }
 
@@ -112,7 +112,7 @@ StyledRect {
                     Layout.preferredHeight: 48
                     iconName: Icons.caffeine
                     isActive: CaffeineService.inhibit
-                    tooltipText: CaffeineService.inhibit ? "Caffeine: On" : "Caffeine: Off"
+                    tooltipText: CaffeineService.inhibit ? I18n.t("controls.caffeine_on") : I18n.t("controls.caffeine_off")
                     onClicked: CaffeineService.toggleInhibit()
                 }
 
@@ -121,7 +121,7 @@ StyledRect {
                     Layout.preferredHeight: 48
                     iconName: Icons.gameMode
                     isActive: GameModeService.toggled
-                    tooltipText: GameModeService.toggled ? "Game Mode: On" : "Game Mode: Off"
+                    tooltipText: GameModeService.toggled ? I18n.t("controls.game_mode_on") : I18n.t("controls.game_mode_off")
                     onClicked: GameModeService.toggle()
                 }
             }
