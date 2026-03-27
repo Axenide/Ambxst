@@ -43,6 +43,8 @@ Item {
         }
     }
 
+    implicitWidth: bg.implicitWidth
+    implicitHeight: 36
     Layout.preferredWidth: bg.implicitWidth
     Layout.preferredHeight: 36
     Layout.alignment: Qt.AlignVCenter
