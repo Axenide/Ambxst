@@ -577,6 +577,7 @@
     "system.resources.show_gpu": "ГП",
     "system.resources.show_items": "Отображаемые элементы",
     "system.resources.show_ram": "ОЗУ",
+    "system.resources.show_temp": "Темп",
     "system.resources.unsaved": "Несохранённые изменения",
     "theme.add_stop": "Добавить точку",
     "theme.angle": "Угол",

@@ -577,6 +577,7 @@
     "system.resources.show_gpu": "GPU",
     "system.resources.show_items": "Visible Items",
     "system.resources.show_ram": "RAM",
+    "system.resources.show_temp": "Temp",
     "system.resources.unsaved": "Unsaved changes",
     "theme.add_stop": "Add Stop",
     "theme.angle": "Angle",
