@@ -49,6 +49,24 @@ Item {
     Layout.preferredHeight: 36
     Layout.alignment: Qt.AlignVCenter
 
+    // Fixed-width metrics so numeric values don't cause layout jitter
+    TextMetrics {
+        id: pctMetrics
+        font.family: Config.theme.font
+        font.pixelSize: Styling.fontSize(-1)
+        text: "100%"
+    }
+    TextMetrics {
+        id: tempMetrics
+        font.family: Config.theme.font
+        font.pixelSize: Styling.fontSize(-2)
+        text: "100°"
+    }
+    readonly property real pctWidth: pctMetrics.width
+    readonly property real tempWidth: tempMetrics.width
+    // Foreground color of the bg tile — switches when popup opens (primary variant)
+    readonly property color itemColor: bg.item
+
     HoverHandler {
         onHoveredChanged: root.isHovered = hovered
     }
@@ -93,20 +111,27 @@ Item {
                         text: Icons.cpu
                         font.family: Icons.font
                         font.pixelSize: 13
-                        color: Colors.red
+                        color: popup.isOpen ? root.itemColor : Colors.red
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
                         text: Math.round(SystemResources.cpuUsage) + "%"
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
-                        color: Colors.overBackground
+                        color: popup.isOpen ? root.itemColor : Colors.overBackground
+                        width: root.pctWidth
+                        horizontalAlignment: Text.AlignRight
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
                         visible: SystemResources.cpuTemp >= 0
                         text: SystemResources.cpuTemp + "°"
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-2)
-                        color: Colors.overSurfaceVariant
+                        color: popup.isOpen ? root.itemColor : Colors.overSurfaceVariant
+                        width: root.tempWidth
+                        horizontalAlignment: Text.AlignRight
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                 }
             }
@@ -132,13 +157,17 @@ Item {
                         text: Icons.ram
                         font.family: Icons.font
                         font.pixelSize: 13
-                        color: Colors.cyan
+                        color: popup.isOpen ? root.itemColor : Colors.cyan
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
                         text: Math.round(SystemResources.ramUsage) + "%"
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
-                        color: Colors.overBackground
+                        color: popup.isOpen ? root.itemColor : Colors.overBackground
+                        width: root.pctWidth
+                        horizontalAlignment: Text.AlignRight
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                 }
             }
@@ -169,20 +198,27 @@ Item {
                                 text: Icons.gpu
                                 font.family: Icons.font
                                 font.pixelSize: 13
-                                color: root.gpuColor(SystemResources.gpuVendors[index] || "")
+                                color: popup.isOpen ? root.itemColor : root.gpuColor(SystemResources.gpuVendors[index] || "")
+                                Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
                             Text {
                                 text: Math.round(SystemResources.gpuUsages[index] || 0) + "%"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
-                                color: Colors.overBackground
+                                color: popup.isOpen ? root.itemColor : Colors.overBackground
+                                width: root.pctWidth
+                                horizontalAlignment: Text.AlignRight
+                                Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
                             Text {
                                 visible: (SystemResources.gpuTemps[index] ?? -1) >= 0
                                 text: (SystemResources.gpuTemps[index] || 0) + "°"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
-                                color: Colors.overSurfaceVariant
+                                color: popup.isOpen ? root.itemColor : Colors.overSurfaceVariant
+                                width: root.tempWidth
+                                horizontalAlignment: Text.AlignRight
+                                Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
                         }
                     }
@@ -215,13 +251,17 @@ Item {
                                 text: Icons.disk
                                 font.family: Icons.font
                                 font.pixelSize: 13
-                                color: Colors.yellow
+                                color: popup.isOpen ? root.itemColor : Colors.yellow
+                                Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
                             Text {
                                 text: Math.round(SystemResources.diskUsage[modelData] || 0) + "%"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
-                                color: Colors.overBackground
+                                color: popup.isOpen ? root.itemColor : Colors.overBackground
+                                width: root.pctWidth
+                                horizontalAlignment: Text.AlignRight
+                                Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
                         }
                     }
@@ -246,7 +286,7 @@ Item {
         id: popup
         anchorItem: bg
         bar: root.bar
-        contentWidth: 220
+        contentWidth: bg.width
         contentHeight: popupColumn.implicitHeight + popup.popupPadding * 2
 
         ColumnLayout {
