@@ -109,15 +109,16 @@ Item {
                 active: root.showCpu
                 visible: active
                 Layout.alignment: Qt.AlignHCenter
-                sourceComponent: Column {
+                sourceComponent: ColumnLayout {
                     spacing: 0
-                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         text: Icons.cpu; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : Colors.red
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         text: Math.round(SystemResources.cpuUsage) + "%"
                         font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
@@ -129,15 +130,16 @@ Item {
                 active: root.showRam
                 visible: active
                 Layout.alignment: Qt.AlignHCenter
-                sourceComponent: Column {
+                sourceComponent: ColumnLayout {
                     spacing: 0
-                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         text: Icons.ram; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : Colors.cyan
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         text: Math.round(SystemResources.ramUsage) + "%"
                         font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
@@ -149,15 +151,16 @@ Item {
                 active: root.showGpu && SystemResources.gpuDetected
                 visible: active
                 Layout.alignment: Qt.AlignHCenter
-                sourceComponent: Column {
+                sourceComponent: ColumnLayout {
                     spacing: 0
-                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         text: Icons.gpu; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : root.gpuColor(SystemResources.gpuVendors[0] || "")
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         text: Math.round(SystemResources.gpuUsages[0] || 0) + "%"
                         font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
@@ -169,15 +172,16 @@ Item {
                 active: root.showDisk && SystemResources.validDisks.length > 0
                 visible: active
                 Layout.alignment: Qt.AlignHCenter
-                sourceComponent: Column {
+                sourceComponent: ColumnLayout {
                     spacing: 0
-                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         text: Icons.disk; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : Colors.yellow
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
+                        Layout.alignment: Qt.AlignHCenter
                         readonly property string firstDisk: SystemResources.validDisks.length > 0 ? SystemResources.validDisks[0] : "/"
                         text: Math.round(SystemResources.diskUsage[firstDisk] || 0) + "%"
                         font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
