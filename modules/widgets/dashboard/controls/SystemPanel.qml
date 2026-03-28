@@ -71,6 +71,53 @@ Item {
         }
     }
 
+    // Option selector — same visual style as ShellPanel/CompositorPanel
+    component SelectorRow: RowLayout {
+        id: selectorRow
+        property var options: []   // [{ label: string, value: string }]
+        property string value: ""
+        signal valueSelected(string newValue)
+
+        Layout.fillWidth: true
+        spacing: 4
+
+        Repeater {
+            model: selectorRow.options
+
+            delegate: StyledRect {
+                id: optBtn
+                required property var modelData
+                required property int index
+
+                readonly property bool isSelected: optBtn.modelData.value === selectorRow.value
+                property bool isHovered: false
+
+                variant: isSelected ? "primary" : (isHovered ? "focus" : "common")
+                Layout.fillWidth: true
+                Layout.preferredHeight: 36
+                radius: Styling.radius(0)
+
+                Text {
+                    anchors.centerIn: parent
+                    text: optBtn.modelData.label
+                    font.family: Config.theme.font
+                    font.pixelSize: Styling.fontSize(0)
+                    font.weight: optBtn.isSelected ? Font.DemiBold : Font.Normal
+                    color: optBtn.item
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onEntered: optBtn.isHovered = true
+                    onExited: optBtn.isHovered = false
+                    onClicked: selectorRow.valueSelected(optBtn.modelData.value)
+                }
+            }
+        }
+    }
+
     // Main content
     Flickable {
         id: mainFlickable
@@ -574,17 +621,14 @@ Item {
                                 Layout.bottomMargin: -4
                             }
 
-                            SegmentedSwitch {
-                                Layout.fillWidth: true
+                            SelectorRow {
                                 options: [
-                                    root.tr("system.resources.location_dashboard", "Dashboard"),
-                                    root.tr("system.resources.location_bar", "Bar"),
-                                    root.tr("system.resources.location_both", "Both")
+                                    { label: root.tr("system.resources.location_dashboard", "Dashboard"), value: "dashboard" },
+                                    { label: root.tr("system.resources.location_bar", "Bar"),             value: "bar" },
+                                    { label: root.tr("system.resources.location_both", "Both"),           value: "both" }
                                 ]
-                                currentIndex: systemSection.resLocation === "bar" ? 1 : (systemSection.resLocation === "both" ? 2 : 0)
-                                onIndexChanged: index => {
-                                    systemSection.resLocation = index === 1 ? "bar" : (index === 2 ? "both" : "dashboard");
-                                }
+                                value: systemSection.resLocation
+                                onValueSelected: newValue => { systemSection.resLocation = newValue; }
                             }
 
                             // ── Bar Side (visible only when location includes bar) ───
@@ -599,17 +643,14 @@ Item {
                                 Layout.bottomMargin: -4
                             }
 
-                            SegmentedSwitch {
+                            SelectorRow {
                                 visible: systemSection.resLocation === "bar" || systemSection.resLocation === "both"
-                                Layout.fillWidth: true
                                 options: [
-                                    root.tr("system.resources.bar_side_left", "Left"),
-                                    root.tr("system.resources.bar_side_right", "Right")
+                                    { label: root.tr("system.resources.bar_side_left", "Left"),  value: "left" },
+                                    { label: root.tr("system.resources.bar_side_right", "Right"), value: "right" }
                                 ]
-                                currentIndex: systemSection.resBarSide === "right" ? 1 : 0
-                                onIndexChanged: index => {
-                                    systemSection.resBarSide = index === 1 ? "right" : "left";
-                                }
+                                value: systemSection.resBarSide
+                                onValueSelected: newValue => { systemSection.resBarSide = newValue; }
                             }
 
                             // ── Visible Items ─────────────────────────────────
