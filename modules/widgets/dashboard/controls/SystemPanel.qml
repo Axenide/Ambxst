@@ -578,17 +578,18 @@ Item {
                                 Layout.fillWidth: true
                                 options: [
                                     root.tr("system.resources.location_dashboard", "Dashboard"),
-                                    root.tr("system.resources.location_bar", "Bar")
+                                    root.tr("system.resources.location_bar", "Bar"),
+                                    root.tr("system.resources.location_both", "Both")
                                 ]
-                                currentIndex: systemSection.resLocation === "bar" ? 1 : 0
+                                currentIndex: systemSection.resLocation === "bar" ? 1 : (systemSection.resLocation === "both" ? 2 : 0)
                                 onIndexChanged: index => {
-                                    systemSection.resLocation = index === 1 ? "bar" : "dashboard";
+                                    systemSection.resLocation = index === 1 ? "bar" : (index === 2 ? "both" : "dashboard");
                                 }
                             }
 
-                            // ── Bar Side (visible only when location = bar) ───
+                            // ── Bar Side (visible only when location includes bar) ───
                             Text {
-                                visible: systemSection.resLocation === "bar"
+                                visible: systemSection.resLocation === "bar" || systemSection.resLocation === "both"
                                 text: root.tr("system.resources.bar_side", "Bar Position")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
@@ -599,7 +600,7 @@ Item {
                             }
 
                             SegmentedSwitch {
-                                visible: systemSection.resLocation === "bar"
+                                visible: systemSection.resLocation === "bar" || systemSection.resLocation === "both"
                                 Layout.fillWidth: true
                                 options: [
                                     root.tr("system.resources.bar_side_left", "Left"),

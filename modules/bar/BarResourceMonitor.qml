@@ -119,7 +119,7 @@ Item {
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
-                        width: root.pctWidth
+                        Layout.preferredWidth: root.pctWidth
                         horizontalAlignment: Text.AlignRight
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
@@ -129,7 +129,7 @@ Item {
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-2)
                         color: popup.isOpen ? root.itemColor : Colors.overSurfaceVariant
-                        width: root.tempWidth
+                        Layout.preferredWidth: root.tempWidth
                         horizontalAlignment: Text.AlignRight
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
@@ -165,7 +165,7 @@ Item {
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
-                        width: root.pctWidth
+                        Layout.preferredWidth: root.pctWidth
                         horizontalAlignment: Text.AlignRight
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
@@ -206,7 +206,7 @@ Item {
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: popup.isOpen ? root.itemColor : Colors.overBackground
-                                width: root.pctWidth
+                                Layout.preferredWidth: root.pctWidth
                                 horizontalAlignment: Text.AlignRight
                                 Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
@@ -216,7 +216,7 @@ Item {
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
                                 color: popup.isOpen ? root.itemColor : Colors.overSurfaceVariant
-                                width: root.tempWidth
+                                Layout.preferredWidth: root.tempWidth
                                 horizontalAlignment: Text.AlignRight
                                 Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
@@ -259,7 +259,7 @@ Item {
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: popup.isOpen ? root.itemColor : Colors.overBackground
-                                width: root.pctWidth
+                                Layout.preferredWidth: root.pctWidth
                                 horizontalAlignment: Text.AlignRight
                                 Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }

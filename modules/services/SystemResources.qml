@@ -59,7 +59,7 @@ Singleton {
     // Optimized GPU polling avoids waking dGPUs.
     property Process monitorProcess: Process {
         id: monitorProcess
-        running: (Config.system.resources && Config.system.resources.enabled !== false) && ((GlobalStates.dashboardOpen && GlobalStates.dashboardCurrentTab === 2) || Config.system.resources.location === "bar") && root.validDisks.length > 0
+        running: (Config.system.resources && Config.system.resources.enabled !== false) && ((GlobalStates.dashboardOpen && GlobalStates.dashboardCurrentTab === 2) || Config.system.resources.location === "bar" || Config.system.resources.location === "both") && root.validDisks.length > 0
         
         command: {
             let cmd = ["python3", Quickshell.shellDir + "/scripts/system_monitor.py", root.updateInterval.toString()];

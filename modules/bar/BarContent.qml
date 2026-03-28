@@ -195,7 +195,7 @@ Item {
 
     // Resource monitor placement — top-level bindings ensure reactive updates on config change
     readonly property bool resourceMonitorEnabled: Config.system.resources ? Config.system.resources.enabled !== false : false
-    readonly property bool resourceMonitorInBar: resourceMonitorEnabled && (Config.system.resources ? Config.system.resources.location === "bar" : false)
+    readonly property bool resourceMonitorInBar: resourceMonitorEnabled && (Config.system.resources ? (Config.system.resources.location === "bar" || Config.system.resources.location === "both") : false)
     readonly property bool resourceMonitorLeft: resourceMonitorInBar && (Config.system.resources ? Config.system.resources.barSide !== "right" : true)
     readonly property bool resourceMonitorRight: resourceMonitorInBar && !resourceMonitorLeft
 
