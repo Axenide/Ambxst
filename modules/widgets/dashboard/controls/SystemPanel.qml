@@ -519,6 +519,10 @@ Item {
                         property bool resShowRam: true
                         property bool resShowGpu: true
                         property bool resShowDisk: true
+                        property bool resShowBarCpu: true
+                        property bool resShowBarRam: true
+                        property bool resShowBarGpu: true
+                        property bool resShowBarDisk: true
                         property bool savedSuccess: false
 
                         property bool hasChanges: {
@@ -532,6 +536,10 @@ Item {
                             if ((show ? show.ram !== false : true) !== resShowRam) return true;
                             if ((show ? show.gpu !== false : true) !== resShowGpu) return true;
                             if ((show ? show.disk !== false : true) !== resShowDisk) return true;
+                            if ((show ? show.barCpu !== false : true) !== resShowBarCpu) return true;
+                            if ((show ? show.barRam !== false : true) !== resShowBarRam) return true;
+                            if ((show ? show.barGpu !== false : true) !== resShowBarGpu) return true;
+                            if ((show ? show.barDisk !== false : true) !== resShowBarDisk) return true;
                             return false;
                         }
 
@@ -546,6 +554,10 @@ Item {
                             resShowRam = show ? show.ram !== false : true;
                             resShowGpu = show ? show.gpu !== false : true;
                             resShowDisk = show ? show.disk !== false : true;
+                            resShowBarCpu = show ? show.barCpu !== false : true;
+                            resShowBarRam = show ? show.barRam !== false : true;
+                            resShowBarGpu = show ? show.barGpu !== false : true;
+                            resShowBarDisk = show ? show.barDisk !== false : true;
                         }
 
                         function saveToConfig() {
@@ -559,6 +571,10 @@ Item {
                                 res.show.ram = resShowRam;
                                 res.show.gpu = resShowGpu;
                                 res.show.disk = resShowDisk;
+                                res.show.barCpu = resShowBarCpu;
+                                res.show.barRam = resShowBarRam;
+                                res.show.barGpu = resShowBarGpu;
+                                res.show.barDisk = resShowBarDisk;
                             }
                             savedSuccess = true;
                             savedTimer.restart();
@@ -664,58 +680,150 @@ Item {
                                 Layout.bottomMargin: -4
                             }
 
-                            Flow {
+                            // Dashboard items (shown when location = dashboard or both)
+                            ColumnLayout {
                                 Layout.fillWidth: true
                                 spacing: 4
+                                visible: systemSection.resLocation !== "bar"
 
-                                Repeater {
-                                    model: [
-                                        { key: "cpu",  label: root.tr("system.resources.show_cpu",  "CPU")  },
-                                        { key: "ram",  label: root.tr("system.resources.show_ram",  "RAM")  },
-                                        { key: "gpu",  label: root.tr("system.resources.show_gpu",  "GPU")  },
-                                        { key: "disk", label: root.tr("system.resources.show_disk", "Disk") }
-                                    ]
+                                Text {
+                                    visible: systemSection.resLocation === "both"
+                                    text: root.tr("system.resources.location_dashboard", "Dashboard")
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    font.weight: Font.Medium
+                                    color: Colors.overSurfaceVariant
+                                    opacity: 0.7
+                                }
 
-                                    delegate: StyledRect {
-                                        id: visBtn
-                                        required property var modelData
-                                        required property int index
+                                Flow {
+                                    Layout.fillWidth: true
+                                    spacing: 4
 
-                                        readonly property bool isOn: {
-                                            if (modelData.key === "cpu")  return systemSection.resShowCpu;
-                                            if (modelData.key === "ram")  return systemSection.resShowRam;
-                                            if (modelData.key === "gpu")  return systemSection.resShowGpu;
-                                            if (modelData.key === "disk") return systemSection.resShowDisk;
-                                            return false;
+                                    Repeater {
+                                        model: [
+                                            { key: "cpu",  label: root.tr("system.resources.show_cpu",  "CPU")  },
+                                            { key: "ram",  label: root.tr("system.resources.show_ram",  "RAM")  },
+                                            { key: "gpu",  label: root.tr("system.resources.show_gpu",  "GPU")  },
+                                            { key: "disk", label: root.tr("system.resources.show_disk", "Disk") }
+                                        ]
+
+                                        delegate: StyledRect {
+                                            id: visBtnDash
+                                            required property var modelData
+                                            required property int index
+
+                                            readonly property bool isOn: {
+                                                if (modelData.key === "cpu")  return systemSection.resShowCpu;
+                                                if (modelData.key === "ram")  return systemSection.resShowRam;
+                                                if (modelData.key === "gpu")  return systemSection.resShowGpu;
+                                                if (modelData.key === "disk") return systemSection.resShowDisk;
+                                                return false;
+                                            }
+                                            property bool isHovered: false
+
+                                            variant: isOn ? "primary" : (isHovered ? "focus" : "common")
+                                            width: visBtnDashLabel.implicitWidth + 24
+                                            height: 36
+                                            radius: Styling.radius(0)
+
+                                            Text {
+                                                id: visBtnDashLabel
+                                                anchors.centerIn: parent
+                                                text: visBtnDash.modelData.label
+                                                font.family: Config.theme.font
+                                                font.pixelSize: Styling.fontSize(0)
+                                                font.weight: visBtnDash.isOn ? Font.DemiBold : Font.Normal
+                                                color: visBtnDash.item
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onEntered: visBtnDash.isHovered = true
+                                                onExited:  visBtnDash.isHovered = false
+                                                onClicked: {
+                                                    if (visBtnDash.modelData.key === "cpu")  systemSection.resShowCpu  = !systemSection.resShowCpu;
+                                                    if (visBtnDash.modelData.key === "ram")  systemSection.resShowRam  = !systemSection.resShowRam;
+                                                    if (visBtnDash.modelData.key === "gpu")  systemSection.resShowGpu  = !systemSection.resShowGpu;
+                                                    if (visBtnDash.modelData.key === "disk") systemSection.resShowDisk = !systemSection.resShowDisk;
+                                                }
+                                            }
                                         }
-                                        property bool isHovered: false
+                                    }
+                                }
+                            }
 
-                                        variant: isOn ? "primary" : (isHovered ? "focus" : "common")
-                                        width: visBtnLabel.implicitWidth + 24
-                                        height: 36
-                                        radius: Styling.radius(0)
+                            // Bar items (shown when location = bar or both)
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 4
+                                visible: systemSection.resLocation !== "dashboard"
 
-                                        Text {
-                                            id: visBtnLabel
-                                            anchors.centerIn: parent
-                                            text: visBtn.modelData.label
-                                            font.family: Config.theme.font
-                                            font.pixelSize: Styling.fontSize(0)
-                                            font.weight: visBtn.isOn ? Font.DemiBold : Font.Normal
-                                            color: visBtn.item
-                                        }
+                                Text {
+                                    visible: systemSection.resLocation === "both"
+                                    text: root.tr("system.resources.location_bar", "Bar")
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    font.weight: Font.Medium
+                                    color: Colors.overSurfaceVariant
+                                    opacity: 0.7
+                                }
 
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onEntered: visBtn.isHovered = true
-                                            onExited:  visBtn.isHovered = false
-                                            onClicked: {
-                                                if (visBtn.modelData.key === "cpu")  systemSection.resShowCpu  = !systemSection.resShowCpu;
-                                                if (visBtn.modelData.key === "ram")  systemSection.resShowRam  = !systemSection.resShowRam;
-                                                if (visBtn.modelData.key === "gpu")  systemSection.resShowGpu  = !systemSection.resShowGpu;
-                                                if (visBtn.modelData.key === "disk") systemSection.resShowDisk = !systemSection.resShowDisk;
+                                Flow {
+                                    Layout.fillWidth: true
+                                    spacing: 4
+
+                                    Repeater {
+                                        model: [
+                                            { key: "cpu",  label: root.tr("system.resources.show_cpu",  "CPU")  },
+                                            { key: "ram",  label: root.tr("system.resources.show_ram",  "RAM")  },
+                                            { key: "gpu",  label: root.tr("system.resources.show_gpu",  "GPU")  },
+                                            { key: "disk", label: root.tr("system.resources.show_disk", "Disk") }
+                                        ]
+
+                                        delegate: StyledRect {
+                                            id: visBtnBar
+                                            required property var modelData
+                                            required property int index
+
+                                            readonly property bool isOn: {
+                                                if (modelData.key === "cpu")  return systemSection.resShowBarCpu;
+                                                if (modelData.key === "ram")  return systemSection.resShowBarRam;
+                                                if (modelData.key === "gpu")  return systemSection.resShowBarGpu;
+                                                if (modelData.key === "disk") return systemSection.resShowBarDisk;
+                                                return false;
+                                            }
+                                            property bool isHovered: false
+
+                                            variant: isOn ? "primary" : (isHovered ? "focus" : "common")
+                                            width: visBtnBarLabel.implicitWidth + 24
+                                            height: 36
+                                            radius: Styling.radius(0)
+
+                                            Text {
+                                                id: visBtnBarLabel
+                                                anchors.centerIn: parent
+                                                text: visBtnBar.modelData.label
+                                                font.family: Config.theme.font
+                                                font.pixelSize: Styling.fontSize(0)
+                                                font.weight: visBtnBar.isOn ? Font.DemiBold : Font.Normal
+                                                color: visBtnBar.item
+                                            }
+
+                                            MouseArea {
+                                                anchors.fill: parent
+                                                hoverEnabled: true
+                                                cursorShape: Qt.PointingHandCursor
+                                                onEntered: visBtnBar.isHovered = true
+                                                onExited:  visBtnBar.isHovered = false
+                                                onClicked: {
+                                                    if (visBtnBar.modelData.key === "cpu")  systemSection.resShowBarCpu  = !systemSection.resShowBarCpu;
+                                                    if (visBtnBar.modelData.key === "ram")  systemSection.resShowBarRam  = !systemSection.resShowBarRam;
+                                                    if (visBtnBar.modelData.key === "gpu")  systemSection.resShowBarGpu  = !systemSection.resShowBarGpu;
+                                                    if (visBtnBar.modelData.key === "disk") systemSection.resShowBarDisk = !systemSection.resShowBarDisk;
+                                                }
                                             }
                                         }
                                     }
