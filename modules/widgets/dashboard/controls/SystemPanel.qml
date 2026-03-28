@@ -664,32 +664,62 @@ Item {
                                 Layout.bottomMargin: -4
                             }
 
-                            ToggleRow {
+                            Flow {
                                 Layout.fillWidth: true
-                                label: root.tr("system.resources.show_cpu", "CPU")
-                                checked: systemSection.resShowCpu
-                                onToggled: checked => { systemSection.resShowCpu = checked; }
-                            }
+                                spacing: 4
 
-                            ToggleRow {
-                                Layout.fillWidth: true
-                                label: root.tr("system.resources.show_ram", "RAM")
-                                checked: systemSection.resShowRam
-                                onToggled: checked => { systemSection.resShowRam = checked; }
-                            }
+                                Repeater {
+                                    model: [
+                                        { key: "cpu",  label: root.tr("system.resources.show_cpu",  "CPU")  },
+                                        { key: "ram",  label: root.tr("system.resources.show_ram",  "RAM")  },
+                                        { key: "gpu",  label: root.tr("system.resources.show_gpu",  "GPU")  },
+                                        { key: "disk", label: root.tr("system.resources.show_disk", "Disk") }
+                                    ]
 
-                            ToggleRow {
-                                Layout.fillWidth: true
-                                label: root.tr("system.resources.show_gpu", "GPU")
-                                checked: systemSection.resShowGpu
-                                onToggled: checked => { systemSection.resShowGpu = checked; }
-                            }
+                                    delegate: StyledRect {
+                                        id: visBtn
+                                        required property var modelData
+                                        required property int index
 
-                            ToggleRow {
-                                Layout.fillWidth: true
-                                label: root.tr("system.resources.show_disk", "Disk")
-                                checked: systemSection.resShowDisk
-                                onToggled: checked => { systemSection.resShowDisk = checked; }
+                                        readonly property bool isOn: {
+                                            if (modelData.key === "cpu")  return systemSection.resShowCpu;
+                                            if (modelData.key === "ram")  return systemSection.resShowRam;
+                                            if (modelData.key === "gpu")  return systemSection.resShowGpu;
+                                            if (modelData.key === "disk") return systemSection.resShowDisk;
+                                            return false;
+                                        }
+                                        property bool isHovered: false
+
+                                        variant: isOn ? "primary" : (isHovered ? "focus" : "common")
+                                        width: visBtnLabel.implicitWidth + 24
+                                        height: 36
+                                        radius: Styling.radius(0)
+
+                                        Text {
+                                            id: visBtnLabel
+                                            anchors.centerIn: parent
+                                            text: visBtn.modelData.label
+                                            font.family: Config.theme.font
+                                            font.pixelSize: Styling.fontSize(0)
+                                            font.weight: visBtn.isOn ? Font.DemiBold : Font.Normal
+                                            color: visBtn.item
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onEntered: visBtn.isHovered = true
+                                            onExited:  visBtn.isHovered = false
+                                            onClicked: {
+                                                if (visBtn.modelData.key === "cpu")  systemSection.resShowCpu  = !systemSection.resShowCpu;
+                                                if (visBtn.modelData.key === "ram")  systemSection.resShowRam  = !systemSection.resShowRam;
+                                                if (visBtn.modelData.key === "gpu")  systemSection.resShowGpu  = !systemSection.resShowGpu;
+                                                if (visBtn.modelData.key === "disk") systemSection.resShowDisk = !systemSection.resShowDisk;
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             // ── Monitored Disks ───────────────────────────────
