@@ -494,14 +494,14 @@ WlSessionLockSurface {
                                     target: userIcon
                                     property: "opacity"
                                     to: 0.35
-                                    duration: 900
+                                    duration: 1170
                                     easing.type: Easing.InOutSine
                                 }
                                 NumberAnimation {
                                     target: userIcon
                                     property: "opacity"
                                     to: 1.0
-                                    duration: 900
+                                    duration: 1170
                                     easing.type: Easing.InOutSine
                                 }
                             }
