@@ -44,9 +44,10 @@ Item {
         }
     }
 
-    implicitWidth: bg.implicitWidth
+    // In vertical mode don't report a wide implicitWidth — let fillWidth handle sizing
+    implicitWidth: root.vertical ? 0 : bg.implicitWidth
     implicitHeight: bg.implicitHeight
-    Layout.preferredWidth: bg.implicitWidth
+    Layout.preferredWidth: root.vertical ? 0 : bg.implicitWidth
     Layout.preferredHeight: bg.implicitHeight
     Layout.fillWidth: root.vertical
     Layout.alignment: Qt.AlignVCenter
@@ -86,7 +87,7 @@ Item {
         anchors.fill: parent
         enableShadow: root.layerEnabled
 
-        implicitWidth: root.vertical ? (itemsCol.implicitWidth + 16) : (itemsRow.implicitWidth + 16)
+        implicitWidth: root.vertical ? 0 : (itemsRow.implicitWidth + 16)
         implicitHeight: root.vertical ? (itemsCol.implicitHeight + 16) : 36
 
         topLeftRadius:    root.vertical ? root.startRadius : root.startRadius
