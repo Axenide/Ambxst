@@ -454,10 +454,10 @@ WlSessionLockSurface {
                         anchors.rightMargin: 32
                         spacing: 8
 
-                        // User icon / Spinner
+                        // User icon / Spinner / Fingerprint
                         Text {
                             id: userIcon
-                            text: authenticating ? Icons.circleNotch : Icons.user
+                            text: authenticating ? Icons.circleNotch : (fingerprintScanning ? Icons.fingerprint : Icons.user)
                             font.family: Icons.font
                             font.pixelSize: 24
                             color: passwordFieldBg.item
@@ -475,6 +475,7 @@ WlSessionLockSurface {
                                 }
                             }
 
+                            // Spinner for password auth
                             Timer {
                                 id: spinnerTimer
                                 interval: 100
@@ -485,9 +486,32 @@ WlSessionLockSurface {
                                 }
                             }
 
+                            // Breathing pulse for fingerprint scanning
+                            SequentialAnimation {
+                                running: fingerprintScanning && !authenticating
+                                loops: Animation.Infinite
+                                NumberAnimation {
+                                    target: userIcon
+                                    property: "opacity"
+                                    to: 0.35
+                                    duration: 900
+                                    easing.type: Easing.InOutSine
+                                }
+                                NumberAnimation {
+                                    target: userIcon
+                                    property: "opacity"
+                                    to: 1.0
+                                    duration: 900
+                                    easing.type: Easing.InOutSine
+                                }
+                            }
+
                             onTextChanged: {
-                                if (userIcon.text === Icons.user) {
+                                if (userIcon.text !== Icons.circleNotch) {
                                     userIcon.rotation = 0;
+                                }
+                                if (userIcon.text !== Icons.fingerprint) {
+                                    userIcon.opacity = 1.0;
                                 }
                             }
                         }
