@@ -98,26 +98,28 @@ Item {
             }
         }
 
-        // ── Vertical chip (one row per metric) ───────────────────────
+        // ── Vertical chip (icon above value, one column per metric) ──
         ColumnLayout {
             id: itemsCol
             anchors.centerIn: parent
             visible: root.vertical
-            spacing: 2
+            spacing: 4
 
             Loader {
                 active: root.showCpu
                 visible: active
-                sourceComponent: RowLayout {
-                    spacing: 3
+                Layout.alignment: Qt.AlignHCenter
+                sourceComponent: Column {
+                    spacing: 0
+                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
-                        text: Icons.cpu; font.family: Icons.font; font.pixelSize: 11
+                        text: Icons.cpu; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : Colors.red
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
                         text: Math.round(SystemResources.cpuUsage) + "%"
-                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
@@ -126,16 +128,18 @@ Item {
             Loader {
                 active: root.showRam
                 visible: active
-                sourceComponent: RowLayout {
-                    spacing: 3
+                Layout.alignment: Qt.AlignHCenter
+                sourceComponent: Column {
+                    spacing: 0
+                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
-                        text: Icons.ram; font.family: Icons.font; font.pixelSize: 11
+                        text: Icons.ram; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : Colors.cyan
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
                         text: Math.round(SystemResources.ramUsage) + "%"
-                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
@@ -144,16 +148,18 @@ Item {
             Loader {
                 active: root.showGpu && SystemResources.gpuDetected
                 visible: active
-                sourceComponent: RowLayout {
-                    spacing: 3
+                Layout.alignment: Qt.AlignHCenter
+                sourceComponent: Column {
+                    spacing: 0
+                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
-                        text: Icons.gpu; font.family: Icons.font; font.pixelSize: 11
+                        text: Icons.gpu; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : root.gpuColor(SystemResources.gpuVendors[0] || "")
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
                         text: Math.round(SystemResources.gpuUsages[0] || 0) + "%"
-                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
@@ -162,17 +168,19 @@ Item {
             Loader {
                 active: root.showDisk && SystemResources.validDisks.length > 0
                 visible: active
-                sourceComponent: RowLayout {
-                    spacing: 3
+                Layout.alignment: Qt.AlignHCenter
+                sourceComponent: Column {
+                    spacing: 0
+                    horizontalItemAlignment: Qt.AlignHCenter
                     Text {
-                        text: Icons.disk; font.family: Icons.font; font.pixelSize: 11
+                        text: Icons.disk; font.family: Icons.font; font.pixelSize: 13
                         color: popup.isOpen ? root.itemColor : Colors.yellow
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
                         readonly property string firstDisk: SystemResources.validDisks.length > 0 ? SystemResources.validDisks[0] : "/"
                         text: Math.round(SystemResources.diskUsage[firstDisk] || 0) + "%"
-                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2); font.weight: Font.Medium
                         color: popup.isOpen ? root.itemColor : Colors.overBackground
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
@@ -372,7 +380,8 @@ Item {
         id: popup
         anchorItem: bg
         bar: root.bar
-        contentWidth: bg.width
+        // In vertical bar bg.width is the narrow bar width — use fixed width instead
+        contentWidth: root.vertical ? 240 : bg.width
         contentHeight: popupColumn.implicitHeight + popup.popupPadding * 2
 
         ColumnLayout {
