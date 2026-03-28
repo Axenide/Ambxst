@@ -45,9 +45,10 @@ Item {
     }
 
     implicitWidth: bg.implicitWidth
-    implicitHeight: 36
+    implicitHeight: bg.implicitHeight
     Layout.preferredWidth: bg.implicitWidth
-    Layout.preferredHeight: 36
+    Layout.preferredHeight: bg.implicitHeight
+    Layout.fillWidth: root.vertical
     Layout.alignment: Qt.AlignVCenter
 
     // Fixed-width metrics so numeric values don't cause layout jitter
@@ -78,8 +79,8 @@ Item {
         anchors.fill: parent
         enableShadow: root.layerEnabled
 
-        implicitWidth: itemsRow.implicitWidth + 16
-        implicitHeight: 36
+        implicitWidth: root.vertical ? (itemsCol.implicitWidth + 16) : (itemsRow.implicitWidth + 16)
+        implicitHeight: root.vertical ? (itemsCol.implicitHeight + 16) : 36
 
         topLeftRadius:    root.vertical ? root.startRadius : root.startRadius
         topRightRadius:   root.vertical ? root.startRadius : root.endRadius
@@ -97,9 +98,93 @@ Item {
             }
         }
 
+        // ── Vertical chip (one row per metric) ───────────────────────
+        ColumnLayout {
+            id: itemsCol
+            anchors.centerIn: parent
+            visible: root.vertical
+            spacing: 2
+
+            Loader {
+                active: root.showCpu
+                visible: active
+                sourceComponent: RowLayout {
+                    spacing: 3
+                    Text {
+                        text: Icons.cpu; font.family: Icons.font; font.pixelSize: 11
+                        color: popup.isOpen ? root.itemColor : Colors.red
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                    Text {
+                        text: Math.round(SystemResources.cpuUsage) + "%"
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        color: popup.isOpen ? root.itemColor : Colors.overBackground
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                }
+            }
+            Loader {
+                active: root.showRam
+                visible: active
+                sourceComponent: RowLayout {
+                    spacing: 3
+                    Text {
+                        text: Icons.ram; font.family: Icons.font; font.pixelSize: 11
+                        color: popup.isOpen ? root.itemColor : Colors.cyan
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                    Text {
+                        text: Math.round(SystemResources.ramUsage) + "%"
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        color: popup.isOpen ? root.itemColor : Colors.overBackground
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                }
+            }
+            Loader {
+                active: root.showGpu && SystemResources.gpuDetected
+                visible: active
+                sourceComponent: RowLayout {
+                    spacing: 3
+                    Text {
+                        text: Icons.gpu; font.family: Icons.font; font.pixelSize: 11
+                        color: popup.isOpen ? root.itemColor : root.gpuColor(SystemResources.gpuVendors[0] || "")
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                    Text {
+                        text: Math.round(SystemResources.gpuUsages[0] || 0) + "%"
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        color: popup.isOpen ? root.itemColor : Colors.overBackground
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                }
+            }
+            Loader {
+                active: root.showDisk && SystemResources.validDisks.length > 0
+                visible: active
+                sourceComponent: RowLayout {
+                    spacing: 3
+                    Text {
+                        text: Icons.disk; font.family: Icons.font; font.pixelSize: 11
+                        color: popup.isOpen ? root.itemColor : Colors.yellow
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                    Text {
+                        readonly property string firstDisk: SystemResources.validDisks.length > 0 ? SystemResources.validDisks[0] : "/"
+                        text: Math.round(SystemResources.diskUsage[firstDisk] || 0) + "%"
+                        font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                        color: popup.isOpen ? root.itemColor : Colors.overBackground
+                        Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
+                    }
+                }
+            }
+        }
+
+        // ── Horizontal chip (icon+value per metric in a row) ──────────
         RowLayout {
             id: itemsRow
             anchors.centerIn: parent
+            visible: !root.vertical
             spacing: 8
 
             // ── CPU ──────────────────────────────────────────────────
@@ -294,6 +379,17 @@ Item {
             id: popupColumn
             anchors.fill: parent
             spacing: 4
+
+            // Shown when all metrics are hidden
+            Text {
+                visible: !root.showCpu && !root.showRam && !(root.showGpu && SystemResources.gpuDetected) && !(root.showDisk && SystemResources.validDisks.length > 0)
+                Layout.fillWidth: true
+                horizontalAlignment: Text.AlignHCenter
+                text: root.tr("bar.resources.nothing", "No metrics enabled")
+                font.family: Config.theme.font
+                font.pixelSize: Styling.fontSize(-1)
+                color: Colors.overSurfaceVariant
+            }
 
             // CPU detail
             Loader {

@@ -752,10 +752,10 @@ Item {
                                                 onEntered: visBtnDash.isHovered = true
                                                 onExited:  visBtnDash.isHovered = false
                                                 onClicked: {
-                                                    if (visBtnDash.modelData.key === "cpu")  systemSection.resShowCpu  = !systemSection.resShowCpu;
-                                                    if (visBtnDash.modelData.key === "ram")  systemSection.resShowRam  = !systemSection.resShowRam;
-                                                    if (visBtnDash.modelData.key === "gpu")  systemSection.resShowGpu  = !systemSection.resShowGpu;
-                                                    if (visBtnDash.modelData.key === "disk") systemSection.resShowDisk = !systemSection.resShowDisk;
+                                                    if      (visBtnDash.modelData.key === "cpu")  systemSection.resShowCpu  = !systemSection.resShowCpu;
+                                                    else if (visBtnDash.modelData.key === "ram")  systemSection.resShowRam  = !systemSection.resShowRam;
+                                                    else if (visBtnDash.modelData.key === "gpu")  systemSection.resShowGpu  = !systemSection.resShowGpu;
+                                                    else if (visBtnDash.modelData.key === "disk") systemSection.resShowDisk = !systemSection.resShowDisk;
                                                 }
                                             }
                                         }
@@ -855,10 +855,10 @@ Item {
                                                 onEntered: visBtnBar.isHovered = true
                                                 onExited:  visBtnBar.isHovered = false
                                                 onClicked: {
-                                                    if (visBtnBar.modelData.key === "cpu")  systemSection.resShowBarCpu  = !systemSection.resShowBarCpu;
-                                                    if (visBtnBar.modelData.key === "ram")  systemSection.resShowBarRam  = !systemSection.resShowBarRam;
-                                                    if (visBtnBar.modelData.key === "gpu")  systemSection.resShowBarGpu  = !systemSection.resShowBarGpu;
-                                                    if (visBtnBar.modelData.key === "disk") systemSection.resShowBarDisk = !systemSection.resShowBarDisk;
+                                                    if      (visBtnBar.modelData.key === "cpu")  systemSection.resShowBarCpu  = !systemSection.resShowBarCpu;
+                                                    else if (visBtnBar.modelData.key === "ram")  systemSection.resShowBarRam  = !systemSection.resShowBarRam;
+                                                    else if (visBtnBar.modelData.key === "gpu")  systemSection.resShowBarGpu  = !systemSection.resShowBarGpu;
+                                                    else if (visBtnBar.modelData.key === "disk") systemSection.resShowBarDisk = !systemSection.resShowBarDisk;
                                                 }
                                             }
                                         }

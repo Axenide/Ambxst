@@ -624,6 +624,19 @@ Item {
                             enableShadow: root.shadowsEnabled
                         }
 
+                        // Resource Monitor — top position (barSide = left)
+                        Loader {
+                            active: root.resourceMonitorLeft
+                            visible: active
+                            Layout.fillWidth: true
+                            sourceComponent: BarResourceMonitor {
+                                bar: root
+                                layerEnabled: root.shadowsEnabled
+                                startRadius: root.outerRadius
+                                endRadius: root.outerRadius
+                            }
+                        }
+
                         // Center Group Container
                         Item {
                             Layout.fillHeight: true
@@ -755,6 +768,19 @@ Item {
                                 enableShadow: root.shadowsEnabled
                                 
                                 startRadius: root.innerRadius
+                                endRadius: root.outerRadius
+                            }
+                        }
+
+                        // Resource Monitor — bottom position (barSide = right)
+                        Loader {
+                            active: root.resourceMonitorRight
+                            visible: active
+                            Layout.fillWidth: true
+                            sourceComponent: BarResourceMonitor {
+                                bar: root
+                                layerEnabled: root.shadowsEnabled
+                                startRadius: root.outerRadius
                                 endRadius: root.outerRadius
                             }
                         }

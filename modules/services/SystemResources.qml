@@ -55,8 +55,12 @@ Singleton {
     property int updateInterval: 2000
 
     // Unified monitor process.
-    // Resource-efficient: only runs when dashboard is open.
-    // Optimized GPU polling avoids waking dGPUs.
+    // When location = "dashboard": only runs while the metrics tab is open — fully lazy.
+    // When location = "bar" or "both": runs continuously for the session so the bar
+    // widget stays live. This is a deliberate trade-off: the python script still uses
+    // the is_active power-state check to avoid polling an idle dGPU, but the process
+    // itself stays alive and polls CPU/RAM/disk at updateInterval ms regardless of
+    // bar visibility.
     property Process monitorProcess: Process {
         id: monitorProcess
         running: (Config.system.resources && Config.system.resources.enabled !== false) && ((GlobalStates.dashboardOpen && GlobalStates.dashboardCurrentTab === 2) || Config.system.resources.location === "bar" || Config.system.resources.location === "both") && root.validDisks.length > 0
