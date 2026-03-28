@@ -955,6 +955,12 @@ Singleton {
                     property bool ram: true
                     property bool gpu: true
                     property bool disk: true
+                    property bool barCpu: true
+                    property bool barRam: true
+                    property bool barGpu: true
+                    property bool barDisk: true
+                    property bool dashTemp: true
+                    property bool barTemp: true
                 }
             }
         }

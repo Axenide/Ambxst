@@ -523,6 +523,8 @@ Item {
                         property bool resShowBarRam: true
                         property bool resShowBarGpu: true
                         property bool resShowBarDisk: true
+                        property bool resShowDashTemp: true
+                        property bool resShowBarTemp: true
                         property bool savedSuccess: false
 
                         property bool hasChanges: {
@@ -540,6 +542,8 @@ Item {
                             if ((show ? show.barRam !== false : true) !== resShowBarRam) return true;
                             if ((show ? show.barGpu !== false : true) !== resShowBarGpu) return true;
                             if ((show ? show.barDisk !== false : true) !== resShowBarDisk) return true;
+                            if ((show ? show.dashTemp !== false : true) !== resShowDashTemp) return true;
+                            if ((show ? show.barTemp !== false : true) !== resShowBarTemp) return true;
                             return false;
                         }
 
@@ -558,6 +562,8 @@ Item {
                             resShowBarRam = show ? show.barRam !== false : true;
                             resShowBarGpu = show ? show.barGpu !== false : true;
                             resShowBarDisk = show ? show.barDisk !== false : true;
+                            resShowDashTemp = show ? show.dashTemp !== false : true;
+                            resShowBarTemp = show ? show.barTemp !== false : true;
                         }
 
                         function saveToConfig() {
@@ -575,6 +581,8 @@ Item {
                                 res.show.barRam = resShowBarRam;
                                 res.show.barGpu = resShowBarGpu;
                                 res.show.barDisk = resShowBarDisk;
+                                res.show.dashTemp = resShowDashTemp;
+                                res.show.barTemp = resShowBarTemp;
                             }
                             savedSuccess = true;
                             savedTimer.restart();
@@ -753,6 +761,34 @@ Item {
                                         }
                                     }
                                 }
+
+                                // Temperature toggle
+                                StyledRect {
+                                    id: tempBtnDash
+                                    property bool isHovered: false
+                                    readonly property bool isOn: systemSection.resShowDashTemp
+                                    variant: isOn ? "primary" : (isHovered ? "focus" : "common")
+                                    width: tempBtnDashLabel.implicitWidth + 24
+                                    height: 36
+                                    radius: Styling.radius(0)
+                                    Text {
+                                        id: tempBtnDashLabel
+                                        anchors.centerIn: parent
+                                        text: root.tr("system.resources.show_temp", "Temp")
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(0)
+                                        font.weight: tempBtnDash.isOn ? Font.DemiBold : Font.Normal
+                                        color: tempBtnDash.item
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onEntered: tempBtnDash.isHovered = true
+                                        onExited:  tempBtnDash.isHovered = false
+                                        onClicked: systemSection.resShowDashTemp = !systemSection.resShowDashTemp
+                                    }
+                                }
                             }
 
                             // Bar items (shown when location = bar or both)
@@ -826,6 +862,34 @@ Item {
                                                 }
                                             }
                                         }
+                                    }
+                                }
+
+                                // Temperature toggle
+                                StyledRect {
+                                    id: tempBtnBar
+                                    property bool isHovered: false
+                                    readonly property bool isOn: systemSection.resShowBarTemp
+                                    variant: isOn ? "primary" : (isHovered ? "focus" : "common")
+                                    width: tempBtnBarLabel.implicitWidth + 24
+                                    height: 36
+                                    radius: Styling.radius(0)
+                                    Text {
+                                        id: tempBtnBarLabel
+                                        anchors.centerIn: parent
+                                        text: root.tr("system.resources.show_temp", "Temp")
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(0)
+                                        font.weight: tempBtnBar.isOn ? Font.DemiBold : Font.Normal
+                                        color: tempBtnBar.item
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onEntered: tempBtnBar.isHovered = true
+                                        onExited:  tempBtnBar.isHovered = false
+                                        onClicked: systemSection.resShowBarTemp = !systemSection.resShowBarTemp
                                     }
                                 }
                             }

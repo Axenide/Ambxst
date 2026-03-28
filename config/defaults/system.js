@@ -53,7 +53,13 @@ var data = {
             "cpu": true,
             "ram": true,
             "gpu": true,
-            "disk": true
+            "disk": true,
+            "barCpu": true,
+            "barRam": true,
+            "barGpu": true,
+            "barDisk": true,
+            "dashTemp": true,
+            "barTemp": true
         }
     }
 }

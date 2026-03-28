@@ -28,11 +28,12 @@ Item {
         }
     }
 
-    // Resource visibility config with safe defaults
-    readonly property bool showCpu: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.cpu !== false : true
-    readonly property bool showRam: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.ram !== false : true
-    readonly property bool showGpu: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.gpu !== false : true
-    readonly property bool showDisk: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.disk !== false : true
+    // Bar-specific visibility (show.barCpu/barRam/barGpu/barDisk/barTemp)
+    readonly property bool showCpu:  Config.system.resources && Config.system.resources.show ? Config.system.resources.show.barCpu  !== false : true
+    readonly property bool showRam:  Config.system.resources && Config.system.resources.show ? Config.system.resources.show.barRam  !== false : true
+    readonly property bool showGpu:  Config.system.resources && Config.system.resources.show ? Config.system.resources.show.barGpu  !== false : true
+    readonly property bool showDisk: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.barDisk !== false : true
+    readonly property bool showTemp: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.barTemp !== false : true
 
     function gpuColor(vendor) {
         switch ((vendor || "").toLowerCase()) {
@@ -124,7 +125,7 @@ Item {
                         Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                     }
                     Text {
-                        visible: SystemResources.cpuTemp >= 0
+                        visible: root.showTemp && SystemResources.cpuTemp >= 0
                         text: SystemResources.cpuTemp + "°"
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-2)
@@ -211,7 +212,7 @@ Item {
                                 Behavior on color { enabled: Config.animDuration > 0; ColorAnimation { duration: Config.animDuration / 2 } }
                             }
                             Text {
-                                visible: (SystemResources.gpuTemps[index] ?? -1) >= 0
+                                visible: root.showTemp && (SystemResources.gpuTemps[index] ?? -1) >= 0
                                 text: (SystemResources.gpuTemps[index] || 0) + "°"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
@@ -337,7 +338,7 @@ Item {
                                 }
 
                                 Text {
-                                    visible: SystemResources.cpuTemp >= 0
+                                    visible: root.showTemp && SystemResources.cpuTemp >= 0
                                     text: SystemResources.cpuTemp + "°C"
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-2)
@@ -484,7 +485,7 @@ Item {
                                         }
 
                                         Text {
-                                            visible: (SystemResources.gpuTemps[index] ?? -1) >= 0
+                                            visible: root.showTemp && (SystemResources.gpuTemps[index] ?? -1) >= 0
                                             text: (SystemResources.gpuTemps[index] || 0) + "°C"
                                             font.family: Config.theme.font
                                             font.pixelSize: Styling.fontSize(-2)
