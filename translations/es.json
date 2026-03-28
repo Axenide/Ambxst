@@ -569,6 +569,7 @@
     "system.resources.enabled": "Activar monitor de recursos",
     "system.resources.location": "Ubicación de visualización",
     "system.resources.location_bar": "Barra",
+    "system.resources.location_both": "Ambos",
     "system.resources.location_dashboard": "Panel",
     "system.resources.saved": "Guardado",
     "system.resources.show_cpu": "CPU",

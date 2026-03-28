@@ -569,6 +569,7 @@
     "system.resources.enabled": "Включить монитор ресурсов",
     "system.resources.location": "Место отображения",
     "system.resources.location_bar": "Панель",
+    "system.resources.location_both": "Везде",
     "system.resources.location_dashboard": "Дашборд",
     "system.resources.saved": "Сохранено",
     "system.resources.show_cpu": "ЦП",
