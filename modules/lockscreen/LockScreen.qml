@@ -709,7 +709,7 @@ WlSessionLockSurface {
         stdout: StdioCollector {
             onStreamFinished: {
                 // fprintd-list output contains "finger" for each enrolled finger
-                if (text.trim() !== "" && text.indexOf("finger") >= 0) {
+                if (text.indexOf("-finger") >= 0) {
                     fingerprintAvailable = true;
                     fprintdVerify.running = true;
                     fingerprintScanning = true;
