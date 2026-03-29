@@ -13,8 +13,9 @@ StyledRect {
     Layout.fillWidth: true
     Layout.preferredHeight: 92 * amountOfRows
     radius: Styling.radius(4)
-    property int amountOfRows: Math.ceil((UPower.devices.values.length) / 3)
+    visible: amountOfRows > 0 ? true : false
 
+    property int amountOfRows: Math.ceil((UPower.devices.values.length) / 3)
     property int itemSize: 84
     property int iconSize: 32
 
