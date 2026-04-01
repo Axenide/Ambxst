@@ -4,7 +4,6 @@ import QtQuick
 import QtQml
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import qs.config
 
 Singleton {

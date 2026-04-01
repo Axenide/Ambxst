@@ -4,18 +4,13 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
-    quickshell = {
-      url = "git+https://git.outfoxxed.me/outfoxxed/quickshell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     axctl = {
       url = "github:Axenide/axctl";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, quickshell, axctl, ... }:
+  outputs = { self, nixpkgs, axctl, ... }:
     let
       ambxstLib = import ./nix/lib.nix { inherit nixpkgs; };
     in {
@@ -35,7 +30,7 @@
           lib = nixpkgs.lib;
 
           Ambxst = import ./nix/packages {
-            inherit pkgs lib self system quickshell axctl;
+            inherit pkgs lib self system axctl;
           };
         in {
           default = Ambxst;

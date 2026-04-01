@@ -4,6 +4,15 @@
 **Framework:** QtQuick / Quickshell
 **Language:** QML / JavaScript
 
+## IMPORTANT: axctl Build Requirement
+
+When changes are made to axctl (in `/home/adriano/Repos/Axenide/axctl/`), manual build and install is required:
+
+1. Build: `cd /home/adriano/Repos/Axenide/axctl && go build -o bin/axctl .`
+2. Install: Replace `/usr/local/bin/axctl` with the new binary (requires manual intervention)
+
+The agent cannot test axctl changes directly because the daemon runs in the user's session environment.
+
 ## OVERVIEW
 Ambxst is a highly customizable Wayland shell built with Quickshell. It provides a unified panel (bar, dock, notch), dashboard, lockscreen, desktop widgets, and notification system, driven by a reactive JSON configuration system. Multi-monitor support via `Variants` on `Quickshell.screens`.
 

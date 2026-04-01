@@ -1,23 +1,24 @@
-pragma Singleton
-
 import QtQuick
 import Quickshell
-import Quickshell.Io
-import Quickshell.Wayland
+
+pragma Singleton
 
 Singleton {
     id: root
 
     property alias inhibit: idleInhibitor.enabled
-    inhibit: StateService.get("caffeine", false)
 
     function toggleInhibit() {
         inhibit = !inhibit;
     }
 
-    onInhibitChanged: {
-        if (StateService.initialized) {
-            StateService.set("caffeine", inhibit);
+    IdleInhibitor {
+        id: idleInhibitor
+
+        onEnabledChanged: {
+            if (StateService.initialized) {
+                StateService.set("caffeine", enabled);
+            }
         }
     }
 
@@ -28,18 +29,13 @@ Singleton {
         }
     }
 
-    IdleInhibitor {
-        id: idleInhibitor
-        window: PanelWindow {
-            implicitWidth: 0
-            implicitHeight: 0
-            color: "transparent"
-            anchors {
-                right: true
-                bottom: true
-            }
-            mask: Region {
-                item: null
+    Timer {
+        interval: 500
+        running: true
+        repeat: false
+        onTriggered: {
+            if (StateService.initialized) {
+                root.inhibit = StateService.get("caffeine", false);
             }
         }
     }

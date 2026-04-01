@@ -1,8 +1,8 @@
 # Main Ambxst package
-{ pkgs, lib, self, system, quickshell, axctl }:
+{ pkgs, lib, self, system, axctl }:
 
 let
-  quickshellPkg = quickshell.packages.${system}.default;
+  quickshellPkg = pkgs.quickshell;
   axctlPkg = axctl.packages.${system}.default;
 
   # Import sub-packages
