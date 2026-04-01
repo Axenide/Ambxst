@@ -228,7 +228,7 @@ QtObject {
     readonly property string printer: ""
     readonly property string camera: ""
     readonly property string speaker: ""
-    readonly property string tablet: ""
+    readonly property string tablet: ""
     readonly property string laptop: ""
     readonly property string genericDevice: ""
 

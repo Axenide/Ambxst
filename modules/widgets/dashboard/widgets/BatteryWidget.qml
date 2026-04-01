@@ -13,9 +13,21 @@ StyledRect {
     Layout.fillWidth: true
     Layout.preferredHeight: 92 * amountOfRows
     radius: Styling.radius(4)
-    visible: amountOfRows > 0 ? true : false
+    visible: devicesVisible > 0 ? true : false
 
-    property int amountOfRows: Math.ceil((UPower.devices.values.length) / 3)
+    property int devicesVisible: {
+        var dLenght = UPower.devices.values.length
+        if (dLenght <= 0) return 0;
+        
+        var amountVisible = 0
+        for (var i = 0; i < dLenght; i++)
+            if (UPower.devices.values[i].isPresent) {
+                amountVisible += 1
+            }
+        return amountVisible
+    }
+
+    property int amountOfRows: Math.ceil((devicesVisible) / 3)
     property int itemSize: 84
     property int iconSize: 32
 
@@ -44,7 +56,7 @@ StyledRect {
             return Icons.mobilePhone;
         if (icon.includes("Speaker") || icon.includes("Audio"))
             return Icons.speaker;
-        if (icon.includes("Tablet"))
+        if (icon.includes("Tablet") || icon.includes("Pen"))
             return Icons.tablet
         if (icon.includes("Bluetooth"))
             return Icons.bluetooth
@@ -230,4 +242,3 @@ StyledRect {
         }
     }
 }
-
