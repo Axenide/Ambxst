@@ -164,7 +164,7 @@ Item {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "Calendar" : (root.currentSection === "accounts" ? "Accounts" : "Settings")
+                    title: root.currentSection === "" ? root._t("calendar.panel.title", "Calendar") : (root.currentSection === "accounts" ? root._t("calendar.panel.section_accounts", "Accounts") : root._t("calendar.panel.section_settings", "Settings"))
                     statusText: CalendarService.syncing ? "Syncing..." : ""
                     statusColor: Colors.primary
 
@@ -173,14 +173,14 @@ Item {
                         if (root.currentSection !== "") {
                             acts.push({
                                 icon: Icons.arrowLeft,
-                                tooltip: "Back",
+                                tooltip: root._t("calendar.panel.back", "Back"),
                                 onClicked: function() { root.currentSection = ""; }
                             });
                         }
                         if (CalendarService.hasAccounts) {
                             acts.push({
                                 icon: Icons.sync,
-                                tooltip: "Sync now",
+                                tooltip: root._t("calendar.panel.sync_now", "Sync now"),
                                 loading: CalendarService.syncing,
                                 onClicked: function() { CalendarService.sync(); }
                             });
@@ -208,12 +208,12 @@ Item {
                         spacing: 8
 
                         SectionButton {
-                            text: "Accounts"
+                            text: root._t("calendar.panel.section_accounts", "Accounts")
                             sectionId: "accounts"
                         }
 
                         SectionButton {
-                            text: "Settings"
+                            text: root._t("calendar.panel.section_settings", "Settings")
                             sectionId: "settings"
                         }
                     }
@@ -289,7 +289,7 @@ Item {
                                         Text {
                                             id: removeText
                                             anchors.centerIn: parent
-                                            text: "Remove"
+                                            text: root._t("calendar.panel.remove", "Remove")
                                             font.family: Config.defaultFont
                                             font.pixelSize: Styling.fontSize(-3)
                                             color: Colors.red
@@ -314,7 +314,7 @@ Item {
                             spacing: 4
 
                             Text {
-                                text: "CALENDARS"
+                                text: root._t("calendar.panel.section_calendars", "CALENDARS")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-3)
                                 color: Colors.outline
@@ -394,14 +394,14 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "gcalcli token found"
+                                    text: root._t("calendar.panel.gcalcli_found", "gcalcli token found")
                                     font.family: Config.defaultFont
                                     font.pixelSize: Styling.fontSize(-2)
                                     color: Colors.outline
                                 }
 
                                 Text {
-                                    text: "An existing Google Calendar token from gcalcli was detected. You can import it to connect your account instantly."
+                                    text: root._t("calendar.panel.gcalcli_detected", "An existing Google Calendar token from gcalcli was detected. You can import it to connect your account instantly.")
                                     font.family: Config.defaultFont
                                     font.pixelSize: Styling.fontSize(-2)
                                     color: Colors.overBackground
@@ -417,7 +417,7 @@ Item {
 
                                     Text {
                                         anchors.centerIn: parent
-                                        text: "Import from gcalcli"
+                                        text: root._t("calendar.panel.import_gcalcli", "Import from gcalcli")
                                         font.family: Config.defaultFont
                                         font.pixelSize: Styling.fontSize(-1)
                                         font.weight: Font.DemiBold
@@ -449,7 +449,7 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "+ Google OAuth"
+                                    text: root._t("calendar.panel.add_google", "+ Google OAuth")
                                     font.family: Config.defaultFont
                                     font.pixelSize: Styling.fontSize(-1)
                                     color: Colors.primary.hslLightness > 0.5 ? "black" : "white"
@@ -472,7 +472,7 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "+ CalDAV"
+                                    text: root._t("calendar.panel.add_caldav", "+ CalDAV")
                                     font.family: Config.defaultFont
                                     font.pixelSize: Styling.fontSize(-1)
                                     color: Colors.primary.hslLightness > 0.5 ? "black" : "white"
@@ -490,7 +490,7 @@ Item {
 
                         Text {
                             visible: !CalendarService.gcalcliFound
-                            text: "Enter your Google OAuth Client ID and Secret above, then click Connect. If you have gcalcli installed and authenticated, its token will be detected automatically."
+                            text: root._t("calendar.panel.oauth_hint", "Enter your Google OAuth Client ID and Secret above, then click Connect. If you have gcalcli installed and authenticated, its token will be detected automatically.")
                             font.family: Config.defaultFont
                             font.pixelSize: Styling.fontSize(-3)
                             color: Colors.outline
@@ -517,7 +517,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "CalDAV Server"
+                                text: root._t("calendar.panel.caldav_server", "CalDAV Server")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-2)
                                 font.weight: Font.Medium
@@ -531,7 +531,7 @@ Item {
                                 leftPadding: 8; rightPadding: 8
                                 topPadding: 0; bottomPadding: 0
                                 verticalAlignment: TextInput.AlignVCenter
-                                placeholderText: "Account name (optional)"
+                                placeholderText: root._t("calendar.panel.caldav_name", "Account name (optional)")
                                 placeholderTextColor: Colors.outline
                                 text: root.caldavName
                                 onTextChanged: root.caldavName = text
@@ -595,7 +595,7 @@ Item {
                                 leftPadding: 8; rightPadding: 8
                                 topPadding: 0; bottomPadding: 0
                                 verticalAlignment: TextInput.AlignVCenter
-                                placeholderText: "Username"
+                                placeholderText: root._t("calendar.panel.username", "Username")
                                 placeholderTextColor: Colors.outline
                                 text: root.caldavUser
                                 onTextChanged: root.caldavUser = text
@@ -627,7 +627,7 @@ Item {
                                 leftPadding: 8; rightPadding: 8
                                 topPadding: 0; bottomPadding: 0
                                 verticalAlignment: TextInput.AlignVCenter
-                                placeholderText: "Password"
+                                placeholderText: root._t("calendar.panel.password", "Password")
                                 placeholderTextColor: Colors.outline
                                 text: root.caldavPass
                                 onTextChanged: root.caldavPass = text
@@ -661,7 +661,7 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Connect"
+                                    text: root._t("calendar.panel.connect", "Connect")
                                     font.family: Config.defaultFont
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.DemiBold
@@ -694,7 +694,7 @@ Item {
 
                         // Google OAuth credentials
                         Text {
-                            text: "GOOGLE OAUTH"
+                            text: root._t("calendar.panel.section_google", "GOOGLE OAUTH")
                             font.family: Config.defaultFont
                             font.pixelSize: Styling.fontSize(-3)
                             color: Colors.outline
@@ -707,7 +707,7 @@ Item {
                             leftPadding: 8; rightPadding: 8
                             topPadding: 0; bottomPadding: 0
                             verticalAlignment: TextInput.AlignVCenter
-                            placeholderText: "Google Client ID"
+                            placeholderText: root._t("calendar.panel.google_client_id", "Google Client ID")
                             placeholderTextColor: Colors.outline
                             text: root.pendingGoogleClientId
                             onTextChanged: root.pendingGoogleClientId = text
@@ -739,7 +739,7 @@ Item {
                             leftPadding: 8; rightPadding: 8
                             topPadding: 0; bottomPadding: 0
                             verticalAlignment: TextInput.AlignVCenter
-                            placeholderText: "Google Client Secret"
+                            placeholderText: root._t("calendar.panel.google_client_secret", "Google Client Secret")
                             placeholderTextColor: Colors.outline
                             text: root.pendingGoogleClientSecret
                             onTextChanged: root.pendingGoogleClientSecret = text
@@ -766,7 +766,7 @@ Item {
                         }
 
                         Text {
-                            text: "Create credentials at console.cloud.google.com (Calendar API, Desktop app type)."
+                            text: root._t("calendar.panel.google_credentials_hint", "Create credentials at console.cloud.google.com (Calendar API, Desktop app type).")
                             font.family: Config.defaultFont
                             font.pixelSize: Styling.fontSize(-3)
                             color: Colors.outline
@@ -781,7 +781,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Sync interval"
+                                text: root._t("calendar.panel.sync_interval", "Sync interval")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: Colors.overBackground
@@ -792,10 +792,10 @@ Item {
                                 id: syncIntervalCombo
                                 implicitHeight: 36
                                 model: [
-                                    { text: "5 min", value: 5 },
-                                    { text: "15 min", value: 15 },
-                                    { text: "30 min", value: 30 },
-                                    { text: "60 min", value: 60 }
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 5), value: 5 },
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 15), value: 15 },
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 30), value: 30 },
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 60), value: 60 }
                                 ]
                                 textRole: "text"
                                 valueRole: "value"
@@ -875,7 +875,7 @@ Item {
                             Layout.fillWidth: true
 
                             Text {
-                                text: "Notifications"
+                                text: root._t("calendar.panel.notifications", "Notifications")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: Colors.overBackground
@@ -906,7 +906,7 @@ Item {
                             Layout.fillWidth: true
 
                             Text {
-                                text: "Bar indicator"
+                                text: root._t("calendar.panel.bar_indicator", "Bar indicator")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: Colors.overBackground
@@ -937,7 +937,7 @@ Item {
                             Layout.fillWidth: true
 
                             Text {
-                                text: "Show next upcoming event"
+                                text: root._t("calendar.panel.bar_show_next", "Show next upcoming event")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: root.pendingBarIndicator ? Colors.overBackground : Colors.outline
@@ -1004,7 +1004,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Default reminder"
+                                text: root._t("calendar.panel.default_reminder", "Default reminder")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: Colors.overBackground
@@ -1015,12 +1015,12 @@ Item {
                                 id: defaultReminderCombo
                                 implicitHeight: 36
                                 model: [
-                                    { text: "None", value: 0 },
-                                    { text: "5 min", value: 5 },
-                                    { text: "10 min", value: 10 },
-                                    { text: "15 min", value: 15 },
-                                    { text: "30 min", value: 30 },
-                                    { text: "1 hour", value: 60 }
+                                    { text: root._t("calendar.form.reminder_none", "None"), value: 0 },
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 5), value: 5 },
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 10), value: 10 },
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 15), value: 15 },
+                                    { text: root._t("calendar.form.reminder_minutes", "%1 min", 30), value: 30 },
+                                    { text: root._t("calendar.form.reminder_1hour", "1 hour"), value: 60 }
                                 ]
                                 textRole: "text"
                                 valueRole: "value"
@@ -1097,7 +1097,7 @@ Item {
 
                         // Arrival attention settings
                         Text {
-                            text: "ARRIVAL ATTENTION"
+                            text: root._t("calendar.panel.section_arrival", "ARRIVAL ATTENTION")
                             font.family: Config.defaultFont
                             font.pixelSize: Styling.fontSize(-3)
                             color: Colors.outline
@@ -1108,7 +1108,7 @@ Item {
                             Layout.fillWidth: true
 
                             Text {
-                                text: "Sound on arrival"
+                                text: root._t("calendar.panel.sound_on_arrival", "Sound on arrival")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: root.pendingNotifications ? Colors.overBackground : Colors.outline
@@ -1141,7 +1141,7 @@ Item {
                             spacing: 4
 
                             Text {
-                                text: "Custom sound file"
+                                text: root._t("calendar.panel.custom_sound", "Custom sound file")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-3)
                                 color: Colors.outline
@@ -1154,7 +1154,7 @@ Item {
                                 leftPadding: 8; rightPadding: 8
                                 topPadding: 0; bottomPadding: 0
                                 verticalAlignment: TextInput.AlignVCenter
-                                placeholderText: "Leave empty to use system default"
+                                placeholderText: root._t("calendar.panel.sound_hint_default", "Leave empty to use system default")
                                 placeholderTextColor: Colors.outline
                                 text: root.pendingArrivalSoundPath
                                 onTextChanged: root.pendingArrivalSoundPath = text
@@ -1180,7 +1180,7 @@ Item {
                             }
 
                             Text {
-                                text: "Supports .oga, .ogg, .wav, .mp3"
+                                text: root._t("calendar.panel.sound_hint_formats", "Supports .oga, .ogg, .wav, .mp3")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-4)
                                 color: Colors.outline
@@ -1191,7 +1191,7 @@ Item {
                             Layout.fillWidth: true
 
                             Text {
-                                text: "Blink icon on arrival"
+                                text: root._t("calendar.panel.blink_on_arrival", "Blink icon on arrival")
                                 font.family: Config.defaultFont
                                 font.pixelSize: Styling.fontSize(-1)
                                 color: root.pendingBarIndicator ? Colors.overBackground : Colors.outline
@@ -1232,7 +1232,7 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Save"
+                                    text: root._t("calendar.panel.save", "Save")
                                     font.family: Config.defaultFont
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.DemiBold
@@ -1256,7 +1256,7 @@ Item {
 
                                 Text {
                                     anchors.centerIn: parent
-                                    text: "Reset"
+                                    text: root._t("calendar.panel.reset", "Reset")
                                     font.family: Config.defaultFont
                                     font.pixelSize: Styling.fontSize(-1)
                                     color: Colors.outline

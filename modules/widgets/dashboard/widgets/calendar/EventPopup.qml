@@ -15,6 +15,15 @@ Popup {
     property int year: 0
     property var dayEvents: []
 
+    // i18n helper — works with or without the I18n singleton
+    function _t(key, fallback) {
+        let str;
+        try { str = I18n.t(key); } catch(e) { str = fallback; }
+        for (let i = 2; i < arguments.length; i++)
+            str = str.replace("%" + (i - 1), arguments[i]);
+        return str;
+    }
+
     // Edit mode state
     property bool editing: false
     property bool creating: false
@@ -141,7 +150,7 @@ Popup {
                         const d = new Date(root.year, root.month - 1, root.day);
                         const dayName = d.toLocaleDateString(Qt.locale(), "dddd");
                         const count = root.dayEvents.length;
-                        return dayName + " · " + count + (count === 1 ? " event" : " events");
+                        return dayName + " · " + count + (count === 1 ? " " + root._t("calendar.form.event_singular", "event") : " " + root._t("calendar.form.events_plural", "events"));
                     }
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-3)
@@ -154,7 +163,7 @@ Popup {
                 visible: root.editing
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
-                text: root.creating ? "New Event" : "Edit Event"
+                text: root.creating ? root._t("calendar.form.new_event", "New Event") : root._t("calendar.form.edit_event", "Edit Event")
                 font.family: Config.defaultFont
                 font.pixelSize: Styling.fontSize(1)
                 font.weight: Font.DemiBold
@@ -174,7 +183,7 @@ Popup {
                 Text {
                     id: addText
                     anchors.centerIn: parent
-                    text: "+ Add"
+                    text: root._t("calendar.form.add_event", "+ Add")
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-2)
                     font.weight: Font.DemiBold
@@ -250,7 +259,7 @@ Popup {
                 Layout.fillWidth: true
                 Layout.topMargin: 8
                 Layout.bottomMargin: 8
-                text: CalendarService.hasAccounts ? "No events" : "No calendar connected"
+                text: CalendarService.hasAccounts ? root._t("calendar.form.no_events", "No events") : root._t("calendar.form.no_calendar", "No calendar connected")
                 font.family: Config.defaultFont
                 font.pixelSize: Styling.fontSize(-2)
                 color: Colors.outline
@@ -271,7 +280,7 @@ Popup {
                 spacing: 4
 
                 Text {
-                    text: "Title"
+                    text: root._t("calendar.form.label_title", "Title")
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-3)
                     color: Colors.outline
@@ -285,7 +294,7 @@ Popup {
                     topPadding: 0; bottomPadding: 0
                     verticalAlignment: TextInput.AlignVCenter
                     text: root.editingEvent ? root.editingEvent.title : ""
-                    placeholderText: "Event title"
+                    placeholderText: root._t("calendar.form.placeholder_title", "Event title")
                     placeholderTextColor: Colors.outline
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-1)
@@ -320,7 +329,7 @@ Popup {
                     spacing: 4
 
                     Text {
-                        text: "Start"
+                        text: root._t("calendar.form.label_start", "Start")
                         font.family: Config.defaultFont
                         font.pixelSize: Styling.fontSize(-3)
                         color: Colors.outline
@@ -338,7 +347,7 @@ Popup {
                             const s = root.editingEvent.start || "";
                             return s.includes("T") ? s.split("T")[1].substring(0, 5) : "";
                         }
-                        placeholderText: "HH:MM"
+                        placeholderText: root._t("calendar.form.time_placeholder", "HH:MM")
                         placeholderTextColor: Colors.outline
                         font.family: Config.defaultFont
                         font.pixelSize: Styling.fontSize(-1)
@@ -372,7 +381,7 @@ Popup {
                     spacing: 4
 
                     Text {
-                        text: "End"
+                        text: root._t("calendar.form.label_end", "End")
                         font.family: Config.defaultFont
                         font.pixelSize: Styling.fontSize(-3)
                         color: Colors.outline
@@ -390,7 +399,7 @@ Popup {
                             const e = root.editingEvent.end || "";
                             return e.includes("T") ? e.split("T")[1].substring(0, 5) : "";
                         }
-                        placeholderText: "HH:MM"
+                        placeholderText: root._t("calendar.form.time_placeholder", "HH:MM")
                         placeholderTextColor: Colors.outline
                         font.family: Config.defaultFont
                         font.pixelSize: Styling.fontSize(-1)
@@ -426,7 +435,7 @@ Popup {
                 spacing: 4
 
                 Text {
-                    text: "Calendar"
+                    text: root._t("calendar.form.label_calendar", "Calendar")
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-3)
                     color: Colors.outline
@@ -530,7 +539,7 @@ Popup {
                 spacing: 4
 
                 Text {
-                    text: "Reminder"
+                    text: root._t("calendar.form.label_reminder", "Reminder")
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-3)
                     color: Colors.outline
@@ -541,13 +550,13 @@ Popup {
                     Layout.fillWidth: true
                     implicitHeight: 36
                     model: [
-                        { text: "None", value: 0 },
-                        { text: "5 min", value: 5 },
-                        { text: "10 min", value: 10 },
-                        { text: "15 min", value: 15 },
-                        { text: "30 min", value: 30 },
-                        { text: "1 hour", value: 60 },
-                        { text: "1 day", value: 1440 },
+                        { text: root._t("calendar.form.reminder_none", "None"), value: 0 },
+                        { text: root._t("calendar.form.reminder_minutes", "%1 min", 5), value: 5 },
+                        { text: root._t("calendar.form.reminder_minutes", "%1 min", 10), value: 10 },
+                        { text: root._t("calendar.form.reminder_minutes", "%1 min", 15), value: 15 },
+                        { text: root._t("calendar.form.reminder_minutes", "%1 min", 30), value: 30 },
+                        { text: root._t("calendar.form.reminder_1hour", "1 hour"), value: 60 },
+                        { text: root._t("calendar.form.reminder_1day", "1 day"), value: 1440 },
                     ]
                     textRole: "text"
                     valueRole: "value"
@@ -633,7 +642,7 @@ Popup {
                 spacing: 4
 
                 Text {
-                    text: "Description"
+                    text: root._t("calendar.form.label_description", "Description")
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-3)
                     color: Colors.outline
@@ -647,7 +656,7 @@ Popup {
                     topPadding: 0; bottomPadding: 0
                     verticalAlignment: TextInput.AlignVCenter
                     text: root.editingEvent ? (root.editingEvent.description || "") : ""
-                    placeholderText: "Optional..."
+                    placeholderText: root._t("calendar.form.placeholder_description", "Optional...")
                     placeholderTextColor: Colors.outline
                     font.family: Config.defaultFont
                     font.pixelSize: Styling.fontSize(-1)
@@ -686,7 +695,7 @@ Popup {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Save"
+                        text: root._t("calendar.form.save", "Save")
                         font.family: Config.defaultFont
                         font.pixelSize: Styling.fontSize(-1)
                         font.weight: Font.DemiBold
@@ -711,7 +720,7 @@ Popup {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Delete"
+                        text: root._t("calendar.form.delete", "Delete")
                         font.family: Config.defaultFont
                         font.pixelSize: Styling.fontSize(-1)
                         color: Colors.red
