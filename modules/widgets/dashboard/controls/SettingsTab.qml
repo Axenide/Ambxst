@@ -256,7 +256,7 @@ Rectangle {
         },
         {
             icon: Icons.calendarBlank,
-            label: "Calendar",
+            label: I18n.t("settings.calendar"),
             section: 9,
             isIcon: true
         },
