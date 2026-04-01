@@ -536,6 +536,19 @@ Item {
                             endRadius: root.innerRadius
                         }
 
+                        Loader {
+                            active: CalendarService.barIndicatorEnabled && CalendarService.hasAccounts
+                            visible: active && (item ? item.hasEvents : false)
+                            sourceComponent: Component {
+                                Bar.BarCalendarIndicator {
+                                    bar: root
+                                    layerEnabled: root.shadowsEnabled
+                                    startRadius: root.innerRadius
+                                    endRadius: root.innerRadius
+                                }
+                            }
+                        }
+
                         Clock {
                             id: clockComponent
                             bar: root
@@ -741,6 +754,20 @@ Item {
                             layerEnabled: root.shadowsEnabled
                             startRadius: root.innerRadius
                             endRadius: root.innerRadius
+                        }
+
+                        Loader {
+                            active: CalendarService.barIndicatorEnabled && CalendarService.hasAccounts
+                            visible: active && (item ? item.hasEvents : false)
+                            Layout.fillWidth: true
+                            sourceComponent: Component {
+                                Bar.BarCalendarIndicator {
+                                    bar: root
+                                    layerEnabled: root.shadowsEnabled
+                                    startRadius: root.innerRadius
+                                    endRadius: root.innerRadius
+                                }
+                            }
                         }
 
                         Clock {

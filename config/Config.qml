@@ -21,6 +21,7 @@ import "defaults/prefix.js" as PrefixDefaults
 import "defaults/system.js" as SystemDefaults
 import "defaults/dock.js" as DockDefaults
 import "defaults/ai.js" as AiDefaults
+import "defaults/calendar.js" as CalendarDefaults
 import "ConfigValidator.js" as ConfigValidator
 
 Singleton {
@@ -55,9 +56,10 @@ Singleton {
     property bool systemReady: false
     property bool dockReady: false
     property bool aiReady: false
+    property bool calendarReady: false
     property bool keybindsInitialLoadComplete: false
 
-    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady
+    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady && calendarReady
 
     // Compatibility aliases
     property alias loader: themeLoader
@@ -1181,6 +1183,58 @@ Singleton {
             property int sidebarWidth: 400
             property string sidebarPosition: "right"
             property bool sidebarPinnedOnStartup: false
+        }
+    }
+
+    // ============================================
+    // CALENDAR MODULE
+    // ============================================
+    FileView {
+        id: calendarLoader
+        path: root.configDir + "/calendar.json"
+        atomicWrites: true
+        watchChanges: true
+        onLoaded: {
+            if (!root.calendarReady) {
+                validateModule("calendar", calendarLoader, CalendarDefaults.data, () => {
+                    root.calendarReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.calendarReady) {
+                handleMissingConfig("calendar", calendarLoader, CalendarDefaults.data, () => {
+                    root.calendarReady = true;
+                });
+            }
+        }
+        onFileChanged: {
+            root.pauseAutoSave = true;
+            reload();
+            root.pauseAutoSave = false;
+        }
+        onPathChanged: reload()
+        onAdapterUpdated: {
+            if (root.calendarReady && !root.pauseAutoSave) {
+                calendarLoader.writeAdapter();
+            }
+        }
+
+        adapter: JsonAdapter {
+            property bool enabled: true
+            property int syncInterval: 15
+            property bool notifications: true
+            property bool barIndicator: true
+            property bool barShowNextEvent: false
+            property int defaultReminder: 15
+            property string googleClientId: ""
+            property string googleClientSecret: ""
+            property list<var> accounts: []
+            property var calendars: ({})
+            property bool soundOnArrival: true
+            property bool blinkOnArrival: true
+            property string arrivalSoundPath: ""
+            property bool barAlwaysShow: false
         }
     }
 
@@ -3150,6 +3204,9 @@ Singleton {
     // AI configuration
     property QtObject ai: aiLoader.adapter
 
+    // Calendar configuration
+    property QtObject calendar: calendarLoader.adapter
+
     // Module save functions
     function saveBar() {
         barLoader.writeAdapter();
@@ -3192,6 +3249,9 @@ Singleton {
     }
     function saveAi() {
         aiLoader.writeAdapter();
+    }
+    function saveCalendar() {
+        calendarLoader.writeAdapter();
     }
 
     // Color helpers
