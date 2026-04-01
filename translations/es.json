@@ -191,6 +191,7 @@
     "calendar.panel.sync_interval": "Intervalo de sincronización",
     "calendar.panel.sync_now": "Sincronizar ahora",
     "calendar.panel.username": "Usuario",
+    "calendar.panel.title": "Calendario",
     "clipboard.alias": "Alias",
     "clipboard.checksum": "Suma de verificación",
     "clipboard.clear_all_confirm": "¿Borrar todo?",

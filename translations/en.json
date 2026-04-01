@@ -191,6 +191,7 @@
     "calendar.panel.sync_interval": "Sync interval",
     "calendar.panel.sync_now": "Sync now",
     "calendar.panel.username": "Username",
+    "calendar.panel.title": "Calendar",
     "clipboard.alias": "Alias",
     "clipboard.checksum": "Checksum",
     "clipboard.clear_all_confirm": "Clear all?",

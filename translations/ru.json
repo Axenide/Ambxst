@@ -191,6 +191,7 @@
     "calendar.panel.sync_interval": "Интервал синхронизации",
     "calendar.panel.sync_now": "Синхронизировать",
     "calendar.panel.username": "Имя пользователя",
+    "calendar.panel.title": "Календарь",
     "clipboard.alias": "Псевдоним",
     "clipboard.checksum": "Контрольная сумма",
     "clipboard.clear_all_confirm": "Очистить всё?",
