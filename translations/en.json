@@ -549,6 +549,7 @@
     "settings.theme.ui_font": "UI Font",
     "settings.theme.variant": "Variant",
     "settings.theme.wallpapers": "Wallpapers",
+    "settings.calendar": "Calendar",
     "shell.autohide": "Auto-hide",
     "shell.available_on_fullscreen": "Available on Fullscreen",
     "shell.desktop.enabled": "Enabled",

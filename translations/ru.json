@@ -549,6 +549,7 @@
     "settings.theme.ui_font": "Шрифт интерфейса",
     "settings.theme.variant": "Вариант",
     "settings.theme.wallpapers": "Обои",
+    "settings.calendar": "Календарь",
     "shell.autohide": "Автоскрытие",
     "shell.available_on_fullscreen": "Доступно в полноэкранном режиме",
     "shell.desktop.enabled": "Включено",
