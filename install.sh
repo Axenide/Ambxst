@@ -151,8 +151,10 @@ install_dependencies() {
     AUR_HELPER=""
     if has_cmd yay; then
       AUR_HELPER="yay"
+	  yay -S ptodo
     elif has_cmd paru; then
       AUR_HELPER="paru"
+	  paru -S ptodo
     else
       log_info "Installing yay-bin..."
       local YAY_TMP
@@ -161,6 +163,7 @@ install_dependencies() {
       (cd "$YAY_TMP" && makepkg -si --noconfirm)
       rm -rf "$YAY_TMP"
       AUR_HELPER="yay"
+	  yay -S ptodo
     fi
 
     local PKGS=(
