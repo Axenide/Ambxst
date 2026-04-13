@@ -1,17 +1,29 @@
 import QtQuick
 import qs.config
 
-// Comportamiento estándar para animaciones de elementos que aparecen en el notch
+// Standard animation behavior for elements appearing inside the notch
 Item {
     id: root
 
-    // Propiedad para controlar la visibilidad con animaciones
+    // Controls visibility with animated entrance/exit
     property bool isVisible: false
 
-    // Aplicar las animaciones estándar del notch
-    scale: isVisible ? 1.0 : 0.8
+    // Scale + opacity entrance — scale pops from 0.85 with OutBack overshoot
+    scale: isVisible ? 1.0 : 0.85
     opacity: isVisible ? 1.0 : 0.0
     visible: opacity > 0
+
+    // Subtle vertical translate: drop in from slightly above when appearing
+    property real slideOffset: isVisible ? 0 : -5
+    transform: Translate { y: root.slideOffset }
+
+    Behavior on slideOffset {
+        enabled: Config.animDuration > 0
+        NumberAnimation {
+            duration: Config.animDuration
+            easing.type: Easing.OutQuart
+        }
+    }
 
     Behavior on scale {
         enabled: Config.animDuration > 0

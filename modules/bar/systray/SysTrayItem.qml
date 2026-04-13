@@ -174,7 +174,7 @@ MouseArea {
     StyledToolTip {
         show: root.isHovered
         tooltipText: root.item.tooltipTitle || root.item.title
-        desciription: root.item.tooltipDescription || ""
+        description: root.item.tooltipDescription || ""
     }
 
     HoverHandler {

@@ -43,17 +43,38 @@ PanelWindow {
             variant: "popup"
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
-            implicitWidth: 220
-            implicitHeight: 52
+            implicitWidth: 240
+            implicitHeight: 56
             radius: Styling.radius(16)
+
+            // Slide-in from below when visible, slide out down when hiding
+            property real slideY: GlobalStates.osdVisible ? 0 : 16
+            transform: Translate { y: osdRect.slideY }
+
+            Behavior on slideY {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration
+                    easing.type: Easing.OutQuart
+                }
+            }
+
+            opacity: GlobalStates.osdVisible ? 1.0 : 0.0
+            Behavior on opacity {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration
+                    easing.type: Easing.OutQuart
+                }
+            }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 12
-                anchors.rightMargin: 24
+                anchors.leftMargin: 14
+                anchors.rightMargin: 16
                 anchors.topMargin: 8
                 anchors.bottomMargin: 8
-                spacing: 14
+                spacing: 12
 
                 Text {
                     id: iconText
@@ -67,7 +88,7 @@ PanelWindow {
                         }
                     }
                     font.family: Icons.font
-                    font.pixelSize: 22
+                    font.pixelSize: 20
                     color: Colors.overBackground
                     Layout.alignment: Qt.AlignVCenter
 
@@ -111,23 +132,26 @@ PanelWindow {
                                 return "";
                             }
                             font.family: Config.theme.font
-                            font.pixelSize: 15
+                            font.pixelSize: Styling.fontSize(0)
                             font.bold: false
                             color: Colors.overBackground
                             Layout.alignment: Qt.AlignBottom
                         }
 
-                        Item {
-                            Layout.fillWidth: true
-                        }
+                        Item { Layout.fillWidth: true }
 
                         Text {
-                            text: Math.round(root.osdValue * 100)
+                            // Show percentage value; clamp display to avoid "-0%"
+                            text: Math.max(0, Math.round(root.osdValue * 100)) + "%"
                             font.family: Config.theme.font
-                            font.pixelSize: 15
+                            font.pixelSize: Styling.fontSize(0)
                             font.bold: false
                             color: Colors.overBackground
                             Layout.alignment: Qt.AlignBottom
+
+                            Behavior on text {
+                                enabled: false // text changes should be instant
+                            }
                         }
                     }
 
@@ -147,19 +171,18 @@ PanelWindow {
         }
     }
 
-    // Close on click or hover
+    // Hovering pauses the auto-hide timer; clicking dismisses immediately
     MouseArea {
         anchors.fill: parent
-        onEntered: {
-            hideTimer.stop();
-            hideTimer.triggered();
-        }
         hoverEnabled: true
+        onEntered: hideTimer.stop()
+        onExited: hideTimer.restart()
+        onClicked: GlobalStates.osdVisible = false
     }
 
     Timer {
         id: hideTimer
-        interval: 2500
+        interval: 3000
         onTriggered: GlobalStates.osdVisible = false
     }
 
@@ -172,7 +195,7 @@ PanelWindow {
         }
     }
 
-    // Services connections - Direct and responsive
+    // Service connections — direct and responsive
     Connections {
         target: Audio
         function onVolumeChanged(volume, muted, node) {
@@ -194,7 +217,7 @@ PanelWindow {
     Connections {
         target: Brightness
         function onBrightnessChanged(value, screen) {
-            // Check if the change happened on THIS screen or if it's a sync change
+            // Only react if the change is for this screen, or synced across all screens
             if (!screen || !root.targetScreen || screen.name === root.targetScreen.name || Brightness.syncBrightness) {
                 root.osdValue = value;
                 root.osdMuted = false;

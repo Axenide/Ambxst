@@ -147,7 +147,7 @@ WlSessionLockSurface {
         id: clockContainer
         anchors.centerIn: parent
         width: clockRow.width
-        height: hoursText.height + (hoursText.height * 0.5)
+        height: hoursText.height + (hoursText.height * 0.5) + 48
         z: 10
 
         property date currentTime: new Date()
@@ -274,6 +274,44 @@ WlSessionLockSurface {
             running: true
             repeat: true
             onTriggered: clockContainer.currentTime = new Date()
+        }
+
+        // Date label — shown below the clock digits
+        Text {
+            id: dateLabel
+            anchors.top: clockRow.bottom
+            anchors.topMargin: 8
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            // e.g. "Monday, April 13"
+            text: Qt.formatDate(clockContainer.currentTime, "dddd, MMMM d")
+            font.family: Config.theme.font
+            font.pixelSize: 22
+            font.letterSpacing: 1.5
+            color: Colors.primaryFixed
+            opacity: startAnim ? 0.85 : 0
+
+            property real slideOffset: startAnim ? 0 : 30
+            transform: Translate { y: dateLabel.slideOffset }
+
+            layer.enabled: true
+            layer.effect: BgShadow {}
+
+            Behavior on opacity {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration * 2
+                    easing.type: Easing.OutExpo
+                }
+            }
+
+            Behavior on slideOffset {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration * 2
+                    easing.type: Easing.OutExpo
+                }
+            }
         }
     }
 
