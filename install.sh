@@ -129,6 +129,7 @@ install_dependencies() {
       google-roboto-fonts google-roboto-mono-fonts dejavu-sans-fonts liberation-fonts
       google-noto-fonts-common google-noto-cjk-fonts google-noto-emoji-fonts
       mpvpaper matugen R-CRAN-phosphoricons adw-gtk3-theme quickshell unzip curl
+      vulkan-loader
     )
 
     log_info "Installing dependencies..."
@@ -177,6 +178,7 @@ install_dependencies() {
       ttf-nerd-fonts-symbols
       matugen gpu-screen-recorder wl-clip-persist mpvpaper gradia
       quickshell ttf-phosphor-icons ttf-league-gothic adw-gtk-theme
+      vulkan-headers vulkan-icd-loader
     )
 
     log_info "Installing dependencies with $AUR_HELPER..."
