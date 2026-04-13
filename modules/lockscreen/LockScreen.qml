@@ -412,6 +412,7 @@ WlSessionLockSurface {
                         smooth: true
                         asynchronous: true
                         visible: status === Image.Ready
+                        sourceSize: Qt.size(128, 128)
 
                         layer.enabled: true
                         layer.effect: MultiEffect {
