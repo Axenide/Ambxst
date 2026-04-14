@@ -80,3 +80,4 @@ Item {
         internalLoader.sourceComponent = current;
     }
 }
+
