@@ -57,7 +57,7 @@ RowLayout {
         id: customContentContainer
         Layout.preferredWidth: childrenRect.width
         Layout.preferredHeight: childrenRect.height
-        visible: children.length > 0
+        visible: root.customContent && root.customContent.length > 0
     }
 
     // Action buttons

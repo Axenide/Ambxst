@@ -172,8 +172,8 @@ Item {
     readonly property int leftOuterMargin: (orientation === "horizontal" || barPosition === "left") ? barBg.outerMargin : 0
     readonly property int rightOuterMargin: (orientation === "horizontal" || barPosition === "right") ? barBg.outerMargin : 0
 
-    readonly property int contentImplicitWidth: orientation === "horizontal" ? (horizontalLoader.item && horizontalLoader.item.implicitWidth !== undefined ? horizontalLoader.item.implicitWidth : 0) : (verticalLoader.item && verticalLoader.item.implicitWidth !== undefined ? verticalLoader.item.implicitWidth : 0)
-    readonly property int contentImplicitHeight: orientation === "horizontal" ? (horizontalLoader.item && horizontalLoader.item.implicitHeight !== undefined ? horizontalLoader.item.implicitHeight : 0) : (verticalLoader.item && verticalLoader.item.implicitHeight !== undefined ? verticalLoader.item.implicitHeight : 0)
+    readonly property int contentImplicitWidth: orientation === "horizontal" ? (horizontalLoader.item ? horizontalLoader.item.implicitWidth : 0) : (verticalLoader.item ? verticalLoader.item.implicitWidth : 0)
+    readonly property int contentImplicitHeight: orientation === "horizontal" ? (horizontalLoader.item ? horizontalLoader.item.implicitHeight : 0) : (verticalLoader.item ? verticalLoader.item.implicitHeight : 0)
     
     readonly property int barTargetWidth: orientation === "vertical" ? (contentImplicitWidth + 2 * barPadding) : 0
     readonly property int barTargetHeight: orientation === "horizontal" ? (contentImplicitHeight + 2 * barPadding) : 0
