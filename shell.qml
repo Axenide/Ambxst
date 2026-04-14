@@ -15,7 +15,6 @@ import qs.modules.notch
 import qs.modules.widgets.overview
 import qs.modules.widgets.presets
 import qs.modules.services
-import qs.modules.services.ErrorHandler
 import qs.modules.corners
 import qs.modules.frame
 import qs.modules.components
@@ -288,9 +287,6 @@ ShellRoot {
                 let _ = CaffeineService.inhibit;
                 _ = IdleService.lockCmd; // Force init
                 _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
-
-                // Check axctl availability
-                ErrorHandler.checkService("axctl", true);
             });
         }
     }
