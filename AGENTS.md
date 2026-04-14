@@ -88,6 +88,8 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 | `AxctlService` | Singleton | `modules/services/AxctlService.qml` | Compositor abstraction (focus, dispatch) |
 | `StateService` | Singleton | `modules/services/StateService.qml` | JSON persistence for session state |
 | `FocusGrabManager` | Singleton | `modules/services/FocusGrabManager.qml` | Input focus coordination |
+| `ErrorHandler` | Singleton | `modules/services/ErrorHandler.qml` | Centralized error tracking and service availability |
+| `SafeLoader` | Component | `modules/components/SafeLoader.qml` | Loader with error handling and fallback UI |
 
 ## CONVENTIONS
 - **Singletons**: `pragma Singleton` + `Singleton { id: root }` for all services and global state.
@@ -109,6 +111,7 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 - **Raw JS Objects**: `JSON.parse()` results have NO QML signals. Never use them in `Connections` blocks.
 - **Missing Defaults**: NEVER add a config key without updating `config/defaults/*.js`.
 - **StyledRect bypass**: NEVER create raw `Rectangle` containers. Use `StyledRect` with a variant.
+- **No error handling**: Always use `ErrorHandler` for service failures; wrap async operations in try/catch.
 
 ## COMMANDS
 ```bash
@@ -120,6 +123,41 @@ qs -p shell.qml
 # Install (Arch/Fedora/NixOS)
 curl -L get.axeni.de/ambxst | sh
 ```
+
+## TESTING
+```bash
+# Run unit tests
+./tests/run_tests.sh
+
+# Run with verbose output
+./tests/run_tests.sh -v
+
+# Run specific test
+./tests/run_tests.sh -f "ConfigValidator"
+```
+
+### Test Structure
+- `tests/unit/tst_*.qml` - QML TestCase files using Qt Quick Test
+- `tests/unit/tst_commons.qml` - Shared test utilities singleton
+
+### Writing Tests
+```qml
+import QtQuick 2.15
+import QtTest 1.15
+
+TestCase {
+    name: "MyTest"
+    
+    function test_example() {
+        compare(1 + 1, 2, "1 + 1 should equal 2")
+    }
+}
+```
+
+### Error Handling
+- Use `ErrorHandler` singleton for service error tracking
+- Use `SafeLoader` component for components with graceful fallbacks
+- Check `ConfigValidator` for config validation tests
 
 ## NOTES
 - `Config.qml` is >3100 lines. Modify with care; use `pauseAutoSave` for bulk edits.
