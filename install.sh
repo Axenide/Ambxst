@@ -178,7 +178,7 @@ install_dependencies() {
       ttf-nerd-fonts-symbols
       matugen gpu-screen-recorder wl-clip-persist mpvpaper gradia
       quickshell ttf-phosphor-icons ttf-league-gothic adw-gtk-theme
-      vulkan-headers vulkan-icd-loader
+      vulkan-icd-loader
     )
 
     log_info "Installing dependencies with $AUR_HELPER..."
