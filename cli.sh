@@ -22,9 +22,13 @@ fi
 
 # Qt Quick GPU acceleration settings (user overrides preserved)
 # Vulkan preferred for both AMD and NVIDIA (requires mesa/26.0+ or NVIDIA 525+)
-# Falls back gracefully on older drivers
+# Falls back gracefully on older drivers.
+# We probe with 'vulkaninfo --summary' rather than 'glxinfo' because glxinfo
+# only indicates OpenGL/GLX availability — it does NOT confirm a Vulkan ICD
+# is present. Setting QT_QUICK_BACKEND=vulkan without a working ICD causes Qt
+# to silently fall back to software rendering.
 if [[ -z "${QT_QUICK_BACKEND:-}" ]]; then
-	if command -v vulkaninfo >/dev/null 2>&1 || command -v glxinfo >/dev/null 2>&1; then
+	if vulkaninfo --summary >/dev/null 2>&1; then
 		export QT_QUICK_BACKEND=vulkan
 	else
 		export QT_QUICK_BACKEND=opengl
