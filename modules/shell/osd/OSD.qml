@@ -28,7 +28,10 @@ PanelWindow {
 
     color: "transparent"
 
-    visible: GlobalStates.osdVisible
+    // Keep the PanelWindow alive whenever visible OR while the exit animation
+    // is still playing (opacity > 0). Binding only to GlobalStates.osdVisible
+    // would hide the window immediately on dismiss, cutting the fade-out dead.
+    visible: GlobalStates.osdVisible || osdRect.opacity > 0
 
     // Internal state for responsiveness
     property real osdValue: 0
