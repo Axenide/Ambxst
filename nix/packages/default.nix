@@ -59,6 +59,9 @@ let
     export QML2_IMPORT_PATH="${envAmbxst}/lib/qt-6/qml:$QML2_IMPORT_PATH"
     export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
 
+    # Ensure QtMultimedia uses GStreamer backend
+    export QT_MEDIA_BACKEND=gstreamer
+
     # Make bundled fonts available to fontconfig
     export FONTCONFIG_PATH="${fontconfigConf}/etc/fonts:''${FONTCONFIG_PATH:-}"
 
