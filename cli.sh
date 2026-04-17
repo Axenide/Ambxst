@@ -605,10 +605,19 @@ help | --help | -h)
 	export QT_QPA_PLATFORMTHEME=qt6ct
 	
 	# Use GStreamer backend for QtMultimedia
-	export QT_MEDIA_BACKEND=gstreamer
-	
-	# Cache this script's PID before exec (for fast PID lookups in future CLI calls)
-	echo $$ >/tmp/ambxst.pid
+    export QT_MEDIA_BACKEND=gstreamer
+
+    # Enable VA-API hardware decoding if available
+    if gst-inspect-1.0 vaapi &>/dev/null; then
+        export GST_PLUGIN_FEATURE_RANK=vaapidecodebin:MAX,vaapipostproc:MAX
+    fi
+
+    # Force OpenGL/EGL for better performance
+    export GST_GL_API=opengl
+    export GST_GL_PLATFORM=egl
+
+    # Cache this script's PID before exec (for fast PID lookups in future CLI calls)
+    echo $$ >/tmp/ambxst.pid
 
 	# Launch QuickShell with the main shell.qml
 	# If NIXGL_BIN is set (NixOS/Nix setup), use it. Otherwise, just run qs directly.
