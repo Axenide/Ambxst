@@ -28,6 +28,21 @@ PanelWindow {
     property var wallpaperPaths: []
     property var subfolderFilters: []
     property var allSubdirs: []
+
+    // Paleta personalizada cargada desde archivo JSON
+    property var customPalette: []
+    property int customPaletteSize: 0
+
+    // Paleta por defecto (optimizedPalette) como fallback
+    readonly property var fallbackPalette: optimizedPalette
+    readonly property int fallbackPaletteSize: optimizedPalette.length
+
+    // Paleta efectiva que se usará en el shader
+    readonly property var effectivePalette: customPaletteSize > 0 ? customPalette : fallbackPalette
+    readonly property int effectivePaletteSize: customPaletteSize > 0 ? customPaletteSize : fallbackPaletteSize
+
+
+
     property int currentIndex: 0
     property string currentWallpaper: initialLoadCompleted && wallpaperPaths.length > 0 ? wallpaperPaths[currentIndex] : ""
     property bool initialLoadCompleted: false
@@ -225,6 +240,40 @@ PanelWindow {
         }
         return "";
     }
+    
+    function loadCustomPalette(filePath) {
+        if (!filePath) return;
+        var palettePath = getPalettePath(filePath);
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "file://" + palettePath, true);
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                if (xhr.status === 200) {
+                    try {
+                        var data = JSON.parse(xhr.responseText);
+                        customPalette = data.colors;
+                        customPaletteSize = data.size;
+                        console.log("Palette loaded:", customPaletteSize, "colors - First:", customPalette[0]);
+                    } catch (e) {
+                        console.warn("Failed to parse palette:", palettePath, e);
+                        customPalette = [];
+                        customPaletteSize = 0;
+                    }
+                } else {
+                    console.warn("Palette file not found (status " + xhr.status + "):", palettePath);
+                    customPalette = [];
+                    customPaletteSize = 0;
+                }
+            }
+        };
+        xhr.send();
+    }
+
+    function getPalettePath(filePath) {
+        var basePath = wallpaperDir.endsWith("/") ? wallpaperDir : wallpaperDir + "/";
+        var relativePath = filePath.replace(basePath, "");
+        return Quickshell.env("HOME") + "/.cache/ambxst/palettes/" + relativePath + ".json";
+    }
 
     function scanSubfolders() {
         if (!wallpaperDir)
@@ -299,6 +348,8 @@ PanelWindow {
                     currentIndex = pathIndex;
                     wallpaperConfig.adapter.currentWall = path;
                     currentWallpaper = path;
+                    loadCustomPalette(path);
+                    generateLockscreenFrame(path);
                     runMatugenForCurrentWallpaper();
                 }
             } else {
@@ -306,6 +357,8 @@ PanelWindow {
                 currentIndex = pathIndex;
                 wallpaperConfig.adapter.currentWall = path;
                 currentWallpaper = path;
+                loadCustomPalette(path);
+                generateLockscreenFrame(path);
                 runMatugenForCurrentWallpaper();
             }
             generateLockscreenFrame(path);
@@ -454,6 +507,7 @@ PanelWindow {
         Qt.callLater(function () {
             if (currentWallpaper) {
                 generateLockscreenFrame(currentWallpaper);
+                loadCustomPalette(currentWallpaper);
             }
         });
     }
@@ -1001,10 +1055,10 @@ PanelWindow {
     }
 
     component WallpaperImage: Item {
+        id: wallImage
         property string source
         property string previousSource
 
-        // Trigger animation when source changes
         onSourceChanged: {
             if (previousSource !== "" && source !== previousSource) {
                 if (Config.animDuration > 0) {
@@ -1012,96 +1066,80 @@ PanelWindow {
                 }
             }
             previousSource = source;
+            // Cargar paleta cuando la fuente cambie
+            if (source) {
+                wallpaper.loadCustomPalette(source);
+            }
         }
 
         SequentialAnimation {
             id: transitionAnimation
-
             ParallelAnimation {
-                NumberAnimation {
-                    target: wallImage
-                    property: "scale"
-                    to: 1.01
-                    duration: Config.animDuration
-                    easing.type: Easing.OutCubic
-                }
-                NumberAnimation {
-                    target: wallImage
-                    property: "opacity"
-                    to: 0.5
-                    duration: Config.animDuration
-                    easing.type: Easing.OutCubic
-                }
+                NumberAnimation { target: wallImage; property: "scale"; to: 1.01; duration: Config.animDuration; easing.type: Easing.OutCubic }
+                NumberAnimation { target: wallImage; property: "opacity"; to: 0.5; duration: Config.animDuration; easing.type: Easing.OutCubic }
             }
-
             ParallelAnimation {
-                NumberAnimation {
-                    target: wallImage
-                    property: "scale"
-                    to: 1.0
-                    duration: Config.animDuration
-                    easing.type: Easing.OutCubic
-                }
-                NumberAnimation {
-                    target: wallImage
-                    property: "opacity"
-                    to: 1.0
-                    duration: Config.animDuration
-                    easing.type: Easing.OutCubic
-                }
+                NumberAnimation { target: wallImage; property: "scale"; to: 1.0; duration: Config.animDuration; easing.type: Easing.OutCubic }
+                NumberAnimation { target: wallImage; property: "opacity"; to: 1.0; duration: Config.animDuration; easing.type: Easing.OutCubic }
             }
         }
 
         Loader {
             anchors.fill: parent
             sourceComponent: {
-                if (!parent.source)
-                    return null;
-
-                var fileType = getFileType(parent.source);
+                if (!wallImage.source) return null;
+                var fileType = wallpaper.getFileType(wallImage.source);
                 if (fileType === 'image') {
                     return staticImageComponent;
                 } else if (fileType === 'gif' || fileType === 'video') {
                     return videoComponent;
                 }
-                return staticImageComponent; // fallback
+                return staticImageComponent;
             }
-
-            property string sourceFile: parent.source
+            property string sourceFile: wallImage.source
         }
 
         Component {
             id: staticImageComponent
             Item {
                 id: staticImageRoot
-                width: parent.width
-                height: parent.height
+                anchors.fill: parent
                 property string sourceFile: parent.sourceFile
                 property bool tint: wallpaper.tintEnabled
 
-                // Subset of colors for optimization (approx 25 colors vs 98)
-                readonly property var optimizedPalette: wallpaper.optimizedPalette
-
-                // Palette generation for the shader
                 Item {
                     id: paletteSourceItem
-                    // Must be visible for ShaderEffectSource to capture it,
-                    // but we hide it visually by placing it behind or expecting ShaderEffectSource hideSource behavior.
                     visible: true
-                    width: staticImageRoot.optimizedPalette.length
+                    width: wallpaper.effectivePaletteSize
                     height: 1
-                    opacity: 0 // Make invisible to eye but maintain presence for capture if needed (though hideSource usually handles this)
+                    opacity: 0
 
                     Row {
                         anchors.fill: parent
                         Repeater {
-                            model: staticImageRoot.optimizedPalette
+                            model: wallpaper.effectivePalette
                             Rectangle {
                                 width: 1
                                 height: 1
-                                color: Colors[modelData]
+                                color: {
+                                    if (typeof modelData === "string") {
+                                        if (modelData.charAt(0) === '#') {
+                                            return modelData;
+                                        } else {
+                                            return Colors[modelData] || "black";
+                                        }
+                                    }
+                                    return modelData;
+                                }
                             }
                         }
+                    }
+
+                    Component.onCompleted: {
+                        if (width > 0) paletteTextureSource.scheduleUpdate();
+                    }
+                    onWidthChanged: {
+                        if (width > 0) paletteTextureSource.scheduleUpdate();
                     }
                 }
 
@@ -1109,27 +1147,45 @@ PanelWindow {
                     id: paletteTextureSource
                     sourceItem: paletteSourceItem
                     hideSource: true
-                    visible: false // The source object itself doesn't need to be visible in the scene graph
+                    visible: false
                     smooth: false
                     recursive: false
                 }
 
-                Image {
-                    mipmap: true
-                    id: rawImage
+                Item {
+                    id: mediaContainer
                     anchors.fill: parent
-                    source: parent.sourceFile ? "file://" + parent.sourceFile : ""
-                    fillMode: Image.PreserveAspectCrop
-                    asynchronous: true
-                    smooth: true
-                    sourceSize.width: wallpaper.width
-                    sourceSize.height: wallpaper.height
-                    layer.enabled: parent.tint
-                    layer.effect: ShaderEffect {
+                    clip: true
+
+                    Image {
+                        id: rawImage
+                        anchors.fill: parent
+                        source: staticImageRoot.sourceFile ? "file://" + staticImageRoot.sourceFile : ""
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        smooth: true
+                        mipmap: true
+                        opacity: staticImageRoot.tint ? 0.0 : 1.0
+                        visible: true
+                    }
+
+                    ShaderEffectSource {
+                        id: mediaTextureSource
+                        sourceItem: rawImage
+                        hideSource: staticImageRoot.tint
+                        live: true
+                        smooth: true
+                        recursive: false
+                    }
+
+                    ShaderEffect {
+                        anchors.fill: parent
+                        visible: staticImageRoot.tint && wallpaper.effectivePaletteSize > 0
+                        property var source: mediaTextureSource
                         property var paletteTexture: paletteTextureSource
-                        property real paletteSize: staticImageRoot.optimizedPalette.length
-                        property real texWidth: rawImage.width
-                        property real texHeight: rawImage.height
+                        property real paletteSize: wallpaper.effectivePaletteSize
+                        property real texWidth: Math.max(rawImage.width, 1)
+                        property real texHeight: Math.max(rawImage.height, 1)
 
                         vertexShader: "palette.vert.qsb"
                         fragmentShader: "palette.frag.qsb"
@@ -1146,24 +1202,39 @@ PanelWindow {
                 property string sourceFile: parent.sourceFile
                 property bool tint: wallpaper.tintEnabled
 
-                readonly property var optimizedPalette: wallpaper.optimizedPalette
-
                 Item {
                     id: paletteSourceItem
                     visible: true
-                    width: videoRoot.optimizedPalette.length
+                    width: wallpaper.effectivePaletteSize
                     height: 1
                     opacity: 0
+
                     Row {
                         anchors.fill: parent
                         Repeater {
-                            model: videoRoot.optimizedPalette
+                            model: wallpaper.effectivePalette
                             Rectangle {
                                 width: 1
                                 height: 1
-                                color: Colors[modelData]
+                                color: {
+                                    if (typeof modelData === "string") {
+                                        if (modelData.charAt(0) === '#') {
+                                            return modelData;
+                                        } else {
+                                            return Colors[modelData] || "black";
+                                        }
+                                    }
+                                    return modelData;
+                                }
                             }
                         }
+                    }
+
+                    Component.onCompleted: {
+                        if (width > 0) paletteTextureSource.scheduleUpdate();
+                    }
+                    onWidthChanged: {
+                        if (width > 0) paletteTextureSource.scheduleUpdate();
                     }
                 }
 
@@ -1176,32 +1247,43 @@ PanelWindow {
                     recursive: false
                 }
 
-                Video {
-                    id: videoPlayer
+                Item {
+                    id: mediaContainer
                     anchors.fill: parent
-                    source: videoRoot.sourceFile ? "file://" + videoRoot.sourceFile : ""
-                    loops: MediaPlayer.Infinite
-                    autoPlay: true
-                    muted: true
-                    fillMode: VideoOutput.PreserveAspectCrop
+                    clip: true
 
-                    layer.enabled: videoRoot.tint
-                    layer.effect: ShaderEffect {
+                    Video {
+                        id: videoPlayer
+                        anchors.fill: parent
+                        source: videoRoot.sourceFile ? "file://" + videoRoot.sourceFile : ""
+                        loops: MediaPlayer.Infinite
+                        autoPlay: true
+                        muted: true
+                        fillMode: VideoOutput.PreserveAspectCrop
+                        opacity: videoRoot.tint ? 0.0 : 1.0
+                        visible: true
+                    }
+
+                    ShaderEffectSource {
+                        id: mediaTextureSource
+                        sourceItem: videoPlayer
+                        hideSource: videoRoot.tint
+                        live: true
+                        smooth: true
+                        recursive: false
+                    }
+
+                    ShaderEffect {
+                        anchors.fill: parent
+                        visible: videoRoot.tint && wallpaper.effectivePaletteSize > 0
+                        property var source: mediaTextureSource
                         property var paletteTexture: paletteTextureSource
-                        property real paletteSize: videoRoot.optimizedPalette.length
-                        property real texWidth: videoPlayer.width
-                        property real texHeight: videoPlayer.height
+                        property real paletteSize: wallpaper.effectivePaletteSize
+                        property real texWidth: Math.max(videoPlayer.width, 1)
+                        property real texHeight: Math.max(videoPlayer.height, 1)
 
                         vertexShader: "palette.vert.qsb"
                         fragmentShader: "palette.frag.qsb"
-                    }
-
-                    onErrorOccurred: {
-                        console.warn("Video playback error:", error, errorString);
-                    }
-
-                    onSourceChanged: {
-                        if (source != "") play();
                     }
                 }
             }
