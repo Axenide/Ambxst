@@ -41,10 +41,7 @@ Item {
     readonly property bool isReady:   internalLoader.status === Loader.Ready
 
     // Fallback content when loading or error
-    Rectangle {
-    // Fallback content shown while loading or on error (when no custom fallback)
     StyledRect {
-        (fix(SafeLoader): fix fallbackContainer parent assignment, make loader internal)
         id: placeholder
         anchors.fill: parent
         visible: root.showPlaceholder && (root.isLoading || root.hasError) && !root.fallbackItem
