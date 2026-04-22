@@ -743,7 +743,7 @@ Item {
                                             ClippingRectangle {
                                                 anchors.fill: parent
                                                 radius: Styling.radius(16)
-                                                color: Colors.surfaceDim
+                                                color: "transparent"
                                                 visible: isUser
 
                                                 Image {

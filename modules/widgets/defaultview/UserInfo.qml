@@ -59,6 +59,7 @@ Item {
                     height: 24
                     radius: Styling.radius(0)
                     clip: true
+                    color: "transparent"
 
                     Image {
                         anchors.fill: parent
