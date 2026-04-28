@@ -51,6 +51,9 @@ PanelWindow {
     property string effectiveWallpaper: perScreenWallpapers[currentScreenName] || currentWallpaper
     property string currentScreenName: wallpaper.screen ? wallpaper.screen.name : ""
     property alias tintEnabled: wallpaperAdapter.tintEnabled
+    property alias interpolationEnabled: wallpaperAdapter.interpolationEnabled
+    property alias interpolationMultiplier: wallpaperAdapter.interpolationMultiplier
+    property alias targetInputFps: wallpaperAdapter.targetInputFps
     property int thumbnailsVersion: 0
 
     // Optimized palette color names (used as fallback)
@@ -486,6 +489,9 @@ PanelWindow {
             property string matugenScheme: "scheme-tonal-spot"
             property string activeColorPreset: ""
             property bool tintEnabled: false
+            property bool interpolationEnabled: false
+            property real targetInputFps: 15.0 
+            property int interpolationMultiplier: 2
             property var perScreenWallpapers: ({})
 
             onActiveColorPresetChanged: {
@@ -917,10 +923,15 @@ PanelWindow {
                 // Layer effect for palette tinting
                 layer.enabled: staticImageRoot.tint && wallpaper.effectivePaletteSize > 0
                 layer.effect: PaletteShaderEffect {
-                    paletteTexture: paletteTextureSource
-                    paletteSize: wallpaper.effectivePaletteSize
+                    property var paletteTexture: paletteTextureSource
+                    property int paletteSize: wallpaper.effectivePaletteSize
+                    property real sharpness: 20.0
+                    property real mixStrength: 1.0
                     texWidth: rawImage.width
                     texHeight: rawImage.height
+
+                    vertexShader: "palette.vert.qsb"
+                    fragmentShader: "palette.frag.qsb"
                 }
 
                 onStatusChanged: {
@@ -931,9 +942,8 @@ PanelWindow {
             }
         }
     }
-
     // -------------------------------------------------------------------
-    // Component for videos and GIFs (animated content)
+    // Component for videos and GIFs with software‑controlled input FPS
     // -------------------------------------------------------------------
     Component {
         id: videoComponent
@@ -942,10 +952,55 @@ PanelWindow {
             anchors.fill: parent
             property string sourceFile
             property bool tint: wallpaper.tintEnabled
+            property bool interpolate: wallpaper.interpolationEnabled
+            property int multiplier: wallpaper.interpolationMultiplier
+            property real targetInputFps: 15.0
 
-            onSourceFileChanged: console.log("videoComponent: sourceFile =", sourceFile)
+            // Frame control properties
+            property real originalFps: 30
+            property real effectiveInputFps: targetInputFps
+            property real captureIntervalMs: 1000 / effectiveInputFps
+            property real lastCaptureTime: 0
+            property real blendFactor: 0.0
+            property bool isOriginalFrame: true
+            property int frameCounter: 0
+
+            // FPS estimation
+            property real fpsOutput: 0
+            property int frameCountSinceLastSecond: 0
+            property real lastFpsUpdateTime: 0
+
+            // Debug overlay
+            property bool debugMode: false
+
             onTintChanged: console.log("videoComponent: tint =", tint)
+            onInterpolateChanged: {
+                console.log("videoComponent: interpolate =", interpolate)
+                if (interpolate) {
+                    captureTimer.restart()
+                    frameAnimation.running = true
+                    previousFrameSource.scheduleUpdate()
+                    videoRoot.lastCaptureTime = Date.now()
+                } else {
+                    captureTimer.stop()
+                    frameAnimation.running = false
+                }
+            }
+            onMultiplierChanged: {
+                // multiplier does not affect capture rate
+            }
+            onTargetInputFpsChanged: {
+                effectiveInputFps = Math.min(originalFps, targetInputFps)
+                captureIntervalMs = 1000 / effectiveInputFps
+                if (interpolate) {
+                    captureTimer.restart()
+                    videoRoot.lastCaptureTime = Date.now()
+                }
+            }
 
+            // -------------------------------------------------------------------
+            // Palette texture (same as in staticImageComponent)
+            // -------------------------------------------------------------------
             Item {
                 id: paletteSourceItem
                 visible: true
@@ -991,6 +1046,9 @@ PanelWindow {
                 }
             }
 
+            // -------------------------------------------------------------------
+            // Original video player (plays at normal speed)
+            // -------------------------------------------------------------------
             Video {
                 id: videoPlayer
                 anchors.fill: parent
@@ -999,20 +1057,246 @@ PanelWindow {
                 autoPlay: true
                 muted: true
                 fillMode: VideoOutput.PreserveAspectCrop
-                visible: true
+                visible: false
+                // Siempre a velocidad normal; el control de FPS lo hace el Timer
+                playbackRate: 1.0
 
-                // Layer effect for palette tinting
-                layer.enabled: videoRoot.tint && wallpaper.effectivePaletteSize > 0
-                layer.effect: PaletteShaderEffect {
-                    paletteTexture: paletteTextureSource
-                    paletteSize: wallpaper.effectivePaletteSize
-                    texWidth: videoPlayer.width
-                    texHeight: videoPlayer.height
+                onMetaDataChanged: {
+                    if (metaData.frameRate && metaData.frameRate > 0) {
+                        videoRoot.originalFps = metaData.frameRate
+                        videoRoot.effectiveInputFps = Math.min(videoRoot.originalFps, videoRoot.targetInputFps)
+                        videoRoot.captureIntervalMs = 1000 / videoRoot.effectiveInputFps
+                        console.log("videoComponent: detected FPS =", videoRoot.originalFps,
+                                    "effective input FPS =", videoRoot.effectiveInputFps)
+                    }
                 }
+
+                onPlaybackStateChanged: {
+                    if (playbackState === MediaPlayer.PlayingState && videoRoot.interpolate) {
+                        captureTimer.restart()
+                        frameAnimation.running = true
+                        previousFrameSource.scheduleUpdate()
+                        videoRoot.lastCaptureTime = Date.now()
+                    } else {
+                        captureTimer.stop()
+                        frameAnimation.running = false
+                    }
+                }
+            }
+
+            // Live capture of the current frame
+            ShaderEffectSource {
+                id: liveSource
+                sourceItem: videoPlayer
+                live: true
+                hideSource: true
+                smooth: true
+                visible: false
+            }
+
+            // Buffer for the previous frame (updated at target input FPS)
+            ShaderEffectSource {
+                id: previousFrameSource
+                sourceItem: videoPlayer
+                live: false
+                hideSource: true
+                smooth: true
+                visible: false
+            }
+
+            // -------------------------------------------------------------------
+            // Timer that captures frames at the desired input FPS
+            // -------------------------------------------------------------------
+            Timer {
+                id: captureTimer
+                interval: videoRoot.captureIntervalMs
+                repeat: true
+                running: false
+                onTriggered: {
+                    if (!videoRoot.interpolate) return
+                    previousFrameSource.scheduleUpdate()
+                    videoRoot.lastCaptureTime = Date.now()
+                    videoRoot.isOriginalFrame = true
+                    console.log("Captured input frame at", videoRoot.lastCaptureTime)
+                }
+            }
+
+            // -------------------------------------------------------------------
+            // FrameAnimation for continuous blendFactor updates (VSync synced)
+            // -------------------------------------------------------------------
+            FrameAnimation {
+                id: frameAnimation
+                running: false
+                onTriggered: {
+                    if (!videoRoot.interpolate || videoRoot.multiplier <= 1) return
+                    if (videoPlayer.playbackState !== MediaPlayer.PlayingState) return
+
+                    var now = Date.now()
+                    var elapsed = now - videoRoot.lastCaptureTime
+                    var factor = elapsed / videoRoot.captureIntervalMs
+                    videoRoot.blendFactor = Math.min(1.0, factor)
+                    videoRoot.isOriginalFrame = (videoRoot.blendFactor < 0.01 || videoRoot.blendFactor > 0.99)
+
+                    // Update FPS statistics
+                    videoRoot.frameCountSinceLastSecond++
+                    var fpsElapsed = now - videoRoot.lastFpsUpdateTime
+                    if (fpsElapsed >= 1000) {
+                        videoRoot.fpsOutput = videoRoot.frameCountSinceLastSecond * 1000 / fpsElapsed
+                        videoRoot.frameCountSinceLastSecond = 0
+                        videoRoot.lastFpsUpdateTime = now
+                    }
+                    videoRoot.frameCounter++
+                }
+            }
+
+            // -------------------------------------------------------------------
+            // Interpolation Shader Effect
+            // -------------------------------------------------------------------
+            ShaderEffect {
+                id: interpolationEffect
+                anchors.fill: parent
+                visible: videoRoot.interpolate && videoRoot.multiplier > 1
+                property var currentFrame: liveSource
+                property var previousFrame: previousFrameSource
+                property real blendFactor: videoRoot.blendFactor
+                property vector2d iResolution: Qt.vector2d(width, height)
+                property int blockSize: 12
+                property int searchRadius: 3
+                property real motionThreshold: 0.05
+                property bool debugMode: videoRoot.debugMode
+                property bool isOriginalFrame: videoRoot.isOriginalFrame
+                property int frameCounter: videoRoot.frameCounter
+
+                vertexShader: "interpol.vert.qsb"
+                fragmentShader: "interpol.frag.qsb"
+
+                onStatusChanged: {
+                    if (status === ShaderEffect.Error) {
+                        console.warn("❌ Interpolation shader error - falling back to direct video")
+                        videoRoot.interpolate = false
+                    } else if (status === ShaderEffect.Ready) {
+                        console.log("✅ Interpolation shader ready")
+                    }
+                }
+            }
+
+            // -------------------------------------------------------------------
+            // Direct video (fallback when interpolation is OFF)
+            // -------------------------------------------------------------------
+            Video {
+                id: directVideo
+                anchors.fill: parent
+                source: videoPlayer.source
+                loops: MediaPlayer.Infinite
+                autoPlay: true
+                muted: true
+                fillMode: VideoOutput.PreserveAspectCrop
+                visible: !videoRoot.interpolate || videoRoot.multiplier <= 1
+            }
+
+            // -------------------------------------------------------------------
+            // Tint layer applied over everything
+            // -------------------------------------------------------------------
+            layer.enabled: videoRoot.tint && wallpaper.effectivePaletteSize > 0
+            layer.smooth: true
+            layer.effect: ShaderEffect {
+                property var paletteTexture: paletteTextureSource
+                property int paletteSize: wallpaper.effectivePaletteSize
+                property real sharpness: 20.0
+                property real mixStrength: 1.0
+                property real texWidth: videoRoot.width
+                property real texHeight: videoRoot.height
+
+                vertexShader: "palette.vert.qsb"
+                fragmentShader: "palette.frag.qsb"
+            }
+
+            // -------------------------------------------------------------------
+            // Debug overlay
+            // -------------------------------------------------------------------
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.margins: 8
+                color: "#80000000"
+                radius: 4
+                visible: videoRoot.debugMode
+                width: debugColumn.implicitWidth + 16
+                height: debugColumn.implicitHeight + 8
+
+                Column {
+                    id: debugColumn
+                    anchors.centerIn: parent
+                    spacing: 2
+
+                    Text {
+                        text: "Input FPS: " + videoRoot.effectiveInputFps.toFixed(1) + " (orig: " + videoRoot.originalFps.toFixed(1) + ")"
+                        color: "white"
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        text: "Multiplier: x" + videoRoot.multiplier
+                        color: "white"
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        text: "Target Output FPS: " + (videoRoot.effectiveInputFps * videoRoot.multiplier).toFixed(1)
+                        color: "#aaffaa"
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        text: "Actual Output FPS: " + videoRoot.fpsOutput.toFixed(1)
+                        color: "#ffaa00"
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        text: "Frame: " + (videoRoot.isOriginalFrame ? "ORIGINAL" : "INTERPOLATED")
+                        color: videoRoot.isOriginalFrame ? "#aaaaff" : "#aaffaa"
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        text: "Blend: " + videoRoot.blendFactor.toFixed(2)
+                        color: "white"
+                        font.pixelSize: 12
+                    }
+                    Text {
+                        text: "Count: " + videoRoot.frameCounter
+                        color: "white"
+                        font.pixelSize: 12
+                    }
+                }
+            }
+
+            // -------------------------------------------------------------------
+            // Source synchronization
+            // -------------------------------------------------------------------
+            onSourceFileChanged: {
+                console.log("videoComponent: sourceFile =", sourceFile)
+                if (sourceFile) {
+                    videoPlayer.source = "file://" + sourceFile
+                    directVideo.source = "file://" + sourceFile
+                } else {
+                    videoPlayer.source = ""
+                    directVideo.source = ""
+                }
+                previousFrameSource.scheduleUpdate()
+                videoRoot.lastCaptureTime = Date.now()
+                videoRoot.lastFpsUpdateTime = Date.now()
+                videoRoot.frameCountSinceLastSecond = 0
+                videoRoot.fpsOutput = 0
+            }
+
+            Component.onCompleted: {
+                if (sourceFile) {
+                    videoPlayer.source = "file://" + sourceFile
+                    directVideo.source = "file://" + sourceFile
+                }
+                previousFrameSource.scheduleUpdate()
+                videoRoot.lastCaptureTime = Date.now()
+                videoRoot.lastFpsUpdateTime = Date.now()
             }
         }
     }
-
     // -------------------------------------------------------------------
     // Main wallpaper display area
     // -------------------------------------------------------------------

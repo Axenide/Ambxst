@@ -6,11 +6,14 @@ layout(location = 0) out vec2 qt_TexCoord0;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
-    int paletteSize;
-    float sharpness;
-    float mixStrength;
-    float texWidth;
-    float texHeight;
+    float blendFactor;
+    vec2 iResolution;
+    int blockSize;
+    int searchRadius;
+    float motionThreshold;
+    int debugMode;
+    int isOriginalFrame;
+    int frameCounter;
 } ubuf;
 
 void main() {

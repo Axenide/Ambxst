@@ -74,6 +74,13 @@ FocusScope {
             }
         },
         {
+            id: "interpolationCheckbox",
+            focusFunc: function () {
+                interpolationCheckboxContainer.keyboardNavigationActive = true;
+                interpolationCheckbox.forceActiveFocus();
+            }
+        },
+        {
             id: "schemeSelector",
             focusFunc: function () {
                 schemeSelector.openAndFocus();
@@ -108,8 +115,13 @@ FocusScope {
 
     // Función para enfocar los filtros
     function focusFilters() {
-        currentFocusIndex = 2;
-        focusableElements[2].focusFunc();
+        for (var i = 0; i < focusableElements.length; i++) {
+            if (focusableElements[i].id === "filters") {
+                currentFocusIndex = i;
+                focusableElements[i].focusFunc();
+                break;
+            }
+        }
     }
 
     // Función para navegar hacia adelante (Tab)
@@ -762,6 +774,219 @@ FocusScope {
                                     if (GlobalStates.wallpaperManager) {
                                         GlobalStates.wallpaperManager.tintEnabled = !GlobalStates.wallpaperManager.tintEnabled;
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Spacer
+            // Item { Layout.fillWidth: true }
+
+            // Motion Interpolation Toggle + Multiplier
+            Item {
+                id: interpolationCheckboxContainer
+                Layout.preferredWidth: 180
+                Layout.preferredHeight: 48
+
+                property bool keyboardNavigationActive: false
+
+                StyledRect {
+                    variant: interpolationCheckboxContainer.keyboardNavigationActive && interpolationCheckbox.activeFocus ? "focus" : "pane"
+                    anchors.fill: parent
+                    radius: Styling.radius(4)
+                    opacity: 1.0
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        spacing: 4
+
+                        // Label area (clickable)
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            color: Colors.background
+                            radius: Styling.radius(0)
+
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 6
+
+                                Text {
+                                    text: (typeof Icons !== 'undefined' && Icons.movie !== undefined) ? Icons.movie : ""
+                                    font.family: (typeof Icons !== 'undefined' && Icons.font !== undefined) ? Icons.font : Config.theme.font
+                                    font.pixelSize: 20
+                                    color: interpolationCheckbox.checked ? Styling.srItem("primary") : Colors.overSurfaceVariant
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: "Motion"
+                                    color: Colors.overSurface
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Config.theme.fontSize
+                                    font.weight: Font.Medium
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (GlobalStates.wallpaperManager) {
+                                        GlobalStates.wallpaperManager.interpolationEnabled = !GlobalStates.wallpaperManager.interpolationEnabled;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Checkbox (same style as OLED/Tint)
+                        Item {
+                            id: interpolationCheckbox
+                            Layout.preferredWidth: 40
+                            Layout.preferredHeight: 40
+
+                            property bool checked: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.interpolationEnabled : false
+
+                            onActiveFocusChanged: {
+                                if (!activeFocus) {
+                                    interpolationCheckboxContainer.keyboardNavigationActive = false;
+                                }
+                            }
+
+                            Keys.onPressed: event => {
+                                if (event.key === Qt.Key_Tab) {
+                                    interpolationCheckboxContainer.keyboardNavigationActive = false;
+                                    if (event.modifiers & Qt.ShiftModifier) {
+                                        wallpapersTabRoot.focusPreviousElement();
+                                    } else {
+                                        wallpapersTabRoot.focusNextElement();
+                                    }
+                                    event.accepted = true;
+                                } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                    if (GlobalStates.wallpaperManager) {
+                                        GlobalStates.wallpaperManager.interpolationEnabled = !GlobalStates.wallpaperManager.interpolationEnabled;
+                                    }
+                                    event.accepted = true;
+                                } else if (event.key === Qt.Key_Escape) {
+                                    interpolationCheckboxContainer.keyboardNavigationActive = false;
+                                    focusSearch();
+                                    event.accepted = true;
+                                }
+                            }
+
+                            Item {
+                                anchors.fill: parent
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: Styling.radius(0)
+                                    color: Colors.background
+                                    visible: !interpolationCheckbox.checked
+                                }
+
+                                StyledRect {
+                                    variant: "primary"
+                                    anchors.fill: parent
+                                    radius: Styling.radius(0)
+                                    visible: interpolationCheckbox.checked
+                                    opacity: interpolationCheckbox.checked ? 1.0 : 0.0
+
+                                    Behavior on opacity {
+                                        enabled: Config.animDuration > 0
+                                        NumberAnimation {
+                                            duration: Config.animDuration / 2
+                                            easing.type: Easing.OutQuart
+                                        }
+                                    }
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: (typeof Icons !== 'undefined' && Icons.accept !== undefined) ? Icons.accept : "✓"
+                                        color: Styling.srItem("primary")
+                                        font.family: (typeof Icons !== 'undefined' && Icons.font !== undefined) ? Icons.font : Config.theme.font
+                                        font.pixelSize: 20
+                                        scale: interpolationCheckbox.checked ? 1.0 : 0.0
+
+                                        Behavior on scale {
+                                            enabled: Config.animDuration > 0
+                                            NumberAnimation {
+                                                duration: Config.animDuration / 2
+                                                easing.type: Easing.OutBack
+                                                easing.overshoot: 1.5
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    if (GlobalStates.wallpaperManager) {
+                                        GlobalStates.wallpaperManager.interpolationEnabled = !GlobalStates.wallpaperManager.interpolationEnabled;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Multiplier selector (visible when checked)
+                        ComboBox {
+                            id: multiplierCombo
+                            Layout.preferredWidth: 70
+                            Layout.preferredHeight: 40
+                            visible: interpolationCheckbox.checked
+
+                            model: ["x1", "x2", "x3", "x4", "x5"]
+                            currentIndex: {
+                                var mult = GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.interpolationMultiplier : 2
+                                return Math.max(0, mult - 1)
+                            }
+                            // CORRECCIÓN: parámetro explícito en función
+                            onActivated: function(index) {
+                                if (GlobalStates.wallpaperManager) {
+                                    GlobalStates.wallpaperManager.interpolationMultiplier = index + 1
+                                }
+                            }
+
+                            background: Rectangle {
+                                color: Colors.background
+                                radius: Styling.radius(0)
+                            }
+
+                            contentItem: Text {
+                                text: parent.displayText
+                                color: Colors.overSurface
+                                font: Config.theme.font
+                                verticalAlignment: Text.AlignVCenter
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+
+                            indicator: Text {
+                                x: parent.width - width - 8
+                                y: parent.height / 2 - height / 2
+                                text: (typeof Icons !== 'undefined' && Icons.chevronDown !== undefined) ? Icons.chevronDown : "▼"
+                                font.family: (typeof Icons !== 'undefined' && Icons.font !== undefined) ? Icons.font : Config.theme.font
+                                font.pixelSize: 16
+                                color: Colors.overSurfaceVariant
+                            }
+
+                            Keys.onPressed: event => {
+                                if (event.key === Qt.Key_Tab) {
+                                    if (event.modifiers & Qt.ShiftModifier) {
+                                        wallpapersTabRoot.focusPreviousElement();
+                                    } else {
+                                        wallpapersTabRoot.focusNextElement();
+                                    }
+                                    event.accepted = true;
+                                } else if (event.key === Qt.Key_Escape) {
+                                    focusSearch();
+                                    event.accepted = true;
                                 }
                             }
                         }
