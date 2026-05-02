@@ -18,8 +18,8 @@ Item {
     // State source: Singletons and Registry
     readonly property bool frameEnabled: Config.bar?.frameEnabled ?? false
     readonly property bool configContainBar: Config.bar?.containBar ?? false
-    readonly property string barPos: Config.bar?.position ?? "top"
-    readonly property string notchPos: Config.notchPosition ?? "top"
+    readonly property string barPos: Config.barPositionForScreen(targetScreen.name)
+    readonly property string notchPos: Config.notchPositionForScreen(targetScreen.name)
     
     readonly property var barPanel: Visibilities.barPanels[targetScreen.name]
     readonly property var dockPanel: Visibilities.dockPanels[targetScreen.name]

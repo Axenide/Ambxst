@@ -4,6 +4,7 @@ var data = {
     "enabled": true,
     "theme": "default",
     "position": "bottom",
+    "screenPositions": {},
     "height": 48,
     "iconSize": 24,
     "spacing": 4,

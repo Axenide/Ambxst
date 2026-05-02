@@ -22,6 +22,7 @@ import "defaults/system.js" as SystemDefaults
 import "defaults/dock.js" as DockDefaults
 import "defaults/ai.js" as AiDefaults
 import "ConfigValidator.js" as ConfigValidator
+import "ScreenPositions.js" as ScreenPositions
 
 Singleton {
     id: root
@@ -527,6 +528,7 @@ Singleton {
 
         adapter: JsonAdapter {
             property string position: "top"
+            property var screenPositions: ({})
             property string launcherIcon: ""
             property bool launcherIconTint: true
             property bool launcherIconFullTint: true
@@ -672,6 +674,7 @@ Singleton {
         adapter: JsonAdapter {
             property string theme: "default"
             property string position: "top"
+            property var screenPositions: ({})
             property int hoverRegionHeight: 8
             property bool keepHidden: false
             property string noMediaDisplay: "userHost"
@@ -1088,6 +1091,7 @@ Singleton {
             property bool enabled: false
             property string theme: "default"
             property string position: "bottom"
+            property var screenPositions: ({})
             property int height: 56
             property int iconSize: 40
             property int spacing: 4
@@ -3254,6 +3258,20 @@ Singleton {
     // Bar configuration
     property QtObject bar: barLoader.adapter
     property bool showBackground: theme.srBarBg.opacity > 0
+    readonly property var shellEdgePositions: ["top", "bottom", "left", "right"]
+    readonly property var notchEdgePositions: ["top", "bottom"]
+
+    function barPositionForScreen(screenName) {
+        return ScreenPositions.positionForScreen(bar, screenName, "top", shellEdgePositions);
+    }
+
+    function notchPositionForScreen(screenName) {
+        return ScreenPositions.positionForScreen(notch, screenName, "top", notchEdgePositions);
+    }
+
+    function dockPositionForScreen(screenName) {
+        return ScreenPositions.positionForScreen(dock, screenName, "bottom", shellEdgePositions);
+    }
 
     // Workspace configuration
     property QtObject workspaces: workspacesLoader.adapter
