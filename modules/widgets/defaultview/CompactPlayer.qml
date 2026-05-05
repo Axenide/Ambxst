@@ -598,7 +598,8 @@ Item {
         id: playerPopup
         anchorItem: playerIcon
         bar: ({
-                position: Config.barPositionForScreen(compactPlayer.screenName)
+                position: Config.barPositionForScreen(compactPlayer.screenName),
+                barPosition: Config.barPositionForScreen(compactPlayer.screenName)
             })
 
         contentWidth: 250
