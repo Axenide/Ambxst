@@ -227,9 +227,12 @@ Rectangle {
 
         function executeApp(appId) {
             let app = appsById[appId];
-            if (app && app.execute) {
-                app.execute();
-                // Record usage for sorting priority
+            if (app) {
+                // Delegate to AppSearch.launchApp for consistency with DockAppButton.
+                // app.execute() (Quickshell DesktopEntry) does not handle Terminal=true
+                // entries: TUI apps (btop, htop, nvim, ranger, etc.) launched from the
+                // drawer fail silently because the Exec is run without a terminal wrapper.
+                AppSearch.launchApp(app);
                 UsageTracker.recordUsage(appId);
             }
         }

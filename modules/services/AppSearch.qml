@@ -209,9 +209,14 @@ Singleton {
 
             if (safeArgs.length > 0) {
                 const cmdString = safeArgs.join(" ");
+                // Wrap Terminal=true entries via xdg-terminal-exec (freedesktop default-terminal-spec).
+                // Users must have xdg-terminal-exec installed and ~/.config/xdg-terminals.list configured.
+                const wrapped = app.runInTerminal
+                    ? "xdg-terminal-exec " + cmdString
+                    : cmdString;
                 const p = Qt.createQmlObject('import Quickshell.Io; Process { }', root);
                 // Run in background, detached, from HOME
-                p.command = ["bash", "-c", "cd ~ && setsid " + cmdString + " > /dev/null 2>&1 &"];
+                p.command = ["bash", "-c", "cd ~ && setsid " + wrapped + " > /dev/null 2>&1 &"];
                 p.running = true;
                 return;
             }
