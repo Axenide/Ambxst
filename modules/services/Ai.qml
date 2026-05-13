@@ -494,9 +494,16 @@ Singleton {
     Process {
         id: curlProcess
 
+        // Captures the full stdout when streaming yields nothing — lets us
+        // surface real HTTP error JSON bodies instead of the generic
+        // "No response received" placeholder.
+        property string rawStdoutBuffer: ""
+
         // Use SplitParser for streaming — emits onRead per line
         stdout: SplitParser {
             onRead: data => {
+                curlProcess.rawStdoutBuffer += data + "\n";
+
                 let result = root.currentStrategy.parseStreamChunk(data);
 
                 if (result.error) {
@@ -522,18 +529,41 @@ Singleton {
             id: curlStderr
         }
 
+        // Try to extract the real error message from a non-streamed HTTP error body.
+        // Many providers respond to invalid requests with a small JSON like
+        //   {"error":{"message":"...","type":"..."}}
+        // which the SSE parser correctly ignores (no "data:" prefix) — but that
+        // leaves the user staring at "No response received from the API" when
+        // there IS a perfectly clear error sitting in stdout.
+        function extractApiError(raw) {
+            if (!raw || !raw.trim()) return "";
+            try {
+                let json = JSON.parse(raw.trim());
+                if (json && json.error) {
+                    if (typeof json.error === "string") return json.error;
+                    if (json.error.message) return json.error.message;
+                }
+            } catch (e) {
+                // Not JSON — fall through; raw body is not informative on its own.
+            }
+            return "";
+        }
+
         onExited: exitCode => {
             root.isLoading = false;
 
             if (exitCode === 0) {
                 // Check if we got any content during streaming
                 if (root.responseBuffer === "" && root.currentChat.length > 0) {
-                    // No streaming data received — might be non-streaming response or error
-                    // The last message is our placeholder, leave as is
                     let lastMsg = root.currentChat[root.currentChat.length - 1];
                     if (!lastMsg.content) {
                         let newChat = Array.from(root.currentChat);
-                        newChat[newChat.length - 1].content = "No response received from the API.";
+                        // Try to surface a real API error from the captured stdout
+                        // before falling back to the generic "no response" message.
+                        let apiErr = curlProcess.extractApiError(curlProcess.rawStdoutBuffer);
+                        newChat[newChat.length - 1].content = apiErr
+                            ? "API Error: " + apiErr
+                            : "No response received from the API.";
                         root.currentChat = newChat;
                     }
                 }
@@ -551,6 +581,7 @@ Singleton {
             }
 
             root.responseBuffer = "";
+            curlProcess.rawStdoutBuffer = "";
         }
     }
 
