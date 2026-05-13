@@ -778,6 +778,17 @@ for f in files:
             fetchProcessMiniMax.running = true;
         }
 
+        // extraModels — user-defined OpenAI-compatible providers (Moonshot/Kimi,
+        // OpenRouter, LMStudio remote, local llama.cpp, etc.). Each entry in
+        // Config.ai.extraModels declares an AiModel with endpoint + model + provider.
+        // Entries that require_key look up the key from KeyStore by key_provider
+        // (default "custom"). See readme for the entry schema.
+        if (Config.ai.extraModels && Config.ai.extraModels.length > 0) {
+            pendingFetches++;
+            fetchProcessExtraModels.command = ["bash", "-c", "echo 'done'"];
+            fetchProcessExtraModels.running = true;
+        }
+
         if (pendingFetches === 0) {
             fetchingModels = false;
         }
@@ -1042,6 +1053,55 @@ for f in files:
                 }
                 
                 mergeModels(newModels);
+            }
+            checkFetchCompletion();
+        }
+    }
+
+    // User-defined OpenAI-compatible models from Config.ai.extraModels.
+    // Entry schema (each item in the array):
+    //   {
+    //     "name":         "Display name",                    // shown in selector
+    //     "model":        "model-id-for-api",                // sent in request body
+    //     "endpoint":     "https://api.example.com/v1",      // OpenAI-compat base URL
+    //     "provider":     "custom",                          // strategy key (default: "custom")
+    //     "icon":         "openai",                          // optional icon name
+    //     "description":  "Free text",                       // optional
+    //     "requires_key": true,                              // optional, default true
+    //     "key_provider": "custom"                           // optional, KeyStore lookup key (default: "custom")
+    //   }
+    Process {
+        id: fetchProcessExtraModels
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                let newModels = [];
+                let extras = Config.ai.extraModels || [];
+                for (let i = 0; i < extras.length; i++) {
+                    let entry = extras[i];
+                    if (!entry || !entry.model || !entry.endpoint) continue;
+
+                    let provider = entry.provider || "custom";
+                    let requiresKey = entry.requires_key !== false; // default true
+                    let keyProvider = entry.key_provider || "custom";
+
+                    // Skip entries that need a key but none is configured
+                    if (requiresKey && !KeyStore.getKey(keyProvider)) continue;
+
+                    let iconName = entry.icon || provider;
+                    let iconUrl = Qt.resolvedUrl("../../assets/aiproviders/" + iconName + ".svg");
+
+                    let m = aiModelFactory.createObject(root, {
+                        name: entry.name || entry.model,
+                        icon: iconUrl,
+                        description: entry.description || ("Custom: " + entry.model),
+                        endpoint: entry.endpoint,
+                        model: entry.model,
+                        provider: provider,
+                        requires_key: requiresKey
+                    });
+                    if (m) newModels.push(m);
+                }
+                if (newModels.length > 0) mergeModels(newModels);
             }
             checkFetchCompletion();
         }
