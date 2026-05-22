@@ -141,6 +141,7 @@ install_dependencies() {
 
     install_phosphor_fonts
     install_ndot_font
+install_color_presets
     ;;
 
   arch)
@@ -190,6 +191,7 @@ install_dependencies() {
     else
       log_info "All packages already installed"
     fi
+    install_color_presets
 
     install_ndot_font
     ;;
@@ -217,6 +219,20 @@ install_phosphor_fonts() {
   rm -rf "$TEMP_DIR"
   fc-cache -f "$FONT_DIR"
   log_success "Phosphor Icons installed"
+}
+
+install_color_presets() {
+    log_info "Installing Nothing color theme..."
+    local COLOR_DIR="$HOME/.config/nothingless/colors/Nothing"
+    mkdir -p "$COLOR_DIR"
+    
+    local SRC_DIR="$INSTALL_PATH/assets/colors/Nothing"
+    if [[ -d "$SRC_DIR" ]]; then
+        cp -rn "$SRC_DIR"/* "$COLOR_DIR/" 2>/dev/null || true
+        log_success "Nothing color theme installed"
+    else
+        log_warn "Nothing color theme not found in repo."
+    fi
 }
 
 install_ndot_font() {

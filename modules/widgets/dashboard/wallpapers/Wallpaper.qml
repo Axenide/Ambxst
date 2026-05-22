@@ -487,7 +487,7 @@ PanelWindow {
             property string currentWall: ""
             property string wallPath: ""
             property string matugenScheme: "scheme-tonal-spot"
-            property string activeColorPreset: ""
+            property string activeColorPreset: "Nothing"
             property bool tintEnabled: false
             property bool interpolationEnabled: false
             property real targetInputFps: 24.0 
