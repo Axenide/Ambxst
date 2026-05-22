@@ -443,7 +443,7 @@ Rectangle {
                                         text: sidebarButton.modelData.isIcon ? sidebarButton.modelData.icon : ""
                                         font.family: Icons.font
                                         font.pixelSize: 20
-                                        color: sidebarButton.isActive ? Styling.srItem("overprimary") : Styling.srItem("common")
+                                        color: sidebarButton.isActive ? Styling.srItem("primary") : Styling.srItem("common")
                                         anchors.verticalCenter: parent.verticalCenter
                                         leftPadding: 10
                                         visible: sidebarButton.modelData.isIcon && (root.searchQuery.length === 0 || !sidebarButton.modelData.subSection)
@@ -480,7 +480,7 @@ Rectangle {
                                             layer.effect: MultiEffect {
                                                 brightness: 1.0
                                                 colorization: 1.0
-                                                colorizationColor: sidebarButton.isActive ? Styling.srItem("overprimary") : Styling.srItem("common")
+                                                colorizationColor: sidebarButton.isActive ? Styling.srItem("primary") : Styling.srItem("common")
                                             }
                                         }
                                     }
@@ -494,7 +494,7 @@ Rectangle {
                                             font.family: Config.theme.font
                                             font.pixelSize: Styling.fontSize(0)
                                             font.weight: sidebarButton.isActive ? Font.Bold : Font.Normal
-                                            color: sidebarButton.isActive ? Styling.srItem("overprimary") : Styling.srItem("common")
+                                            color: sidebarButton.isActive ? Styling.srItem("primary") : Styling.srItem("common")
 
                                             Behavior on color {
                                                 enabled: Config.animDuration > 0
