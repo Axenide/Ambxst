@@ -31,36 +31,16 @@ NothingLess strips the bloat and doubles down on speed, responsiveness, and clea
 
 ---
 
-## Screenshots
-
-<div align="center">
-  <img src="./assets/screenshots/1.png" width="100%" />
-  <br><br>
-  <img src="./assets/screenshots/2.png" width="32%" />
-  <img src="./assets/screenshots/3.png" width="32%" />
-  <img src="./assets/screenshots/4.png" width="32%" />
-  <br><br>
-  <img src="./assets/screenshots/5.png" width="32%" />
-  <img src="./assets/screenshots/6.png" width="32%" />
-  <img src="./assets/screenshots/7.png" width="32%" />
-  <br><br>
-  <img src="./assets/screenshots/8.png" width="32%" />
-  <img src="./assets/screenshots/9.png" width="32%" />
-  <img src="./assets/screenshots/10.png" width="32%" />
-</div>
-
----
-
 ## Installation
 
 ```bash
-curl -L get.axeni.de/ambxst | sh
+curl -sL https://github.com/Leriart/NothingLess/raw/main/install.sh | sh
 ```
 
-NothingLess is a fork. After installing Ambxst's dependencies from the script above, clone NothingLess:
+Or clone manually:
 
 ```bash
-git clone https://github.com/Th3LastGamer9/NothingLess.git ~/.local/src/nothingless
+git clone https://github.com/Leriart/NothingLess.git ~/.local/src/nothingless
 sudo ln -s ~/.local/src/nothingless/cli.sh /usr/local/bin/nothingless
 ```
 
