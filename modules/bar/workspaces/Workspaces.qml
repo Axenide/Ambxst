@@ -415,7 +415,10 @@ Item {
                 id: button
                 property int workspaceValue: getWorkspaceId(index)
                 Layout.fillHeight: true
-                onPressed: AxctlService.dispatch(`workspace ${workspaceValue}`)
+                onClicked: {
+                console.log("Workspace click:", workspaceValue);
+                AxctlService.dispatch(`workspace ${workspaceValue}`);
+            }
                 width: workspaceButtonWidth
 
                 background: Item {
@@ -552,7 +555,10 @@ Item {
                 id: buttonVert
                 property int workspaceValue: getWorkspaceId(index)
                 Layout.fillWidth: true
-                onPressed: AxctlService.dispatch(`workspace ${workspaceValue}`)
+                onClicked: {
+                console.log("Workspace click:", workspaceValue);
+                AxctlService.dispatch(`workspace ${workspaceValue}`);
+            }
                 height: workspaceButtonWidth
 
                 background: Item {
