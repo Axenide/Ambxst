@@ -11,7 +11,6 @@ import qs.modules.services
 import qs.modules.globals
 import qs.modules.components
 import qs.config
-import qs.modules.sidebar
 
 PanelWindow {
     id: unifiedPanel
@@ -34,9 +33,6 @@ PanelWindow {
         if (notchContent.screenNotchOpen) {
             return WlrKeyboardFocus.Exclusive;
         }
-        if (assistantSidebar.active && assistantSidebar.wantsFocus) {
-            return WlrKeyboardFocus.Exclusive;
-        }
         return WlrKeyboardFocus.None;
     }
     WlrLayershell.namespace: "ambxst"
@@ -45,7 +41,7 @@ PanelWindow {
 
     // Whether we need to capture full-screen input for click-outside detection.
     // True when notch modules are open OR any FocusGrab is active (e.g., BarPopups).
-    readonly property bool needsFullScreenInput: notchContent.screenNotchOpen || FocusGrabManager.hasActiveGrab || (assistantSidebar.active && assistantSidebar.wantsFocus)
+    readonly property bool needsFullScreenInput: notchContent.screenNotchOpen || FocusGrabManager.hasActiveGrab
 
     readonly property bool barEnabled: {
         if (!Config.barReady) return false;
@@ -160,9 +156,6 @@ PanelWindow {
             Region {
                 // Only include the dock hitbox if the dock is actually enabled and visible on this screen.
                 item: dockContent.visible ? dockContent.dockHitbox : null
-            },
-            Region {
-                item: (assistantSidebar.active || assistantSidebar.hitbox.visible) ? assistantSidebar.hitbox : null
             }
         ]
     }
@@ -192,9 +185,6 @@ PanelWindow {
 
         onClicked: {
             FocusGrabManager.clearTopGrab();
-            if (assistantSidebar.active && assistantSidebar.wantsFocus) {
-                assistantSidebar.wantsFocus = false;
-            }
         }
     }
 
@@ -240,59 +230,6 @@ PanelWindow {
             anchors.fill: parent
             screen: unifiedPanel.targetScreen
             z: 4
-        }
-
-        AssistantSidebar {
-            id: assistantSidebar
-            targetScreen: unifiedPanel.targetScreen
-            z: 1
-            
-            // Respect top/bottom bar reservations so the sidebar doesn't overlap them
-            anchors.topMargin: {
-                let frameOn = (Config.bar?.frameEnabled ?? false);
-                let frameWrapped = frameOn && GlobalStates.assistantPinned;
-                let margin = (frameOn && !frameWrapped) ? (Config.bar?.frameThickness ?? 6) : 0;
-                if (unifiedPanel.barEnabled && unifiedPanel.barPosition === "top" && unifiedPanel.barPinned) {
-                    margin += unifiedPanel.barTargetHeight + unifiedPanel.barOuterMargin + (unifiedPanel.containBar ? Config.bar.frameThickness : 0);
-                }
-                return margin;
-            }
-            
-            anchors.bottomMargin: {
-                let frameOn = (Config.bar?.frameEnabled ?? false);
-                let frameWrapped = frameOn && GlobalStates.assistantPinned;
-                let margin = (frameOn && !frameWrapped) ? (Config.bar?.frameThickness ?? 6) : 0;
-                if (unifiedPanel.barEnabled && unifiedPanel.barPosition === "bottom" && unifiedPanel.barPinned) {
-                    margin += unifiedPanel.barTargetHeight + unifiedPanel.barOuterMargin + (unifiedPanel.containBar ? Config.bar.frameThickness : 0);
-                } else if (unifiedPanel.dockEnabled && dockContent.dockPosition === "bottom" && dockContent.pinned) {
-                    margin += dockContent.dockHeight;
-                }
-                return margin;
-            }
-
-            anchors.leftMargin: {
-                let sidebarPos = GlobalStates.assistantPosition;
-                let frameOn = (Config.bar?.frameEnabled ?? false);
-                let frameWrapped = frameOn && GlobalStates.assistantPinned;
-                let margin = 0;
-                if (sidebarPos === "left" && frameOn && !frameWrapped)
-                    margin += (Config.bar?.frameThickness ?? 6);
-                if (unifiedPanel.barEnabled && unifiedPanel.barPosition === "left" && unifiedPanel.barPinned)
-                    margin += unifiedPanel.barTargetWidth + unifiedPanel.barOuterMargin + (unifiedPanel.containBar ? Config.bar.frameThickness : 0);
-                return margin;
-            }
-
-            anchors.rightMargin: {
-                let sidebarPos = GlobalStates.assistantPosition;
-                let frameOn = (Config.bar?.frameEnabled ?? false);
-                let frameWrapped = frameOn && GlobalStates.assistantPinned;
-                let margin = 0;
-                if (sidebarPos === "right" && frameOn && !frameWrapped)
-                    margin += (Config.bar?.frameThickness ?? 6);
-                if (unifiedPanel.barEnabled && unifiedPanel.barPosition === "right" && unifiedPanel.barPinned)
-                    margin += unifiedPanel.barTargetWidth + unifiedPanel.barOuterMargin + (unifiedPanel.containBar ? Config.bar.frameThickness : 0);
-                return margin;
-            }
         }
     }
 }

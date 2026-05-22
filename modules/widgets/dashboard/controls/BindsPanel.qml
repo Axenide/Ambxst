@@ -441,7 +441,7 @@ Item {
         const ambxst = adapter.ambxst;
 
         // Core Ambxst binds (Launcher, Dashboard, etc.)
-        const coreKeys = ["launcher", "dashboard", "assistant", "clipboard", "emoji", "notes", "tmux", "wallpapers"];
+        const coreKeys = ["launcher", "dashboard", "clipboard", "emoji", "notes", "tmux", "wallpapers"];
         for (const key of coreKeys) {
             if (ambxst[key]) {
                 binds.push({

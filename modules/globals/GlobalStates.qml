@@ -541,34 +541,5 @@ Singleton {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // ASSISTANT SIDEBAR STATE
-    // ═══════════════════════════════════════════════════════════════
-    property bool assistantVisible: false
-    property bool assistantPinned: Config.ai.sidebarPinnedOnStartup ?? false
-    property int assistantWidth: Config.ai.sidebarWidth ?? 400
-    property string assistantPosition: Config.ai.sidebarPosition ?? "right"
-    property string assistantScreenName: ""
-
-    signal assistantFocusRequested(bool wasAlreadyOpen)
-
-    function toggleAssistant() {
-        if (assistantVisible) {
-            assistantFocusRequested(true);
-        } else {
-            assistantVisible = true;
-            if (AxctlService.focusedMonitor && AxctlService.focusedMonitor.name) {
-                assistantScreenName = AxctlService.focusedMonitor.name;
-            } else if (Quickshell.screens.length > 0) {
-                assistantScreenName = Quickshell.screens[0].name;
-            }
-            assistantFocusRequested(false);
-        }
-    }
-
-    function hideAssistant() {
-        assistantVisible = false;
-    }
-
     property int settingsCurrentTab: 0
 }

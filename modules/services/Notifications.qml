@@ -224,6 +224,26 @@ Singleton {
         }
     }
 
+    function shouldIgnoreNotification(notification) {
+        if (!notification)
+            return false;
+
+        const appName = (notification.appName || "").toLowerCase();
+        const summary = (notification.summary || "").toLowerCase();
+        const body = (notification.body || "").toLowerCase();
+        const text = `${summary} ${body}`;
+
+        // Some external brightness helpers shell out through notify-send.
+        // Ambxst already exposes brightness feedback via the internal OSD.
+        if ((appName.includes("notify-send") || appName.includes("brightnessctl") || appName.includes("light")) && (text.includes("brightness") || text.includes("backlight")))
+            return true;
+
+        if (text.includes("brightness") || text.includes("backlight"))
+            return true;
+
+        return false;
+    }
+
     onListChanged: {
         // Update latest time for each app
         root.list.forEach(notif => {
@@ -300,6 +320,11 @@ Singleton {
         onNotification: notification => {
             // Verificar que la notificación tiene contenido válido antes de procesarla
             if (!notification || (!notification.summary && !notification.body)) {
+                return;
+            }
+
+            if (root.shouldIgnoreNotification(notification)) {
+                notification.dismiss();
                 return;
             }
 

@@ -66,7 +66,7 @@ Item {
     }
 
     // Computed dimensions
-    readonly property real mainRowContentWidth: 200 + userInfo.width + separator1.width + separator2.width + notifIndicator.width + (mainRow.spacing * 4) + mainRowMargin
+    readonly property real mainRowContentWidth: 200 + separator2.width + notifIndicator.width + (mainRow.spacing * 2) + mainRowMargin
     readonly property real mainRowHeight: Config.showBackground ? (Config.notchTheme === "island" ? 36 : 44) : (Config.notchTheme === "island" ? 36 : 40)
     readonly property real notificationMinWidth: expandedState ? 420 : 320
     readonly property real notificationContainerHeight: notificationView.implicitHeight + notificationPaddingTop + notificationPaddingBottom
@@ -140,20 +140,9 @@ Item {
             spacing: 4
             z: 2 // Ensure it stays above notifications if overlap occurs (though they shouldn't)
 
-            UserInfo {
-                id: userInfo
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Separator {
-                id: separator1
-                vert: true
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
             CompactPlayer {
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - userInfo.width - separator1.width - separator2.width - notifIndicator.width - (parent.spacing * 4)
+                width: parent.width - separator2.width - notifIndicator.width - (parent.spacing * 2)
                 height: 32
                 player: activePlayer
                 notchHovered: expandedState
