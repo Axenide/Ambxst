@@ -12,11 +12,6 @@ QtObject {
     id: root
 
     readonly property string appId: "nothingless"
-    property Process toggleMetricProcess: Process {
-        command: ["sh", "-c", "/home/leo/.local/lib/nothingless/toggle-metrics.sh"]
-        running: false
-    }
-
     readonly property string ipcPipe: "/tmp/nothingless_ipc.pipe"
 
     property Process toggleMetricProcess: Process {
@@ -39,16 +34,11 @@ QtObject {
         }
     }
 
-    function toggleMetrics() {
-        var toggleProc = toggleMetricProcess;
-        toggleProc.running = true;
-        console.log("Metrics toggled via script");
-    }
 
+    function toggleMetrics() {
         toggleMetricProcess.running = true;
         console.log("Metrics toggled via script");
     }
-
 
     function run(command) {
         console.log("IPC run command received:", command);
