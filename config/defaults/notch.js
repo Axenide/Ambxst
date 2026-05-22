@@ -7,5 +7,6 @@ var data = {
     "keepHidden": false,
     "noMediaDisplay": "userHost",
     "customText": "NothingLess",
-    "disableHoverExpansion": true
+    "disableHoverExpansion": true,
+    "showMetrics": false
 }

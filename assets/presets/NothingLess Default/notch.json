@@ -4,6 +4,7 @@
   "hoverRegionHeight": 16,
   "keepHidden": false,
   "noMediaDisplay": "compositor",
-  "customText": "Ambxst",
-  "disableHoverExpansion": false
+  "customText": "NothingLess",
+  "disableHoverExpansion": false,
+  "showMetrics": false
 }

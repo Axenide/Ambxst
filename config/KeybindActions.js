@@ -44,8 +44,9 @@ var ACTION_CATALOG = [
     { id: "nothingless.screenshot", label: "Take Screenshot", category: "NothingLess", dispatcher: "exec", argument: "nothingless run screenshot" },
     { id: "nothingless.screenrecord", label: "Screen Record", category: "NothingLess", dispatcher: "exec", argument: "nothingless run screenrecord" },
     { id: "nothingless.lens", label: "Open Lens", category: "NothingLess", dispatcher: "exec", argument: "nothingless run lens" },
-    { id: "nothingless.reload", label: "Reload Ambxst", category: "NothingLess", dispatcher: "exec", argument: "nothingless reload" },
-    { id: "nothingless.quit", label: "Quit Ambxst", category: "NothingLess", dispatcher: "exec", argument: "nothingless quit" },
+    { id: "nothingless.reload", label: "Reload NothingLess", category: "NothingLess", dispatcher: "exec", argument: "nothingless reload" },
+    { id: "nothingless.quit", label: "Quit NothingLess", category: "NothingLess", dispatcher: "exec", argument: "nothingless quit" },
+    { id: "nothingless.toggle-metrics", label: "Toggle Metrics", category: "NothingLess", dispatcher: "exec", argument: "nothingless run toggle-metrics" },
 
     { id: "window.close", label: "Close Window", category: "Window", dispatcher: "killactive", argument: "" },
     { id: "window.focus", label: "Focus Window", category: "Window", dispatcher: "movefocus", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {

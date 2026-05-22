@@ -53,6 +53,10 @@ QtObject {
             case "overview": toggleSimpleModule("overview"); break;
             case "powermenu": toggleSimpleModule("powermenu"); break;
             case "tools": toggleSimpleModule("tools"); break;
+            case "toggle-metrics":
+                Config.notch.showMetrics = !Config.notch.showMetrics;
+                console.log("Metrics toggled:", Config.notch.showMetrics);
+                break;
             case "config": toggleSettings(); break;
             case "screenshot": Screenshot.initialize(); GlobalStates.screenshotToolVisible = true; break;
             case "screenrecord": ScreenRecorder.initialize(); GlobalStates.screenRecordToolVisible = true; break;

@@ -1526,7 +1526,8 @@ Singleton {
                     "screenrecord": { "modifiers": ["SUPER", "SHIFT"], "key": "R", "action": { "id": "nothingless.screenrecord", "args": {} } },
                     "lens": { "modifiers": ["SUPER", "SHIFT"], "key": "A", "action": { "id": "nothingless.lens", "args": {} } },
                     "reload": { "modifiers": ["SUPER", "ALT"], "key": "B", "action": { "id": "nothingless.reload", "args": {} } },
-                    "quit": { "modifiers": ["SUPER", "CTRL", "ALT"], "key": "B", "action": { "id": "nothingless.quit", "args": {} } }
+                    "toggle-metrics": { "modifiers": ["SUPER", "SHIFT"], "key": "BACKSPACE", "action": { "id": "nothingless.toggle-metrics", "args": {} } },
+            "quit": { "modifiers": ["SUPER", "CTRL", "ALT"], "key": "B", "action": { "id": "nothingless.quit", "args": {} } }
                 }
             }
 
