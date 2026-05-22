@@ -9,8 +9,8 @@ Singleton {
     id: root
 
     readonly property string currentVersion: Config.version
-    readonly property string repoUrl: "https://api.github.com/repos/Leriart/Ambxst/tags"
-    readonly property string changelogUrl: "https://axeni.de/nothingless/changelog"
+    readonly property string repoUrl: "https://api.github.com/repos/Leriart/NothingLess/tags"
+    readonly property string changelogUrl: "https://github.com/Leriart/NothingLess/releases"
     // QUICKSHELL-GIT: readonly property string cacheFile: Quickshell.cachePath("update_check.json")
     readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/nothingless/update_check.json"
 
@@ -124,7 +124,7 @@ Singleton {
         if (typeof Notifications === "undefined" || !Notifications.list) return false;
         for (let i = 0; i < Notifications.list.length; i++) {
             const notif = Notifications.list[i];
-            if (notif && notif.appName === "Ambxst Update") {
+            if (notif && notif.appName === "NothingLess Update") {
                 return true;
             }
         }
@@ -132,9 +132,9 @@ Singleton {
     }
 
     function sendUpdateNotification(newVersion) {
-        const summary = "Ambxst update available!";
+        const summary = "NothingLess update available!";
         const body = newVersion + " available! (Installed " + root.currentVersion + ")";
-        const cmd = "notify-send -a 'Ambxst Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later' --action=update=Update";
+        const cmd = "notify-send -a 'NothingLess Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later' --action=update=Update";
         
         notificationProcess.running = false;
         notificationProcess.command = ["bash", "-c", cmd];

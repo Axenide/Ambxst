@@ -1757,16 +1757,12 @@ Item {
                         }
 
                         ActionButton {
-                            text: "About Ambxst " + Config.version
+                            text: "About NothingLess " + Config.version
                             icon: Icons.info
-                            onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/nothingless"])
+                            onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/Leriart/NothingLess"])
                         }
 
                         ActionButton {
-                            text: "Donate ❤️"
-                            icon: Icons.heart
-                            onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/donate"])
-                        }
 
                         Text {
                             text: "OCR Languages"

@@ -41,15 +41,15 @@ QtObject {
         const textdarkest = isLight ? toRGB(Qt.lighter(fg, 3.19)) : toRGB(Qt.darker(fg, 3.19))
 
         let css = `/**
- * @name Ambxst
- * @description A Discord recolor theme, generated with Ambxst.
+ * @name NothingLess
+ * @description A Discord recolor theme, generated with NothingLess.
  * @author Leriart
  * @version 1.0.0
  * @invite gHG9WHyNvH
- * @website https://axeni.de/nothingless
- * @source https://github.com/Leriart/Ambxst
+ * @website https://github.com/Leriart/NothingLess
+ * @source https://github.com/Leriart/NothingLess
  * @authorId 294856304969908224
- * @authorLink https://axeni.de
+ * @authorLink https://github.com/Axenide
 */ 
 
 @import url('https://mwittrien.github.io/BetterDiscordAddons/Themes/DiscordRecolor/DiscordRecolor.css');
