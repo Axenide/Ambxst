@@ -3,6 +3,11 @@
 var data = {
     "disks": ["/"],
     "updateServiceEnabled": true,
+    "batteryNotifications": {
+        "enabled": true,
+        "lowThreshold": 20,
+        "criticalThreshold": 10
+    },
     "idle": {
         "general": {
             "lock_cmd": "nothingless lock",

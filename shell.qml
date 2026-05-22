@@ -177,6 +177,10 @@ ShellRoot {
         id: compositorConfig
     }
 
+    CompositorKeybinds {
+        id: compositorKeybinds
+    }
+
     // Screenshot tool
     Variants {
         model: Quickshell.screens
@@ -287,6 +291,7 @@ ShellRoot {
                 let _ = CaffeineService.inhibit;
                 _ = IdleService.lockCmd; // Force init
                 _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
+                _ = BatteryAlertService.enabled; // Force init (battery notifications)
             });
         }
     }
