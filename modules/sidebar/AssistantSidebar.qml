@@ -751,6 +751,8 @@ Item {
                                                     anchors.fill: parent
                                                     source: "file://" + Quickshell.env("HOME") + "/.face.icon"
                                                     fillMode: Image.PreserveAspectCrop
+                                                    sourceSize.width: 32
+                                                    sourceSize.height: 32
 
                                                     onStatusChanged: {
                                                         if (status === Image.Error) {

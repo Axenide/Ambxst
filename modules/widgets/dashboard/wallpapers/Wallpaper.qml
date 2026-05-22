@@ -412,6 +412,15 @@ PanelWindow {
             return;
         }
         if (currentWallpaper && initialLoadCompleted) {
+            // No regenerar si el wallpaper Y el scheme no han cambiado
+            var lastWallpaper = wallpaperConfig.adapter.lastMatugenWallpaper || "";
+            var lastScheme = wallpaperConfig.adapter.lastMatugenScheme || "";
+            var currentScheme = wallpaperConfig.adapter.matugenScheme;
+            if (lastWallpaper === currentWallpaper && lastScheme === currentScheme) {
+                console.log("Skipping Matugen — wallpaper unchanged since last generation");
+                return;
+            }
+            
             console.log("Running Matugen for current wallpaper:", currentWallpaper);
             var fileType = getFileType(currentWallpaper);
             var matugenSource = getColorSource(currentWallpaper);
@@ -432,6 +441,10 @@ PanelWindow {
             if (Config.theme.lightMode) commandNormal.push("-m", "light");
             matugenProcessNormal.command = commandNormal;
             matugenProcessNormal.running = true;
+            
+            // Guardar el wallpaper y scheme actual para no regenerar al reiniciar
+            wallpaperConfig.adapter.lastMatugenWallpaper = currentWallpaper;
+            wallpaperConfig.adapter.lastMatugenScheme = wallpaperConfig.adapter.matugenScheme;
         }
     }
 
@@ -487,7 +500,9 @@ PanelWindow {
             property string currentWall: ""
             property string wallPath: ""
             property string matugenScheme: "scheme-tonal-spot"
-            property string activeColorPreset: "Nothing"
+            property string activeColorPreset: ""
+            property string lastMatugenWallpaper: ""
+            property string lastMatugenScheme: ""
             property bool tintEnabled: false
             property bool interpolationEnabled: false
             property real targetInputFps: 24.0 

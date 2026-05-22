@@ -411,6 +411,8 @@ WlSessionLockSurface {
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
                         asynchronous: true
+                        sourceSize.width: 64
+                        sourceSize.height: 64
                         visible: status === Image.Ready
 
                         layer.enabled: true

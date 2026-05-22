@@ -194,6 +194,8 @@ Rectangle {
                             fillMode: Image.PreserveAspectCrop
                             smooth: true
                             asynchronous: true
+                            sourceSize.width: 96
+                            sourceSize.height: 96
                             visible: status === Image.Ready
 
                             layer.enabled: true
