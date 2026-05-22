@@ -1,6 +1,6 @@
 #!/bin/bash
 # gsr-fps.sh — Lanza juego con monitoreo de FPS post-LSFG
-# Integrado en Ambxst. Usar: nothingless fps <comando del juego>
+# Integrado en NothingLess. Usar: nothingless fps <comando del juego>
 #
 # Escribe FPS a /dev/shm/gsr-fps-stats para que fps_monitor.py lo lea
 # y los muestre en el notch.

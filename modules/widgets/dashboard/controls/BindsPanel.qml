@@ -55,7 +55,7 @@ Item {
     property bool editMode: false
     property int editingIndex: -1
     property var editingBind: null
-    property bool isEditingAmbxst: false
+    property bool isEditingNothingless: false
     property bool isCreatingNew: false
 
     // Edit form state - new format with keys[] and actions[]
@@ -237,14 +237,14 @@ Item {
         }
     }
 
-    function openEditDialog(bind, index, isAmbxst) {
+    function openEditDialog(bind, index, isNothingless) {
         root.editingIndex = index;
         root.editingBind = bind;
-        root.isEditingAmbxst = isAmbxst;
+        root.isEditingNothingless = isNothingless;
 
         // Initialize edit form state
-        if (isAmbxst) {
-            // Ambxst binds still use old format (single key)
+        if (isNothingless) {
+            // NothingLess binds still use old format (single key)
             const bindData = bind.bind;
             root.editName = "";
             root.editKeys = [
@@ -327,7 +327,7 @@ Item {
     }
 
     function saveEdit() {
-        if (root.isEditingAmbxst) {
+        if (root.isEditingNothingless) {
             // Save nothingless bind (still uses old format internally)
             const path = root.editingBind.path.split(".");
             // path = ["nothingless", "section"?, "bindName"]
@@ -432,7 +432,7 @@ Item {
     }
 
     // Get nothingless binds as a flat list
-    function getAmbxstBinds() {
+    function getNothinglessBinds() {
         const adapter = Config.keybindsLoader.adapter;
         if (!adapter || !adapter.nothingless)
             return [];
@@ -440,7 +440,7 @@ Item {
         const binds = [];
         const nothingless = adapter.nothingless;
 
-        // Core Ambxst binds (Launcher, Dashboard, etc.)
+        // Core NothingLess binds (Launcher, Dashboard, etc.)
         const coreKeys = ["launcher", "dashboard", "assistant", "clipboard", "emoji", "notes", "tmux", "wallpapers"];
         for (const key of coreKeys) {
             if (nothingless[key]) {
@@ -707,10 +707,10 @@ Item {
             x: root.sideMargin
             spacing: 4
 
-            // Ambxst binds view
+            // NothingLess binds view
             Repeater {
                 id: nothinglessRepeater
-                model: root.currentCategory === "nothingless" ? root.getAmbxstBinds() : []
+                model: root.currentCategory === "nothingless" ? root.getNothinglessBinds() : []
 
                 delegate: BindItem {
                     required property var modelData
@@ -721,7 +721,7 @@ Item {
                     keybindText: root.formatKeybind(modelData.bind)
                     dispatcher: KeybindActions.describeAction(modelData.bind.action || modelData.bind)
                     argument: ""
-                    isAmbxst: true
+                    isNothingless: true
 
                     onEditRequested: {
                         root.openEditDialog(modelData, index, true);
@@ -768,7 +768,7 @@ Item {
                     dispatcher: firstDispatcher
                     argument: firstArgument
                     isEnabled: modelData.enabled !== false
-                    isAmbxst: false
+                    isNothingless: false
                     layouts: getUniqueLayouts()
 
                     onToggleEnabled: {
@@ -799,7 +799,7 @@ Item {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
                 visible: (root.currentCategory === "nothingless" && nothinglessRepeater.count === 0) || (root.currentCategory === "custom" && customRepeater.count === 0)
-                text: root.currentCategory === "nothingless" ? "No Ambxst binds configured" : "No custom binds configured"
+                text: root.currentCategory === "nothingless" ? "No NothingLess binds configured" : "No custom binds configured"
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(0)
                 color: Colors.overSurfaceVariant
@@ -911,7 +911,7 @@ Item {
                         // Delete button (only for existing custom binds)
                         StyledRect {
                             id: deleteButton
-                            visible: !root.isEditingAmbxst && !root.isCreatingNew
+                            visible: !root.isEditingNothingless && !root.isCreatingNew
                             variant: deleteButtonArea.containsMouse ? "focus" : "common"
                             Layout.preferredWidth: 36
                             Layout.preferredHeight: 36
@@ -939,10 +939,10 @@ Item {
                             }
                         }
 
-                        // Reset button (only for Ambxst binds)
+                        // Reset button (only for NothingLess binds)
                         StyledRect {
                             id: resetButton
-                            visible: root.isEditingAmbxst
+                            visible: root.isEditingNothingless
                             variant: resetButtonArea.pressed ? "primary" : (resetButtonArea.containsMouse ? "focus" : "common")
                             Layout.preferredWidth: resetButtonContent.width + 24
                             Layout.preferredHeight: 36
@@ -977,14 +977,14 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    if (root.isEditingAmbxst && root.editingBind) {
+                                    if (root.isEditingNothingless && root.editingBind) {
                                         const path = root.editingBind.path.split(".");
                                         // path = ["nothingless", "dashboard"|"system", "bindName"]
                                         const section = path[1];
                                         const bindName = path[2];
                                         
                                         // Use the new helper in Config.qml to get the default values
-                                        const defaultBind = Config.keybindsLoader.adapter.getAmbxstDefault(section, bindName);
+                                        const defaultBind = Config.keybindsLoader.adapter.getNothinglessDefault(section, bindName);
                                         
                                         if (defaultBind) {
                                             root.editKeys = [{
@@ -1062,7 +1062,7 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            visible: !root.isEditingAmbxst
+                            visible: !root.isEditingNothingless
 
                             Text {
                                 text: "Name (optional)"
@@ -1107,7 +1107,7 @@ Item {
 
                         // Bind name/info (for nothingless binds only)
                         Text {
-                            visible: root.isEditingAmbxst && root.editingBind !== null
+                            visible: root.isEditingNothingless && root.editingBind !== null
                             text: root.editingBind ? (root.editingBind.name || "") : ""
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(1)
@@ -1179,7 +1179,7 @@ Item {
                                 // Remove key button
                                 StyledRect {
                                     id: removeKeyBtn
-                                    visible: root.editKeys.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editKeys.length > 1 && !root.isEditingNothingless
                                     variant: removeKeyBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1272,7 +1272,7 @@ Item {
                                 // Add key button
                                 StyledRect {
                                     id: addKeyBtn
-                                    visible: !root.isEditingAmbxst
+                                    visible: !root.isEditingNothingless
                                     variant: addKeyBtnArea.containsMouse ? "primaryfocus" : "primary"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1388,7 +1388,7 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            // visible: !root.isEditingAmbxst - Removed to allow editing flags for Ambxst binds
+                            // visible: !root.isEditingNothingless - Removed to allow editing flags for NothingLess binds
 
                             // Actions section header with pager controls
                             RowLayout {
@@ -1406,7 +1406,7 @@ Item {
 
                                 // Page indicator
                                 Text {
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     text: (root.currentActionPage + 1) + " / " + root.editActions.length
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
@@ -1416,7 +1416,7 @@ Item {
                                 // Remove action button
                                 StyledRect {
                                     id: removeActionBtn
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     variant: removeActionBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1447,7 +1447,7 @@ Item {
                                 // Previous action button
                                 StyledRect {
                                     id: prevActionBtn
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     variant: prevActionBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1478,7 +1478,7 @@ Item {
                                 // Next action button
                                 StyledRect {
                                     id: nextActionBtn
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     variant: nextActionBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1509,7 +1509,7 @@ Item {
                                 // Add action button
                                 StyledRect {
                                     id: addActionBtn
-                                    visible: !root.isEditingAmbxst
+                                    visible: !root.isEditingNothingless
                                     variant: addActionBtnArea.containsMouse ? "primaryfocus" : "primary"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1855,7 +1855,7 @@ Item {
         property string dispatcher: ""
         property string argument: ""
         property bool isEnabled: true
-        property bool isAmbxst: true
+        property bool isNothingless: true
         property bool isHovered: false
         property var layouts: []  // Layouts this bind is restricted to (empty = all layouts)
 
@@ -1890,7 +1890,7 @@ Item {
             // Checkbox for custom binds (styled like OLED Mode)
             Item {
                 id: checkboxItem
-                visible: !bindItem.isAmbxst
+                visible: !bindItem.isNothingless
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
 
@@ -1971,7 +1971,7 @@ Item {
 
                     // Layout indicator
                     Row {
-                        visible: !bindItem.isAmbxst
+                        visible: !bindItem.isNothingless
                         spacing: 4
                         Layout.alignment: Qt.AlignVCenter
 
@@ -2048,7 +2048,7 @@ Item {
         // Checkbox MouseArea needs to be on top
         MouseArea {
             id: checkboxClickArea
-            visible: !bindItem.isAmbxst
+            visible: !bindItem.isNothingless
             x: 12
             y: (parent.height - 32) / 2
             width: 32

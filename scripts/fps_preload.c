@@ -1,21 +1,21 @@
 /**
- * fps_preload.c — Built-in FPS counter for Ambxst
+ * fps_preload.c — Built-in FPS counter for NothingLess
  *
  * Intercepts Vulkan (vkQueuePresentKHR), EGL (eglSwapBuffers), and
  * GLX (glXSwapBuffers) to measure actual application frame rate.
- * Activated only when ambxst-fps=1 is set in the environment.
+ * Activated only when nothingless-fps=1 is set in the environment.
  *
- * Output: writes average FPS + PID to /dev/shm/ambxst_fps every N frames.
+ * Output: writes average FPS + PID to /dev/shm/nothingless_fps every N frames.
  *
  * Compile:
  *   gcc -shared -fPIC -O2 -o libambfps.so fps_preload.c -lm -ldl
  *
- * Install (part of Ambxst):
+ * Install (part of NothingLess):
  *   cp libambfps.so ~/.local/lib/libambfps.so
  *
  * Usage:
- *   ambxst-fps ./game              # wrapper script
- *   LD_PRELOAD=libambfps.so ./game # direct (needs ambxst-fps=1 env)
+ *   nothingless-fps ./game              # wrapper script
+ *   LD_PRELOAD=libambfps.so ./game # direct (needs nothingless-fps=1 env)
  */
 #define _GNU_SOURCE
 #include <stdio.h>
@@ -34,11 +34,17 @@
 #endif
 
 /* ── Activation guard ──────────────────────────────────────────── */
-/* Only hook functions if ambxst-fps env var is set and non-zero.   */
+/* Only hook functions if nothingless-fps or ambxst-fps env var is set and non-zero.   */
 static int _ambfps_enabled = 0;
 
 static void _check_env(void) {
-    const char *v = getenv("ambxst-fps");
+    const char *v = getenv("nothingless-fps");
+    if (!v || !v[0] || strcmp(v, "0") == 0) {
+        v = getenv("NOTHINGLESS_FPS");
+    }
+    if (!v || !v[0] || strcmp(v, "0") == 0) {
+        v = getenv("ambxst-fps");
+    }
     if (!v || !v[0] || strcmp(v, "0") == 0) {
         v = getenv("AMBXST_FPS");
     }
@@ -63,10 +69,10 @@ static uint64_t get_ns(void) {
 }
 
 static void write_fps(double fps) {
-    FILE *f = fopen("/dev/shm/ambxst_fps", "w");
+    FILE *f = fopen("/dev/shm/nothingless_fps", "w");
     if (f) {
         fprintf(f, "fps=%.1f\npid=%d\nframes=%lu\n"
-                "source=ambxst-preload\n",
+                "source=nothingless-preload\n",
                 fps, getpid(),
                 (unsigned long)frame_count);
         fclose(f);
@@ -217,9 +223,9 @@ static void __attribute__((constructor)) init(void) {
     _check_env();
     if (_ambfps_enabled) {
         /* Write initial zero to signal presence */
-        FILE *f = fopen("/dev/shm/ambxst_fps", "w");
+        FILE *f = fopen("/dev/shm/nothingless_fps", "w");
         if (f) {
-            fprintf(f, "fps=0.0\npid=%d\nframes=0\nsource=ambxst-preload\n",
+            fprintf(f, "fps=0.0\npid=%d\nframes=0\nsource=nothingless-preload\n",
                     getpid());
             fclose(f);
         }
@@ -228,6 +234,6 @@ static void __attribute__((constructor)) init(void) {
 
 static void __attribute__((destructor)) fini(void) {
     if (_ambfps_enabled) {
-        remove("/dev/shm/ambxst_fps");
+        remove("/dev/shm/nothingless_fps");
     }
 }

@@ -9,7 +9,7 @@ QtObject {
 
     property Process compositorProcess: Process {}
 
-    property var previousAmbxstBinds: ({})
+    property var previousNothinglessBinds: ({})
     property var previousCustomBinds: []
     property bool hasPreviousBinds: false
 
@@ -48,7 +48,7 @@ QtObject {
         const nothingless = Config.keybindsLoader.adapter.nothingless;
 
         // Store nothingless core keybinds
-        previousAmbxstBinds = {
+        previousNothinglessBinds = {
             nothingless: {
                 launcher: cloneKeybind(nothingless.launcher),
                 dashboard: cloneKeybind(nothingless.dashboard),
@@ -163,29 +163,29 @@ QtObject {
         // First, unbind previous keybinds if we have them stored
         if (hasPreviousBinds) {
             // Unbind previous nothingless core keybinds
-            if (previousAmbxstBinds.nothingless) {
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.launcher));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.dashboard));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.assistant));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.clipboard));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.emoji));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.notes));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.tmux));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.wallpapers));
+            if (previousNothinglessBinds.nothingless) {
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.launcher));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.dashboard));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.assistant));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.clipboard));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.emoji));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.notes));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.tmux));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.nothingless.wallpapers));
             }
 
             // Unbind previous nothingless system keybinds
-            if (previousAmbxstBinds.system) {
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.overview));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.powermenu));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.config));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.lockscreen));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.tools));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.screenshot));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.screenrecord));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.lens));
-                if (previousAmbxstBinds.system.reload) payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.reload));
-                if (previousAmbxstBinds.system.quit) payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.quit));
+            if (previousNothinglessBinds.system) {
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.overview));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.powermenu));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.config));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.lockscreen));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.tools));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.screenshot));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.screenrecord));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.lens));
+                if (previousNothinglessBinds.system.reload) payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.reload));
+                if (previousNothinglessBinds.system.quit) payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.quit));
             }
 
             // Unbind previous custom keybinds

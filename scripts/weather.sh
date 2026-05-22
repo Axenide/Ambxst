@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Weather fetching script for Ambxst
+# Weather fetching script for NothingLess
 # Usage: weather.sh [location]
 # If no location is provided, uses GeoIP to determine location
 # Output: JSON with weather data or error

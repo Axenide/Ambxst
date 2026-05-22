@@ -11,7 +11,7 @@ def get_machine_id():
         with open("/etc/machine-id", "r") as f:
             return f.read().strip().encode("utf-8")
     except Exception:
-        return b"ambxst-fallback-salt-82741"
+        return b"nothingless-fallback-salt-82741"
 
 
 def xor_crypt(data, key):

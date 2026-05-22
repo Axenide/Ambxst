@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# NothingLess CLI - Minimal Ambxst fork - It was needed, so here it is. lol
+# NothingLess CLI - Minimal NothingLess fork - It was needed, so here it is. lol
 
 set -euo pipefail
 
@@ -39,13 +39,13 @@ ensure_config_files
 
 show_help() {
 	cat <<EOF
-Ambxst CLI - Desktop Environment Control
+NothingLess CLI - Desktop Environment Control
 
 Usage: nothingless [COMMAND]
 
 Commands:
-    (none)                            Launch Ambxst
-    update                            Update Ambxst
+    (none)                            Launch NothingLess
+    update                            Update NothingLess
     refresh                           Refresh local/dev profile (for developers)
     lock                              Activate lockscreen
     brightness <percent> [monitor]    Set brightness (0-100)
@@ -54,8 +54,8 @@ Commands:
     brightness -r [monitor]           Restore saved brightness
     brightness -l                     List monitors and their brightness
     help                              Show this help message
-    version, -v, --version            Show Ambxst version
-    goodbye                           Uninstall Ambxst :(
+    version, -v, --version            Show NothingLess version
+    goodbye                           Uninstall NothingLess :(
     install <target>                    Install compositor config (hyprland)
     remove <target>                    Remove compositor config (hyprland)
 
@@ -71,24 +71,24 @@ Examples:
 EOF
 }
 
-AMBXST_HYPR_CONF_SOURCE="source = ~/.local/share/nothingless/hyprland.conf"
-AMBXST_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()'
-AMBXST_HYPR_CONF_BLOCK=$(
+NOTHINGLESS_HYPR_CONF_SOURCE="source = ~/.local/share/nothingless/hyprland.conf"
+NOTHINGLESS_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()'
+NOTHINGLESS_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
-# Ambxst
+# NothingLess
 source = ~/.local/share/nothingless/hyprland.conf
 
 # OVERRIDES
-# Down here you can write or source anything that you want to override from Ambxst's settings.
+# Down here you can write or source anything that you want to override from NothingLess's settings.
 EOF
 )
-AMBXST_HYPR_LUA_BLOCK=$(
+NOTHINGLESS_HYPR_LUA_BLOCK=$(
 	cat <<'EOF'
--- Ambxst
+-- NothingLess
 loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()
 
--- OVERRIDES
--- Down here you can write or source anything that you want to override from Ambxst's settings.
+# OVERRIDES
+# Down here you can write or source anything that you want to override from NothingLess's settings.
 EOF
 )
 
@@ -98,7 +98,7 @@ append_nothingless_hyprland_block() {
 	local block="$3"
 
 	if [ -f "$conf" ] && grep -qF "$source" "$conf"; then
-		echo "Ambxst Hyprland block already present in $conf"
+		echo "NothingLess Hyprland block already present in $conf"
 		return 0
 	fi
 
@@ -108,7 +108,7 @@ append_nothingless_hyprland_block() {
 		printf "%s\n" "$block" >"$conf"
 	fi
 
-	echo "Added Ambxst Hyprland block to $conf"
+	echo "Added NothingLess Hyprland block to $conf"
 }
 
 remove_nothingless_hyprland_block() {
@@ -123,12 +123,12 @@ remove_nothingless_hyprland_block() {
 	awk -v source="$source" '
 		function is_remove(line) {
 			return line == source \
-				|| line == "# Ambxst" \
-				|| line == "-- Ambxst" \
+				|| line == "# NothingLess" \
+				|| line == "-- NothingLess" \
 				|| line == "# OVERRIDES" \
 				|| line == "-- OVERRIDES" \
-				|| line == "# Down here you can write or source anything that you want to override from Ambxst'\''s settings." \
-				|| line == "-- Down here you can write or source anything that you want to override from Ambxst'\''s settings."
+				|| line == "# Down here you can write or source anything that you want to override from NothingLess'\''s settings." \
+				|| line == "-- Down here you can write or source anything that you want to override from NothingLess'\''s settings."
 		}
 		{
 			lines[NR] = $0
@@ -148,7 +148,7 @@ remove_nothingless_hyprland_block() {
 		}
 	' "$conf" >"${conf}.tmp" && mv "${conf}.tmp" "$conf"
 
-	echo "Removed Ambxst Hyprland block from $conf"
+	echo "Removed NothingLess Hyprland block from $conf"
 }
 
 find_nothingless_pid() {
@@ -210,27 +210,27 @@ restart_nothingless() {
 
 	PID=$(find_nothingless_pid_cached)
 	if [ -n "$PID" ]; then
-		echo "Stopping Ambxst (PID $PID)..."
+		echo "Stopping NothingLess (PID $PID)..."
 		kill "$PID"
 		# Wait for process to exit
 		while kill -0 "$PID" 2>/dev/null; do
 			sleep 0.1
 		done
 	fi
-	echo "Starting Ambxst..."
+	echo "Starting NothingLess..."
 	# Relaunch the script in background
 	nohup "$0" >/dev/null 2>&1 &
 }
 
 case "${1:-}" in
 update)
-	echo "Updating Ambxst..."
+	echo "Updating NothingLess..."
 	curl -fsSL github.com/Leriart/NothingLess/nothingless | sh
 	restart_nothingless
 	;;
 refresh)
-	echo "Refreshing Ambxst profile..."
-	exec nix profile upgrade Ambxst --refresh --impure
+	echo "Refreshing NothingLess profile..."
+	exec nix profile upgrade NothingLess --refresh --impure
 	;;
 run)
 	CMD="${2:-}"
@@ -250,7 +250,7 @@ run)
 	# Fallback path: Use QS IPC with cached PID lookup
 	PID=$(find_nothingless_pid_cached)
 	if [ -z "$PID" ]; then
-		echo "Error: Ambxst is not running"
+		echo "Error: NothingLess is not running"
 		exit 1
 	fi
 
@@ -262,7 +262,7 @@ run)
 lock)
 	PID=$(find_nothingless_pid_cached)
 	if [ -z "$PID" ]; then
-		echo "Error: Ambxst is not running"
+		echo "Error: NothingLess is not running"
 		exit 1
 	fi
 	qs ipc --pid "$PID" call nothingless run lockscreen 2>/dev/null || {
@@ -280,10 +280,10 @@ quit)
 
 	PID=$(find_nothingless_pid_cached)
 	if [ -n "$PID" ]; then
-		echo "Stopping Ambxst (PID $PID)..."
+		echo "Stopping NothingLess (PID $PID)..."
 		kill "$PID"
 	else
-		echo "Ambxst is not running"
+		echo "NothingLess is not running"
 	fi
 	;;
 screen)
@@ -318,7 +318,7 @@ suspend)
 brightness)
 	PID=$(find_nothingless_pid_cached)
 	if [ -z "$PID" ]; then
-		echo "Error: Ambxst is not running"
+		echo "Error: NothingLess is not running"
 		exit 1
 	fi
 
@@ -536,7 +536,7 @@ brightness)
 	fi
 	;;
 version | -v | --version)
-	echo "Ambxst $(cat "${SCRIPT_DIR}/version")"
+	echo "NothingLess $(cat "${SCRIPT_DIR}/version")"
 	;;
 install)
 	TARGET="${2:-}"
@@ -549,9 +549,9 @@ install)
 		mkdir -p "$HYPR_DIR"
 
 		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
-			append_nothingless_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE" "$AMBXST_HYPR_LUA_BLOCK"
+			append_nothingless_hyprland_block "$HYPR_LUA" "$NOTHINGLESS_HYPR_LUA_SOURCE" "$NOTHINGLESS_HYPR_LUA_BLOCK"
 		else
-			append_nothingless_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
+			append_nothingless_hyprland_block "$HYPR_CONF" "$NOTHINGLESS_HYPR_CONF_SOURCE" "$NOTHINGLESS_HYPR_CONF_BLOCK"
 		fi
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
@@ -565,15 +565,15 @@ remove)
 		HYPR_LUA="$HYPR_DIR/hyprland.lua"
 		HYPR_CONF="$HYPR_DIR/hyprland.conf"
 
-		remove_nothingless_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE"
-		remove_nothingless_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE"
+		remove_nothingless_hyprland_block "$HYPR_LUA" "$NOTHINGLESS_HYPR_LUA_SOURCE"
+		remove_nothingless_hyprland_block "$HYPR_CONF" "$NOTHINGLESS_HYPR_CONF_SOURCE"
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
 	fi
 	;;
 goodbye)
-	echo "Uninstalling Ambxst..."
+	echo "Uninstalling NothingLess..."
 
 	read -p "Are you sure? (y/N): " -n 1 -r
 	echo
@@ -585,11 +585,11 @@ goodbye)
 	if [ -f /etc/NIXOS ]; then
 		if nix profile list 2>/dev/null | grep -q "NothingLess"; then
 			echo "Removing from nix profile..."
-			nix profile remove Ambxst
+			nix profile remove NothingLess
 		elif command -v nothingless >/dev/null 2>&1; then
-			echo "Ambxst was declared in this system. Please remove it from your configuration in order to uninstall."
+			echo "NothingLess was declared in this system. Please remove it from your configuration in order to uninstall."
 		else
-			echo "Ambxst is not installed."
+			echo "NothingLess is not installed."
 		fi
 		exit 0
 	fi
@@ -610,7 +610,7 @@ goodbye)
 		echo "Configuration files removed."
 	fi
 
-	echo "Ambxst uninstalled. :("
+	echo "NothingLess uninstalled. :("
 	;;
 help | --help | -h)
 	show_help

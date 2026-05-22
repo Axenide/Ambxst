@@ -52,7 +52,7 @@ let
   };
 
   launcher = pkgs.writeShellScriptBin "nothingless" ''
-    export AMBXST_QS="${quickshellPkg}/bin/qs"
+    export NOTHINGLESS_QS="${quickshellPkg}/bin/qs"
     export PATH="${envNothingLess}/bin:$PATH"
 
     # Set QML2_IMPORT_PATH to include modules from envNothingLess (like syntax-highlighting)

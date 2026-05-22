@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Metrics overlay provider for Ambxst.
+Metrics overlay provider for NothingLess.
 Pure Python 3, no external dependencies.
 
 Monitors:
   - CPU temp via sysfs hwmon
   - CPU power via RAPL energy counters
   - GPU temp/power/usage via sysfs or nvidia-smi
-  - FPS via built-in libambfps.so (LD_PRELOAD) — primary
-  - FPS via MangoHud CSV, gsr-fps, lsfgvk — optional fallbacks
+  - FPS via built-in libambfps.so (LD_PRELOAD) - primary
+  - FPS via MangoHud CSV, gsr-fps, lsfgvk - optional fallbacks
 
 Usage:
   ./fps_monitor.py                # continuous output
@@ -157,22 +157,22 @@ def _get_gpu_stats():
     return usages, temps, powers
 
 # ═══════════════════════════════════════════════════════════════════
-#  FPS — Primary: Built-in libambfps.so via LD_PRELOAD (shm)
+#  FPS - Primary: Built-in libambfps.so via LD_PRELOAD (shm)
 # ═══════════════════════════════════════════════════════════════════
-# This is the recommended way: ambxst-fps ./game sets LD_PRELOAD
-# and the library writes actual app FPS to /dev/shm/ambxst_fps.
-# No external tools needed — ships with Ambxst.
+# This is the recommended way: nothingless-fps ./game sets LD_PRELOAD
+# and the library writes actual app FPS to /dev/shm/nothingless_fps.
+# No external tools needed - ships with NothingLess.
 
-SHM_FPS_FILE = '/dev/shm/ambxst_fps'
+SHM_FPS_FILE = '/dev/shm/nothingless_fps'
 
 def _get_fps_shm():
     """Primary FPS source: built-in libambfps.so LD_PRELOAD library.
     
-    Reads from /dev/shm/ambxst_fps which contains:
+    Reads from /dev/shm/nothingless_fps which contains:
       fps=<value>
       pid=<process-id>
       frames=<count>
-      source=ambxst-preload
+      source=nothingless-preload
     
     Checks /proc/<pid> to detect if the game is still running.
     Returns None if no data or process is gone.
@@ -183,17 +183,17 @@ def _get_fps_shm():
         age = time.time() - os.path.getmtime(SHM_FPS_FILE)
         if age > 5:
             return None  # Stale: game probably exited
-        
+
         with open(SHM_FPS_FILE, 'r') as f:
             data = {}
             for line in f:
                 if '=' in line:
                     k, v = line.strip().split('=', 1)
                     data[k] = v
-        
+
         fps_val = data.get('fps', '0.0')
         fps = float(fps_val)
-        
+
         # Verify the process is still alive
         pid_str = data.get('pid', '')
         if pid_str:
@@ -203,7 +203,7 @@ def _get_fps_shm():
                     return None  # Process exited
             except ValueError:
                 pass
-        
+
         if fps > 0:
             return fps
         return 0.0
@@ -211,7 +211,7 @@ def _get_fps_shm():
         return None
 
 # ═══════════════════════════════════════════════════════════════════
-#  FPS — Optional fallbacks
+#  FPS - Optional fallbacks
 # ═══════════════════════════════════════════════════════════════════
 # These require external tools but are kept as optional alternatives.
 
@@ -313,14 +313,14 @@ def _get_fps_mangohud():
 
 def _get_fps():
     """Resolve FPS from available sources.
-    
+
     Priority:
-      1. Built-in libambfps.so (via LD_PRELOAD) — PRIMARY
+      1. Built-in libambfps.so (via LD_PRELOAD) - PRIMARY
       2. Modified LSFG-VK (optional, if available)
       3. gpu-screen-recorder (optional fallback)
       4. MangoHud CSV (optional fallback)
-    """
-    # 1. PRIMARY: Built-in ambxst preload library
+    """    
+    # 1. PRIMARY: Built-in nothingless preload library
     fps = _get_fps_shm()
     if fps is not None:
         return fps, True
@@ -369,7 +369,7 @@ def main():
 
             if fps_val is not None and fps_val > 0:
                 # FPS from libambfps.so is already smoothed (EMA).
-                # FPS from other sources may be raw — cap and average.
+                # FPS from other sources may be raw - cap and average.
                 capped = min(fps_val, 500.0)
                 fps_samples.append(capped)
                 if len(fps_samples) > 10:

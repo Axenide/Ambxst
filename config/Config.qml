@@ -1505,7 +1505,7 @@ Singleton {
             }
             }
             // Default getters
-            readonly property var defaultAmbxstBinds: {
+            readonly property var defaultNothinglessBinds: {
                 "nothingless": {
                     "launcher": { "modifiers": ["SUPER"], "key": "Super_L", "action": { "id": "nothingless.launcher", "args": {} } },
                     "dashboard": { "modifiers": ["SUPER"], "key": "D", "action": { "id": "nothingless.dashboard", "args": {} } },
@@ -1531,9 +1531,9 @@ Singleton {
                 }
             }
 
-            function getAmbxstDefault(section, key) {
-                if (defaultAmbxstBinds[section] && defaultAmbxstBinds[section][key]) {
-                    const bind = defaultAmbxstBinds[section][key];
+            function getNothinglessDefault(section, key) {
+                if (defaultNothinglessBinds[section] && defaultNothinglessBinds[section][key]) {
+                    const bind = defaultNothinglessBinds[section][key];
                     return {
                         "modifiers": bind.modifiers || [],
                         "key": bind.key || "",

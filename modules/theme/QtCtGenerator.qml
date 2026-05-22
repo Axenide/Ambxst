@@ -168,8 +168,8 @@ QtObject {
         ini += "\n"
 
         ini += "[General]\n"
-        ini += "ColorScheme=Ambxst\n"
-        ini += "Name=Ambxst\n"
+        ini += "ColorScheme=NothingLess\n"
+        ini += "Name=NothingLess\n"
         ini += "shadeSortColumn=true\n"
         ini += "\n"
         
