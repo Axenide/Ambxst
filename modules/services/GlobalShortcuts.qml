@@ -16,7 +16,7 @@ QtObject {
 
     // Toggle metrics process
     property Process toggleMetricProcess: Process {
-        command: ["sh", "-c", "\/home/leo/.local/lib/nothingless/toggle-metrics.sh"]
+        command: ["sh", "-c", "/home/leo/.local/lib/nothingless/toggle-metrics.sh"]
         running: false
     }
 
