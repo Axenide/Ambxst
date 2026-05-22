@@ -80,11 +80,11 @@ var ACTION_CATALOG = [
     { id: "workspace.move-window-special", label: "Move Window to Special Workspace", category: "Workspace", dispatcher: "movetoworkspace", argument: "special" },
     { id: "workspace.move-window-special-silent", label: "Move Window to Special Workspace (Silent)", category: "Workspace", dispatcher: "movetoworkspacesilent", argument: "special" },
 
-    { id: "scrolling.focus", label: "Focus (Scrolling)", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {
-        return "focus " + directionToLetter(args.direction);
+    { id: "scrolling.focus", label: "Focus", category: "Window", dispatcher: "movefocus", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {
+        return directionToLetter(args.direction);
     } },
-    { id: "scrolling.move-window", label: "Move Window (Scrolling)", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
-        return "movewindowto " + directionToLetter(args.direction);
+    { id: "scrolling.move-window", label: "Move Window", category: "Window", dispatcher: "movewindow", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
+        return directionToLetter(args.direction);
     } },
     { id: "scrolling.resize-column", label: "Resize Column", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "delta", label: "Delta", placeholder: "+0.1 / -0.1", defaultValue: "+0.1" }], argumentBuilder: function (args) {
         return "colresize " + String(args.delta || "").trim();

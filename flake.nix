@@ -13,6 +13,7 @@
   outputs = { self, nixpkgs, axctl, ... }:
     let
       ambxstLib = import ./nix/lib.nix { inherit nixpkgs; };
+      version = nixpkgs.lib.removeSuffix "\n" (builtins.readFile ./version);
     in {
       nixosModules.default = { pkgs, lib, ... }: {
         imports = [ ./nix/modules ];
@@ -30,7 +31,7 @@
           lib = nixpkgs.lib;
 
           Ambxst = import ./nix/packages {
-            inherit pkgs lib self system axctl;
+            inherit pkgs lib self system axctl version;
           };
         in {
           default = Ambxst;

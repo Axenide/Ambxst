@@ -211,9 +211,9 @@ Item {
                 Image {
                     mipmap: true
                     source: Qt.resolvedUrl("../../../../assets/ambxst/ambxst-logo.svg")
-                    opacity: 0.25
-                    sourceSize.width: 64
-                    sourceSize.height: 64
+                    opacity: 0.35
+                    sourceSize.width: 160
+                    sourceSize.height: 160
                     fillMode: Image.PreserveAspectFit
                     anchors.horizontalCenter: parent.horizontalCenter
                     layer.enabled: true

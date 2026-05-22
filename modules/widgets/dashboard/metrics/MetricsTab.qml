@@ -350,11 +350,22 @@ Rectangle {
                     }
                 }
 
+                MetricsConfigPanel {
+                    id: metricsConfig
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.leftMargin: 16
+                    Layout.rightMargin: 16
+                    visible: root.configMode
+                    onVisibleChanged: { if (visible) metricsConfig.loadFromState() }
+                }
+
                 Flickable {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.leftMargin: 16
                     Layout.rightMargin: 16
+                    visible: !root.configMode
                     contentHeight: resourcesColumn.height
                     clip: true
                     boundsBehavior: Flickable.StopAtBounds
@@ -368,13 +379,15 @@ Rectangle {
                         Column {
                             width: parent.width
                             spacing: 4
+                            visible: SystemResources.cpuUsageEnabled || SystemResources.cpuTempEnabled || SystemResources.cpuPowerEnabled
 
                             ResourceItem {
                                 width: parent.width
                                 icon: Icons.cpu
                                 label: "CPU"
-                                value: SystemResources.cpuUsage / 100
+                                value: SystemResources.cpuUsageEnabled ? SystemResources.cpuUsage / 100 : 0
                                 barColor: Colors.red
+                                visible: SystemResources.cpuUsageEnabled
                             }
 
                             RowLayout {
@@ -395,6 +408,7 @@ Rectangle {
                                 }
 
                                 Text {
+                                    visible: SystemResources.cpuUsageEnabled
                                     text: `${Math.round(SystemResources.cpuUsage)}%`
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-2)
@@ -403,7 +417,7 @@ Rectangle {
                                 }
 
                                 Text {
-                                    visible: SystemResources.cpuTemp >= 0
+                                    visible: SystemResources.cpuTempEnabled && SystemResources.cpuTemp >= 0
                                     text: Icons.temperature
                                     font.family: Icons.font
                                     font.pixelSize: Styling.fontSize(-2)
@@ -411,12 +425,39 @@ Rectangle {
                                 }
 
                                 Text {
-                                    visible: SystemResources.cpuTemp >= 0
+                                    visible: SystemResources.cpuTempEnabled && SystemResources.cpuTemp >= 0
                                     text: `${SystemResources.cpuTemp}°`
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-2)
                                     font.weight: Font.Medium
                                     color: Colors.overBackground
+                                }
+                            }
+
+                            // CPU Power row (RAPL)
+                            RowLayout {
+                                width: parent.width
+                                spacing: 4
+                                visible: SystemResources.cpuPowerEnabled && SystemResources.cpuPower > 0
+
+                                Text {
+                                    text: Icons.lightning
+                                    font.family: Icons.font
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    color: Colors.yellow
+                                }
+
+                                Text {
+                                    text: `${SystemResources.cpuPower.toFixed(1)} W`
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    font.weight: Font.Medium
+                                    color: Colors.overBackground
+                                }
+
+                                Separator {
+                                    Layout.preferredHeight: 2
+                                    Layout.fillWidth: true
                                 }
                             }
                         }
@@ -425,6 +466,7 @@ Rectangle {
                         Column {
                             width: parent.width
                             spacing: 4
+                            visible: SystemResources.ramEnabled
 
                             ResourceItem {
                                 width: parent.width
@@ -468,7 +510,8 @@ Rectangle {
                         // GPUs (if detected) - show one bar per GPU
                         Repeater {
                             id: gpuRepeater
-                            model: SystemResources.gpuDetected ? SystemResources.gpuCount : 0
+                            visible: !root.configMode
+                            model: (SystemResources.gpuDetected && (SystemResources.gpuUsageEnabled || SystemResources.gpuTempEnabled || SystemResources.gpuPowerEnabled)) ? SystemResources.gpuCount : 0
 
                             Column {
                                 required property int index
@@ -569,7 +612,8 @@ Rectangle {
                         // Disks
                         Repeater {
                             id: diskRepeater
-                            model: SystemResources.validDisks
+                            visible: !root.configMode
+                            model: SystemResources.diskEnabled ? SystemResources.validDisks : []
 
                             Column {
                                 required property string modelData
@@ -982,6 +1026,51 @@ Rectangle {
                     }
                 }
             }
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  Metrics Configuration — gear toggles inline config
+    // ═══════════════════════════════════════════════════════════════
+
+    property bool configMode: false
+
+    // Gear icon (top-right corner)
+    StyledRect {
+        id: gearBtn
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: 8
+        anchors.rightMargin: 8
+        width: 32; height: 32
+        radius: Styling.radius(-4)
+        variant: gearMa.containsMouse ? "focus" : "common"
+        z: 10
+
+        Text {
+            anchors.centerIn: parent
+            text: root.configMode ? Icons.caretLeft : Icons.gear
+            font.family: Icons.font
+            font.pixelSize: 16
+            color: gearMa.containsMouse ? Styling.srItem("overprimary") : Colors.overBackground
+
+            Behavior on color {
+                enabled: Config.animDuration > 0
+                ColorAnimation { duration: Config.animDuration }
+            }
+        }
+
+        MouseArea {
+            id: gearMa
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            hoverEnabled: true
+            onClicked: root.configMode = !root.configMode
+        }
+
+        StyledToolTip {
+            visible: gearMa.containsMouse
+            tooltipText: root.configMode ? "Back to metrics" : "Configure metrics"
         }
     }
 }

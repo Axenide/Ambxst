@@ -1,5 +1,5 @@
 # Main Ambxst package
-{ pkgs, lib, self, system, axctl }:
+{ pkgs, lib, self, system, axctl, version }:
 
 let
   quickshellPkg = pkgs.quickshell;
@@ -42,7 +42,7 @@ let
   # Copy shell sources to the Nix store
   shellSrc = pkgs.stdenv.mkDerivation {
     pname = "ambxst-shell";
-    version = lib.removeSuffix "\n" (builtins.readFile ../../version);
+    inherit version;
     src = lib.cleanSource self;
     dontBuild = true;
     installPhase = ''
@@ -59,9 +59,6 @@ let
     export QML2_IMPORT_PATH="${envAmbxst}/lib/qt-6/qml:$QML2_IMPORT_PATH"
     export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
 
-    # Ensure QtMultimedia uses GStreamer backend
-    export QT_MEDIA_BACKEND=gstreamer
-
     # Make bundled fonts available to fontconfig
     export FONTCONFIG_PATH="${fontconfigConf}/etc/fonts:''${FONTCONFIG_PATH:-}"
 
@@ -70,7 +67,7 @@ let
   '';
 
 in pkgs.buildEnv {
-  name = "Ambxst";
+  name = "Ambxst-${version}";
   paths = [ envAmbxst launcher ];
   meta.mainProgram = "ambxst";
 }

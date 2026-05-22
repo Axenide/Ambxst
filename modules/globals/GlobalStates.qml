@@ -191,6 +191,8 @@ Singleton {
 
     // Settings Window state
     property bool settingsWindowVisible: false
+    property int settingsTargetWorkspaceId: 0
+    property string settingsTargetScreenName: ""
 
     // Theme editor state - persists across tab switches
     property bool themeHasChanges: false

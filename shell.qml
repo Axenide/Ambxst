@@ -300,4 +300,36 @@ ShellRoot {
             _ = GameModeService.toggled;
         }
     }
+
+    // --- Boot Splash ---
+    Loader {
+        id: bootSplash
+        active: true
+        sourceComponent: Component {
+            Variants {
+                model: Quickshell.screens
+                PanelWindow {
+                    required property var modelData
+                    screen: modelData
+                    anchors { top: true; left: true; right: true; bottom: true }
+                    color: "#000000"
+                    WlrLayershell.layer: WlrLayer.Overlay
+                    WlrLayershell.namespace: "ambxst:splash-overlay"
+                    exclusionMode: ExclusionMode.Ignore
+                    Rectangle {
+                        id: splashBg; anchors.fill: parent; color: "#000000"
+                        opacity: 1.0
+                        Behavior on opacity { NumberAnimation { duration: 800 } }
+                        Image {
+                            anchors.centerIn: parent
+                            source: "assets/ambxst/ambxst-logo-color.svg"
+                            sourceSize.width: 512; sourceSize.height: 512; smooth: true
+                        }
+                    }
+                    Timer { interval: 2000; onTriggered: splashBg.opacity = 0; running: true }
+                    Timer { interval: 3000; onTriggered: bootSplash.active = false; running: true }
+                }
+            }
+        }
+    }
 }

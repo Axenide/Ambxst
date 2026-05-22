@@ -42,7 +42,10 @@ void main() {
     const float invLn2 = 1.44269504;
     float sharpness = ubuf.sharpness;
     
-    for (int i = 0; i < 128; ++i) {
+    // Loop bound = 32 (max palette size is 26, gives margin)
+    // Previously 128 — the GLSL compiler would unroll ALL 128 iterations
+    // wasting GPU cycles on break checks. 32 fits in 1-2 warp/wavefront.
+    for (int i = 0; i < 32; ++i) {
         if (i >= size) break;
         
         vec3 pColor = texelFetch(paletteTexture, ivec2(i, 0), 0).rgb;

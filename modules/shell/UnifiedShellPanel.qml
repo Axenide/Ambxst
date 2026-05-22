@@ -206,7 +206,17 @@ PanelWindow {
         id: visualContent
         anchors.fill: parent
 
-        layer.enabled: true
+        // ⚡ Only enable the offscreen layer when something is actually visible.
+        // When bar/dock/notch/frame are all hidden, no shadow is needed.
+        // This saves a full-screen render-to-texture pass every frame.
+        readonly property bool needLayer: 
+            (unifiedPanel.barEnabled && unifiedPanel.barReveal) ||
+            (unifiedPanel.dockEnabled && unifiedPanel.dockReveal) ||
+            unifiedPanel.notchReveal ||
+            assistantSidebar.active ||
+            (Config.bar?.frameEnabled ?? false)
+
+        layer.enabled: needLayer
         layer.effect: Shadow {}
 
         ScreenFrameContent {

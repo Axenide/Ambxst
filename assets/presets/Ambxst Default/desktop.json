@@ -1,6 +1,6 @@
 {
     "enabled": false,
-    "iconSize": 40,
-    "spacingVertical": 16,
+    "iconSize": 36,
+    "spacingVertical": 12,
     "textColor": "overBackground"
 }

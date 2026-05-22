@@ -391,6 +391,7 @@ NotchAnimationBehavior {
                 // Generic Tab Loader Component
                 component TabLoader : Loader {
                     anchors.fill: parent
+                    asynchronous: true
                     // Load based on LRU strategy or if currently active
                     active: root.shouldTabBeLoaded(index) || root.state.currentTab === index
                     

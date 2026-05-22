@@ -13,6 +13,25 @@ Item {
 
     property bool unifiedEffectActive: false
     z: 1000
+    clip: true
+
+    // Scale applied via transform, not layout, to keep edge alignment
+    transform: Scale {
+        id: notchScale
+        origin.x: notchContainer.width / 2
+        origin.y: notchContainer.position === "top" ? 0 : notchContainer.height
+        xScale: 1.0
+        yScale: animScale
+    }
+
+    property real animScale: screenNotchOpen ? 1.0 : 0.9
+    Behavior on animScale {
+        enabled: Config.animDuration > 0
+        NumberAnimation {
+            duration: Config.animDuration
+            easing.type: Easing.OutQuart
+        }
+    }
 
     property Component defaultViewComponent
     property Component launcherViewComponent
@@ -294,11 +313,28 @@ Item {
             }
         }
 
-        Item {
+        Rectangle {
             id: stackContainer
             anchors.centerIn: parent
-            width: stackViewInternal.currentItem ? stackViewInternal.currentItem.implicitWidth + (screenNotchOpen ? 32 : 0) : (screenNotchOpen ? 32 : 0)
-            height: stackViewInternal.currentItem ? stackViewInternal.currentItem.implicitHeight + (screenNotchOpen ? 32 : 0) : (screenNotchOpen ? 32 : 0)
+            color: "transparent"
+            radius: Config.roundness > 0 ? (screenNotchOpen || hasActiveNotifications ? Config.roundness + 20 : Config.roundness + 4) : 0
+            Behavior on radius {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration
+                    easing.type: Easing.OutQuart
+                }
+            }
+            property real animMargin: screenNotchOpen ? 16 : 0
+            Behavior on animMargin {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration
+                    easing.type: Easing.OutQuart
+                }
+            }
+            width: stackViewInternal.currentItem ? stackViewInternal.currentItem.implicitWidth + animMargin * 2 : animMargin * 2
+            height: stackViewInternal.currentItem ? stackViewInternal.currentItem.implicitHeight + animMargin * 2 : animMargin * 2
             clip: true
 
             // Propiedad para controlar el blur durante las transiciones
@@ -326,7 +362,7 @@ Item {
             StackView {
                 id: stackViewInternal
                 anchors.fill: parent
-                anchors.margins: screenNotchOpen ? 16 : 0
+                anchors.margins: stackContainer.animMargin
                 initialItem: defaultViewComponent
 
                 onCurrentItemChanged: {
@@ -403,15 +439,15 @@ Item {
                         property: "opacity"
                         from: 1
                         to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        duration: Math.max(Config.animDuration * 1.5, 300)
+                        easing.type: Easing.OutCubic
                     }
                     PropertyAnimation {
                         property: "scale"
                         from: 1
-                        to: 0.95
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        to: 0.93
+                        duration: Math.max(Config.animDuration * 1.5, 300)
+                        easing.type: Easing.OutCubic
                     }
                 }
 

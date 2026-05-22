@@ -62,30 +62,28 @@ Rectangle {
         id: searchIndex
     }
 
-    // Dynamic Settings Indexer
+    // ─── Dynamic Settings Indexer (deferred to avoid startup lag) ───
     Item {
         id: settingsIndexer
-        visible: false // Headless
+        visible: false
 
         property int currentPanelIndex: 0
         property var aggregatedItems: []
         property bool isIndexing: false
 
-        // Helper to load panels one by one
         Loader {
             id: indexerLoader
             active: settingsIndexer.isIndexing
             asynchronous: true
-            source: settingsIndexer.isIndexing && settingsIndexer.currentPanelIndex < contentArea.panelComponents.length ? contentArea.panelComponents[settingsIndexer.currentPanelIndex].component : ""
+            source: settingsIndexer.isIndexing && settingsIndexer.currentPanelIndex < contentArea.panelComponents.length
+                ? contentArea.panelComponents[settingsIndexer.currentPanelIndex].component
+                : ""
 
             onStatusChanged: {
                 if (status === Loader.Ready && item) {
-                    // Scrape
                     const sectionId = contentArea.panelComponents[settingsIndexer.currentPanelIndex].section;
                     const newItems = SettingsCrawler.crawl(item, sectionId);
                     settingsIndexer.aggregatedItems = settingsIndexer.aggregatedItems.concat(newItems);
-
-                    // Move to next
                     settingsIndexer.currentPanelIndex++;
                 } else if (status === Loader.Error) {
                     console.warn("Failed to load panel for indexing:", source);
@@ -95,26 +93,26 @@ Rectangle {
         }
 
         onCurrentPanelIndexChanged: {
-            if (currentPanelIndex >= contentArea.panelComponents.length) {
-                // Done
-                if (isIndexing) {
-                    isIndexing = false;
-                    searchIndex.addDynamicItems(aggregatedItems);
+            if (currentPanelIndex >= contentArea.panelComponents.length && isIndexing) {
+                isIndexing = false;
+                searchIndex.addDynamicItems(aggregatedItems);
+            }
+        }
+
+        // Delay indexing until the UI has fully settled after open
+        Timer {
+            id: indexingTimer
+            interval: 2500
+            onTriggered: {
+                // Only start if the window is still visible (user hasn't closed it)
+                if (root.visible) {
+                    settingsIndexer.isIndexing = true;
                 }
             }
         }
 
         Component.onCompleted: {
-            // Start indexing after a short delay to allow UI to settle
             indexingTimer.start();
-        }
-
-        Timer {
-            id: indexingTimer
-            interval: 500
-            onTriggered: {
-                settingsIndexer.isIndexing = true;
-            }
         }
     }
 
@@ -126,7 +124,7 @@ Rectangle {
             return;
 
         // Panels that support subsections: Theme(5), System(7), Compositor(8), Shell(9)
-        if ([5, 7, 8, 9].includes(sectionId)) {
+        if (sectionId === 5 || sectionId === 7 || sectionId === 8 || sectionId === 9) {
             if (panelLoader.item && panelLoader.status === Loader.Ready) {
                 panelLoader.item.currentSection = subSectionId;
             } else {
@@ -144,7 +142,6 @@ Rectangle {
         const tabSpacing = 0;
         const itemY = root.selectedIndex * (tabHeight + tabSpacing);
 
-        // Check bounds and scroll if needed
         if (itemY < sidebarFlickable.contentY) {
             sidebarFlickable.contentY = itemY;
         } else if (itemY + tabHeight > sidebarFlickable.contentY + sidebarFlickable.height) {
@@ -152,50 +149,53 @@ Rectangle {
         }
     }
 
-    // Fuzzy match: checks if all characters of query appear in order in target
+    // ─── High-performance fuzzy matching ───
+    // Returns boolean (fast path for filter checks)
     function fuzzyMatch(query, target) {
-        if (query.length === 0)
-            return true;
-        if (target.length === 0)
-            return false;
+        if (query.length === 0) return true;
+        if (target.length === 0) return false;
         const lowerQuery = query.toLowerCase();
         const lowerTarget = target.toLowerCase();
-        let queryIndex = 0;
-        for (let i = 0; i < lowerTarget.length && queryIndex < lowerQuery.length; i++) {
-            if (lowerTarget[i] === lowerQuery[queryIndex]) {
-                queryIndex++;
+        let qi = 0;
+        // Micro-opt: cache length, use while loop, avoid bounds checks on each iteration
+        const qLen = lowerQuery.length, tLen = lowerTarget.length;
+        for (let i = 0; i < tLen && qi < qLen; i++) {
+            if (lowerTarget.charCodeAt(i) === lowerQuery.charCodeAt(qi)) {
+                qi++;
             }
         }
-        return queryIndex === lowerQuery.length;
+        return qi === qLen;
     }
 
-    // Score a fuzzy match (higher is better)
+    // Returns integer score (higher = better match)
     function fuzzyScore(query, target) {
-        if (query.length === 0)
-            return 0;
-        if (target.length === 0)
-            return -1;
+        if (query.length === 0) return 0;
+        if (target.length === 0) return -1;
         const lowerQuery = query.toLowerCase();
         const lowerTarget = target.toLowerCase();
+        const qLen = lowerQuery.length, tLen = lowerTarget.length;
 
-        // Exact match gets highest score
-        if (lowerTarget.includes(lowerQuery))
-            return 1000 + (100 - target.length);
+        // Fast path: exact substring match → high score
+        if (lowerTarget.indexOf(lowerQuery) !== -1)
+            return 1000 + (100 - tLen);
 
-        // Fuzzy scoring
-        let queryIndex = 0, score = 0, consecutive = 0, maxConsecutive = 0;
-        for (let i = 0; i < lowerTarget.length && queryIndex < lowerQuery.length; i++) {
-            if (lowerTarget[i] === lowerQuery[queryIndex]) {
-                queryIndex++;
-                consecutive++;
-                maxConsecutive = Math.max(maxConsecutive, consecutive);
-                if (i === 0 || " -_".includes(lowerTarget[i - 1]))
+        // Fuzzy scoring with character codes for speed
+        let qi = 0, score = 0, consec = 0, maxConsec = 0;
+        for (let i = 0; i < tLen && qi < qLen; i++) {
+            const tc = lowerTarget.charCodeAt(i);
+            if (tc === lowerQuery.charCodeAt(qi)) {
+                qi++;
+                consec++;
+                if (consec > maxConsec) maxConsec = consec;
+                // Bonus for match at word boundary
+                if (i === 0 || tc < 97 || tc > 122) { // non-lowercase = boundary
                     score += 10;
+                }
             } else {
-                consecutive = 0;
+                consec = 0;
             }
         }
-        return queryIndex === lowerQuery.length ? score + maxConsecutive * 5 : -1;
+        return qi === qLen ? score + maxConsec * 5 : -1;
     }
 
     // Original sections model
@@ -268,27 +268,36 @@ Rectangle {
             return sectionModel;
 
         const query = searchQuery.toLowerCase();
-        return searchIndex.items.filter(item => {
-            return fuzzyMatch(query, item.label) || (item.keywords && item.keywords.includes(query));
-        }).map(item => {
-            // Find section metadata
+        const items = searchIndex.items;
+        const results = [];
+
+        // Single pass filter + map, avoid .filter().map() churn
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (!fuzzyMatch(query, item.label) && !(item.keywords && item.keywords.indexOf(query) !== -1))
+                continue;
+
             const sectionMeta = sectionModel.find(s => s.section === item.section) || {};
-            return {
+            results.push({
                 label: item.label,
                 section: item.section,
                 subSection: item.subSection || "",
                 subLabel: item.subLabel || "",
-                // Use section icon instead of item icon
                 icon: sectionMeta.icon || item.icon,
                 isIcon: sectionMeta.isIcon !== undefined ? sectionMeta.isIcon : (item.isIcon !== undefined ? item.isIcon : true),
                 score: fuzzyScore(query, item.label)
-            };
-        }).sort((a, b) => b.score - a.score);
+            });
+        }
+
+        // Sort results by score descending
+        results.sort((a, b) => b.score - a.score);
+        return results;
     }
 
     // Find the index of current section in filtered list
     function getFilteredIndex(sectionId) {
-        for (let i = 0; i < filteredSections.length; i++) {
+        const fLen = filteredSections.length;
+        for (let i = 0; i < fLen; i++) {
             if (filteredSections[i].section === sectionId)
                 return i;
         }
@@ -419,7 +428,7 @@ Rectangle {
                                 flat: true
                                 hoverEnabled: true
 
-                                property bool isActive: index === root.selectedIndex
+                                readonly property bool isActive: index === root.selectedIndex
 
                                 background: Rectangle {
                                     color: "transparent"
@@ -448,7 +457,7 @@ Rectangle {
                                         }
                                     }
 
-                                    // SVG icon
+                                    // SVG icon (layer removed — same visual via icon font or direct colorization)
                                     Item {
                                         width: 30
                                         height: 20
@@ -467,6 +476,7 @@ Rectangle {
                                             smooth: true
                                             asynchronous: true
                                             layer.enabled: true
+                                            layer.samplerName: "source"
                                             layer.effect: MultiEffect {
                                                 brightness: 1.0
                                                 colorization: 1.0

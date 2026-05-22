@@ -490,7 +490,7 @@ PanelWindow {
             property string activeColorPreset: ""
             property bool tintEnabled: false
             property bool interpolationEnabled: false
-            property real targetInputFps: 15.0 
+            property real targetInputFps: 24.0 
             property int interpolationMultiplier: 2
             property var perScreenWallpapers: ({})
 
@@ -862,50 +862,53 @@ PanelWindow {
             onSourceFileChanged: console.log("staticImageComponent: sourceFile =", sourceFile)
             onTintChanged: console.log("staticImageComponent: tint =", tint)
 
-            // Hidden item that builds a 1D texture from the effective palette
-            Item {
-                id: paletteSourceItem
-                visible: true
+            // ─── Canvas-based palette texture (pre-baked once; no per-frame render-to-texture) ───
+            Canvas {
+                id: paletteCanvas
                 width: wallpaper.effectivePaletteSize
                 height: 1
-                opacity: 0
+                visible: false
 
-                Row {
-                    anchors.fill: parent
-                    Repeater {
-                        model: wallpaper.effectivePalette
-                        Rectangle {
-                            width: 1
-                            height: 1
-                            color: {
-                                if (typeof modelData === "string") {
-                                    if (modelData.charAt(0) === '#') return modelData;
-                                    else return Colors[modelData] || "black";
-                                }
-                                return modelData;
-                            }
+                onPaint: {
+                    var ctx = getContext("2d");
+                    if (!ctx) return;
+                    ctx.clearRect(0, 0, width, height);
+                    var pal = wallpaper.effectivePalette;
+                    for (var i = 0; i < pal.length; i++) {
+                        var c = pal[i];
+                        if (typeof c === "string" && c.charAt(0) === '#') {
+                            ctx.fillStyle = c;
+                        } else {
+                            ctx.fillStyle = Colors[c] || "#000000";
                         }
+                        ctx.fillRect(i, 0, 1, 1);
                     }
                 }
 
-                Component.onCompleted: { if (width > 0) paletteTextureSource.scheduleUpdate(); }
-                onWidthChanged: { if (width > 0) paletteTextureSource.scheduleUpdate(); }
+                Component.onCompleted: requestPaint()    // ⚡ Trigger initial paint
+
+                Connections {
+                    target: Colors
+                    function onFileChanged() { Qt.callLater(paletteCanvas.requestPaint); }
+                }
+                Connections {
+                    target: wallpaper
+                    function onEffectivePaletteChanged() { paletteCanvas.requestPaint(); }
+                }
             }
 
             ShaderEffectSource {
                 id: paletteTextureSource
-                sourceItem: paletteSourceItem
+                sourceItem: paletteCanvas
+                live: false                    // ⚡ static texture — no per-frame re-capture
                 hideSource: true
                 visible: false
                 smooth: false
                 recursive: false
-            }
 
-            // Force palette texture update when effective palette changes
-            Connections {
-                target: wallpaper
-                function onEffectivePaletteChanged() {
-                    paletteTextureSource.scheduleUpdate();
+                Connections {
+                    target: paletteCanvas
+                    function onPainted() { paletteTextureSource.scheduleUpdate(); }
                 }
             }
 
@@ -954,7 +957,7 @@ PanelWindow {
             property bool tint: wallpaper.tintEnabled
             property bool interpolate: wallpaper.interpolationEnabled
             property int multiplier: wallpaper.interpolationMultiplier
-            property real targetInputFps: 15.0
+            property real targetInputFps: 24.0
 
             // Frame control properties
             property real originalFps: 30
@@ -998,51 +1001,55 @@ PanelWindow {
                 }
             }
 
-            // -------------------------------------------------------------------
-            // Palette texture (same as in staticImageComponent)
-            // -------------------------------------------------------------------
-            Item {
-                id: paletteSourceItem
-                visible: true
+            // ═══════════════════════════════════════════════════════════
+            // Canvas-based palette texture (pre-baked once, no per-frame re-render)
+            // ═══════════════════════════════════════════════════════════
+            Canvas {
+                id: paletteCanvas2
                 width: wallpaper.effectivePaletteSize
                 height: 1
-                opacity: 0
+                visible: false
 
-                Row {
-                    anchors.fill: parent
-                    Repeater {
-                        model: wallpaper.effectivePalette
-                        Rectangle {
-                            width: 1
-                            height: 1
-                            color: {
-                                if (typeof modelData === "string") {
-                                    if (modelData.charAt(0) === '#') return modelData;
-                                    else return Colors[modelData] || "black";
-                                }
-                                return modelData;
-                            }
+                onPaint: {
+                    var ctx = getContext("2d");
+                    if (!ctx) return;
+                    ctx.clearRect(0, 0, width, height);
+                    var pal = wallpaper.effectivePalette;
+                    for (var i = 0; i < pal.length; i++) {
+                        var c = pal[i];
+                        if (typeof c === "string" && c.charAt(0) === '#') {
+                            ctx.fillStyle = c;
+                        } else {
+                            ctx.fillStyle = Colors[c] || "#000000";
                         }
+                        ctx.fillRect(i, 0, 1, 1);
                     }
                 }
 
-                Component.onCompleted: { if (width > 0) paletteTextureSource.scheduleUpdate(); }
-                onWidthChanged: { if (width > 0) paletteTextureSource.scheduleUpdate(); }
+                Component.onCompleted: requestPaint()    // ⚡ Trigger initial paint
+
+                Connections {
+                    target: Colors
+                    function onFileChanged() { Qt.callLater(paletteCanvas2.requestPaint); }
+                }
+                Connections {
+                    target: wallpaper
+                    function onEffectivePaletteChanged() { paletteCanvas2.requestPaint(); }
+                }
             }
 
             ShaderEffectSource {
                 id: paletteTextureSource
-                sourceItem: paletteSourceItem
+                sourceItem: paletteCanvas2
+                live: false                    // ⚡ static texture — no per-frame re-capture
                 hideSource: true
                 visible: false
                 smooth: false
                 recursive: false
-            }
 
-            Connections {
-                target: wallpaper
-                function onEffectivePaletteChanged() {
-                    paletteTextureSource.scheduleUpdate();
+                Connections {
+                    target: paletteCanvas2
+                    function onPainted() { paletteTextureSource.scheduleUpdate(); }
                 }
             }
 
@@ -1057,7 +1064,7 @@ PanelWindow {
                 autoPlay: true
                 muted: true
                 fillMode: VideoOutput.PreserveAspectCrop
-                visible: false
+                visible: !videoRoot.interpolate || videoRoot.multiplier <= 1
                 // Siempre a velocidad normal; el control de FPS lo hace el Timer
                 playbackRate: 1.0
 
@@ -1087,8 +1094,11 @@ PanelWindow {
             // Live capture of the current frame
             ShaderEffectSource {
                 id: liveSource
-                sourceItem: videoPlayer
-                live: true
+                // Only capture from videoPlayer when interpolation is ON.
+                // When off, sourceItem = null so QSGVideoNode renders directly to screen
+                // without being forced into texture-capture mode.
+                sourceItem: videoRoot.interpolate ? videoPlayer : null
+                live: videoRoot.interpolate
                 hideSource: true
                 smooth: true
                 visible: false
@@ -1097,7 +1107,7 @@ PanelWindow {
             // Buffer for the previous frame (updated at target input FPS)
             ShaderEffectSource {
                 id: previousFrameSource
-                sourceItem: videoPlayer
+                sourceItem: videoRoot.interpolate ? videoPlayer : null
                 live: false
                 hideSource: true
                 smooth: true
@@ -1181,20 +1191,6 @@ PanelWindow {
             }
 
             // -------------------------------------------------------------------
-            // Direct video (fallback when interpolation is OFF)
-            // -------------------------------------------------------------------
-            Video {
-                id: directVideo
-                anchors.fill: parent
-                source: videoPlayer.source
-                loops: MediaPlayer.Infinite
-                autoPlay: true
-                muted: true
-                fillMode: VideoOutput.PreserveAspectCrop
-                visible: !videoRoot.interpolate || videoRoot.multiplier <= 1
-            }
-
-            // -------------------------------------------------------------------
             // Tint layer applied over everything
             // -------------------------------------------------------------------
             layer.enabled: videoRoot.tint && wallpaper.effectivePaletteSize > 0
@@ -1274,10 +1270,8 @@ PanelWindow {
                 console.log("videoComponent: sourceFile =", sourceFile)
                 if (sourceFile) {
                     videoPlayer.source = "file://" + sourceFile
-                    directVideo.source = "file://" + sourceFile
                 } else {
                     videoPlayer.source = ""
-                    directVideo.source = ""
                 }
                 previousFrameSource.scheduleUpdate()
                 videoRoot.lastCaptureTime = Date.now()
@@ -1289,7 +1283,6 @@ PanelWindow {
             Component.onCompleted: {
                 if (sourceFile) {
                     videoPlayer.source = "file://" + sourceFile
-                    directVideo.source = "file://" + sourceFile
                 }
                 previousFrameSource.scheduleUpdate()
                 videoRoot.lastCaptureTime = Date.now()
