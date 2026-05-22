@@ -29,6 +29,13 @@ QtObject {
         }
     }
 
+    function toggleMetrics() {
+        var proc = Io.Process.create();
+        proc.command = ["sh", "-c", "jq '.showMetrics |= not' $HOME/.config/nothingless/config/notch.json > $HOME/.config/nothingless/config/notch.json.tmp && mv $HOME/.config/nothingless/config/notch.json.tmp $HOME/.config/nothingless/config/notch.json"];
+        proc.running = true;
+        console.log("Metrics toggled via jq");
+    }
+
     function run(command) {
         console.log("IPC run command received:", command);
         switch (command) {
@@ -54,8 +61,8 @@ QtObject {
             case "powermenu": toggleSimpleModule("powermenu"); break;
             case "tools": toggleSimpleModule("tools"); break;
             case "toggle-metrics":
-                Config.notch.showMetrics = !Config.notch.showMetrics;
-                console.log("Metrics toggled:", Config.notch.showMetrics);
+                root.toggleMetrics();
+                console.log("Metrics toggled");
                 break;
             case "config": toggleSettings(); break;
             case "screenshot": Screenshot.initialize(); GlobalStates.screenshotToolVisible = true; break;
