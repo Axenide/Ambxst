@@ -34,9 +34,9 @@ Singleton {
         onLoaded: root.version = text().trim()
     }
 
-    property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/config"
-    property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/binds.json"
-    property string presetDir: Qt.resolvedUrl("../assets/presets/Ambxst Default").toString().replace("file://", "")
+    property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/nothingless/config"
+    property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/nothingless/binds.json"
+    property string presetDir: Qt.resolvedUrl("../assets/presets/NothingLess Default").toString().replace("file://", "")
 
     property bool pauseAutoSave: false
 
@@ -675,7 +675,7 @@ Singleton {
             property int hoverRegionHeight: 8
             property bool keepHidden: false
             property string noMediaDisplay: "userHost"
-            property string customText: "Ambxst"
+            property string customText: "NothingLess"
             property bool disableHoverExpansion: true
         }
     }
@@ -1007,15 +1007,15 @@ Singleton {
             property bool updateServiceEnabled: true
             property JsonObject idle: JsonObject {
                 property JsonObject general: JsonObject {
-                    property string lock_cmd: "ambxst lock"
+                    property string lock_cmd: "nothingless lock"
                     property string before_sleep_cmd: "loginctl lock-session"
-                    property string after_sleep_cmd: "ambxst screen on"
+                    property string after_sleep_cmd: "nothingless screen on"
                 }
                 property list<var> listeners: [
                     {
                         "timeout": 150,
-                        "onTimeout": "ambxst brightness 10 -s",
-                        "onResume": "ambxst brightness -r"
+                        "onTimeout": "nothingless brightness 10 -s",
+                        "onResume": "nothingless brightness -r"
                     },
                     {
                         "timeout": 300,
@@ -1023,12 +1023,12 @@ Singleton {
                     },
                     {
                         "timeout": 330,
-                        "onTimeout": "ambxst screen off",
-                        "onResume": "ambxst screen on"
+                        "onTimeout": "nothingless screen off",
+                        "onResume": "nothingless screen on"
                     },
                     {
                         "timeout": 1800,
-                        "onTimeout": "ambxst suspend"
+                        "onTimeout": "nothingless suspend"
                     }
                 ]
             }
@@ -1220,72 +1220,72 @@ Singleton {
             const current = JSON.parse(raw);
             let needsUpdate = false;
 
-            // Ensure ambxst structure exists
-            if (!current.ambxst) {
-                current.ambxst = {};
+            // Ensure nothingless structure exists
+            if (!current.nothingless) {
+                current.nothingless = {};
                 needsUpdate = true;
             }
 
             // Migrate nested to flat structure
-            if (current.ambxst.dashboard && typeof current.ambxst.dashboard === "object" && !current.ambxst.dashboard.modifiers) {
-                console.log("Migrating nested ambxst binds to flat structure...");
-                const nested = current.ambxst.dashboard;
+            if (current.nothingless.dashboard && typeof current.nothingless.dashboard === "object" && !current.nothingless.dashboard.modifiers) {
+                console.log("Migrating nested nothingless binds to flat structure...");
+                const nested = current.nothingless.dashboard;
                 
                 // Map old names to new names and update arguments
                 if (nested.widgets) {
-                    current.ambxst.launcher = nested.widgets;
-                    current.ambxst.launcher.argument = "ambxst run launcher";
-                    current.ambxst.launcher.action = createAction(current.ambxst.launcher);
+                    current.nothingless.launcher = nested.widgets;
+                    current.nothingless.launcher.argument = "nothingless run launcher";
+                    current.nothingless.launcher.action = createAction(current.nothingless.launcher);
                 }
                 if (nested.dashboard) {
-                    current.ambxst.dashboard = nested.dashboard;
-                    current.ambxst.dashboard.argument = "ambxst run dashboard";
-                    current.ambxst.dashboard.action = createAction(current.ambxst.dashboard);
+                    current.nothingless.dashboard = nested.dashboard;
+                    current.nothingless.dashboard.argument = "nothingless run dashboard";
+                    current.nothingless.dashboard.action = createAction(current.nothingless.dashboard);
                 }
                 if (nested.assistant) {
-                    current.ambxst.assistant = nested.assistant;
-                    current.ambxst.assistant.argument = "ambxst run assistant";
-                    current.ambxst.assistant.action = createAction(current.ambxst.assistant);
+                    current.nothingless.assistant = nested.assistant;
+                    current.nothingless.assistant.argument = "nothingless run assistant";
+                    current.nothingless.assistant.action = createAction(current.nothingless.assistant);
                 }
                 if (nested.clipboard) {
-                    current.ambxst.clipboard = nested.clipboard;
-                    current.ambxst.clipboard.argument = "ambxst run clipboard";
-                    current.ambxst.clipboard.action = createAction(current.ambxst.clipboard);
+                    current.nothingless.clipboard = nested.clipboard;
+                    current.nothingless.clipboard.argument = "nothingless run clipboard";
+                    current.nothingless.clipboard.action = createAction(current.nothingless.clipboard);
                 }
                 if (nested.emoji) {
-                    current.ambxst.emoji = nested.emoji;
-                    current.ambxst.emoji.argument = "ambxst run emoji";
-                    current.ambxst.emoji.action = createAction(current.ambxst.emoji);
+                    current.nothingless.emoji = nested.emoji;
+                    current.nothingless.emoji.argument = "nothingless run emoji";
+                    current.nothingless.emoji.action = createAction(current.nothingless.emoji);
                 }
                 if (nested.notes) {
-                    current.ambxst.notes = nested.notes;
-                    current.ambxst.notes.argument = "ambxst run notes";
-                    current.ambxst.notes.action = createAction(current.ambxst.notes);
+                    current.nothingless.notes = nested.notes;
+                    current.nothingless.notes.argument = "nothingless run notes";
+                    current.nothingless.notes.action = createAction(current.nothingless.notes);
                 }
                 if (nested.tmux) {
-                    current.ambxst.tmux = nested.tmux;
-                    current.ambxst.tmux.argument = "ambxst run tmux";
-                    current.ambxst.tmux.action = createAction(current.ambxst.tmux);
+                    current.nothingless.tmux = nested.tmux;
+                    current.nothingless.tmux.argument = "nothingless run tmux";
+                    current.nothingless.tmux.action = createAction(current.nothingless.tmux);
                 }
                 if (nested.wallpapers) {
-                    current.ambxst.wallpapers = nested.wallpapers;
-                    current.ambxst.wallpapers.argument = "ambxst run wallpapers";
-                    current.ambxst.wallpapers.action = createAction(current.ambxst.wallpapers);
+                    current.nothingless.wallpapers = nested.wallpapers;
+                    current.nothingless.wallpapers.argument = "nothingless run wallpapers";
+                    current.nothingless.wallpapers.action = createAction(current.nothingless.wallpapers);
                 }
 
                 // Remove the old nested object
-                delete current.ambxst.dashboard;
+                delete current.nothingless.dashboard;
                 needsUpdate = true;
             }
 
-            if (!current.ambxst.system) {
-                current.ambxst.system = {};
+            if (!current.nothingless.system) {
+                current.nothingless.system = {};
                 needsUpdate = true;
             }
 
             // Get default binds from adapter
             const adapter = keybindsLoader.adapter;
-            if (!adapter || !adapter.ambxst) return;
+            if (!adapter || !adapter.nothingless) return;
 
             // Helper function to create clean bind object
             function createAction(bindObj) {
@@ -1303,18 +1303,18 @@ Singleton {
                 };
             }
 
-            // Check ambxst core binds
-            const ambxstKeys = ["launcher", "dashboard", "assistant", "clipboard", "emoji", "notes", "tmux", "wallpapers"];
-            for (const key of ambxstKeys) {
-                if (!current.ambxst[key] && adapter.ambxst[key]) {
-                    console.log("Adding missing ambxst bind:", key);
-                    current.ambxst[key] = createCleanBind(adapter.ambxst[key]);
+            // Check nothingless core binds
+            const nothinglessKeys = ["launcher", "dashboard", "assistant", "clipboard", "emoji", "notes", "tmux", "wallpapers"];
+            for (const key of nothinglessKeys) {
+                if (!current.nothingless[key] && adapter.nothingless[key]) {
+                    console.log("Adding missing nothingless bind:", key);
+                    current.nothingless[key] = createCleanBind(adapter.nothingless[key]);
                     needsUpdate = true;
-                } else if (current.ambxst[key] && !current.ambxst[key].action) {
-                    current.ambxst[key].action = createAction(current.ambxst[key]);
-                    delete current.ambxst[key].dispatcher;
-                    delete current.ambxst[key].argument;
-                    delete current.ambxst[key].flags;
+                } else if (current.nothingless[key] && !current.nothingless[key].action) {
+                    current.nothingless[key].action = createAction(current.nothingless[key]);
+                    delete current.nothingless[key].dispatcher;
+                    delete current.nothingless[key].argument;
+                    delete current.nothingless[key].flags;
                     needsUpdate = true;
                 }
             }
@@ -1322,15 +1322,15 @@ Singleton {
             // Check system binds
             const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
             for (const key of systemKeys) {
-                if (!current.ambxst.system[key] && adapter.ambxst.system && adapter.ambxst.system[key]) {
+                if (!current.nothingless.system[key] && adapter.nothingless.system && adapter.nothingless.system[key]) {
                     console.log("Adding missing system bind:", key);
-                    current.ambxst.system[key] = createCleanBind(adapter.ambxst.system[key]);
+                    current.nothingless.system[key] = createCleanBind(adapter.nothingless.system[key]);
                     needsUpdate = true;
-                } else if (current.ambxst.system[key] && !current.ambxst.system[key].action) {
-                    current.ambxst.system[key].action = createAction(current.ambxst.system[key]);
-                    delete current.ambxst.system[key].dispatcher;
-                    delete current.ambxst.system[key].argument;
-                    delete current.ambxst.system[key].flags;
+                } else if (current.nothingless.system[key] && !current.nothingless.system[key].action) {
+                    current.nothingless.system[key].action = createAction(current.nothingless.system[key]);
+                    delete current.nothingless.system[key].dispatcher;
+                    delete current.nothingless.system[key].argument;
+                    delete current.nothingless.system[key].flags;
                     needsUpdate = true;
                 }
             }
@@ -1405,52 +1405,52 @@ Singleton {
         }
 
         adapter: JsonAdapter {
-            property JsonObject ambxst: JsonObject {
+            property JsonObject nothingless: JsonObject {
                 property JsonObject launcher: JsonObject {
                     property list<string> modifiers: ["SUPER"]
                     property string key: "Super_L"
-                property var action: ({ "id": "ambxst.launcher", "args": {} })
+                property var action: ({ "id": "nothingless.launcher", "args": {} })
             }
             property JsonObject dashboard: JsonObject {
                 property list<string> modifiers: ["SUPER"]
                 property string key: "D"
-                property var action: ({ "id": "ambxst.dashboard", "args": {} })
+                property var action: ({ "id": "nothingless.dashboard", "args": {} })
             }
             property JsonObject assistant: JsonObject {
                 property list<string> modifiers: ["SUPER"]
                 property string key: "A"
-                property var action: ({ "id": "ambxst.assistant", "args": {} })
+                property var action: ({ "id": "nothingless.assistant", "args": {} })
             }
             property JsonObject clipboard: JsonObject {
                 property list<string> modifiers: ["SUPER"]
                 property string key: "V"
-                property var action: ({ "id": "ambxst.clipboard", "args": {} })
+                property var action: ({ "id": "nothingless.clipboard", "args": {} })
             }
             property JsonObject emoji: JsonObject {
                 property list<string> modifiers: ["SUPER"]
                 property string key: "PERIOD"
-                property var action: ({ "id": "ambxst.emoji", "args": {} })
+                property var action: ({ "id": "nothingless.emoji", "args": {} })
             }
             property JsonObject notes: JsonObject {
                 property list<string> modifiers: ["SUPER"]
                 property string key: "N"
-                property var action: ({ "id": "ambxst.notes", "args": {} })
+                property var action: ({ "id": "nothingless.notes", "args": {} })
             }
             property JsonObject tmux: JsonObject {
                 property list<string> modifiers: ["SUPER"]
                 property string key: "T"
-                property var action: ({ "id": "ambxst.tmux", "args": {} })
+                property var action: ({ "id": "nothingless.tmux", "args": {} })
             }
             property JsonObject wallpapers: JsonObject {
                 property list<string> modifiers: ["SUPER"]
                 property string key: "COMMA"
-                property var action: ({ "id": "ambxst.wallpapers", "args": {} })
+                property var action: ({ "id": "nothingless.wallpapers", "args": {} })
             }
             property JsonObject system: JsonObject {
                 property JsonObject config: JsonObject {
                     property list<string> modifiers: ["SUPER", "SHIFT"]
                     property string key: "C"
-                    property var action: ({ "id": "ambxst.config", "args": {} })
+                    property var action: ({ "id": "nothingless.config", "args": {} })
                 }
                 property JsonObject lockscreen: JsonObject {
                     property list<string> modifiers: ["SUPER"]
@@ -1460,68 +1460,68 @@ Singleton {
                 property JsonObject overview: JsonObject {
                     property list<string> modifiers: ["SUPER"]
                     property string key: "TAB"
-                    property var action: ({ "id": "ambxst.overview", "args": {} })
+                    property var action: ({ "id": "nothingless.overview", "args": {} })
                 }
                 property JsonObject powermenu: JsonObject {
                     property list<string> modifiers: ["SUPER"]
                     property string key: "ESCAPE"
-                    property var action: ({ "id": "ambxst.powermenu", "args": {} })
+                    property var action: ({ "id": "nothingless.powermenu", "args": {} })
                 }
                 property JsonObject tools: JsonObject {
                     property list<string> modifiers: ["SUPER"]
                     property string key: "S"
-                    property var action: ({ "id": "ambxst.tools", "args": {} })
+                    property var action: ({ "id": "nothingless.tools", "args": {} })
                 }
                 property JsonObject screenshot: JsonObject {
                     property list<string> modifiers: ["SUPER", "SHIFT"]
                     property string key: "S"
-                    property var action: ({ "id": "ambxst.screenshot", "args": {} })
+                    property var action: ({ "id": "nothingless.screenshot", "args": {} })
                 }
                 property JsonObject screenrecord: JsonObject {
                     property list<string> modifiers: ["SUPER", "SHIFT"]
                     property string key: "R"
-                    property var action: ({ "id": "ambxst.screenrecord", "args": {} })
+                    property var action: ({ "id": "nothingless.screenrecord", "args": {} })
                 }
                 property JsonObject lens: JsonObject {
                     property list<string> modifiers: ["SUPER", "SHIFT"]
                     property string key: "A"
-                    property var action: ({ "id": "ambxst.lens", "args": {} })
+                    property var action: ({ "id": "nothingless.lens", "args": {} })
                 }
                 property JsonObject reload: JsonObject {
                     property list<string> modifiers: ["SUPER", "ALT"]
                     property string key: "B"
-                    property var action: ({ "id": "ambxst.reload", "args": {} })
+                    property var action: ({ "id": "nothingless.reload", "args": {} })
                 }
                 property JsonObject quit: JsonObject {
                     property list<string> modifiers: ["SUPER", "CTRL", "ALT"]
                     property string key: "B"
-                    property var action: ({ "id": "ambxst.quit", "args": {} })
+                    property var action: ({ "id": "nothingless.quit", "args": {} })
                 }
             }
             }
             // Default getters
             readonly property var defaultAmbxstBinds: {
-                "ambxst": {
-                    "launcher": { "modifiers": ["SUPER"], "key": "Super_L", "action": { "id": "ambxst.launcher", "args": {} } },
-                    "dashboard": { "modifiers": ["SUPER"], "key": "D", "action": { "id": "ambxst.dashboard", "args": {} } },
-                    "assistant": { "modifiers": ["SUPER"], "key": "A", "action": { "id": "ambxst.assistant", "args": {} } },
-                    "clipboard": { "modifiers": ["SUPER"], "key": "V", "action": { "id": "ambxst.clipboard", "args": {} } },
-                    "emoji": { "modifiers": ["SUPER"], "key": "PERIOD", "action": { "id": "ambxst.emoji", "args": {} } },
-                    "notes": { "modifiers": ["SUPER"], "key": "N", "action": { "id": "ambxst.notes", "args": {} } },
-                    "tmux": { "modifiers": ["SUPER"], "key": "T", "action": { "id": "ambxst.tmux", "args": {} } },
-                    "wallpapers": { "modifiers": ["SUPER"], "key": "COMMA", "action": { "id": "ambxst.wallpapers", "args": {} } }
+                "nothingless": {
+                    "launcher": { "modifiers": ["SUPER"], "key": "Super_L", "action": { "id": "nothingless.launcher", "args": {} } },
+                    "dashboard": { "modifiers": ["SUPER"], "key": "D", "action": { "id": "nothingless.dashboard", "args": {} } },
+                    "assistant": { "modifiers": ["SUPER"], "key": "A", "action": { "id": "nothingless.assistant", "args": {} } },
+                    "clipboard": { "modifiers": ["SUPER"], "key": "V", "action": { "id": "nothingless.clipboard", "args": {} } },
+                    "emoji": { "modifiers": ["SUPER"], "key": "PERIOD", "action": { "id": "nothingless.emoji", "args": {} } },
+                    "notes": { "modifiers": ["SUPER"], "key": "N", "action": { "id": "nothingless.notes", "args": {} } },
+                    "tmux": { "modifiers": ["SUPER"], "key": "T", "action": { "id": "nothingless.tmux", "args": {} } },
+                    "wallpapers": { "modifiers": ["SUPER"], "key": "COMMA", "action": { "id": "nothingless.wallpapers", "args": {} } }
                 },
                 "system": {
-                    "config": { "modifiers": ["SUPER", "SHIFT"], "key": "C", "action": { "id": "ambxst.config", "args": {} } },
+                    "config": { "modifiers": ["SUPER", "SHIFT"], "key": "C", "action": { "id": "nothingless.config", "args": {} } },
                     "lockscreen": { "modifiers": ["SUPER"], "key": "L", "action": { "id": "system.lock", "args": {} } },
-                    "overview": { "modifiers": ["SUPER"], "key": "TAB", "action": { "id": "ambxst.overview", "args": {} } },
-                    "powermenu": { "modifiers": ["SUPER"], "key": "ESCAPE", "action": { "id": "ambxst.powermenu", "args": {} } },
-                    "tools": { "modifiers": ["SUPER"], "key": "S", "action": { "id": "ambxst.tools", "args": {} } },
-                    "screenshot": { "modifiers": ["SUPER", "SHIFT"], "key": "S", "action": { "id": "ambxst.screenshot", "args": {} } },
-                    "screenrecord": { "modifiers": ["SUPER", "SHIFT"], "key": "R", "action": { "id": "ambxst.screenrecord", "args": {} } },
-                    "lens": { "modifiers": ["SUPER", "SHIFT"], "key": "A", "action": { "id": "ambxst.lens", "args": {} } },
-                    "reload": { "modifiers": ["SUPER", "ALT"], "key": "B", "action": { "id": "ambxst.reload", "args": {} } },
-                    "quit": { "modifiers": ["SUPER", "CTRL", "ALT"], "key": "B", "action": { "id": "ambxst.quit", "args": {} } }
+                    "overview": { "modifiers": ["SUPER"], "key": "TAB", "action": { "id": "nothingless.overview", "args": {} } },
+                    "powermenu": { "modifiers": ["SUPER"], "key": "ESCAPE", "action": { "id": "nothingless.powermenu", "args": {} } },
+                    "tools": { "modifiers": ["SUPER"], "key": "S", "action": { "id": "nothingless.tools", "args": {} } },
+                    "screenshot": { "modifiers": ["SUPER", "SHIFT"], "key": "S", "action": { "id": "nothingless.screenshot", "args": {} } },
+                    "screenrecord": { "modifiers": ["SUPER", "SHIFT"], "key": "R", "action": { "id": "nothingless.screenrecord", "args": {} } },
+                    "lens": { "modifiers": ["SUPER", "SHIFT"], "key": "A", "action": { "id": "nothingless.lens", "args": {} } },
+                    "reload": { "modifiers": ["SUPER", "ALT"], "key": "B", "action": { "id": "nothingless.reload", "args": {} } },
+                    "quit": { "modifiers": ["SUPER", "CTRL", "ALT"], "key": "B", "action": { "id": "nothingless.quit", "args": {} } }
                 }
             }
 
@@ -2395,7 +2395,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "ambxst brightness +5",
+                            "argument": "nothingless brightness +5",
                             "flags": "le",
                             "layouts": []
                         }
@@ -2413,7 +2413,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "ambxst brightness -5",
+                            "argument": "nothingless brightness -5",
                             "flags": "le",
                             "layouts": []
                         }

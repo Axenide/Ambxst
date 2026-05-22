@@ -106,7 +106,7 @@ QtObject {
         
         // System > Idle
         { label: "Idle Settings", keywords: "screen lock timeout sleep suspend", section: 6, subSection: "idle", subLabel: "System > Idle", icon: Icons.moon, isIcon: true },
-        { label: "Lock Command", keywords: "ambxst lock screen idle", section: 6, subSection: "idle", subLabel: "System > Idle", icon: Icons.moon, isIcon: true },
+        { label: "Lock Command", keywords: "nothingless lock screen idle", section: 6, subSection: "idle", subLabel: "System > Idle", icon: Icons.moon, isIcon: true },
         { label: "Before Sleep", keywords: "loginctl lock-session idle", section: 6, subSection: "idle", subLabel: "System > Idle", icon: Icons.moon, isIcon: true },
         { label: "After Sleep", keywords: "screen on resume idle", section: 6, subSection: "idle", subLabel: "System > Idle", icon: Icons.moon, isIcon: true },
         { label: "Idle Listener", keywords: "timeout brightness screen off suspend", section: 6, subSection: "idle", subLabel: "System > Idle", icon: Icons.moon, isIcon: true },
@@ -145,7 +145,7 @@ QtObject {
         { label: "Blur Vibrancy", keywords: "saturation color", section: 7, subSection: "blur", subLabel: "Compositor > AxctlService", icon: Icons.drop, isIcon: true },
 
         // --- Ambxst / Shell ---
-        { label: "Ambxst", keywords: "about info credits version shell", section: 8, subSection: "", subLabel: "", icon: Qt.resolvedUrl("../../../../assets/ambxst/ambxst-icon.svg"), isIcon: false },
+        { label: "NothingLess", keywords: "about info credits version shell", section: 8, subSection: "", subLabel: "", icon: Qt.resolvedUrl("../../../../assets/nothingless/nothingless-icon.svg"), isIcon: false },
         
         // Ambxst > Bar
         { label: "Bar", keywords: "panel taskbar top bottom", section: 8, subSection: "bar", subLabel: "Ambxst > Bar", icon: Icons.layout, isIcon: true },
@@ -207,7 +207,7 @@ QtObject {
         { label: "Desktop Text Color", keywords: "label font", section: 8, subSection: "desktop", subLabel: "Ambxst > Desktop", icon: Icons.palette, isIcon: true },
         
         // Ambxst > System
-        { label: "Shell System", keywords: "config settings ambxst", section: 8, subSection: "system", subLabel: "Ambxst > System", icon: Icons.circuitry, isIcon: true }
+        { label: "Shell System", keywords: "config settings nothingless", section: 8, subSection: "system", subLabel: "Ambxst > System", icon: Icons.circuitry, isIcon: true }
     ]
 
     property var items: staticItems.concat(dynamicItems)

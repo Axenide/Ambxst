@@ -2,8 +2,8 @@
 set -e
 
 # === Configuration ===
-REPO_URL="https://github.com/Axenide/Ambxst.git"
-INSTALL_PATH="$HOME/.local/src/ambxst"
+REPO_URL="https://github.com/Leriart/NothingLess.git"
+INSTALL_PATH="$HOME/.local/src/nothingless"
 BIN_DIR="/usr/local/bin"
 QUICKSHELL_REPO="https://git.outfoxxed.me/outfoxxed/quickshell"
 
@@ -36,7 +36,6 @@ DISTRO=$(detect_distro)
 log_info "Detected: $DISTRO"
 
 # === Package Filtering ===
-# Maps packages to their binary/check - only for conflict-prone packages
 declare -A BINARY_CHECK=(
   ["matugen"]="matugen"
   ["quickshell"]="qs"
@@ -65,6 +64,7 @@ declare -A THEME_CHECK=(
 
 declare -A FONT_CHECK=(
   ["ttf-phosphor-icons"]="Phosphor"
+  ["ttf-ndot"]="Ndot"
 )
 
 filter_packages() {
@@ -95,14 +95,14 @@ filter_packages() {
 install_dependencies() {
   case "$DISTRO" in
   nixos)
-    local FLAKE_URI="${1:-github:Axenide/Ambxst}"
+    local FLAKE_URI="${1:-github:Leriart/NothingLess}"
     nix profile list | grep -q "ddcutil" && nix profile remove ddcutil 2>/dev/null || true
 
-    if nix profile list | grep -q "Ambxst"; then
-      log_info "Updating Ambxst..."
-      nix profile upgrade Ambxst --refresh --impure
+    if nix profile list | grep -q "NothingLess"; then
+      log_info "Updating NothingLess..."
+      nix profile upgrade NothingLess --refresh --impure
     else
-      log_info "Installing Ambxst..."
+      log_info "Installing NothingLess..."
       nix profile add "$FLAKE_URI" --impure
     fi
     ;;
@@ -140,6 +140,7 @@ install_dependencies() {
     flatpak install -y flathub be.alexandervanhee.gradia 2>/dev/null || true
 
     install_phosphor_fonts
+    install_ndot_font
     ;;
 
   arch)
@@ -189,6 +190,8 @@ install_dependencies() {
     else
       log_info "All packages already installed"
     fi
+
+    install_ndot_font
     ;;
 
   *)
@@ -216,71 +219,44 @@ install_phosphor_fonts() {
   log_success "Phosphor Icons installed"
 }
 
+install_ndot_font() {
+  has_font "Ndot" && return
+
+  log_info "Installing Ndot font..."
+  local FONT_DIR="$HOME/.local/share/fonts/ndot"
+  mkdir -p "$FONT_DIR"
+
+  local NDOT_SRC="$INSTALL_PATH/assets/fonts"
+  if [[ -f "$NDOT_SRC/Ndot-57-Aligned.ttf" ]]; then
+    cp "$NDOT_SRC/Ndot-57-Aligned.ttf" "$FONT_DIR/"
+  else
+    # Try from the script's location
+    local SCRIPT_DIR
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$SCRIPT_DIR/assets/fonts/Ndot-57-Aligned.ttf" ]]; then
+      cp "$SCRIPT_DIR/assets/fonts/Ndot-57-Aligned.ttf" "$FONT_DIR/"
+    else
+      log_warn "Ndot font not found in repo. Skipping."
+      return
+    fi
+  fi
+
+  fc-cache -f "$FONT_DIR"
+  log_success "Ndot font installed"
+}
+
 # === Migration ===
 migrate_old_paths() {
-  log_info "Checking for old Ambxst paths..."
+  log_info "Checking for old paths..."
 
-  # Source migration (PascalCase -> lowercase)
-  local OLD_SRC="$HOME/Ambxst"
-  if [[ -d "$OLD_SRC" && ! -d "$INSTALL_PATH" ]]; then
-    log_info "Migrating source: $OLD_SRC -> $INSTALL_PATH"
-    mkdir -p "$(dirname "$INSTALL_PATH")"
-    cp -r "$OLD_SRC" "$INSTALL_PATH"
-  fi
+  local OLD_CONFIG="$HOME/.config/nothingless"
+  if [[ ! -d "$OLD_CONFIG" ]]; then
+    mkdir -p "$OLD_CONFIG/config"
 
-  # Config migration
-  local OLD_CONFIG="$HOME/.config/Ambxst"
-  local NEW_CONFIG="$HOME/.config/ambxst"
-  if [[ -d "$OLD_CONFIG" && ! -d "$NEW_CONFIG" ]]; then
-    log_info "Migrating config: $OLD_CONFIG -> $NEW_CONFIG"
-    mv "$OLD_CONFIG" "$NEW_CONFIG"
-  fi
-
-  # Share migration
-  local OLD_SHARE="$HOME/.local/share/Ambxst"
-  local NEW_SHARE="$HOME/.local/share/ambxst"
-  if [[ -d "$OLD_SHARE" && ! -d "$NEW_SHARE" ]]; then
-    log_info "Migrating share: $OLD_SHARE -> $NEW_SHARE"
-    mv "$OLD_SHARE" "$NEW_SHARE"
-  fi
-
-  # State migration
-  local OLD_STATE="$HOME/.local/state/Ambxst"
-  local NEW_STATE="$HOME/.local/state/ambxst"
-  if [[ -d "$OLD_STATE" && ! -d "$NEW_STATE" ]]; then
-    log_info "Migrating state: $OLD_STATE -> $NEW_STATE"
-    mv "$OLD_STATE" "$NEW_STATE"
-  fi
-
-  # Cache migration
-  local OLD_CACHE_DIR="$HOME/.cache/Ambxst"
-  local NEW_CACHE_DIR="$HOME/.cache/ambxst"
-  if [[ -d "$OLD_CACHE_DIR" && ! -d "$NEW_CACHE_DIR" ]]; then
-    log_info "Migrating cache: $OLD_CACHE_DIR -> $NEW_CACHE_DIR"
-    mv "$OLD_CACHE_DIR" "$NEW_CACHE_DIR"
-  fi
-
-  # Legacy share -> cache migration (Wallpapers & Thumbnails)
-  local NEW_CACHE="$HOME/.cache/ambxst"
-  if [[ -d "$NEW_SHARE" ]]; then
-    mkdir -p "$NEW_CACHE"
-
-    if [[ -f "$NEW_SHARE/wallpapers.json" && ! -f "$NEW_CACHE/wallpapers.json" ]]; then
-      log_info "Migrating wallpapers.json to cache..."
-      cp "$NEW_SHARE/wallpapers.json" "$NEW_CACHE/wallpapers.json"
+    # Copy default configs from the install path
+    if [[ -d "$INSTALL_PATH/config/defaults" ]]; then
+      cp -r "$INSTALL_PATH/config/defaults/"* "$OLD_CONFIG/config/" 2>/dev/null || true
     fi
-
-    if [[ -d "$NEW_SHARE/thumbnails" && ! -d "$NEW_CACHE/thumbnails" ]]; then
-      log_info "Migrating thumbnails to cache..."
-      cp -r "$NEW_SHARE/thumbnails" "$NEW_CACHE/thumbnails"
-    fi
-  fi
-
-  # Config structure warning
-  if [[ -f "$NEW_CONFIG/config.json" && ! -d "$NEW_CONFIG/config" ]]; then
-    log_warn "Old single-file config detected."
-    log_info "Ambxst now uses a multi-file configuration in $NEW_CONFIG/config/"
-    log_info "Your old config.json remains at $NEW_CONFIG/config.json for reference."
   fi
 }
 
@@ -289,19 +265,17 @@ setup_repo() {
   [[ "$DISTRO" == "nixos" ]] && return
 
   if [[ ! -d "$INSTALL_PATH" ]]; then
-    log_info "Cloning Ambxst to $INSTALL_PATH..."
+    log_info "Cloning NothingLess to $INSTALL_PATH..."
     mkdir -p "$(dirname "$INSTALL_PATH")"
     git clone "$REPO_URL" "$INSTALL_PATH"
     return
   fi
 
-  # Check if it's a git repository
   if [[ ! -d "$INSTALL_PATH/.git" ]]; then
     log_warn "$INSTALL_PATH exists but is not a git repository."
     log_info "Re-initializing repository..."
     local TMP_DIR
     TMP_DIR=$(mktemp -d)
-    # Move everything to tmp, avoiding . and ..
     find "$INSTALL_PATH" -mindepth 1 -maxdepth 1 -exec mv -t "$TMP_DIR" {} +
     rm -rf "$INSTALL_PATH"
     git clone "$REPO_URL" "$INSTALL_PATH"
@@ -361,17 +335,6 @@ install_quickshell() {
   log_success "Quickshell installed to ~/.local/bin/qs"
 }
 
-install_axctl() {
-  if [[ "$DISTRO" == "nixos" ]]; then
-    log_info "Skipping axctl install on NixOS (managed by flake)"
-    return
-  fi
-
-  log_info "Installing axctl..."
-  curl -L get.axeni.de/axctl | sh
-  log_success "axctl installed"
-}
-
 # === Python Tools ===
 install_python_tools() {
   [[ "$DISTRO" == "nixos" ]] && return
@@ -381,7 +344,6 @@ install_python_tools() {
   }
 
   log_info "Installing Python tools..."
-
   pipx ensurepath 2>/dev/null || true
 }
 
@@ -410,10 +372,6 @@ configure_services() {
 
   elif has_cmd rc-service; then
     log_info "Configuring OpenRC services..."
-    rc-update show | grep -q "iwd" && {
-      sudo rc-service iwd stop 2>/dev/null || true
-      sudo rc-update del iwd default 2>/dev/null || true
-    }
     sudo rc-update add NetworkManager default 2>/dev/null || true
     sudo rc-service NetworkManager start 2>/dev/null || true
     sudo rc-update add bluetooth default 2>/dev/null || true
@@ -422,7 +380,6 @@ configure_services() {
   elif has_cmd sv; then
     log_info "Configuring runit services..."
     local SV_DIR="/var/service"
-    [[ -L "$SV_DIR/iwd" ]] && sudo rm "$SV_DIR/iwd"
     [[ -d "/etc/sv/NetworkManager" && ! -L "$SV_DIR/NetworkManager" ]] && sudo ln -s /etc/sv/NetworkManager "$SV_DIR/"
     [[ -d "/etc/sv/bluetooth" && ! -L "$SV_DIR/bluetooth" ]] && sudo ln -s /etc/sv/bluetooth "$SV_DIR/"
 
@@ -435,10 +392,10 @@ configure_services() {
 setup_launcher() {
   [[ "$DISTRO" == "nixos" ]] && return
 
-  [[ -f "$HOME/.local/bin/ambxst" ]] && rm -f "$HOME/.local/bin/ambxst"
+  [[ -f "$HOME/.local/bin/nothingless" ]] && rm -f "$HOME/.local/bin/nothingless"
 
   sudo mkdir -p "$BIN_DIR"
-  local LAUNCHER="$BIN_DIR/ambxst"
+  local LAUNCHER="$BIN_DIR/nothingless"
 
   log_info "Creating launcher at $LAUNCHER..."
   sudo tee "$LAUNCHER" >/dev/null <<-EOF
@@ -455,13 +412,13 @@ setup_launcher() {
 # === Main ===
 migrate_old_paths
 install_dependencies "$1"
-install_axctl
 setup_repo
 install_quickshell
+install_ndot_font
 install_python_tools
 configure_services
 setup_launcher
 
 echo ""
 log_success "Installation complete!"
-[[ "$DISTRO" != "nixos" ]] && echo -e "Run ${GREEN}ambxst${NC} to start."
+[[ "$DISTRO" != "nixos" ]] && echo -e "Run ${GREEN}nothingless${NC} to start."

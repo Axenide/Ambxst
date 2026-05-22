@@ -39,7 +39,7 @@ PanelWindow {
         }
         return WlrKeyboardFocus.None;
     }
-    WlrLayershell.namespace: "ambxst"
+    WlrLayershell.namespace: "nothingless"
     WlrLayershell.layer: WlrLayer.Overlay
     exclusionMode: ExclusionMode.Ignore
 

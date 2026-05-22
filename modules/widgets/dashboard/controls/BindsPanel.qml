@@ -17,7 +17,7 @@ Item {
     readonly property real sideMargin: (width - contentWidth) / 2
 
     // Current category being viewed
-    property string currentCategory: "ambxst"
+    property string currentCategory: "nothingless"
 
     // Process for unbinding keybinds
     Process {
@@ -328,19 +328,19 @@ Item {
 
     function saveEdit() {
         if (root.isEditingAmbxst) {
-            // Save ambxst bind (still uses old format internally)
+            // Save nothingless bind (still uses old format internally)
             const path = root.editingBind.path.split(".");
-            // path = ["ambxst", "section"?, "bindName"]
+            // path = ["nothingless", "section"?, "bindName"]
             
             const adapter = Config.keybindsLoader.adapter;
-            if (adapter && adapter.ambxst) {
+            if (adapter && adapter.nothingless) {
                 let bindObj = null;
                 if (path.length === 2) {
-                    // Top level: ambxst.bindName
-                    bindObj = adapter.ambxst[path[1]];
+                    // Top level: nothingless.bindName
+                    bindObj = adapter.nothingless[path[1]];
                 } else if (path.length === 3) {
-                    // Nested: ambxst.system.bindName
-                    bindObj = adapter.ambxst[path[1]][path[2]];
+                    // Nested: nothingless.system.bindName
+                    bindObj = adapter.nothingless[path[1]][path[2]];
                 }
 
                 if (bindObj) {
@@ -395,8 +395,8 @@ Item {
 
     readonly property var categories: [
         {
-            id: "ambxst",
-            label: "Ambxst",
+            id: "nothingless",
+            label: "NothingLess",
             icon: Icons.widgets
         },
         {
@@ -431,38 +431,38 @@ Item {
         return mods ? mods + " + " + bind.key : bind.key;
     }
 
-    // Get ambxst binds as a flat list
+    // Get nothingless binds as a flat list
     function getAmbxstBinds() {
         const adapter = Config.keybindsLoader.adapter;
-        if (!adapter || !adapter.ambxst)
+        if (!adapter || !adapter.nothingless)
             return [];
 
         const binds = [];
-        const ambxst = adapter.ambxst;
+        const nothingless = adapter.nothingless;
 
         // Core Ambxst binds (Launcher, Dashboard, etc.)
         const coreKeys = ["launcher", "dashboard", "assistant", "clipboard", "emoji", "notes", "tmux", "wallpapers"];
         for (const key of coreKeys) {
-            if (ambxst[key]) {
+            if (nothingless[key]) {
                 binds.push({
-                    category: "Ambxst",
+                    category: "NothingLess",
                     name: key.charAt(0).toUpperCase() + key.slice(1),
-                    path: "ambxst." + key,
-                    bind: ambxst[key]
+                    path: "nothingless." + key,
+                    bind: nothingless[key]
                 });
             }
         }
 
         // System binds
-        if (ambxst.system) {
+        if (nothingless.system) {
             const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
             for (const key of systemKeys) {
-                if (ambxst.system[key]) {
+                if (nothingless.system[key]) {
                     binds.push({
                         category: "System",
                         name: key.charAt(0).toUpperCase() + key.slice(1),
-                        path: "ambxst.system." + key,
-                        bind: ambxst.system[key]
+                        path: "nothingless.system." + key,
+                        bind: nothingless.system[key]
                     });
                 }
             }
@@ -709,8 +709,8 @@ Item {
 
             // Ambxst binds view
             Repeater {
-                id: ambxstRepeater
-                model: root.currentCategory === "ambxst" ? root.getAmbxstBinds() : []
+                id: nothinglessRepeater
+                model: root.currentCategory === "nothingless" ? root.getAmbxstBinds() : []
 
                 delegate: BindItem {
                     required property var modelData
@@ -798,8 +798,8 @@ Item {
             Text {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.topMargin: 20
-                visible: (root.currentCategory === "ambxst" && ambxstRepeater.count === 0) || (root.currentCategory === "custom" && customRepeater.count === 0)
-                text: root.currentCategory === "ambxst" ? "No Ambxst binds configured" : "No custom binds configured"
+                visible: (root.currentCategory === "nothingless" && nothinglessRepeater.count === 0) || (root.currentCategory === "custom" && customRepeater.count === 0)
+                text: root.currentCategory === "nothingless" ? "No Ambxst binds configured" : "No custom binds configured"
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(0)
                 color: Colors.overSurfaceVariant
@@ -979,7 +979,7 @@ Item {
                                 onClicked: {
                                     if (root.isEditingAmbxst && root.editingBind) {
                                         const path = root.editingBind.path.split(".");
-                                        // path = ["ambxst", "dashboard"|"system", "bindName"]
+                                        // path = ["nothingless", "dashboard"|"system", "bindName"]
                                         const section = path[1];
                                         const bindName = path[2];
                                         
@@ -1105,7 +1105,7 @@ Item {
                             }
                         }
 
-                        // Bind name/info (for ambxst binds only)
+                        // Bind name/info (for nothingless binds only)
                         Text {
                             visible: root.isEditingAmbxst && root.editingBind !== null
                             text: root.editingBind ? (root.editingBind.name || "") : ""
@@ -1383,7 +1383,7 @@ Item {
                         }
 
                         // =====================
-                        // ACTIONS SECTION (custom binds & flags for ambxst)
+                        // ACTIONS SECTION (custom binds & flags for nothingless)
                         // =====================
                         ColumnLayout {
                             Layout.fillWidth: true

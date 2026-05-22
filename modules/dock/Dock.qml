@@ -43,7 +43,7 @@ Scope {
             implicitWidth: dockContent.implicitWidth
             implicitHeight: dockContent.implicitHeight
 
-            WlrLayershell.namespace: "ambxst:dock"
+            WlrLayershell.namespace: "nothingless:dock"
             WlrLayershell.layer: WlrLayer.Overlay
             color: "transparent"
             exclusionMode: ExclusionMode.Ignore

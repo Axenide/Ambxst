@@ -194,7 +194,7 @@ QtObject {
         // Single command to ensure dirs and write files
         const cmd = `
             mkdir -p "${qt5Dir}" "${qt6Dir}" && \\
-            echo "${ini}" | tee "${qt5Dir}/ambxst.colors" "${qt6Dir}/ambxst.colors" > /dev/null
+            echo "${ini}" | tee "${qt5Dir}/nothingless.colors" "${qt6Dir}/nothingless.colors" > /dev/null
         `
         
         writerProcess.command = ["sh", "-c", cmd]

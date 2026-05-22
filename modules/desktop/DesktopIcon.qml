@@ -29,7 +29,7 @@ Item {
         if (videoExts.includes(ext) || imageExts.includes(ext)) {
             const fileName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
             // QUICKSHELL-GIT: return Quickshell.cacheDir + "/desktop_thumbnails/" + fileName + ".jpg";
-            return Quickshell.env("HOME") + "/.cache/ambxst" + "/desktop_thumbnails/" + fileName + ".jpg";
+            return Quickshell.env("HOME") + "/.cache/nothingless" + "/desktop_thumbnails/" + fileName + ".jpg";
         }
 
         return '';

@@ -1,7 +1,7 @@
 //@ pragma UseQApplication
-//@ pragma ShellId ambxst
-//@ pragma DataDir $BASE/ambxst
-//@ pragma StateDir $BASE/ambxst
+//@ pragma ShellId nothingless
+//@ pragma DataDir $BASE/nothingless
+//@ pragma StateDir $BASE/nothingless
 
 import QtQuick
 import Quickshell
@@ -314,7 +314,7 @@ ShellRoot {
                     anchors { top: true; left: true; right: true; bottom: true }
                     color: "#000000"
                     WlrLayershell.layer: WlrLayer.Overlay
-                    WlrLayershell.namespace: "ambxst:splash-overlay"
+                    WlrLayershell.namespace: "nothingless:splash-overlay"
                     exclusionMode: ExclusionMode.Ignore
                     Rectangle {
                         id: splashBg; anchors.fill: parent; color: "#000000"
@@ -322,7 +322,7 @@ ShellRoot {
                         Behavior on opacity { NumberAnimation { duration: 800 } }
                         Image {
                             anchors.centerIn: parent
-                            source: "assets/ambxst/ambxst-logo-color.svg"
+                            source: "assets/nothingless/nothingless-logo-color.svg"
                             sourceSize.width: 512; sourceSize.height: 512; smooth: true
                         }
                     }

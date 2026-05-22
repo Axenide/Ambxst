@@ -1,21 +1,21 @@
-# NixOS module for Ambxst
+# NixOS module for NothingLess
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.ambxst;
+  cfg = config.programs.nothingless;
 in {
-  options.programs.ambxst = {
-    enable = lib.mkEnableOption "Ambxst shell";
+  options.programs.nothingless = {
+    enable = lib.mkEnableOption "NothingLess shell";
 
     package = lib.mkOption {
       type = lib.types.package;
-      description = "The Ambxst package to use";
+      description = "The NothingLess package to use";
     };
 
     fonts.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Whether to install Ambxst fonts (including Phosphor Icons)";
+      description = "Whether to install NothingLess fonts (including Phosphor Icons)";
     };
   };
 

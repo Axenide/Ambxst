@@ -9,10 +9,10 @@ Singleton {
     id: root
 
     readonly property string currentVersion: Config.version
-    readonly property string repoUrl: "https://api.github.com/repos/Axenide/Ambxst/tags"
-    readonly property string changelogUrl: "https://axeni.de/ambxst/changelog"
+    readonly property string repoUrl: "https://api.github.com/repos/Leriart/Ambxst/tags"
+    readonly property string changelogUrl: "https://axeni.de/nothingless/changelog"
     // QUICKSHELL-GIT: readonly property string cacheFile: Quickshell.cachePath("update_check.json")
-    readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/ambxst/update_check.json"
+    readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/nothingless/update_check.json"
 
     property string lastDetectedVersion: ""
     property double lastCheckTime: 0
@@ -154,7 +154,7 @@ Singleton {
                 root.nextCheckTime = Date.now() + 8 * 3600000;
                 root.saveCache();
             } else if (action === "update") {
-                const updateCmd = "kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty sh -c \"sleep 0.2 && kitten @ --to unix:/tmp/mykitty send-text 'ambxst update'; exec $SHELL\"";
+                const updateCmd = "kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty sh -c \"sleep 0.2 && kitten @ --to unix:/tmp/mykitty send-text 'nothingless update'; exec $SHELL\"";
                 Quickshell.execDetached(["bash", "-c", updateCmd]);
             }
         }

@@ -43,11 +43,11 @@ QtObject {
         let css = `/**
  * @name Ambxst
  * @description A Discord recolor theme, generated with Ambxst.
- * @author Axenide
+ * @author Leriart
  * @version 1.0.0
  * @invite gHG9WHyNvH
- * @website https://axeni.de/ambxst
- * @source https://github.com/Axenide/Ambxst
+ * @website https://axeni.de/nothingless
+ * @source https://github.com/Leriart/Ambxst
  * @authorId 294856304969908224
  * @authorLink https://axeni.de
 */ 
@@ -79,7 +79,7 @@ QtObject {
 `
 
         const home = Quickshell.env("HOME")
-        const vesktopPath = home + "/.config/vesktop/themes/ambxst.css"
+        const vesktopPath = home + "/.config/vesktop/themes/nothingless.css"
         
         const escape = (str) => {
             if (!str) return ""

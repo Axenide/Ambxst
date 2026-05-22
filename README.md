@@ -1,8 +1,8 @@
 <p align="center">
-<img src="./assets/ambxst/ambxst-logo-color.svg" alt="NothingLess Logo" style="width: 40%;" align="center" />
+<img src="./assets/nothingless/nothingless-logo-color.svg" alt="NothingLess Logo" style="width: 40%;" align="center" />
   <br>
   <br>
-A <b>minimal</b> &amp; <b>performant</b> fork of <a href="https://github.com/Axenide/Ambxst">Ambxst</a>.
+A <b>minimal</b> &amp; <b>performant</b> fork of <a href="https://github.com/Leriart/Ambxst">Ambxst</a>.
 <br><br>
 <i>Inspired by the Nothing Phone — less is more.</i>
 </p>
@@ -59,21 +59,21 @@ Just like the Nothing Phone line, the philosophy here is:
 *Coming soon — for now, follow the Ambxst installation instructions below:*
 
 ```bash
-curl -L get.axeni.de/ambxst | sh
+curl -L github.com/Leriart/NothingLess/nothingless | sh
 ```
 
 ### Hyprland
 
 1. Run the installation command above.
 
-2. Run `ambxst install hyprland` to add Ambxst's configuration to Hyprland:
+2. Run `nothingless install hyprland` to add Ambxst's configuration to Hyprland:
 
 ```lua
 -- Ambxst
-loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()
+loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()
 ```
 
-3. Start Ambxst by running `ambxst` in your terminal.
+3. Start Ambxst by running `nothingless` in your terminal.
 
 Supported on **Arch**, **Fedora**, and **NixOS**.
 
@@ -97,7 +97,7 @@ Supported on **Arch**, **Fedora**, and **NixOS**.
 
 ## Credits
 
-- **NothingLess** is a **fork** of [Ambxst](https://github.com/Axenide/Ambxst) by [Axenide](https://github.com/Axenide) — all original credit goes to them and the contributors listed below.
+- **NothingLess** is a **fork** of [Ambxst](https://github.com/Leriart/Ambxst) by [Leriart](https://github.com/Leriart) — all original credit goes to them and the contributors listed below.
 - [outfoxxed](https://outfoxxed.me/) for creating Quickshell and great documentation!
 - [end-4](https://github.com/end-4) for his awesome projects. I learned a lot from them! (And *yoinked* a lot of code, too. 😅)
 - [soramane](https://github.com/soramanew) for helping me when I started with Quickshell.

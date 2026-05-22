@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Ambxst CLI - It was needed, so here it is. lol
+# NothingLess CLI - Minimal Ambxst fork - It was needed, so here it is. lol
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Use environment variables if set by flake, otherwise fall back to PATH
-QS_BIN="${AMBXST_QS:-qs}"
-NIXGL_BIN="${AMBXST_NIXGL:-}"
+QS_BIN="${NOTHINGLESS_QS:-qs}"
+NIXGL_BIN="${NOTHINGLESS_NIXGL:-}"
 
 if [ -z "${QML2_IMPORT_PATH:-}" ]; then
 	if command -v qs >/dev/null 2>&1; then
@@ -22,8 +22,8 @@ fi
 
 # Ensure config files exist - copy from preset if missing
 ensure_config_files() {
-	local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst/config"
-	local preset_dir="${SCRIPT_DIR}/assets/presets/Ambxst Default"
+	local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/nothingless/config"
+	local preset_dir="${SCRIPT_DIR}/assets/presets/NothingLess Default"
 
 	# Create config directory if it doesn't exist
 	mkdir -p "$config_dir"
@@ -41,7 +41,7 @@ show_help() {
 	cat <<EOF
 Ambxst CLI - Desktop Environment Control
 
-Usage: ambxst [COMMAND]
+Usage: nothingless [COMMAND]
 
 Commands:
     (none)                            Launch Ambxst
@@ -60,23 +60,23 @@ Commands:
     remove <target>                    Remove compositor config (hyprland)
 
 Examples:
-    ambxst brightness 75              Set all monitors to 75%
-    ambxst brightness 50 HDMI-A-1     Set HDMI-A-1 to 50%
-    ambxst brightness +10             Increase brightness by 10%
-    ambxst brightness -5 HDMI-A-1     Decrease HDMI-A-1 brightness by 5%
-    ambxst brightness 10 -s           Save current, then set all to 10%
-    ambxst brightness -s HDMI-A-1     Save current brightness of HDMI-A-1
-    ambxst brightness -r              Restore saved brightness
+    nothingless brightness 75              Set all monitors to 75%
+    nothingless brightness 50 HDMI-A-1     Set HDMI-A-1 to 50%
+    nothingless brightness +10             Increase brightness by 10%
+    nothingless brightness -5 HDMI-A-1     Decrease HDMI-A-1 brightness by 5%
+    nothingless brightness 10 -s           Save current, then set all to 10%
+    nothingless brightness -s HDMI-A-1     Save current brightness of HDMI-A-1
+    nothingless brightness -r              Restore saved brightness
 
 EOF
 }
 
-AMBXST_HYPR_CONF_SOURCE="source = ~/.local/share/ambxst/hyprland.conf"
-AMBXST_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()'
+AMBXST_HYPR_CONF_SOURCE="source = ~/.local/share/nothingless/hyprland.conf"
+AMBXST_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()'
 AMBXST_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
 # Ambxst
-source = ~/.local/share/ambxst/hyprland.conf
+source = ~/.local/share/nothingless/hyprland.conf
 
 # OVERRIDES
 # Down here you can write or source anything that you want to override from Ambxst's settings.
@@ -85,14 +85,14 @@ EOF
 AMBXST_HYPR_LUA_BLOCK=$(
 	cat <<'EOF'
 -- Ambxst
-loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()
+loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()
 
 -- OVERRIDES
 -- Down here you can write or source anything that you want to override from Ambxst's settings.
 EOF
 )
 
-append_ambxst_hyprland_block() {
+append_nothingless_hyprland_block() {
 	local conf="$1"
 	local source="$2"
 	local block="$3"
@@ -111,7 +111,7 @@ append_ambxst_hyprland_block() {
 	echo "Added Ambxst Hyprland block to $conf"
 }
 
-remove_ambxst_hyprland_block() {
+remove_nothingless_hyprland_block() {
 	local conf="$1"
 	local source="$2"
 
@@ -151,7 +151,7 @@ remove_ambxst_hyprland_block() {
 	echo "Removed Ambxst Hyprland block from $conf"
 }
 
-find_ambxst_pid() {
+find_nothingless_pid() {
 	# Try to find QuickShell process running shell.qml
 	# QuickShell binary can be named 'qs' or 'quickshell'
 	local pid
@@ -181,9 +181,9 @@ find_ambxst_pid() {
 	echo "$pid"
 }
 
-find_ambxst_pid_cached() {
+find_nothingless_pid_cached() {
 	# Optimized PID lookup: check cache file first, then fall back to pgrep
-	local pid_file="/tmp/ambxst.pid"
+	local pid_file="/tmp/nothingless.pid"
 	local pid=""
 
 	# Check if cache file exists and process is alive
@@ -199,16 +199,16 @@ find_ambxst_pid_cached() {
 	fi
 
 	# Fallback: use expensive pgrep search
-	pid=$(find_ambxst_pid)
+	pid=$(find_nothingless_pid)
 	echo "$pid"
 }
 
-restart_ambxst() {
+restart_nothingless() {
 	# Kill axctl processes first (they survive parent death when forked/detached)
 	pkill -f "axctl.*daemon" 2>/dev/null || true
 	pkill -f "axctl subscribe" 2>/dev/null || true
 
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_nothingless_pid_cached)
 	if [ -n "$PID" ]; then
 		echo "Stopping Ambxst (PID $PID)..."
 		kill "$PID"
@@ -225,8 +225,8 @@ restart_ambxst() {
 case "${1:-}" in
 update)
 	echo "Updating Ambxst..."
-	curl -fsSL get.axeni.de/ambxst | sh
-	restart_ambxst
+	curl -fsSL github.com/Leriart/NothingLess/nothingless | sh
+	restart_nothingless
 	;;
 refresh)
 	echo "Refreshing Ambxst profile..."
@@ -234,7 +234,7 @@ refresh)
 	;;
 run)
 	CMD="${2:-}"
-	PIPE="/tmp/ambxst_ipc.pipe"
+	PIPE="/tmp/nothingless_ipc.pipe"
 
 	if [ -z "$CMD" ]; then
 		echo "Error: No command specified for run"
@@ -248,37 +248,37 @@ run)
 	fi
 
 	# Fallback path: Use QS IPC with cached PID lookup
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_nothingless_pid_cached)
 	if [ -z "$PID" ]; then
 		echo "Error: Ambxst is not running"
 		exit 1
 	fi
 
-	qs ipc --pid "$PID" call ambxst run "$CMD" 2>/dev/null || {
+	qs ipc --pid "$PID" call nothingless run "$CMD" 2>/dev/null || {
 		echo "Error: Could not run command '$CMD'"
 		exit 1
 	}
 	;;
 lock)
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_nothingless_pid_cached)
 	if [ -z "$PID" ]; then
 		echo "Error: Ambxst is not running"
 		exit 1
 	fi
-	qs ipc --pid "$PID" call ambxst run lockscreen 2>/dev/null || {
+	qs ipc --pid "$PID" call nothingless run lockscreen 2>/dev/null || {
 		echo "Error: Could not activate lockscreen"
 		exit 1
 	}
 	;;
 reload)
-	restart_ambxst
+	restart_nothingless
 	;;
 quit)
 	# Kill axctl processes first
 	pkill -f "axctl.*daemon" 2>/dev/null || true
 	pkill -f "axctl subscribe" 2>/dev/null || true
 
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_nothingless_pid_cached)
 	if [ -n "$PID" ]; then
 		echo "Stopping Ambxst (PID $PID)..."
 		kill "$PID"
@@ -301,7 +301,7 @@ screen)
 			notify-send "Screen On" "Not supported on this compositor yet"
 		fi
 	else
-		echo "Usage: ambxst screen [on|off]"
+		echo "Usage: nothingless screen [on|off]"
 		exit 1
 	fi
 	;;
@@ -316,13 +316,13 @@ suspend)
 	fi
 	;;
 brightness)
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_nothingless_pid_cached)
 	if [ -z "$PID" ]; then
 		echo "Error: Ambxst is not running"
 		exit 1
 	fi
 
-	BRIGHTNESS_SAVE_FILE="/tmp/ambxst_brightness_saved.txt"
+	BRIGHTNESS_SAVE_FILE="/tmp/nothingless_brightness_saved.txt"
 
 	# Parse arguments
 	ARG2="${2:-}"
@@ -447,7 +447,7 @@ brightness)
 		exit 0
 	else
 		echo "Error: Invalid brightness value. Must be 0-100 or +/-delta."
-		echo "Run 'ambxst help' for usage information"
+		echo "Run 'nothingless help' for usage information"
 		exit 1
 	fi
 
@@ -549,9 +549,9 @@ install)
 		mkdir -p "$HYPR_DIR"
 
 		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
-			append_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE" "$AMBXST_HYPR_LUA_BLOCK"
+			append_nothingless_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE" "$AMBXST_HYPR_LUA_BLOCK"
 		else
-			append_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
+			append_nothingless_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
 		fi
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
@@ -565,8 +565,8 @@ remove)
 		HYPR_LUA="$HYPR_DIR/hyprland.lua"
 		HYPR_CONF="$HYPR_DIR/hyprland.conf"
 
-		remove_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE"
-		remove_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE"
+		remove_nothingless_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE"
+		remove_nothingless_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE"
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
@@ -583,10 +583,10 @@ goodbye)
 	fi
 
 	if [ -f /etc/NIXOS ]; then
-		if nix profile list 2>/dev/null | grep -q "Ambxst"; then
+		if nix profile list 2>/dev/null | grep -q "NothingLess"; then
 			echo "Removing from nix profile..."
 			nix profile remove Ambxst
-		elif command -v ambxst >/dev/null 2>&1; then
+		elif command -v nothingless >/dev/null 2>&1; then
 			echo "Ambxst was declared in this system. Please remove it from your configuration in order to uninstall."
 		else
 			echo "Ambxst is not installed."
@@ -601,12 +601,12 @@ goodbye)
 		REMOVE_CONFIG=true
 	fi
 
-	rm -rf "$HOME/.local/src/ambxst"
-	rm -rf "$HOME/.local/share/ambxst"
-	rm -rf "$HOME/.local/state/ambxst"
+	rm -rf "$HOME/.local/src/nothingless"
+	rm -rf "$HOME/.local/share/nothingless"
+	rm -rf "$HOME/.local/state/nothingless"
 
 	if [ "$REMOVE_CONFIG" = true ]; then
-		rm -rf "$HOME/.config/ambxst"
+		rm -rf "$HOME/.config/nothingless"
 		echo "Configuration files removed."
 	fi
 
@@ -631,7 +631,7 @@ help | --help | -h)
 	unset HL_INITIAL_WORKSPACE_TOKEN
 
 	# Cache this script's PID before exec (for fast PID lookups in future CLI calls)
-	echo $$ >/tmp/ambxst.pid
+	echo $$ >/tmp/nothingless.pid
 
 	# Launch QuickShell with the main shell.qml
 	# If NIXGL_BIN is set (NixOS/Nix setup), use it. Otherwise, just run qs directly.
@@ -643,7 +643,7 @@ help | --help | -h)
 	;;
 *)
 	echo "Error: Unknown command '$1'"
-	echo "Run 'ambxst help' for usage information"
+	echo "Run 'nothingless help' for usage information"
 	exit 1
 	;;
 esac

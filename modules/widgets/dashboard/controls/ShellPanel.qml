@@ -1116,7 +1116,7 @@ Item {
                         TextInputRow {
                             label: "Custom Text"
                             visible: Config.notch.noMediaDisplay === "custom"
-                            value: Config.notch.customText ?? "Ambxst"
+                            value: Config.notch.customText ?? "NothingLess"
                             placeholder: "Enter text..."
                             onValueEdited: newValue => {
                                 if (newValue !== Config.notch.customText) {
@@ -1759,7 +1759,7 @@ Item {
                         ActionButton {
                             text: "About Ambxst " + Config.version
                             icon: Icons.info
-                            onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/ambxst"])
+                            onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/nothingless"])
                         }
 
                         ActionButton {

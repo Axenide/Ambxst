@@ -45,31 +45,31 @@ QtObject {
         if (!Config.keybindsLoader.loaded)
             return;
 
-        const ambxst = Config.keybindsLoader.adapter.ambxst;
+        const nothingless = Config.keybindsLoader.adapter.nothingless;
 
-        // Store ambxst core keybinds
+        // Store nothingless core keybinds
         previousAmbxstBinds = {
-            ambxst: {
-                launcher: cloneKeybind(ambxst.launcher),
-                dashboard: cloneKeybind(ambxst.dashboard),
-                assistant: cloneKeybind(ambxst.assistant),
-                clipboard: cloneKeybind(ambxst.clipboard),
-                emoji: cloneKeybind(ambxst.emoji),
-                notes: cloneKeybind(ambxst.notes),
-                tmux: cloneKeybind(ambxst.tmux),
-                wallpapers: cloneKeybind(ambxst.wallpapers)
+            nothingless: {
+                launcher: cloneKeybind(nothingless.launcher),
+                dashboard: cloneKeybind(nothingless.dashboard),
+                assistant: cloneKeybind(nothingless.assistant),
+                clipboard: cloneKeybind(nothingless.clipboard),
+                emoji: cloneKeybind(nothingless.emoji),
+                notes: cloneKeybind(nothingless.notes),
+                tmux: cloneKeybind(nothingless.tmux),
+                wallpapers: cloneKeybind(nothingless.wallpapers)
             },
             system: {
-                overview: cloneKeybind(ambxst.system.overview),
-                powermenu: cloneKeybind(ambxst.system.powermenu),
-                config: cloneKeybind(ambxst.system.config),
-                lockscreen: cloneKeybind(ambxst.system.lockscreen),
-                tools: cloneKeybind(ambxst.system.tools),
-                screenshot: cloneKeybind(ambxst.system.screenshot),
-                screenrecord: cloneKeybind(ambxst.system.screenrecord),
-                lens: cloneKeybind(ambxst.system.lens),
-                reload: ambxst.system.reload ? cloneKeybind(ambxst.system.reload) : null,
-                quit: ambxst.system.quit ? cloneKeybind(ambxst.system.quit) : null
+                overview: cloneKeybind(nothingless.system.overview),
+                powermenu: cloneKeybind(nothingless.system.powermenu),
+                config: cloneKeybind(nothingless.system.config),
+                lockscreen: cloneKeybind(nothingless.system.lockscreen),
+                tools: cloneKeybind(nothingless.system.tools),
+                screenshot: cloneKeybind(nothingless.system.screenshot),
+                screenrecord: cloneKeybind(nothingless.system.screenrecord),
+                lens: cloneKeybind(nothingless.system.lens),
+                reload: nothingless.system.reload ? cloneKeybind(nothingless.system.reload) : null,
+                quit: nothingless.system.quit ? cloneKeybind(nothingless.system.quit) : null
             }
         };
 
@@ -162,19 +162,19 @@ QtObject {
 
         // First, unbind previous keybinds if we have them stored
         if (hasPreviousBinds) {
-            // Unbind previous ambxst core keybinds
-            if (previousAmbxstBinds.ambxst) {
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.launcher));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.dashboard));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.assistant));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.clipboard));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.emoji));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.notes));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.tmux));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.wallpapers));
+            // Unbind previous nothingless core keybinds
+            if (previousAmbxstBinds.nothingless) {
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.launcher));
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.dashboard));
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.assistant));
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.clipboard));
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.emoji));
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.notes));
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.tmux));
+                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.nothingless.wallpapers));
             }
 
-            // Unbind previous ambxst system keybinds
+            // Unbind previous nothingless system keybinds
             if (previousAmbxstBinds.system) {
                 payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.overview));
                 payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.powermenu));
@@ -202,26 +202,26 @@ QtObject {
         }
 
         // Process core keybinds.
-        const ambxst = Config.keybindsLoader.adapter.ambxst;
+        const nothingless = Config.keybindsLoader.adapter.nothingless;
 
         // Unbind current core keybinds (ensures clean state before rebinding)
-        payload.unbinds.push(makeUnbindTarget(ambxst.launcher));
-        payload.unbinds.push(makeUnbindTarget(ambxst.dashboard));
-        payload.unbinds.push(makeUnbindTarget(ambxst.assistant));
-        payload.unbinds.push(makeUnbindTarget(ambxst.clipboard));
-        payload.unbinds.push(makeUnbindTarget(ambxst.emoji));
-        payload.unbinds.push(makeUnbindTarget(ambxst.notes));
-        payload.unbinds.push(makeUnbindTarget(ambxst.tmux));
-        payload.unbinds.push(makeUnbindTarget(ambxst.wallpapers));
+        payload.unbinds.push(makeUnbindTarget(nothingless.launcher));
+        payload.unbinds.push(makeUnbindTarget(nothingless.dashboard));
+        payload.unbinds.push(makeUnbindTarget(nothingless.assistant));
+        payload.unbinds.push(makeUnbindTarget(nothingless.clipboard));
+        payload.unbinds.push(makeUnbindTarget(nothingless.emoji));
+        payload.unbinds.push(makeUnbindTarget(nothingless.notes));
+        payload.unbinds.push(makeUnbindTarget(nothingless.tmux));
+        payload.unbinds.push(makeUnbindTarget(nothingless.wallpapers));
 
         // Bind current core keybinds
-        [ambxst.launcher, ambxst.dashboard, ambxst.assistant, ambxst.clipboard, ambxst.emoji, ambxst.notes, ambxst.tmux, ambxst.wallpapers].forEach(bind => {
+        [nothingless.launcher, nothingless.dashboard, nothingless.assistant, nothingless.clipboard, nothingless.emoji, nothingless.notes, nothingless.tmux, nothingless.wallpapers].forEach(bind => {
             const resolved = makeBindFromCore(bind);
             if (resolved) payload.binds.push(resolved);
         });
 
         // System keybinds
-        const system = ambxst.system;
+        const system = nothingless.system;
 
         // Unbind current system keybinds
         payload.unbinds.push(makeUnbindTarget(system.overview));

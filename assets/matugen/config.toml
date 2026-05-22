@@ -1,6 +1,6 @@
-[templates.ambxst]
+[templates.nothingless]
 input_path = "colors.json"
-output_path = "~/.cache/ambxst/colors.json"
+output_path = "~/.cache/nothingless/colors.json"
 
 [config.custom_colors.red]
 color = "#FF0000"

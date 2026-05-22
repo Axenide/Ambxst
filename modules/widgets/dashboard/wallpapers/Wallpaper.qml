@@ -18,7 +18,7 @@ PanelWindow {
     }
 
     WlrLayershell.layer: WlrLayer.Background
-    WlrLayershell.namespace: "ambxst:wallpaper"
+    WlrLayershell.namespace: "nothingless:wallpaper"
     exclusionMode: ExclusionMode.Ignore
 
     color: "transparent"
@@ -99,7 +99,7 @@ PanelWindow {
     // -------------------------------------------------------------------
     // Color presets
     // -------------------------------------------------------------------
-    property string colorPresetsDir: Quickshell.env("HOME") + "/.config/ambxst/colors"
+    property string colorPresetsDir: Quickshell.env("HOME") + "/.config/nothingless/colors"
     property string officialColorPresetsDir: decodeURIComponent(Qt.resolvedUrl("../../../../assets/colors").toString().replace("file://", ""))
     onColorPresetsDirChanged: console.log("Color Presets Directory:", colorPresetsDir)
     property list<string> colorPresets: []
@@ -133,7 +133,7 @@ PanelWindow {
         var mode = Config.theme.lightMode ? "light.json" : "dark.json";
         var officialFile = officialColorPresetsDir + "/" + activeColorPreset + "/" + mode;
         var userFile = colorPresetsDir + "/" + activeColorPreset + "/" + mode;
-        var dest = Quickshell.env("HOME") + "/.cache/ambxst/colors.json";
+        var dest = Quickshell.env("HOME") + "/.cache/nothingless/colors.json";
 
         var cmd = "if [ -f '" + officialFile + "' ]; then cp '" + officialFile + "' '" + dest + "'; else cp '" + userFile + "' '" + dest + "'; fi";
         console.log("Applying color preset:", activeColorPreset);
@@ -167,7 +167,7 @@ PanelWindow {
         var fileName = pathParts.pop();
         var thumbnailName = fileName + ".jpg";
         var relativeDir = pathParts.join('/');
-        return Quickshell.env("HOME") + "/.cache/ambxst/thumbnails/" + relativeDir + "/" + thumbnailName;
+        return Quickshell.env("HOME") + "/.cache/nothingless/thumbnails/" + relativeDir + "/" + thumbnailName;
     }
 
     function getDisplaySource(filePath) {
@@ -192,7 +192,7 @@ PanelWindow {
         if (fileType === 'image') return filePath;
         if (fileType === 'video' || fileType === 'gif') {
             var fileName = filePath.split('/').pop();
-            return Quickshell.env("HOME") + "/.cache/ambxst/lockscreen/" + fileName + ".jpg";
+            return Quickshell.env("HOME") + "/.cache/nothingless/lockscreen/" + fileName + ".jpg";
         }
         return filePath;
     }
@@ -204,7 +204,7 @@ PanelWindow {
         }
         console.log("Generating lockscreen frame for:", filePath);
         var scriptPath = decodeURIComponent(Qt.resolvedUrl("../../../../scripts/lockwall.py").toString().replace("file://", ""));
-        var dataPath = Quickshell.env("HOME") + "/.cache/ambxst";
+        var dataPath = Quickshell.env("HOME") + "/.cache/nothingless";
         lockscreenWallpaperScript.command = ["python3", scriptPath, filePath, dataPath];
         lockscreenWallpaperScript.running = true;
     }
@@ -257,7 +257,7 @@ PanelWindow {
     function getPalettePath(filePath) {
         var basePath = wallpaperDir.endsWith("/") ? wallpaperDir : wallpaperDir + "/";
         var relativePath = filePath.replace(basePath, "");
-        return Quickshell.env("HOME") + "/.cache/ambxst/palettes/" + relativePath + ".json";
+        return Quickshell.env("HOME") + "/.cache/nothingless/palettes/" + relativePath + ".json";
     }
 
     function scanSubfolders() {
@@ -461,7 +461,7 @@ PanelWindow {
     // -------------------------------------------------------------------
     FileView {
         id: wallpaperConfig
-        path: Quickshell.env("HOME") + "/.cache/ambxst/wallpapers.json"
+        path: Quickshell.env("HOME") + "/.cache/nothingless/wallpapers.json"
         watchChanges: true
 
         onLoaded: {
@@ -546,7 +546,7 @@ PanelWindow {
     Process {
         id: checkWallpapersJson
         running: false
-        command: ["test", "-f", Quickshell.env("HOME") + "/.cache/ambxst/wallpapers.json"]
+        command: ["test", "-f", Quickshell.env("HOME") + "/.cache/nothingless/wallpapers.json"]
         onExited: function (exitCode) {
             if (exitCode !== 0) {
                 console.log("wallpapers.json does not exist, creating with fallbackDir");
@@ -579,8 +579,8 @@ PanelWindow {
         id: thumbnailGeneratorScript
         running: false
         command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../../../scripts/thumbgen.py").toString().replace("file://", "")),
-                 Quickshell.env("HOME") + "/.cache/ambxst/wallpapers.json",
-                 Quickshell.env("HOME") + "/.cache/ambxst", fallbackDir]
+                 Quickshell.env("HOME") + "/.cache/nothingless/wallpapers.json",
+                 Quickshell.env("HOME") + "/.cache/nothingless", fallbackDir]
         stdout: StdioCollector { onStreamFinished: { if (text.length > 0) console.log("Thumbnail Generator:", text); } }
         stderr: StdioCollector { onStreamFinished: { if (text.length > 0) console.warn("Thumbnail Generator Error:", text); } }
         onExited: function (exitCode) {

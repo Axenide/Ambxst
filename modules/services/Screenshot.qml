@@ -16,8 +16,8 @@ QtObject {
     signal lensImageReady(string path)
     signal imageSaved(string path) // New signal for Overlay
 
-    property string tempPathBase: "/tmp/ambxst_freeze"
-    property string cropPath: "/tmp/ambxst_crop.png"
+    property string tempPathBase: "/tmp/nothingless_freeze"
+    property string cropPath: "/tmp/nothingless_crop.png"
     property string lensPath: "/tmp/image.png"
     
     property string captureMode: "normal"

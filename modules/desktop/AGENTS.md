@@ -20,7 +20,7 @@ Desktop background layer with icon grid, supporting drag-and-drop reordering, th
 - Grid uses `Repeater` bound to `DesktopService.items` (list model)
 - Cell calculation: `maxRows = height / cellHeight`, `maxColumns = width / cellWidth`
 - Icon index mapped to grid: `x = floor(index / maxRows) * cellWidth`, `y = (index % maxRows) * cellHeight`
-- Layer: `WlrLayer.Bottom` with namespace `"ambxst:desktop"`
+- Layer: `WlrLayer.Bottom` with namespace `"NothingLess:desktop"`
 - Thumbnail refresh uses integer property increment pattern
 - Context menu via `Visibilities.contextMenu.openCustomMenu()`
 
