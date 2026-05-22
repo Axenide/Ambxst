@@ -7,11 +7,11 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Th3LastGamer9/NothingLess/stargazers">
-    <img src="https://img.shields.io/github/stars/Th3LastGamer9/NothingLess?style=for-the-badge&logo=github&color=FFFFFF&logoColor=FFFFFF&labelColor=000000" alt="stars">
+  <a href="https://github.com/Leriart/NothingLess">
+    <img src="https://img.shields.io/badge/NothingLess-0A0A0A?style=for-the-badge&logo=github&logoColor=FFFFFF" alt="repo">
   </a>
-  <a href="https://github.com/Th3LastGamer9/NothingLess/forks">
-    <img src="https://img.shields.io/github/forks/Th3LastGamer9/NothingLess?style=for-the-badge&logo=github&color=444444&logoColor=FFFFFF&labelColor=000000" alt="forks">
+  <a href="https://github.com/Axenide/Ambxst">
+    <img src="https://img.shields.io/badge/Fork%20of-Ambxst-E80012?style=for-the-badge&logo=github&logoColor=FFFFFF&labelColor=0A0A0A" alt="fork">
   </a>
 </p>
 
