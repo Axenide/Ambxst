@@ -1762,7 +1762,6 @@ Item {
                             onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/Leriart/NothingLess"])
                         }
 
-                        ActionButton {
 
                         Text {
                             text: "OCR Languages"
