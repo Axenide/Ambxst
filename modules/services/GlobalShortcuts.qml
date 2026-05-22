@@ -46,6 +46,7 @@ QtObject {
             case "dashboard-wallpapers": toggleDashboardTab(1); break;
             case "dashboard-kanban": toggleDashboardTab(2); break;
             case "dashboard-todo": toggleDashboardTab(3); break;
+            case "dashboard-habits": toggleDashboardTab(4); break;
             case "dashboard-controls": toggleSettings(); break;
 
             // System

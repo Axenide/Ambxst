@@ -12,6 +12,7 @@ import qs.modules.widgets.dashboard.controls
 import qs.modules.widgets.dashboard.wallpapers
 import qs.modules.widgets.dashboard.metrics
 import qs.modules.widgets.dashboard.todo
+import qs.modules.widgets.dashboard.habits
 import qs.config
 
 NotchAnimationBehavior {
@@ -23,7 +24,7 @@ NotchAnimationBehavior {
         property int currentTab: GlobalStates.dashboardCurrentTab
     }
 
-    readonly property var tabModel: [Icons.widgets, Icons.wallpapers, Icons.heartbeat, Icons.list]
+    readonly property var tabModel: [Icons.widgets, Icons.wallpapers, Icons.heartbeat, Icons.list, Icons.repeat]
     readonly property int tabCount: tabModel.length
     readonly property int tabSpacing: 8
 
@@ -455,6 +456,13 @@ NotchAnimationBehavior {
                     sourceComponent: todoComponent
                     z: visible ? 1 : 0
                 }
+
+                // Tab 4: Habits
+                TabLoader {
+                    property int index: 4
+                    sourceComponent: habitsComponent
+                    z: visible ? 1 : 0
+                }
                 
                 // Helper to access current item for focus
                 property var currentItem: {
@@ -463,6 +471,7 @@ NotchAnimationBehavior {
                         case 1: return children[1].item;
                         case 2: return children[2].item;
                         case 3: return children[3].item;
+                        case 4: return children[4].item;
                         default: return null;
                     }
                 }
@@ -592,5 +601,10 @@ NotchAnimationBehavior {
     Component {
         id: todoComponent
         TodoTab {}
+    }
+
+    Component {
+        id: habitsComponent
+        HabitsTab {}
     }
 }
