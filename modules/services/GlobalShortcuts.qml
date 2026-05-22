@@ -14,6 +14,12 @@ QtObject {
     readonly property string appId: "nothingless"
     readonly property string ipcPipe: "/tmp/nothingless_ipc.pipe"
 
+    // Toggle metrics process
+    property Process toggleMetricProcess: Process {
+        command: ["sh", "-c", "\/home/leo/.local/lib/nothingless/toggle-metrics.sh"]
+        running: false
+    }
+
     // High-performance Pipe Listener (Daemon mode)
     property Process pipeListener: Process {
         command: ["bash", "-c", "rm -f " + root.ipcPipe + "; mkfifo " + root.ipcPipe + "; tail -f " + root.ipcPipe]
@@ -30,10 +36,9 @@ QtObject {
     }
 
     function toggleMetrics() {
-        var proc = Io.Process.create();
-        proc.command = ["sh", "-c", "jq '.showMetrics |= not' $HOME/.config/nothingless/config/notch.json > $HOME/.config/nothingless/config/notch.json.tmp && mv $HOME/.config/nothingless/config/notch.json.tmp $HOME/.config/nothingless/config/notch.json"];
-        proc.running = true;
-        console.log("Metrics toggled via jq");
+        var toggleProc = toggleMetricProcess;
+        toggleProc.running = true;
+        console.log("Metrics toggled via script");
     }
 
     function run(command) {
