@@ -3535,9 +3535,12 @@ Singleton {
     // Cache for resolved colors to avoid repeated Colors singleton lookups.
     // StyledRect calls resolveColor 3-10 times per instance, per frame.
     // Most color names repeat frequently ("background", "surface", "primary", ...).
+    // Uses a generation counter instead of cross-module invalidation:
+    // every time the cache is accessed after a potential theme change, it
+    // auto-detects staleness by checking one sentinel key.
     property var _colorCache: ({})
-    property int _colorCacheHits: 0
-    property int _colorCacheMisses: 0
+    property var _colorCacheSentinel: "transparent"  // tracks last known sentinel value
+    property var _colorCacheSentinelKey: "background"  // key used as canary
 
     function resolveColor(colorValue) {
         if (!colorValue) return "transparent";
@@ -3545,6 +3548,15 @@ Singleton {
         // Cache key: use the raw value directly (hex strings skip cache)
         if (typeof colorValue === "string" && colorValue.charCodeAt(0) === 35) { // '#'
             return colorValue; // hex colors don't need resolution
+        }
+
+        // Auto-invalidate: check if a sentinel key's value has changed since last cache
+        if (typeof Colors !== 'undefined' && Colors) {
+            const currentSentinel = Colors[root._colorCacheSentinelKey];
+            if (currentSentinel !== root._colorCacheSentinel) {
+                root._colorCache = {};
+                root._colorCacheSentinel = currentSentinel;
+            }
         }
 
         // Fast path: cache hit
@@ -3558,11 +3570,6 @@ Singleton {
         // Cache it (simple string key → string value, no eviction needed — color palette is bounded)
         root._colorCache[colorValue] = resolved;
         return resolved;
-    }
-
-    // Called when theme/colors change to invalidate cached resolutions
-    function invalidateColorCache() {
-        root._colorCache = {};
     }
 
     function resolveColorWithOpacity(colorValue, opacity) {

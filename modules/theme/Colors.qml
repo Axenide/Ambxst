@@ -12,7 +12,6 @@ FileView {
     watchChanges: true
     onFileChanged: {
         reload();
-        Config.invalidateColorCache();
         generationTimer.restart();
     }
 
