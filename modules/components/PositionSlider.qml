@@ -41,8 +41,8 @@ Item {
         backgroundColor: root.useCustomColors ? root.customBackgroundColor : Colors.shadow
         wavy: false // Always use CarouselProgress logic
         playing: root.isPlaying // Control animation state via playing property
-        _wavyAmplitude: root.isPlaying ? 1 : 0.0
-        _wavyFrequency: root.isPlaying ? 8 : 0
+        wavyAmplitude: root.isPlaying ? 1 : 0.0
+        wavyFrequency: root.isPlaying ? 8 : 0
         heightMultiplier: root.player ? 8 : 4
         smoothDrag: true
         scroll: false
