@@ -166,7 +166,7 @@ Item {
     Loader {
         id: persistentDashboardViewLoader
         active: false
-        sourceComponent: Component { DashboardView { visible: false } }
+        sourceComponent: Component { DashboardView { visible: false; screenName: root.screen.name } }
     }
 
     // Persistent power menu view
@@ -277,7 +277,7 @@ Item {
                 anchors.top: root.notchPosition === "top" ? parent.top : undefined
                 anchors.bottom: root.notchPosition === "bottom" ? parent.bottom : undefined
 
-                readonly property int frameOffset: (Config.bar && Config.bar.frameEnabled) ? ((Config.bar.frameThickness !== undefined) ? Config.bar.frameThickness : 6) : 0
+                readonly property int frameOffset: (Config.bar && Config.bar.frameEnabled && !root.activeWindowFullscreen) ? ((Config.bar.frameThickness !== undefined) ? Config.bar.frameThickness : 6) : 0
 
                 anchors.topMargin: (root.notchPosition === "top" ? (Config.notchTheme === "default" ? 0 : (Config.notchTheme === "island" ? 4 : 0)) : 0) + (root.notchPosition === "top" ? frameOffset : 0)
                 anchors.bottomMargin: (root.notchPosition === "bottom" ? (Config.notchTheme === "default" ? 0 : (Config.notchTheme === "island" ? 4 : 0)) : 0) + (root.notchPosition === "bottom" ? frameOffset : 0)

@@ -84,11 +84,18 @@ QtObject {
         }
     }
 
-    function toggleSettings() {
-        GlobalStates.settingsWindowVisible = !GlobalStates.settingsWindowVisible;
-        if (GlobalStates.settingsWindowVisible) {
-            Visibilities.setActiveModule("");
+    function toggleSettings(screenName) {
+        const willOpen = !GlobalStates.settingsWindowVisible;
+        if (willOpen) {
+            const targetMonitor = screenName ? AxctlService.monitorFor(screenName) : AxctlService.focusedMonitor;
+            GlobalStates.settingsTargetWorkspaceId = targetMonitor?.activeWorkspace?.id || AxctlService.focusedMonitor?.activeWorkspace?.id || AxctlService.focusedWorkspace?.id || 0;
+            GlobalStates.settingsTargetScreenName = targetMonitor?.name || AxctlService.focusedMonitor?.name || "";
+            if (targetMonitor && targetMonitor.id !== AxctlService.focusedMonitor?.id) {
+                AxctlService.dispatch(`focusmonitor ${targetMonitor.id}`);
+            }
+            Qt.callLater(() => Visibilities.setActiveModule(""));
         }
+        GlobalStates.settingsWindowVisible = willOpen;
     }
 
     function toggleSimpleModule(moduleName) {

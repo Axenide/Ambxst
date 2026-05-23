@@ -17,6 +17,7 @@ NotchAnimationBehavior {
     id: root
 
     property int leftPanelWidth
+    property string screenName: ""
 
     property var state: QtObject {
         property int currentTab: GlobalStates.dashboardCurrentTab
@@ -331,7 +332,7 @@ NotchAnimationBehavior {
                     }
                 }
 
-                onClicked: GlobalShortcuts.toggleSettings()
+                onClicked: GlobalShortcuts.toggleSettings(root.screenName)
             }
         }
 

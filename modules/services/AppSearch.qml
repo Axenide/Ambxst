@@ -178,47 +178,36 @@ Singleton {
     
 
     function launchApp(app) {
-        // Try to find the desktop file path first (Best for gio launch)
-        // Check standard properties for path
         const path = app.fileName || app.path || app.filePath;
         
         if (path && path.toString().endsWith('.desktop')) {
             const escapedPath = path.toString().replace(/'/g, "'\\''");
-            const p = Qt.createQmlObject('import Quickshell.Io; Process { }', root);
-            // cd ~ ensures we start in home, setsid detaches from parent process group
-            p.command = ["bash", "-c", "cd ~ && setsid gio launch '" + escapedPath + "' > /dev/null 2>&1 &"];
-            p.running = true;
+            runInActiveWorkspace("gio launch '" + escapedPath + "'");
             return;
         }
 
-        // Fallback: Construct command manually from parsed arguments
-        // This handles cases where we don't have the desktop file path but have the command
         if (app.command && app.command.length > 0) {
-            // Filter out Field Codes like %U, %F which are placeholders for file arguments
             const safeArgs = [];
             for (let i = 0; i < app.command.length; i++) {
                 const arg = app.command[i];
-                // Skip standalone field codes
                 if (/^%[fFuUijkc]$/.test(arg)) continue;
-                // If arg contains field code but isn't just one, typically we might want to strip it
-                // but let's just quote it safely. Most %codes are separate args.
-                
-                // Quote argument to preserve spaces and special chars
                 safeArgs.push("'" + arg.replace(/'/g, "'\\''") + "'");
             }
 
             if (safeArgs.length > 0) {
-                const cmdString = safeArgs.join(" ");
-                const p = Qt.createQmlObject('import Quickshell.Io; Process { }', root);
-                // Run in background, detached, from HOME
-                p.command = ["bash", "-c", "cd ~ && setsid " + cmdString + " > /dev/null 2>&1 &"];
-                p.running = true;
+                runInActiveWorkspace(safeArgs.join(" "));
                 return;
             }
         }
 
-        // Final fallback (Will use project dir as CWD unfortunately)
         app.execute();
+    }
+
+    function runInActiveWorkspace(command) {
+        const p = Qt.createQmlObject('import Quickshell.Io; Process { }', root);
+        p.command = ["bash", "-c", "cd ~ && env -u HL_INITIAL_WORKSPACE_TOKEN setsid " + command + " < /dev/null > /dev/null 2>&1 &"];
+        p.onExited.connect(() => p.destroy());
+        p.running = true;
     }
 
     function getAllApps() {
