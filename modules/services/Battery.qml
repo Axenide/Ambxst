@@ -1,6 +1,7 @@
 pragma Singleton
 
 import QtQuick
+import Quickshell.Io
 import Quickshell
 import Quickshell.Services.Notifications
 import Quickshell.Services.UPower
