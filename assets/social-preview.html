@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NothingLess Social Preview</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    width: 1280px;
+    height: 640px;
+    overflow: hidden;
+    background: #0d0d0d;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Grid background */
+  .grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(233,9,9,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(233,9,9,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* Glow circles */
+  .glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    mix-blend-mode: screen;
+  }
+
+  .glow-1 {
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(233,9,9,0.25), transparent);
+    top: -150px;
+    right: -100px;
+  }
+
+  .glow-2 {
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(233,9,9,0.12), transparent);
+    bottom: -100px;
+    left: -80px;
+  }
+
+  /* Red accent line */
+  .accent-line {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 6px;
+    height: 100%;
+    background: linear-gradient(180deg,
+      rgba(233,9,9,0) 0%,
+      rgba(233,9,9,0.8) 20%,
+      rgba(233,9,9,1) 50%,
+      rgba(233,9,9,0.8) 80%,
+      rgba(233,9,9,0) 100%
+    );
+  }
+
+  /* Content */
+  .content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 60px;
+    padding: 0 80px;
+  }
+
+  /* Logo area */
+  .logo-area {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .logo-text {
+    font-size: 110px;
+    font-weight: 800;
+    letter-spacing: -4px;
+    line-height: 1;
+    color: #ffffff;
+    text-shadow: 0 0 40px rgba(233,9,9,0.4);
+  }
+
+  .logo-text .slash {
+    color: #e90909;
+    text-shadow: 0 0 60px rgba(233,9,9,0.6);
+  }
+
+  .subtitle {
+    font-size: 14px;
+    font-weight: 300;
+    color: #888;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-top: 16px;
+  }
+
+  .subtitle span {
+    color: #e90909;
+  }
+
+  /* Divider */
+  .divider {
+    width: 2px;
+    height: 180px;
+    background: linear-gradient(180deg,
+      transparent,
+      rgba(255,255,255,0.15) 20%,
+      rgba(255,255,255,0.3) 50%,
+      rgba(255,255,255,0.15) 80%,
+      transparent
+    );
+  }
+
+  /* Info */
+  .info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .info .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 300;
+    color: #666;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .info .tag .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #e90909;
+  }
+
+  .info h2 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ccc;
+    line-height: 1.3;
+  }
+
+  .info h2 strong {
+    color: #fff;
+  }
+
+  .info .features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .info .features .pill {
+    padding: 4px 14px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 300;
+    color: #777;
+    letter-spacing: 1px;
+  }
+
+  .info .features .pill.red {
+    border-color: rgba(233,9,9,0.3);
+    color: #e90909;
+  }
+
+  /* Bottom bar */
+  .bottom-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .bottom-bar .sep {
+    color: #333;
+  }
+
+  /* Version badge */
+  .version {
+    position: absolute;
+    top: 24px;
+    right: 32px;
+    font-size: 11px;
+    font-weight: 300;
+    color: #444;
+    letter-spacing: 2px;
+  }
+
+  .version span {
+    color: #e90909;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="grid"></div>
+  <div class="glow glow-1"></div>
+  <div class="glow glow-2"></div>
+  <div class="accent-line"></div>
+
+  <div class="version"><span>✦</span> v0.1</div>
+
+  <div class="content">
+    <div class="logo-area">
+      <div class="logo-text">
+        NOTHING<span class="slash">//</span>LESS
+      </div>
+      <div class="subtitle">A <span>WAYLAND</span> SHELL BY LERIART</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="info">
+      <div class="tag"><span class="dot"></span> Built with Quickshell</div>
+      <h2>
+        <strong>High-performance</strong>, deeply<br>
+        customizable Wayland shell.<br>
+        <span style="color:#e90909;">Less is more.</span>
+      </h2>
+      <div class="features">
+        <span class="pill red">Hyprland</span>
+        <span class="pill">Quickshell</span>
+        <span class="pill">Qt6</span>
+        <span class="pill">NixOS</span>
+        <span class="pill">Arch</span>
+        <span class="pill">Fedora</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom-bar">
+    <span>github.com/Leriart/NothingLess</span>
+    <span class="sep">|</span>
+    <span>Forked from Ambxst</span>
+    <span class="sep">|</span>
+    <span>MIT License</span>
+  </div>
+</div>
+</body>
+</html>
