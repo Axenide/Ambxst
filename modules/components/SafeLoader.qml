@@ -13,7 +13,9 @@ Item {
     property color placeholderColor: "#808080"
     property var fallbackItem
 
-    property Loader loader: Loader {
+    // Internal loader — not exposed as public API to prevent callers from
+    // bypassing root.sourceComponent and writing to it directly.
+    Loader {
         id: internalLoader
         anchors.fill: parent
         sourceComponent: root.sourceComponent
@@ -33,13 +35,13 @@ Item {
         root.loadError(errorString);
     }
 
-    // Show loading state
-    property bool isLoading: loader.status === Loader.Loading
-    property bool hasError: loader.status === Loader.Error
-    property bool isReady: loader.status === Loader.Ready
+    // Read-only state properties
+    readonly property bool isLoading: internalLoader.status === Loader.Loading
+    readonly property bool hasError:  internalLoader.status === Loader.Error
+    readonly property bool isReady:   internalLoader.status === Loader.Ready
 
     // Fallback content when loading or error
-    Rectangle {
+    StyledRect {
         id: placeholder
         anchors.fill: parent
         visible: root.showPlaceholder && (root.isLoading || root.hasError) && !root.fallbackItem
@@ -53,22 +55,26 @@ Item {
         }
     }
 
-    // Custom fallback item
-    property Item fallbackContainer: Item {
+    // Container for a caller-supplied fallback item; shown on error only.
+    Item {
+        id: fallbackContainer
         anchors.fill: parent
         visible: root.fallbackItem !== null && root.hasError
         z: 10
     }
 
-    // Set fallback item from outside
+    // Reparent a caller-supplied item into the fallback container so it
+    // becomes visible when the load fails.
     function setFallback(item) {
         root.fallbackItem = item;
+        item.parent = fallbackContainer;
     }
 
-    // Retry loading
+    // Retry loading by null-cycling sourceComponent (standard QML pattern).
     function retry() {
-        var current = loader.sourceComponent;
-        loader.sourceComponent = null;
-        loader.sourceComponent = current;
+        var current = root.sourceComponent;
+        internalLoader.sourceComponent = null;
+        internalLoader.sourceComponent = current;
     }
 }
+
