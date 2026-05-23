@@ -1550,9 +1550,6 @@ Item {
 
         ColorPickerView {
             id: colorPicker
-            onMouseOverChanged: over => {
-                mainFlickable.interactive = !over;
-            }
             anchors.fill: parent
             anchors.leftMargin: root.sideMargin
             anchors.rightMargin: root.sideMargin
