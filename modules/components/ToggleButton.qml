@@ -43,7 +43,7 @@ Button {
 
         Rectangle {
             anchors.fill: parent
-            color: parent.item || "transparent"
+            color: Styling.srItem("overprimary")
             opacity: root.pressed ? 0.5 : (root.btnHovered ? 0.25 : 0)
             radius: parent.radius ?? 0
 
