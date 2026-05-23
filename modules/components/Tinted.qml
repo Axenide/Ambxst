@@ -71,8 +71,10 @@ Item {
             }
             
             // Update texture when sourceItem changes
+            // FIX: Guard enabled to prevent segfault when sourceItem is null during incubation
             Connections {
                 target: root.sourceItem
+                enabled: root.sourceItem !== null
                 function onSourceChanged() { internalSource.scheduleUpdate(); }
                 function onStatusChanged() { internalSource.scheduleUpdate(); }
             }

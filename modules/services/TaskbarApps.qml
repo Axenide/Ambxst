@@ -74,15 +74,19 @@ Singleton {
     }
 
     // Update on config change
+    // FIX: Guard enabled to prevent segfault when config properties are null mid-incubation
     Connections {
         target: Config.pinnedApps ?? null
+        enabled: Config.pinnedApps !== null
         function onAppsChanged() {
             updateTimer.restart();
         }
     }
 
+    // FIX: Guard enabled to prevent segfault when config properties are null mid-incubation
     Connections {
         target: Config.dock ?? null
+        enabled: Config.dock !== null
         function onIgnoredAppRegexesChanged() {
             updateTimer.restart();
         }

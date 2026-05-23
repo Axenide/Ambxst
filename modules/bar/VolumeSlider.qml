@@ -140,8 +140,10 @@ Item {
                 }
             }
 
+            // FIX: Guard enabled to prevent segfault when PipeWire node is destroyed mid-incubation
             Connections {
                 target: Audio.sink?.audio ?? null
+                enabled: Audio.sink?.audio !== null
                 ignoreUnknownSignals: true
                 function onVolumeChanged() {
                     if (Audio.sink?.audio) {

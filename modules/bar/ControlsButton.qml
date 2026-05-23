@@ -141,8 +141,10 @@ Item {
                     }
                 }
 
+                // FIX: Guard enabled to prevent segfault when PipeWire node is destroyed mid-incubation
                 Connections {
                     target: Audio.sink?.audio ?? null
+                    enabled: Audio.sink?.audio !== null
                     ignoreUnknownSignals: true
                     function onVolumeChanged() {
                         if (Audio.sink?.audio) {
@@ -178,8 +180,10 @@ Item {
                     }
                 }
 
+                // FIX: Guard enabled to prevent segfault when PipeWire node is destroyed mid-incubation
                 Connections {
                     target: Audio.source?.audio ?? null
+                    enabled: Audio.source?.audio !== null
                     ignoreUnknownSignals: true
                     function onVolumeChanged() {
                         if (Audio.source?.audio) {
@@ -222,8 +226,10 @@ Item {
 
                 onIconClicked: {}
 
+                // FIX: Guard enabled to prevent segfault when monitor is destroyed mid-incubation
                 Connections {
                     target: brightnessRow.currentMonitor ?? null
+                    enabled: brightnessRow.currentMonitor !== null
                     ignoreUnknownSignals: true
                     function onBrightnessChanged() {
                         if (brightnessRow.currentMonitor) {

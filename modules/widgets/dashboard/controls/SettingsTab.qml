@@ -612,7 +612,9 @@ Rectangle {
             Loader {
                 id: panelLoader
                 anchors.fill: parent
-                asynchronous: true
+                // FIX: Synchronous loading to avoid race conditions with PipeWire events
+                // that can cause segfaults when Connections targets get destroyed mid-incubation
+                asynchronous: false
                 source: contentArea.panelComponents[root.currentSection]?.component ?? ""
 
                 // Fade in animation

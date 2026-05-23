@@ -153,8 +153,10 @@ Item {
 
             onIconClicked: {}
 
+            // FIX: Guard enabled to prevent segfault when monitor is destroyed mid-incubation
             Connections {
                 target: currentMonitor
+                enabled: currentMonitor !== null
                 ignoreUnknownSignals: true
                 function onBrightnessChanged() {
                     root.updateSliderFromMonitor(true);
