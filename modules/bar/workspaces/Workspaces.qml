@@ -171,10 +171,13 @@ Item {
 
     WheelHandler {
         onWheel: event => {
-            if (event.angleDelta.y < 0)
-                AxctlService.dispatch(`workspace r+1`);
-            else if (event.angleDelta.y > 0)
-                AxctlService.dispatch(`workspace r-1`);
+            if (event.angleDelta.y < 0) {
+                wsProcess.command = ["hyprctl", "dispatch", "workspace", "+1"];
+                wsProcess.running = true;
+            } else if (event.angleDelta.y > 0) {
+                wsProcess.command = ["hyprctl", "dispatch", "workspace", "-1"];
+                wsProcess.running = true;
+            }
         }
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
     }
