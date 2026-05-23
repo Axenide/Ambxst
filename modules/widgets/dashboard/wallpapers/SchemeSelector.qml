@@ -36,7 +36,6 @@ Item {
         return list;
     }
 
-    property bool scrollBarPressed: false
     property int selectedSchemeIndex: -1
     property bool keyboardNavigationActive: false
 
@@ -56,7 +55,7 @@ Item {
 
     function positionAtSelectedScheme() {
         if (selectedSchemeIndex >= 0 && selectedSchemeIndex < combinedModel.length) {
-            schemeListView.positionViewAtIndex(selectedSchemeIndex, ListView.Center);
+            schemeListPopup.positionViewAtIndex(selectedSchemeIndex, ListView.Center);
         }
     }
 
@@ -149,7 +148,7 @@ Item {
 
     // Layout properties (can be overridden by parent)
     implicitWidth: 200
-    implicitHeight: schemeListExpanded ? 40 + 4 + (40 * 3) + 8 : 48
+    implicitHeight: 48
 
     Behavior on implicitHeight {
         enabled: Config.animDuration > 0
@@ -234,13 +233,13 @@ Item {
                         } else if (event.key === Qt.Key_Down) {
                             if (selectedSchemeIndex < combinedModel.length - 1) {
                                 selectedSchemeIndex++;
-                                schemeListView.currentIndex = selectedSchemeIndex;
+                                schemeListPopup.currentIndex = selectedSchemeIndex;
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Up) {
                             if (selectedSchemeIndex > 0) {
                                 selectedSchemeIndex--;
-                                schemeListView.currentIndex = selectedSchemeIndex;
+                                schemeListPopup.currentIndex = selectedSchemeIndex;
                             }
                             event.accepted = true;
                         } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -342,170 +341,85 @@ Item {
                 Layout.fillWidth: true
                 spacing: 4
 
-                ClippingRectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: schemeListExpanded ? 40 * 3 : 0
-                    Layout.topMargin: schemeListExpanded ? 4 : 0
-                    color: Colors.background
-                    radius: Styling.radius(0)
-                    opacity: schemeListExpanded ? 1 : 0
+                // Popup de selección de esquemas (flota sobre todo)
+                Popup {
+                    id: schemePopup
+                    x: root.width / 2 - width / 2
+                    y: root.height + 4
+                    width: 240
+                    height: Math.min(schemeListPopup.contentHeight + 16, 300)
+                    modal: true
+                    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+                    padding: 8
+                    visible: schemeListExpanded
 
+                    background: StyledRect {
+                        variant: "bg"
+                        radius: Styling.radius(0)
+                    }
 
-
-                    ListView {
-                        id: schemeListView
+                    contentItem: Item {
                         anchors.fill: parent
-                        clip: true
-                        model: combinedModel
-                        currentIndex: selectedSchemeIndex
-                        interactive: true
-                        boundsBehavior: Flickable.StopAtBounds
-                        highlightFollowsCurrentItem: !isScrolling
-                        highlightRangeMode: ListView.ApplyRange
-                        preferredHighlightBegin: 0
-                        preferredHighlightEnd: height
 
-                        // Propiedad para detectar si está en movimiento
-                        property bool isScrolling: dragging || flicking
+                        ListView {
+                            id: schemeListPopup
+                            anchors.fill: parent
+                            clip: true
+                            model: root.combinedModel
+                            currentIndex: root.selectedSchemeIndex
+                            interactive: true
+                            boundsBehavior: Flickable.StopAtBounds
+                            property bool isScrolling: dragging || flicking
 
-                        onCurrentIndexChanged: {
-                            if (currentIndex !== selectedSchemeIndex) {
-                                selectedSchemeIndex = currentIndex;
-                            }
-                        }
+                            delegate: Item {
+                                required property var modelData
+                                required property int index
+                                width: ListView.view.width
+                                height: 40
 
-                        delegate: Button {
-                            required property var modelData
-                            required property int index
+                                StyledRect {
+                                    anchors.fill: parent
+                                    variant: root.selectedSchemeIndex === index ? "primary" : (delMouse.containsMouse ? "focus" : "common")
+                                    radius: Styling.radius(0) / 2
 
-                            width: schemeListView.width
-                            height: 40
-                            text: modelData.label
-
-                            onClicked: {
-                                if (GlobalStates.wallpaperManager) {
-                                    if (modelData.type === "preset") {
-                                        GlobalStates.wallpaperManager.setColorPreset(modelData.id);
-                                    } else {
-                                        GlobalStates.wallpaperManager.setMatugenScheme(modelData.id);
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 8
+                                        text: modelData.label
+                                        color: parent.item
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Config.theme.fontSize
+                                        font.weight: root.selectedSchemeIndex === index ? Font.Bold : Font.Normal
                                     }
-                                    schemeListExpanded = false;
-                                }
-                            }
 
-                            background: Rectangle {
-                                color: "transparent"
-                            }
-
-                            contentItem: Text {
-                                text: parent.text
-                                color: selectedSchemeIndex === index ? Styling.srItem("primary") : Colors.overSurface
-                                font.family: Config.theme.font
-                                font.pixelSize: Config.theme.fontSize
-                                font.weight: selectedSchemeIndex === index ? Font.Bold : Font.Normal
-                                verticalAlignment: Text.AlignVCenter
-                                leftPadding: 8
-
-                                Behavior on color {
-                                    enabled: Config.animDuration > 0
-                                    ColorAnimation {
-                                        duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
-                                    }
-                                }
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                hoverEnabled: !schemeListView.isScrolling
-                                onEntered: {
-                                    if (schemeListView.isScrolling)
-                                        return;
-                                    selectedSchemeIndex = index;
-                                    schemeListView.currentIndex = index;
-                                }
-                                onClicked: {
-                                    if (schemeListView.isScrolling)
-                                        return;
-                                    if (GlobalStates.wallpaperManager) {
-                                        if (modelData.type === "preset") {
-                                            GlobalStates.wallpaperManager.setColorPreset(modelData.id);
-                                        } else {
-                                            GlobalStates.wallpaperManager.setMatugenScheme(modelData.id);
+                                    MouseArea {
+                                        id: delMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            if (GlobalStates.wallpaperManager) {
+                                                if (modelData.type === "preset")
+                                                    GlobalStates.wallpaperManager.setColorPreset(modelData.id);
+                                                else
+                                                    GlobalStates.wallpaperManager.setMatugenScheme(modelData.id);
+                                            }
+                                            root.schemeListExpanded = false;
                                         }
-                                        schemeListExpanded = false;
                                     }
                                 }
                             }
-                        }
 
-                        highlight: StyledRect {
-                            variant: "primary"
-                            radius: Styling.radius(0)
-                            visible: selectedSchemeIndex >= 0
-                            z: -1
-                        }
-
-                        highlightMoveDuration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
-                        highlightMoveVelocity: -1
-                        highlightResizeDuration: Config.animDuration / 2
-                        highlightResizeVelocity: -1
-                    }
-
-                    // Animate topMargin for ClippingRectangle
-                    Behavior on Layout.topMargin {
-                        enabled: Config.animDuration > 0
-                        NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            ScrollBar.vertical: ScrollBar {
+                                policy: ScrollBar.AsNeeded
+                            }
                         }
                     }
 
-                    Behavior on Layout.preferredHeight {
-                        enabled: Config.animDuration > 0
-                        NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
-                        }
-                    }
-
-                    Behavior on opacity {
-                        enabled: Config.animDuration > 0
-                        NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
-                        }
-                    }
-                }
-
-                ScrollBar {
-                    Layout.preferredWidth: 8
-                    Layout.preferredHeight: schemeListExpanded ? (40 * 3) - 32 : 0
-                    Layout.alignment: Qt.AlignVCenter
-                    orientation: Qt.Vertical
-                    visible: schemeListView.contentHeight > schemeListView.height
-
-                    position: schemeListView.contentY / schemeListView.contentHeight
-                    size: schemeListView.height / schemeListView.contentHeight
-
-                    background: Rectangle {
-                        color: Colors.background
-                        radius: Styling.radius(0)
-                    }
-
-                    contentItem: StyledRect {
-                        variant: "primary"
-                        radius: Styling.radius(0)
-                    }
-
-                    onPressedChanged: {
-                        scrollBarPressed = pressed;
-                    }
-
-                    onPositionChanged: {
-                        if (scrollBarPressed && schemeListView.contentHeight > schemeListView.height) {
-                            schemeListView.contentY = position * schemeListView.contentHeight;
-                        }
+                    onClosed: {
+                        root.schemeListExpanded = false;
+                        root.expandedChanged(false);
                     }
                 }
             }
