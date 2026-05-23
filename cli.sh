@@ -577,11 +577,11 @@ install)
 		mkdir -p "$SHARE_DIR"
 
 		# Create the initial sourced config.
-		# NothingLess starts the axctl daemon from QML (AxctlService.qml).
-		# Here we just need exec-once to launch nothingless on boot.
+		# The boot flag prevents Hyprland from re-executing nothingless on config reload.
+		# /tmp is cleared on reboot, so the flag is naturally reset.
 		cat > "$SHARE_DIR/hyprland.conf" <<'HYPRCONF'
 # NothingLess — static boot config (never regenerated)
-exec-once = nothingless
+exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
 
 # Qt/Quickshell GPU acceleration
 env = QSG_RHI_BACKEND,opengl
@@ -598,7 +598,7 @@ HYPRCONF
 		# Same for Lua users
 		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
 -- NothingLess — static boot config (never regenerated)
-exec-once = nothingless
+exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
 
 env = QSG_RHI_BACKEND,opengl
 env = QSG_RENDER_LOOP,threaded

@@ -128,9 +128,8 @@ Singleton {
     function generateToml() {
         let toml = "";
 
-        // NothingLess is started directly by Hyprland's exec-once,
-        // and the axctl daemon is started by AxctlService.qml.
-        // No need for [startup] exec-once in the TOML.
+        toml += "[startup]\n";
+        toml += "exec-once = \"nothingless\"\n";
 
         function tomlEscape(str) {
             if (str === null || str === undefined)
