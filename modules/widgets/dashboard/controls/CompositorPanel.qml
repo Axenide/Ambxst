@@ -1914,10 +1914,15 @@ Item {
                         // =====================
                         // MONITORS SECTION
                         // =====================
-                        Loader {
-                            id: monitorsPanelLoader
+                        ColumnLayout {
+                            visible: root.currentSection === "monitors"
                             Layout.fillWidth: true
-                            source: Qt.resolvedUrl("MonitorsPanel.qml")
+                            spacing: 8
+                            Loader {
+                                id: monitorsPanelLoader
+                                Layout.fillWidth: true
+                                source: "MonitorsPanel.qml"
+                            }
                         }
 
 

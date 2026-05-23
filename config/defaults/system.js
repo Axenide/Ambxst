@@ -9,7 +9,7 @@ var data = {
         "criticalThreshold": 10,
         "autoPowerSave": false,
         "powerSaveThreshold": 15,
-        "chargeLimit": 0,
+        "chargeLimit": 80,
         "chargeLimitEnabled": false
     },
     "idle": {
