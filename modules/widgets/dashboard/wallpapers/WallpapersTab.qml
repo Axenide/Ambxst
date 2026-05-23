@@ -1000,16 +1000,13 @@ FocusScope {
             // Scheme Selector a la derecha
             Item {
                 Layout.preferredWidth: 200
-                Layout.preferredHeight: schemeSelector && schemeSelector.schemeListExpanded ? 200 : 48
+                Layout.preferredHeight: 48
 
                 SchemeSelector {
                     id: schemeSelector
                     anchors.top: parent.top
                     anchors.left: parent.left
                     anchors.right: parent.right
-                    onExpandedChanged: expanded => {
-                        wallpaperGrid.interactive = !expanded;
-                    }
                     // No height set, allows expansion based on implicitHeight
 
                     onSchemeSelectorClosed: {
