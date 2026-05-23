@@ -621,8 +621,8 @@ Item {
                         NumberInputRow {
                             label: "Low threshold (%)"
                             value: Config.system.batteryNotifications.lowThreshold
-                            min: 5
-                            max: 50
+                            minValue: 5
+                            maxValue: 50
                             onValueEdited: newValue => {
                                 Config.system.batteryNotifications.lowThreshold = newValue;
                             }
@@ -631,8 +631,8 @@ Item {
                         NumberInputRow {
                             label: "Critical threshold (%)"
                             value: Config.system.batteryNotifications.criticalThreshold
-                            min: 3
-                            max: 20
+                            minValue: 3
+                            maxValue: 20
                             onValueEdited: newValue => {
                                 Config.system.batteryNotifications.criticalThreshold = newValue;
                             }
@@ -662,8 +662,8 @@ Item {
                         NumberInputRow {
                             label: "Power-save threshold (%)"
                             value: Config.system.batteryNotifications.powerSaveThreshold
-                            min: 5
-                            max: 40
+                            minValue: 5
+                            maxValue: 40
                             onValueEdited: newValue => {
                                 Config.system.batteryNotifications.powerSaveThreshold = newValue;
                             }
@@ -693,8 +693,8 @@ Item {
                         NumberInputRow {
                             label: "Charge limit (%)"
                             value: Config.system.batteryNotifications.chargeLimit
-                            min: 50
-                            max: 100
+                            minValue: 50
+                            maxValue: 100
                             onValueEdited: newValue => {
                                 Config.system.batteryNotifications.chargeLimit = newValue;
                             }

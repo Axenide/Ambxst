@@ -4,9 +4,9 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Services.SystemTray
 import qs.modules.theme
 import qs.modules.components
+import Quickshell.Services.SystemTray
 import qs.modules.globals
 import qs.config
 
@@ -819,6 +819,8 @@ Item {
                                     GlobalStates.markShellChanged();
                                     Config.bar.enableChromiumPlayer = value;
                                 }
+                            }
+                        }
                         Text {
                             text: "Hidden Systray Icons"
                             font.family: Config.theme.font
@@ -852,8 +854,6 @@ Item {
                                     Config.bar.hiddenIcons = list;
                                     GlobalStates.markShellChanged();
                                 }
-                            }
-                        }
                             }
                         }
 
