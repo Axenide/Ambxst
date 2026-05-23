@@ -20,6 +20,10 @@ Singleton {
         running: false
         stdout: SplitParser {}
     }
+    property Process hyprctlProcess: Process {
+        running: false
+        stdout: SplitParser {}
+    }
 
     function getColorValue(colorName) {
         const resolved = Config.resolveColor(colorName);
@@ -407,8 +411,37 @@ Singleton {
         console.log("CompositorTomlWriter: Written TOML to", root.outputPath);
     }
 
+    function writeHyprlandConfig() {
+        const dataDir = (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/nothingless";
+        const hyprPath = dataDir + "/hyprland.conf";
+
+        let hypr = "# NothingLess auto-generated config\n";
+        hypr += "# Sourced by ~/.config/hypr/hyprland.conf\n\n";
+
+        if (Config.compositor) {
+            if (Config.compositor.showBorder !== undefined)
+                hypr += "$border_width = " + (Config.compositor.showBorder ? Config.compositor.borderSize || 2 : 0) + "\n";
+            if (Config.compositor.rounding !== undefined)
+                hypr += "$rounding = " + Config.compositor.rounding + "\n";
+            if (Config.compositor.gapsIn !== undefined)
+                hypr += "$gaps_in = " + Config.compositor.gapsIn + "\n";
+            if (Config.compositor.gapsOut !== undefined)
+                hypr += "$gaps_out = " + Config.compositor.gapsOut + "\n";
+            if (Config.compositor.activeBorderColor && Config.compositor.activeBorderColor.length > 0)
+                hypr += "$active_border = " + Config.compositor.activeBorderColor[0] + "\n";
+            if (Config.compositor.inactiveBorderColor && Config.compositor.inactiveBorderColor.length > 0)
+                hypr += "$inactive_border = " + Config.compositor.inactiveBorderColor[0] + "\n";
+        }
+
+        const escPath = hyprPath.replace(/'/g, "'\\\\'");
+        const escCfg = hypr.replace(/'/g, "'\\\\'");
+        hyprctlProcess.command = ["bash", "-c", "mkdir -p $(dirname '" + escPath + "') && echo '" + escCfg + "' > '" + escPath + "'"];
+        hyprctlProcess.running = true;
+    }
+
     function refresh() {
         writeTomlFile();
+        writeHyprlandConfig();
     }
 
     Component.onCompleted: {
