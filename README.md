@@ -215,26 +215,25 @@ Requires: `meson`, `ninja`, `gcc`, `glslang`, `python-mako`.
 
 | Area | Ambxst | NothingLess |
 |------|--------|-------------|
-| Rendering backend | Default | OpenGL with threaded render loop |
-| GPU optimization | Standard | NVIDIA env vars, GPU texture caching |
-| Video wallpaper | Not available | QtMultimedia + FFmpeg hardware-accelerated playback |
-| FPS monitoring | Not available | Custom MangoHud integration with notch display |
-| GLSL shaders | Basic | 55+ custom fragment shaders (gradients, halftones, waves) |
+| Video wallpaper | mpv-based | QtMultimedia + FFmpeg (hardware-accelerated, lower overhead) |
+| Rendering backend | Default | OpenGL with threaded render loop (`QSG_RENDER_LOOP=threaded`) |
+| GPU optimization | Standard | NVIDIA env vars, GPU texture caching (`GradientCache`) |
+| GLSL shaders | Original set | Optimized: 55+ fragment shaders (reduced draw calls, shared textures) |
+| FPS monitoring | Not available | Custom MangoHud integration with real-time notch display |
 
 ### Features
 
 | Area | Ambxst | NothingLess |
 |------|--------|-------------|
-| Color presets | Standard set | 13 presets (Ayu, Catppuccin, Everforest, GitHub, Gruvbox, Kanagawa, Nord, Nothing, Paradise, Posterpole, Rose Pine, Tokyonight, Yoru) |
-| OCR / Lens | Standard | Multi-language OCR (EN, ES, JP, ZH, KO, LA) |
-| QR scanner | Not available | `zbar` integration |
-| Idle management | Basic | Configurable timeouts with lock, screen off, suspend |
-| Brightness control | Basic | Per-monitor with save/restore |
-| Power profiles | Basic | `powerprofilesctl` with performance/balanced/power-saver |
-| Battery notifications | Basic | Configurable thresholds |
-| AI assistant | Standard | Multi-provider (ChatGPT, Gemini, others) with configurable strategies |
-| Screen recording | Standard | `gpu-screen-recorder` + `wf-recorder` with FPS overlay |
-| System monitor | Basic | Real-time CPU, GPU, RAM, disk, temperature in notch |
+| Compositor settings | ~40 options | 130+ options across 11 categories with live preview |
+| Settings UI | Basic sliders and toggles | Full panel with search, color picker, categorized sections, undo/apply |
+| Color presets | Standard set | 13 expanded presets (Ayu, Catppuccin, Everforest, GitHub, Gruvbox, Kanagawa, Nord, Nothing, Paradise, Posterpole, Rose Pine, Tokyonight, Yoru) |
+| OCR / Lens | Standard | Expanded multi-language support (EN, ES, JP, ZH, KO, LA) |
+| QR scanner | Standard | `zbar` integration with improved reliability |
+| Idle management | Standard | Configurable multi-stage timeouts (dim, lock, screen off, suspend) |
+| Brightness control | Standard | Per-monitor with save/restore and relative adjustment |
+| Power profiles | Standard | `powerprofilesctl` with performance/balanced/power-saver |
+| Screen recording | Standard | `gpu-screen-recorder` + `wf-recorder` with FPS overlay support |
 
 ### Design
 
