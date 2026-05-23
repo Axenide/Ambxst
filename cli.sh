@@ -576,13 +576,12 @@ install)
 		mkdir -p "$HYPR_DIR"
 		mkdir -p "$SHARE_DIR"
 
-		# Create the initial sourced config so the daemon starts on first boot
-		# before NothingLess has ever run to generate it.
-		# exec-once is HERE (in the static sourced file), NOT in the main config.
-		# This way Hyprland won't re-execute it when the user edits their config.
+		# Create the initial sourced config so the daemon starts on first boot.
+		# Uses pgrep guard: even if Hyprland re-executes on config reload,
+		# it won't start a duplicate daemon or kill the existing one.
 		cat > "$SHARE_DIR/hyprland.conf" <<'HYPRCONF'
 # NothingLess — static boot config (never regenerated)
-exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
+exec-once = sh -c 'pgrep -f "axctl.*daemon" || axctl -c ~/.local/share/nothingless/axctl.toml daemon'
 
 # Qt/Quickshell GPU acceleration
 env = QSG_RHI_BACKEND,opengl
@@ -599,7 +598,7 @@ HYPRCONF
 		# Same for Lua users
 		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
 -- NothingLess — static boot config (never regenerated)
-exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
+exec-once = sh -c 'pgrep -f "axctl.*daemon" || axctl -c ~/.local/share/nothingless/axctl.toml daemon'
 
 env = QSG_RHI_BACKEND,opengl
 env = QSG_RENDER_LOOP,threaded
