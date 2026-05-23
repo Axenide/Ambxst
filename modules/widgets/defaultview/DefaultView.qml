@@ -145,7 +145,6 @@ Item {
         function onMetricColorFpsChanged() { rebuildNotchMetrics() }
         function onMetricColorRamChanged() { rebuildNotchMetrics() }
         function onMetricColorDiskChanged() { rebuildNotchMetrics() }
-        function onMetricColorCpuChanged() { rebuildNotchMetrics() }
         function onNotchVersionChanged() { rebuildNotchMetrics() }
     }
 
