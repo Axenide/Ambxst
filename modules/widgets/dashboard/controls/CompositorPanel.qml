@@ -1,3 +1,177 @@
+
+
+                    // =====================
+                    // MONITORS SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "monitors"
+                        property string settingsSection: "monitors"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Monitor Layout"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        Text {
+                            text: "Arrange your monitors"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            Layout.bottomMargin: 8
+                        }
+
+                        StyledRect {
+                            variant: "surface"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 200
+                            radius: Styling.radius(8)
+                            clip: true
+
+                            Rectangle {
+                                anchors.fill: parent
+                                color: Colors.background
+                                radius: Styling.radius(8)
+
+                                RowLayout {
+                                    anchors.centerIn: parent
+                                    spacing: 8
+
+                                    Repeater {
+                                        model: Quickshell.screens
+
+                                        delegate: StyledRect {
+                                            required property var modelData
+                                            variant: "focus"
+                                            radius: Styling.radius(4)
+                                            Layout.preferredWidth: 120
+                                            Layout.preferredHeight: 80
+
+                                            ColumnLayout {
+                                                anchors.centerIn: parent
+                                                spacing: 2
+
+                                                Text {
+                                                    text: modelData.name || "Monitor"
+                                                    font.family: Config.theme.font
+                                                    font.pixelSize: 10
+                                                    font.bold: true
+                                                    color: Colors.overBackground
+                                                    Layout.alignment: Qt.AlignCenter
+                                                }
+                                                Text {
+                                                    text: modelData.width + "x" + modelData.height
+                                                    font.family: Config.theme.font
+                                                    font.pixelSize: 9
+                                                    color: Colors.overBackground
+                                                    opacity: 0.6
+                                                    Layout.alignment: Qt.AlignCenter
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Repeater {
+                            model: Quickshell.screens
+
+                            delegate: StyledRect {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                variant: "surface"
+                                radius: Styling.radius(8)
+                                implicitHeight: ctrlCol.implicitHeight + 16
+
+                                ColumnLayout {
+                                    id: ctrlCol
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: 8
+
+                                    Text {
+                                        text: modelData.name || "Monitor " + (index + 1)
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(0)
+                                        font.bold: true
+                                        color: Colors.overSurface
+                                    }
+
+                                    Item { height: 4 }
+
+                                    RowLayout {
+                                        spacing: 8
+                                        Layout.fillWidth: true
+
+                                        StyledButton {
+                                            text: "← Left"
+                                            Layout.preferredWidth: 80
+                                            onClicked: {
+                                                var x = Math.max(0, (modelData.x || 0) - 1920);
+                                                var proc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + x + 'x' + (modelData.y || 0) + ',1"]; running: true }', root);
+                                            }
+                                        }
+                                        StyledButton {
+                                            text: "→ Right"
+                                            Layout.preferredWidth: 80
+                                            onClicked: {
+                                                var x = (modelData.x || 0) + 1920;
+                                                var proc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + x + 'x' + (modelData.y || 0) + ',1"]; running: true }', root);
+                                            }
+                                        }
+                                        StyledButton {
+                                            text: "↑ Up"
+                                            Layout.preferredWidth: 80
+                                            onClicked: {
+                                                var y = Math.max(0, (modelData.y || 0) - 1080);
+                                                var proc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x || 0) + 'x' + y + ',1"]; running: true }', root);
+                                            }
+                                        }
+                                        StyledButton {
+                                            text: "↓ Down"
+                                            Layout.preferredWidth: 80
+                                            onClicked: {
+                                                var y = (modelData.y || 0) + 1080;
+                                                var proc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x || 0) + 'x' + y + ',1"]; running: true }', root);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            spacing: 8
+                            Layout.topMargin: 8
+
+                            StyledButton {
+                                text: "Auto-arrange"
+                                variant: "primary"
+                                onClicked: {
+                                    var cmd = "python3 -c \"import json,os,sys; mons=json.load(open('/dev/stdin')); [os.system('hyprctl keyword monitor '+m['name']+',preferred,'+str(i*1920)+'x0,1') for i,m in enumerate(mons)]\" <<< \"$(hyprctl monitors -j)\"";
+                                    var proc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "' + cmd + '"]; running: true }', root);
+                                }
+                            }
+
+                            StyledButton {
+                                text: "Reset"
+                                variant: "surface"
+                                onClicked: {
+                                    for (var i = 0; i < Quickshell.screens.length; i++) {
+                                        var s = Quickshell.screens[i];
+                                        var proc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + s.name + ',preferred,0x0,1"]; running: true }', root);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
 pragma ComponentBehavior: Bound
 
 import QtQuick
@@ -714,7 +888,11 @@ Item {
                             }
                             SectionButton {
                                 text: "Cursor"
-                                sectionId: "cursor"
+                                sectionId: "cursor"                        }
+                        SectionButton {
+                            text: "Display"
+
+
                             }
                             SectionButton {
                                 text: "Gestures"
