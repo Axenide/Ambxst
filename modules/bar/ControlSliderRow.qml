@@ -134,7 +134,7 @@ Item {
 
             // Progress fill (wavy or solid)
             Loader {
-                active: root.wavy
+                active: false
                 anchors.left: parent.left
                 anchors.right: dragHandle.left
                 anchors.rightMargin: 4
@@ -160,7 +160,7 @@ Item {
                 height: 6
                 radius: Styling.radius(0) / 4
                 color: root.progressColor
-                visible: !root.wavy
+                visible: true
                 z: 1
             }
 
