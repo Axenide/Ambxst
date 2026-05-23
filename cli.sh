@@ -76,7 +76,6 @@ NOTHINGLESS_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/nothin
 NOTHINGLESS_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
 # NothingLess
-exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 source = ~/.local/share/nothingless/hyprland.conf
 
 # OVERRIDES
@@ -86,7 +85,6 @@ EOF
 NOTHINGLESS_HYPR_LUA_BLOCK=$(
 	cat <<'EOF'
 -- NothingLess
-exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()
 
 -- OVERRIDES
@@ -580,10 +578,11 @@ install)
 
 		# Create the initial sourced config so the daemon starts on first boot
 		# before NothingLess has ever run to generate it.
+		# exec-once is HERE (in the static sourced file), NOT in the main config.
+		# This way Hyprland won't re-execute it when the user edits their config.
 		cat > "$SHARE_DIR/hyprland.conf" <<'HYPRCONF'
-# NothingLess — static boot config
-# NothingLess is started by the axctl daemon (exec-once above),
-# not directly by Hyprland. All settings live in axctl.toml.
+# NothingLess — static boot config (never regenerated)
+exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 
 # Qt/Quickshell GPU acceleration
 env = QSG_RHI_BACKEND,opengl
@@ -599,8 +598,8 @@ HYPRCONF
 
 		# Same for Lua users
 		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
--- NothingLess — static boot config
--- NothingLess is started by the axctl daemon, not directly by Hyprland.
+-- NothingLess — static boot config (never regenerated)
+exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 
 env = QSG_RHI_BACKEND,opengl
 env = QSG_RENDER_LOOP,threaded
