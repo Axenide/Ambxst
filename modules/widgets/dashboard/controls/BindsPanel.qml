@@ -455,7 +455,7 @@ Item {
 
         // System binds
         if (nothingless.system) {
-            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
+            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit", "toggle-metrics"];
             for (const key of systemKeys) {
                 if (nothingless.system[key]) {
                     binds.push({
