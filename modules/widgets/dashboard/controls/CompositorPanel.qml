@@ -1911,150 +1911,20 @@ Item {
                             }
 
                     // =====================
-                                        // MONITORS SECTION
+                    // MONITORS SECTION
                     // =====================
-                    ColumnLayout {
+                                        ColumnLayout {
                         visible: root.currentSection === "monitors"
                         property string settingsSection: "monitors"
                         Layout.fillWidth: true
                         spacing: 8
 
-                        Text {
-                            text: "Monitor Layout"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
-
-                        Text {
-                            text: Quickshell.screens.length + " monitor(s) connected"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.outline
-                            Layout.bottomMargin: 8
-                        }
-
-                        // Show each monitor using plain QML items
-                        // This avoids all StyledRect/Repeater issues
-                        Rectangle {
+                        Loader {
+                            id: monitorsLoader
                             Layout.fillWidth: true
-                            Layout.preferredHeight: childrenRect.height + 16
-                            color: Colors.surface
-                            radius: Styling.radius(8)
-                            border.color: Colors.outline
-                            border.width: 1
-                            visible: Quickshell.screens.length > 0
-
-                            ColumnLayout {
-                                anchors.fill: parent
-                                anchors.margins: 12
-                                spacing: 4
-
-                                Text {
-                                    text: Quickshell.screens.length > 0 ? Quickshell.screens[0].name + "  " + Quickshell.screens[0].width + "x" + Quickshell.screens[0].height : "No monitors"
-                                    font.family: Config.theme.font
-                                    font.pixelSize: Styling.fontSize(0)
-                                    font.bold: true
-                                    color: Colors.overSurface
-                                }
-                                Text {
-                                    text: Quickshell.screens.length > 0 ? "Position: " + (Quickshell.screens[0].x || 0) + "x" + (Quickshell.screens[0].y || 0) : ""
-                                    font.family: Config.theme.font
-                                    font.pixelSize: Styling.fontSize(-1)
-                                    color: Colors.outline
-                                }
-
-                                RowLayout {
-                                    spacing: 6
-                                    Layout.topMargin: 8
-
-                                    Button {
-                                        text: "< Left"
-                                        enabled: Quickshell.screens.length > 0
-                                        onClicked: {
-                                            var s0 = Quickshell.screens[0];
-                                            var x = Math.max(0, (s0.x||0) - 1920);
-                                            Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + s0.name + ',preferred,' + x + 'x' + (s0.y||0) + ',1"]; running: true }', root);
-                                        }
-                                    }
-                                    Button {
-                                        text: "Right >"
-                                        enabled: Quickshell.screens.length > 0
-                                        onClicked: {
-                                            var s0 = Quickshell.screens[0];
-                                            var x = (s0.x||0) + 1920;
-                                            Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + s0.name + ',preferred,' + x + 'x' + (s0.y||0) + ',1"]; running: true }', root);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Additional monitors (if multi-monitor)
-                        Repeater {
-                            model: Math.max(0, Quickshell.screens.length - 1)
-
-                            delegate: Rectangle {
-                                required property int index
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: childrenRect.height + 16
-                                color: Colors.surface
-                                radius: Styling.radius(8)
-                                border.color: Colors.outline
-                                border.width: 1
-
-                                ColumnLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 4
-
-                                    property var scr: Quickshell.screens[index + 1]
-
-                                    Text {
-                                        text: parent.scr ? parent.scr.name + "  " + parent.scr.width + "x" + parent.scr.height : "Monitor " + (index + 2)
-                                        font.family: Config.theme.font
-                                        font.pixelSize: Styling.fontSize(0)
-                                        font.bold: true
-                                        color: Colors.overSurface
-                                    }
-                                    Text {
-                                        text: parent.scr ? "Position: " + (parent.scr.x || 0) + "x" + (parent.scr.y || 0) : ""
-                                        font.family: Config.theme.font
-                                        font.pixelSize: Styling.fontSize(-1)
-                                        color: Colors.outline
-                                    }
-
-                                    RowLayout {
-                                        spacing: 6
-                                        Layout.topMargin: 8
-
-                                        Button {
-                                            text: "< Left"
-                                            enabled: parent.scr != null
-                                            onClicked: {
-                                                var s = parent.scr;
-                                                var x = Math.max(0, (s.x||0) - 1920);
-                                                Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + s.name + ',preferred,' + x + 'x' + (s.y||0) + ',1"]; running: true }', root);
-                                            }
-                                        }
-                                        Button {
-                                            text: "Right >"
-                                            enabled: parent.scr != null
-                                            onClicked: {
-                                                var s = parent.scr;
-                                                var x = (s.x||0) + 1920;
-                                                Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + s.name + ',preferred,' + x + 'x' + (s.y||0) + ',1"]; running: true }', root);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            source: Qt.resolvedUrl("MonitorsPanel.qml")
                         }
                     }
-
-
 
 
 
