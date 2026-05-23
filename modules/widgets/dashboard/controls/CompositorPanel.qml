@@ -674,7 +674,8 @@ Item {
 
                 ColumnLayout {
                     id: compositorPage
-                    width: parent.width
+                    width: root.contentWidth
+                    anchors.horizontalCenter: parent.horizontalCenter
                     spacing: 16
 
                         // Menu Section
