@@ -369,10 +369,5 @@ ShellRoot {
         }
     }
 
-    // Register toggle-metrics keybind with Hyprland (JsonAdapter no expone "toggle-metrics")
-    Process {
-        id: toggleMetricsRegister
-        command: ["hyprctl", "keyword", "bind", "SUPER_SHIFT,BACKSPACE,exec,nothingless run toggle-metrics"]
-        running: true
-    }
+    // toggle-metrics bind is in the sourced config (cli.sh) and managed by the config system
 }
