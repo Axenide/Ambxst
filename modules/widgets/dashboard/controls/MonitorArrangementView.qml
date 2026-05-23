@@ -100,7 +100,7 @@ StyledRect {
 
     Timer { id: refreshTimer; interval: 500; onTriggered: root.refreshMonitors() }
 
-    // ── Save monitor config to hyprland files ──
+    // ── Save monitor config to hyprland.conf AND hyprland.lua ──
     function saveToConfig() {
         saveConfigProcess.running = true;
     }
@@ -108,9 +108,10 @@ StyledRect {
     property Process saveConfigProcess: Process {
         command: [
             "bash", "-c",
-            'HYPR_CONFIG="$HOME/.config/hypr/hyprland.conf";' +
+            // Get current monitor data from compositor
             'MON_DATA=$(hyprctl monitors -j 2>/dev/null || echo "[]");' +
-            'echo "$MON_DATA" | python3 -c "' +
+            // Generate monitor config lines
+            'MON_LINES=$(echo "$MON_DATA" | python3 -c "' +
             'import json,sys;' +
             'mons=json.load(sys.stdin);' +
             'for m in mons:' +
@@ -123,23 +124,44 @@ StyledRect {
             '  rr=m.get(\"refreshRate\",60);' +
             '  mode=f\"{w}x{h}@{rr:.2f}Hz\";' +
             '  print(f\"monitor={n},{mode},{x}x{y},{s}\")' +
-            '" > /tmp/nothingless_monitors.conf 2>/dev/null;' +
-            'if [ -f "$HYPR_CONFIG" ]; then' +
-            '  grep -v "^monitor=" "$HYPR_CONFIG" > "${HYPR_CONFIG}.tmp" 2>/dev/null;' +
-            '  cat /tmp/nothingless_monitors.conf >> "${HYPR_CONFIG}.tmp" 2>/dev/null;' +
-            '  mv "${HYPR_CONFIG}.tmp" "$HYPR_CONFIG" 2>/dev/null;' +
+            '");' +
+            // Update hyprland.conf
+            'CONF="$HOME/.config/hypr/hyprland.conf";' +
+            'if [ -f "$CONF" ]; then' +
+            '  grep -v "^monitor=" "$CONF" > "${CONF}.tmp" 2>/dev/null;' +
+            '  echo "$MON_LINES" >> "${CONF}.tmp";' +
+            '  mv "${CONF}.tmp" "$CONF";' +
+            '  echo "[OK] hyprland.conf updated";' +
             'fi;' +
-            'rm -f /tmp/nothingless_monitors.conf'
+            // Update hyprland.lua
+            'LUA="$HOME/.config/hypr/hyprland.lua";' +
+            'if [ -f "$LUA" ]; then' +
+            '  echo "$MON_DATA" | python3 -c "' +
+            'import json,sys;' +
+            'mons=json.load(sys.stdin);' +
+            'for m in mons:' +
+            '  n=m.get(\"name\",\"\");' +
+            '  w=m.get(\"width\",0);' +
+            '  h=m.get(\"height\",0);' +
+            '  x=m.get(\"x\",0);' +
+            '  y=m.get(\"y\",0);' +
+            '  s=m.get(\"scale\",1);' +
+            '  rr=m.get(\"refreshRate\",60);' +
+            '  mode=f\"preferred,{x}x{y},{s}\";' +
+            '  print(f\'hyprctl dispatch monitor {n},{mode}\')' +
+            '" > /tmp/nothingless_lua_monitors.tmp;' +
+            '  grep -v "hyprctl dispatch monitor" "$LUA" > "${LUA}.tmp" 2>/dev/null;' +
+            '  cat /tmp/nothingless_lua_monitors.tmp >> "${LUA}.tmp";' +
+            '  mv "${LUA}.tmp" "$LUA";' +
+            '  rm -f /tmp/nothingless_lua_monitors.tmp;' +
+            '  echo "[OK] hyprland.lua updated";' +
+            'fi'
         ]
         stdout: StdioCollector {}
         running: false
         onExited: exitCode => {
-            if (exitCode === 0) {
-                root.hasChanges = false;
-                console.log("MonitorArrangementView: config saved");
-            } else {
-                console.warn("MonitorArrangementView: save failed");
-            }
+            console.log("MonitorArrangementView: save output:", saveConfigProcess.stdout.text);
+            root.hasChanges = false;
         }
     }
 
@@ -318,29 +340,100 @@ StyledRect {
                             }
                         }
 
-                        // Drag
+                        // Manual drag — snap to nearest edges on release
                         MouseArea {
+                            id: dragArea
                             anchors.fill: parent
-                            drag.target: monItem
-                            drag.minimumX: 0; drag.maximumX: canvasArea.width - monItem.width
-                            drag.minimumY: 0; drag.maximumY: canvasArea.height - monItem.height
-                            cursorShape: Qt.SizeAllCursor; hoverEnabled: true
-                            onPressed: monItem.z = 100
+                            cursorShape: Qt.SizeAllCursor
+                            hoverEnabled: true
+
+                            property real pressX: 0
+                            property real pressY: 0
+                            property real startX: 0
+                            property real startY: 0
+                            property bool dragging: false
+
+                            onPressed: mouse => {
+                                monItem.z = 100
+                                dragging = true
+                                pressX = mouse.x
+                                pressY = mouse.y
+                                startX = monItem.x
+                                startY = monItem.y
+                            }
+
+                            onPositionChanged: mouse => {
+                                if (!dragging) return
+                                // Free movement during drag
+                                monItem.x = Math.max(0, Math.min(canvasArea.width - monItem.width, startX + mouse.x - pressX))
+                                monItem.y = Math.max(0, Math.min(canvasArea.height - monItem.height, startY + mouse.y - pressY))
+                            }
+
                             onReleased: {
+                                dragging = false
                                 monItem.z = 1
-                                var mnX = Infinity, mnY = Infinity;
+
+                                // Convert canvas position to real coordinates
+                                var mnX = Infinity, mnY = Infinity
                                 for (var k = 0; k < root.monitors.length; k++) {
-                                    if (root.monitors[k].x < mnX) mnX = root.monitors[k].x;
-                                    if (root.monitors[k].y < mnY) mnY = root.monitors[k].y;
+                                    if (root.monitors[k].x < mnX) mnX = root.monitors[k].x
+                                    if (root.monitors[k].y < mnY) mnY = root.monitors[k].y
                                 }
-                                if (mnX === Infinity) mnX = 0;
-                                if (mnY === Infinity) mnY = 0;
-                                var rx = Math.round((monItem.x - monItem.ox) / monItem.sc + mnX);
-                                var ry = Math.round((monItem.y - monItem.oy) / monItem.sc + mnY);
-                                rx = Math.round(rx / 10) * 10; ry = Math.round(ry / 10) * 10;
-                                root.hasChanges = true;
-                                root.positionChanged(monItem.index, rx, ry);
-                                AxctlService.dispatch("monitor " + modelData.name + ",preferred," + rx + "x" + ry + ",auto");
+                                if (mnX === Infinity) mnX = 0
+                                if (mnY === Infinity) mnY = 0
+
+                                var rx = Math.round((monItem.x - monItem.offX) / monItem.sc + mnX)
+                                var ry = Math.round((monItem.y - monItem.offY) / monItem.sc + mnY)
+                                var mw = modelData.width
+                                var mh = modelData.height
+
+                                // Snap to nearest edge of other monitors
+                                var snapPx = 60  // snap threshold in real pixels
+                                for (var k = 0; k < root.monitors.length; k++) {
+                                    if (k === monItem.index) continue
+                                    var o = root.monitors[k]
+                                    if (!o) continue
+                                    var ow = o.width || 1920, oh = o.height || 1080
+                                    var ox = o.x || 0, oy = o.y || 0
+
+                                    // Right edge of other → left edge of this
+                                    if (Math.abs(rx - (ox + ow)) < snapPx) rx = ox + ow
+                                    // Left edge of other → right edge of this
+                                    if (Math.abs((rx + mw) - ox) < snapPx) rx = ox - mw
+                                    // Bottom edge of other → top edge of this
+                                    if (Math.abs(ry - (oy + oh)) < snapPx) ry = oy + oh
+                                    // Top edge of other → bottom edge of this
+                                    if (Math.abs((ry + mh) - oy) < snapPx) ry = oy - mh
+                                    // Same X column
+                                    if (Math.abs(rx - ox) < snapPx) rx = ox
+                                    // Same Y row
+                                    if (Math.abs(ry - oy) < snapPx) ry = oy
+                                }
+
+                                // Prevent overlap: if still overlapping after snap, push to nearest non-overlapping edge
+                                for (var j = 0; j < root.monitors.length; j++) {
+                                    if (j === monItem.index) continue
+                                    var o2 = root.monitors[j]
+                                    if (!o2) continue
+                                    var o2x = o2.x || 0, o2y = o2.y || 0
+                                    var o2w = o2.width || 1920, o2h = o2.height || 1080
+                                    if (rx < o2x + o2w && rx + mw > o2x && ry < o2y + o2h && ry + mh > o2y) {
+                                        // Push to nearest non-overlapping side
+                                        var dL = rx + mw - o2x, dR = o2x + o2w - rx
+                                        var dU = ry + mh - o2y, dD = o2y + o2h - ry
+                                        var minD = Math.min(dL, dR, dU, dD)
+                                        if (minD === dL) rx = o2x - mw
+                                        else if (minD === dR) rx = o2x + o2w
+                                        else if (minD === dU) ry = o2y - mh
+                                        else ry = o2y + o2h
+                                    }
+                                }
+
+                                rx = Math.round(rx / 10) * 10
+                                ry = Math.round(ry / 10) * 10
+                                root.hasChanges = true
+                                root.positionChanged(monItem.index, rx, ry)
+                                AxctlService.dispatch("monitor " + modelData.name + ",preferred," + rx + "x" + ry + ",auto")
                             }
                         }
 

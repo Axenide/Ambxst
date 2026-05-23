@@ -197,7 +197,6 @@ StyledRect {
             Layout.fillWidth: true
             spacing: 10
 
-            // Color accent dot
             Rectangle {
                 width: 10; height: 10; radius: 5
                 color: (AxctlService.focusedMonitor && AxctlService.focusedMonitor.name === root.displayName)
@@ -205,7 +204,6 @@ StyledRect {
                 Layout.alignment: Qt.AlignVCenter
             }
 
-            // Name + specs
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 1
@@ -215,7 +213,7 @@ StyledRect {
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(1)
                     font.bold: true
-                    color: Colors.overSurface
+                    color: Colors.overBackground
                 }
 
                 Text {
@@ -233,7 +231,6 @@ StyledRect {
                 }
             }
 
-            // Collapse toggle
             Button {
                 flat: true
                 Layout.preferredWidth: 32; Layout.preferredHeight: 32
@@ -241,13 +238,15 @@ StyledRect {
 
                 contentItem: Text {
                     text: root.isCollapsed ? Icons.caretDown : Icons.caretUp
-                    font.family: Icons.font
-                    font.pixelSize: 16
+                    font.family: Icons.font; font.pixelSize: 16
                     color: Colors.outline
                     anchors.centerIn: parent
                 }
 
-                background: Rectangle { color: "transparent" }
+                background: StyledRect {
+                    variant: "common"
+                    radius: Styling.radius(-6)
+                }
                 onClicked: root.isCollapsed = !root.isCollapsed
             }
         }
@@ -347,18 +346,37 @@ StyledRect {
 
                 SettingsRow {
                     icon: Icons.arrowsOut; label: "Scale"; Layout.fillWidth: true
-                    ComboBox {
-                        id: scaleCombo
-                        model: root.validScales.length > 0 ? root.validScales.map(function(s) { return s.toFixed(2) + "x"; }) : [root.displayScale.toFixed(2) + "x"]
-                        currentIndex: root.findScaleIndex(root.displayScale); Layout.preferredWidth: 110
-                        background: Rectangle {
-                            color: scaleCombo.hovered ? Colors.surfaceContainerHigh : Colors.surfaceContainer
-                            radius: Styling.radius(-2)
-                            border.color: Colors.outlineVariant; border.width: 1
+                    RowLayout {
+                        spacing: 4
+                        TextField {
+                            id: scaleInput
+                            text: root.displayScale.toFixed(2)
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            color: Colors.overBackground
+                            Layout.preferredWidth: 70
+                            horizontalAlignment: Text.AlignRight
+                            validator: DoubleValidator { bottom: 0.25; top: 10.0; decimals: 2 }
+                            background: Rectangle {
+                                color: scaleInput.hovered ? Colors.surfaceContainerHigh : Colors.surfaceContainer
+                                radius: Styling.radius(-2)
+                                border.color: Colors.outlineVariant; border.width: 1
+                            }
+                            onEditingFinished: {
+                                var val = parseFloat(text);
+                                if (!isNaN(val) && val >= 0.25 && val <= 10.0) {
+                                    root.applyMonitorSetting("scale", val);
+                                } else {
+                                    text = root.displayScale.toFixed(2);
+                                }
+                            }
                         }
-                        contentItem: Text { text: scaleCombo.displayText; font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; verticalAlignment: Text.AlignVCenter; leftPadding: 10 }
-                        indicator: Text { text: Icons.caretDown; font.family: Icons.font; font.pixelSize: 14; color: Colors.overBackground; anchors.verticalCenter: parent.verticalCenter; anchors.right: parent.right; anchors.rightMargin: 8 }
-                        onActivated: { if (root.validScales.length > 0 && index < root.validScales.length) root.applyMonitorSetting("scale", root.validScales[index]); }
+                        Text {
+                            text: "×"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            color: Colors.outline
+                        }
                     }
                 }
 
@@ -425,7 +443,7 @@ StyledRect {
         property string icon: ""; property string label: ""
         spacing: 8
         Text { text: icon; font.family: Icons.font; font.pixelSize: 14; color: Colors.outline; Layout.preferredWidth: 18 }
-        Text { text: label; font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); color: Colors.overSurface; Layout.preferredWidth: 80 }
+        Text { text: label; font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; Layout.preferredWidth: 80 }
     }
 
     // ── Connections ──
