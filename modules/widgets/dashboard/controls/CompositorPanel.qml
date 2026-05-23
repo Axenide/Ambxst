@@ -672,13 +672,10 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredHeight: compositorPage.implicitHeight
 
-                // ═══════════════════════════════════════════════════════════════
-                // COMPOSITOR TAB
-                // ═══════════════════════════════════════════════════════════════
-                    ColumnLayout {
-                        id: compositorPage
-                        Layout.fillWidth: true
-                        spacing: 16
+                ColumnLayout {
+                    id: compositorPage
+                    width: parent.width
+                    spacing: 16
 
                         // Menu Section
                         ColumnLayout {
