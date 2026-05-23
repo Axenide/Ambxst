@@ -600,6 +600,7 @@ bind = SUPER SHIFT, C, exec, nothingless run config
 bind = SUPER SHIFT, S, exec, nothingless run screenshot
 bind = SUPER SHIFT, R, exec, nothingless run screenrecord
 bind = SUPER SHIFT, A, exec, nothingless run lens
+bind = SUPER SHIFT, BACKSPACE, exec, nothingless run toggle-metrics
 HYPRCONF
 
 		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
@@ -621,6 +622,7 @@ bind = SUPER SHIFT, C, exec, nothingless run config
 bind = SUPER SHIFT, S, exec, nothingless run screenshot
 bind = SUPER SHIFT, R, exec, nothingless run screenrecord
 bind = SUPER SHIFT, A, exec, nothingless run lens
+bind = SUPER SHIFT, BACKSPACE, exec, nothingless run toggle-metrics
 HYPRLUA
 
 		echo "Created initial compositor config at $SHARE_DIR/"

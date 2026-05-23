@@ -234,9 +234,10 @@ QtObject {
         payload.unbinds.push(makeUnbindTarget(system.lens));
         if (system.reload) payload.unbinds.push(makeUnbindTarget(system.reload));
         if (system.quit) payload.unbinds.push(makeUnbindTarget(system.quit));
+        if (system["toggle-metrics"]) payload.unbinds.push(makeUnbindTarget(system["toggle-metrics"]));
 
         // Bind current system keybinds
-        [system.overview, system.powermenu, system.config, system.lockscreen, system.tools, system.screenshot, system.screenrecord, system.lens, system.reload, system.quit].forEach(bind => {
+        [system.overview, system.powermenu, system.config, system.lockscreen, system.tools, system.screenshot, system.screenrecord, system.lens, system.reload, system.quit, system["toggle-metrics"]].forEach(bind => {
             if (!bind) return;
             const resolved = makeBindFromCore(bind);
             if (resolved) payload.binds.push(resolved);
