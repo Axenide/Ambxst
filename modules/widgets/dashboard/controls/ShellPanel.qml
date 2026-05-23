@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Services.SystemTray
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
