@@ -320,7 +320,7 @@ QtObject {
         function onRawEvent(event) {
             if (event && event.name === "configreloaded") {
                 console.log("CompositorKeybinds: Hyprland config reloaded, reapplying keybinds...");
-                applyKeybinds();
+                applyKeybindsInternal();  // Direct — no 100ms timer delay
             }
         }
     }

@@ -661,7 +661,7 @@ QtObject {
         function onRawEvent(event) {
             if (event && event.name === "configreloaded") {
                 console.log("CompositorConfig: Hyprland config reloaded, reapplying settings...");
-                applyCompositorConfig();
+                applyCompositorConfigInternal();  // Direct — no 100ms timer delay
             }
         }
     }
