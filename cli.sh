@@ -680,6 +680,15 @@ help | --help | -h)
 	show_help
 	;;
 "")
+	# Prevent duplicate instances: if NothingLess is already running, exit.
+	# This handles Hyprland config reloads where exec-once is re-executed
+	# and the daemon tries to start a second NothingLess.
+	EXISTING_PID=$(find_nothingless_pid_cached)
+	if [ -n "$EXISTING_PID" ]; then
+		echo "NothingLess is already running (PID $EXISTING_PID), not starting duplicate."
+		exit 0
+	fi
+
 	# Run daemon priority script (backgrounded to not block startup)
 	bash "${SCRIPT_DIR}/scripts/daemon_priority.sh" &
 
