@@ -1,0 +1,17 @@
+module qs.modules.bar
+Bar 1.0 Bar.qml
+BarBg 1.0 BarBg.qml
+BarBgShadow 1.0 BarBgShadow.qml
+BarContent 1.0 BarContent.qml
+BatteryIndicator 1.0 BatteryIndicator.qml
+BrightnessSlider 1.0 BrightnessSlider.qml
+ControlsButton 1.0 ControlsButton.qml
+ControlSliderRow 1.0 ControlSliderRow.qml
+IntegratedDock 1.0 IntegratedDock.qml
+IntegratedDockAppButton 1.0 IntegratedDockAppButton.qml
+LayoutSelector 1.0 LayoutSelector.qml
+LayoutSelectorButton 1.0 LayoutSelectorButton.qml
+MicSlider 1.0 MicSlider.qml
+PowerProfileSelector 1.0 PowerProfileSelector.qml
+ToolsButton 1.0 ToolsButton.qml
+VolumeSlider 1.0 VolumeSlider.qml
