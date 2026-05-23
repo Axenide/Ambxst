@@ -158,7 +158,7 @@ Item {
             text: Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfile.getProfileIcon(PowerProfile.currentProfile)
             font.family: Icons.font
             font.pixelSize: Battery.available ? 14 : 18
-            color: root.popupOpen ? buttonBg.item : Colors.overBackground
+            color: root.popupOpen ? buttonBg.item : Styling.srItem("overprimary")
 
             Behavior on color {
                 enabled: Config.animDuration > 0
