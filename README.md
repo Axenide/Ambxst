@@ -195,6 +195,7 @@ Requires: `meson`, `ninja`, `gcc`, `glslang`, `python-mako`.
 
 - **Leriart** -- fork maintainer and NothingLess developer
 - **Axenide** -- original [Ambxst](https://github.com/Axenide/Ambxst) creator
+- **Zack** ([@zackytodearena](https://bsky.app/profile/zackytodearena.bsky.social)) -- logo & animation design
 - **outfoxxed** -- creator of [Quickshell](https://git.outfoxxed.me/outfoxxed/quickshell)
 - **end-4** -- inspiration from [dots-hyprland](https://github.com/end-4/dots-hyprland)
 - **DankMaterialShell** -- design reference from [DMS](https://github.com/AvengeMedia/DankMaterialShell)
