@@ -221,14 +221,19 @@ Item {
         // Color grid (SCROLLABLE)
         GridView {
             id: colorGrid
-            // Capture wheel events to prevent parent Flickable from scrolling
-            WheelHandler {
-                onWheel: event => {
-                    var newY = colorGrid.contentY - event.angleDelta.y;
-                    newY = Math.max(0, Math.min(newY, colorGrid.contentHeight - colorGrid.height));
-                    colorGrid.contentY = newY;
+            // Block parent Flickable from stealing scroll/click events
+            MouseArea {
+                anchors.fill: parent
+                z: 10
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+                preventStealing: true
+                onWheel: wheel => {
+                    var step = wheel.angleDelta.y > 0 ? -40 : 40;
+                    colorGrid.contentY = Math.max(0, Math.min(colorGrid.contentY + step, colorGrid.contentHeight - colorGrid.height));
                 }
             }
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
