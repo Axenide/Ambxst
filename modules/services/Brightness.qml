@@ -113,6 +113,9 @@ Singleton {
                 const modelLine = lines.find(l => l.startsWith("Model:"));
                 const monitorLine = lines.find(l => l.startsWith("Monitor:"));
                 const manufacturerLine = lines.find(l => l.startsWith("Mfg id:"));
+                // DRM connector ends with the screen.name (e.g. "card0-DP-1" → "DP-1")
+                // — most reliable cross-reference back to a Quickshell ShellScreen.
+                const drmLine = lines.find(l => l.startsWith("DRM connector:") || l.startsWith("DRM_connector:"));
 
                 let model = "";
                 if (modelLine) {
@@ -127,17 +130,19 @@ Singleton {
                         model = `${manufacturer} ${model}`;
                 }
 
+                let drmConnector = "";
+                if (drmLine) {
+                    drmConnector = drmLine.split(":").slice(1).join(":").trim();
+                }
+
                 root.ddcMonitors.push({
                     model,
-                    busNum
+                    busNum,
+                    drmConnector
                 });
             }
         }
         onExited: root.ddcMonitorsChanged()
-    }
-
-    Process {
-        id: setProc
     }
 
     component BrightnessMonitor: QtObject {
@@ -157,6 +162,17 @@ Singleton {
                     usedBuses.push(mon.ddcEntry.busNum);
             }
 
+            // FIRST: try matching by DRM connector — most reliable cross-reference
+            // (e.g. screen.name = "DP-1" matches ddcEntry.drmConnector = "card0-DP-1")
+            const screenName = screen && screen.name ? screen.name : "";
+            if (screenName) {
+                const drmMatch = root.ddcMonitors.find(entry => entry.drmConnector && entry.drmConnector.endsWith(screenName) && !usedBuses.includes(entry.busNum));
+                if (drmMatch)
+                    return drmMatch;
+            }
+
+            // Fallback: match by model (may fail if Quickshell's screen.model
+            // strips the manufacturer prefix that ddcutil includes).
             const screenModel = screen && screen.model ? screen.model.toLowerCase() : "";
             if (screenModel) {
                 const modelMatch = root.ddcMonitors.find(entry => entry.model && entry.model.toLowerCase() === screenModel && !usedBuses.includes(entry.busNum));
@@ -164,6 +180,9 @@ Singleton {
                     return modelMatch;
             }
 
+            // Last resort: first unused bus (relies on stable screen-to-ddc order,
+            // which doesn't hold when Quickshell.screens enumerates monitors in a
+            // different order than ddcutil — that's the original cross-wired bug).
             for (let i = 0; i < root.ddcMonitors.length; ++i) {
                 const entry = root.ddcMonitors[i];
                 if (entry && entry.busNum && !usedBuses.includes(entry.busNum))
@@ -236,12 +255,18 @@ Singleton {
             }
         }
 
+        // Per-monitor setProc so concurrent setBrightness calls from different
+        // BrightnessMonitor instances don't race on a single shared Process (which
+        // would let the last-assigned command overwrite the first, causing one
+        // monitor's brightness change to never reach ddcutil).
+        readonly property Process setProc: Process {}
+
         function syncBrightness() {
             if (isDdc && !busNum)
                 return;
             const rounded = Math.round(monitor.brightness * monitor.rawMaxBrightness);
-            setProc.command = isDdc ? ["ddcutil", "-b", busNum, "setvcp", "10", rounded] : ["brightnessctl", "--class", "backlight", "s", rounded, "--quiet"];
-            setProc.startDetached();
+            monitor.setProc.command = isDdc ? ["ddcutil", "-b", busNum, "setvcp", "10", rounded] : ["brightnessctl", "--class", "backlight", "s", rounded, "--quiet"];
+            monitor.setProc.startDetached();
         }
 
         function setBrightness(value: real): void {
