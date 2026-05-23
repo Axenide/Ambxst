@@ -99,7 +99,7 @@ QtObject {
         // System > Performance
         { label: "Blur Transition", keywords: "animation speed performance effect", section: 6, subSection: "performance", subLabel: "System > Performance", icon: Icons.lightning, isIcon: true },
         { label: "Window Preview", keywords: "thumbnail overview alt-tab", section: 6, subSection: "performance", subLabel: "System > Performance", icon: Icons.windowsLogo, isIcon: true },
-        { label: "Wavy Line", keywords: "animated wave effect performance", section: 6, subSection: "performance", subLabel: "System > Performance", icon: Icons.lightning, isIcon: true },
+        
         
         // System > Resources
         { label: "System Resources", keywords: "cpu ram memory usage monitor", section: 6, subSection: "resources", subLabel: "System > Resources", icon: Icons.circuitry, isIcon: true },

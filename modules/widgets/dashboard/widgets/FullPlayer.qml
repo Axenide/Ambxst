@@ -203,7 +203,7 @@ StyledRect {
                 accentColor: Colors.primary
                 trackColor: Colors.outline
                 lineWidth: 6
-                wavy: Config.performance.wavyLine
+                wavy: false
                 waveAmplitude: player.isPlaying ? 3 : 0
                 waveFrequency: 24
                 handleSpacing: 20
