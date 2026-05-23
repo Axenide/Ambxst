@@ -15,7 +15,7 @@ QtObject {
     readonly property string ipcPipe: "/tmp/nothingless_ipc.pipe"
 
     property Process toggleMetricProcess: Process {
-        command: ["sh", "-c", "/home/leo/.local/lib/nothingless/toggle-metrics.sh"]
+        command: ["sh", "-c", Quickshell.shellDir + "/scripts/toggle-metrics.sh"]
         running: false
     }
 
@@ -36,8 +36,11 @@ QtObject {
 
 
     function toggleMetrics() {
-        toggleMetricProcess.running = true;
-        console.log("Metrics toggled via script");
+        // Toggle the notch metrics overlay
+        if (Config.notch) {
+            Config.notch.showMetrics = !Config.notch.showMetrics;
+            console.log("Metrics overlay toggled:", Config.notch.showMetrics);
+        }
     }
 
     function run(command) {

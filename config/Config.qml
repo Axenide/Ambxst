@@ -677,6 +677,7 @@ Singleton {
             property string noMediaDisplay: "userHost"
             property string customText: "NothingLess"
             property bool disableHoverExpansion: true
+            property bool showMetrics: false
         }
     }
 
@@ -1324,12 +1325,21 @@ Singleton {
                 }
             }
 
+            // Get default binds from defaultNothinglessBinds (fallback for keys not yet in user's nothingless)
+            const defaultBinds = current.defaultNothinglessBinds || {};
+            
             // Check system binds
-            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
+            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit", "toggle-metrics"];
             for (const key of systemKeys) {
-                if (!current.nothingless.system[key] && adapter.nothingless.system && adapter.nothingless.system[key]) {
+                let defaultBind = null;
+                if (adapter.nothingless.system && adapter.nothingless.system[key]) {
+                    defaultBind = adapter.nothingless.system[key];
+                } else if (defaultBinds.system && defaultBinds.system[key]) {
+                    defaultBind = defaultBinds.system[key];
+                }
+                if (!current.nothingless.system[key] && defaultBind) {
                     console.log("Adding missing system bind:", key);
-                    current.nothingless.system[key] = createCleanBind(adapter.nothingless.system[key]);
+                    current.nothingless.system[key] = createCleanBind(defaultBind);
                     needsUpdate = true;
                 } else if (current.nothingless.system[key] && !current.nothingless.system[key].action) {
                     current.nothingless.system[key].action = createAction(current.nothingless.system[key]);

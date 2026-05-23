@@ -234,8 +234,8 @@ Item {
                 visible: SystemResources.cpuUsageEnabled || SystemResources.cpuTempEnabled || SystemResources.cpuPowerEnabled
                 label: "CPU"
                 labelColor: SystemResources.metricColorCpu
-                valueText: (SystemResources.metricsAvailable && SystemResources.cpuTempEnabled && SystemResources.cpuTemp > 0) ? (SystemResources.cpuTemp.toString() + (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled ? "° " + Math.round(SystemResources.cpuUsage).toString() + "%" : "°C")) : (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled) ? Math.round(SystemResources.cpuUsage).toString() : "--"
-                valueUnit: (SystemResources.metricsAvailable && !SystemResources.cpuTempEnabled && SystemResources.cpuUsageEnabled) ? "%" : (!SystemResources.metricsAvailable || (!SystemResources.cpuTempEnabled && !SystemResources.cpuUsageEnabled)) ? "" : ""
+                valueText: (SystemResources.metricsAvailable && SystemResources.cpuTempEnabled && SystemResources.cpuTemp > 0) ? (SystemResources.cpuTemp.toString() + (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled ? "° " + Math.round(SystemResources.cpuUsage).toString() + "%" : "°C")) : (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled) ? Math.round(SystemResources.cpuUsage).toString() + "%" : "--"
+                valueUnit: ""
                 subValue: (SystemResources.metricsAvailable && SystemResources.cpuPowerEnabled && SystemResources.cpuPower > 0) ? SystemResources.cpuPower.toFixed(0) : ""
                 subUnit: (SystemResources.metricsAvailable && SystemResources.cpuPowerEnabled && SystemResources.cpuPower > 0) ? "W" : ""
             }
@@ -244,8 +244,8 @@ Item {
                 visible: SystemResources.gpuUsageEnabled || SystemResources.gpuTempEnabled || SystemResources.gpuPowerEnabled
                 label: "GPU"
                 labelColor: SystemResources.metricColorGpu
-                valueText: (SystemResources.metricsAvailable && SystemResources.gpuTempEnabled && SystemResources.gpuTemp > 0) ? SystemResources.gpuTemp.toString() : (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled && SystemResources.gpuUsages.length > 0) ? Math.round(SystemResources.gpuUsages[0]).toString() : "--"
-                valueUnit: (SystemResources.metricsAvailable && SystemResources.gpuTempEnabled && SystemResources.gpuTemp > 0) ? "°C" : (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled) ? "%" : ""
+                valueText: (SystemResources.metricsAvailable && SystemResources.gpuTempEnabled && SystemResources.gpuTemp > 0) ? (SystemResources.gpuTemp.toString() + (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled && SystemResources.gpuUsages.length > 0 ? "° " + Math.round(SystemResources.gpuUsages[0]).toString() + "%" : "°C")) : (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled && SystemResources.gpuUsages.length > 0) ? Math.round(SystemResources.gpuUsages[0]).toString() + "%" : "--"
+                valueUnit: ""
                 subValue: (SystemResources.metricsAvailable && SystemResources.gpuPowerEnabled && SystemResources.gpuPower > 0) ? SystemResources.gpuPower.toFixed(0) : ""
                 subUnit: (SystemResources.metricsAvailable && SystemResources.gpuPowerEnabled && SystemResources.gpuPower > 0) ? "W" : ""
             }
@@ -256,8 +256,8 @@ Item {
                 visible: SystemResources.ramEnabled
                 label: "RAM"
                 labelColor: SystemResources.metricColorRam
-                valueText: (SystemResources.metricsAvailable && SystemResources.ramEnabled && SystemResources.ramUsage > 0) ? Math.round(SystemResources.ramUsage).toString() : "--"
-                valueUnit: (SystemResources.metricsAvailable && SystemResources.ramEnabled && SystemResources.ramUsage > 0) ? "%" : ""
+                valueText: (SystemResources.metricsAvailable && SystemResources.ramEnabled && SystemResources.ramUsage > 0) ? Math.round(SystemResources.ramUsage).toString() + "%" : "--"
+                valueUnit: ""
                 subValue: ""
                 subUnit: ""
             }
@@ -266,8 +266,8 @@ Item {
                 visible: SystemResources.diskEnabled
                 label: "DSK"
                 labelColor: SystemResources.metricColorDisk
-                valueText: (SystemResources.metricsAvailable && SystemResources.diskEnabled && SystemResources.validDisks.length > 0 && SystemResources.diskUsage[SystemResources.validDisks[0]]) ? Math.round(SystemResources.diskUsage[SystemResources.validDisks[0]]).toString() : "--"
-                valueUnit: (SystemResources.metricsAvailable && SystemResources.diskEnabled && SystemResources.validDisks.length > 0) ? "%" : ""
+                valueText: (SystemResources.metricsAvailable && SystemResources.diskEnabled && SystemResources.validDisks.length > 0 && SystemResources.diskUsage[SystemResources.validDisks[0]]) ? Math.round(SystemResources.diskUsage[SystemResources.validDisks[0]]).toString() + "%" : "--"
+                valueUnit: ""
                 subValue: ""
                 subUnit: ""
             }

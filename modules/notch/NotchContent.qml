@@ -105,6 +105,11 @@ Item {
             return (screenNotchOpen || hasActiveNotifications || hoverActive || barHoverActive);
         }
 
+        // If metrics overlay is active, always show the notch
+        if (Config.notch && Config.notch.showMetrics === true) {
+            return true;
+        }
+
         // If fullscreen and bar is NOT available on fullscreen, hard-hide the notch too
         // This prevents barHoverActive from leaking through when the bar itself is hidden
         if (activeWindowFullscreen && !(Config.bar && Config.bar.availableOnFullscreen !== undefined ? Config.bar.availableOnFullscreen : false)) {

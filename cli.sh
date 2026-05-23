@@ -241,6 +241,30 @@ run)
 		exit 1
 	fi
 
+	# toggle-metrics: write directly to notch.json (no IPC needed)
+	if [ "$CMD" = "toggle-metrics" ]; then
+		NOTCH_JSON="${XDG_CONFIG_HOME:-$HOME/.config}/nothingless/config/notch.json"
+		if [ -f "$NOTCH_JSON" ]; then
+			# Toggle showMetrics in the JSON
+			python3 -c "
+import json
+with open('$NOTCH_JSON') as f:
+    cfg = json.load(f)
+cfg['showMetrics'] = not cfg.get('showMetrics', False)
+with open('$NOTCH_JSON', 'w') as f:
+    json.dump(cfg, f, indent=2)
+print('Metrics toggled to', cfg['showMetrics'])
+" 2>&1 || {
+				echo "Error: Failed to toggle metrics"
+				exit 1
+			}
+			exit 0
+		else
+			echo "Error: notch.json not found at $NOTCH_JSON"
+			exit 1
+		fi
+	fi
+
 	# Fast path: Write directly to pipe if it exists (Zero latency)
 	if [ -p "$PIPE" ]; then
 		echo "$CMD" >"$PIPE" &

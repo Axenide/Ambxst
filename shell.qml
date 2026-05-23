@@ -5,6 +5,7 @@
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import qs.modules.bar
 import qs.modules.bar.workspaces
@@ -306,7 +307,7 @@ ShellRoot {
         }
     }
 
-    // --- Boot Splash ---
+    // --- Boot Splash (NOTHING animation with chroma key) ---
     Loader {
         id: bootSplash
         active: true
@@ -321,20 +322,57 @@ ShellRoot {
                     WlrLayershell.layer: WlrLayer.Overlay
                     WlrLayershell.namespace: "nothingless:splash-overlay"
                     exclusionMode: ExclusionMode.Ignore
+
                     Rectangle {
-                        id: splashBg; anchors.fill: parent; color: "#000000"
-                        opacity: 1.0
-                        Behavior on opacity { NumberAnimation { duration: 800 } }
-                        Image {
+                        id: splashBg
+                        anchors.fill: parent
+                        color: "#000000"
+
+                        AnimatedImage {
+                            id: splashAnim
                             anchors.centerIn: parent
-                            source: "assets/nothingless/nothingless-logo-color.svg"
-                            sourceSize.width: 512; sourceSize.height: 512; smooth: true
+                            width: Math.min(parent.width, parent.height) * 0.6
+                            height: width
+                            source: "assets/nothingless/NOTHING_splash.webp"
+                            fillMode: Image.PreserveAspectFit
+                            playing: true
+                            currentFrame: 0
+                        }
+
+                        // Fade out and destroy after animation
+                        opacity: splashVisible ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 800 } }
+
+                        property bool splashVisible: true
+                        property bool splashEnded: false
+
+                        Timer {
+                            interval: 4500
+                            running: true
+                            onTriggered: {
+                                splashBg.splashVisible = false
+                            }
+                        }
+
+                        Timer {
+                            interval: 5300
+                            running: true
+                            onTriggered: {
+                                splashAnim.playing = false
+                                splashAnim.source = ""
+                                bootSplash.active = false
+                            }
                         }
                     }
-                    Timer { interval: 2000; onTriggered: splashBg.opacity = 0; running: true }
-                    Timer { interval: 3000; onTriggered: bootSplash.active = false; running: true }
                 }
             }
         }
+    }
+
+    // Register toggle-metrics keybind with Hyprland (JsonAdapter no expone "toggle-metrics")
+    Process {
+        id: toggleMetricsRegister
+        command: ["hyprctl", "keyword", "bind", "SUPER_SHIFT,BACKSPACE,exec,nothingless run toggle-metrics"]
+        running: true
     }
 }

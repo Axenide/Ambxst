@@ -202,6 +202,34 @@ class SystemMonitor:
                 usage_map[mount] = 0.0
         return usage_map
 
+    def get_fps(self):
+        """Read FPS from SHM file, returns 0 if file is stale (>5s old)."""
+        import os
+        try:
+            mtime = os.path.getmtime("/dev/shm/nothingless_fps")
+            if time.time() - mtime > 5:
+                return 0.0
+            with open("/dev/shm/nothingless_fps") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#") or line.startswith("time"):
+                        continue
+                    if line.startswith("fps="):
+                        val = float(line.split("=", 1)[1])
+                        return max(0.0, val)
+                    parts = line.split(",")
+                    if len(parts) >= 2:
+                        try:
+                            val = float(parts[1].strip())
+                            if val > 0:
+                                return val
+                        except:
+                            pass
+        except:
+            pass
+        return 0.0
+
+
     def get_gpu_stats(self):
         usages = []
         temps = []
@@ -301,6 +329,7 @@ if __name__ == "__main__":
             ram_usage, ram_total, ram_used, ram_avail = monitor.get_mem()
             disk_usage = monitor.get_disk_usage(disks)
             gpu_usages, gpu_temps = monitor.get_gpu_stats()
+            fps = monitor.get_fps()
 
             print(
                 json.dumps(
@@ -319,6 +348,7 @@ if __name__ == "__main__":
                             "usages": gpu_usages,
                             "temps": gpu_temps,
                         },
+                        "fps": fps,
                     }
                 ),
                 flush=True,

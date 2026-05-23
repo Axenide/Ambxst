@@ -91,6 +91,7 @@ Flickable {
         StateService.set("metricColorDisk", colorDisk)
 
         SystemResources.notchVersion++
+        SystemResources.saveMetricsConfig()
         saved = true
         saveTimer.restart()
     }
