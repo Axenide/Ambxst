@@ -431,7 +431,8 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         console.log("Workspace click:", button.workspaceValue);
-                        AxctlService.dispatch(`workspace ${button.workspaceValue}`);
+                        wsProcess.command = ["hyprctl", "dispatch", "workspace", String(button.workspaceValue)];
+                        wsProcess.running = true;
                     }
                 }
 
@@ -581,7 +582,8 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         console.log("Workspace click:", workspaceValue);
-                        AxctlService.dispatch(`workspace ${workspaceValue}`);
+                        wsProcess.command = ["hyprctl", "dispatch", "workspace", String(workspaceValue)];
+                        wsProcess.running = true;
                     }
                 }
 
