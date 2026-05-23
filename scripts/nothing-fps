@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# nothing-fps — Launch any program with FPS monitoring
+#
+# Incluye MangoHud modificado (con output SHM). Auto-instala
+# las librerías si no están en ~/.local/lib/.
+# FPS escrito a /dev/shm/nothingless_fps para el notch.
+#
+# Usage:
+#   nothing-fps %command%          (Steam launch options)
+#   nothing-fps ./my-game
+
+SHM_FILE="/dev/shm/nothingless_fps"
+cleanup() { rm -f "$SHM_FILE" 2>/dev/null; }
+trap cleanup EXIT
+
+# ── Locate MangoHud libraries ──
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+LHOME="$HOME/.local/lib"
+LREPO=""
+
+# Search order: (1) junto al script, (2) repo scripts/, (3) ~/.local/lib/
+for dir in "$SCRIPT_DIR" "$HOME/.local/src/nothingless/scripts" "$HOME/.local/src/Test-NothingLess/scripts"; do
+    if [ -f "$dir/libMangoHud_shim.so" ]; then
+        LREPO="$dir"
+        break
+    fi
+done
+
+# If found in repo but not in home, copy
+if [ -n "$LREPO" ]; then
+    mkdir -p "$LHOME"
+    for lib in libMangoHud.so libMangoHud_shim.so libMangoHud_opengl.so; do
+        [ -f "$LREPO/$lib" ] && cp -n "$LREPO/$lib" "$LHOME/$lib" 2>/dev/null || true
+    done
+fi
+
+if [ ! -f "$LHOME/libMangoHud_shim.so" ]; then
+    echo "nothing-fps: error — libMangoHud_shim.so no encontrado." >&2
+    echo "Reinstalá NothingLess o copiá los archivos a ~/.local/lib/" >&2
+    exec "$@"
+fi
+
+# ── Environment ──
+export LD_LIBRARY_PATH="${LHOME}:${LD_LIBRARY_PATH:-}"
+export LD_PRELOAD="${LHOME}/libMangoHud_shim.so${LD_PRELOAD:+:$LD_PRELOAD}"
+export MANGOHUD_CONFIG="fps_only,font_size=14,background_alpha=0.2,position=top-right,offset_x=8,offset_y=8"
+export MANGOHUD=1
+
+exec env 'nothingless-fps=1' "$@"
