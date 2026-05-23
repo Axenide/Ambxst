@@ -1909,8 +1909,8 @@ Item {
                                 color: Colors.overSurfaceVariant
                                 Layout.bottomMargin: -4
                             }
+                        }
 
-                    // =====================
                         // =====================
                         // MONITORS SECTION
                         // =====================
@@ -1918,13 +1918,22 @@ Item {
                             visible: root.currentSection === "monitors"
                             Layout.fillWidth: true
                             spacing: 8
+
                             Text {
-                                text: "TEST: Monitors visible!\nScreens: " + Quickshell.screens.length + " connected"
+                                text: "Monitor Layout"
                                 font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(0)
-                                color: Colors.overSurface
-                                wrapMode: Text.WordWrap
-                                Layout.fillWidth: true
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            Text {
+                                text: Quickshell.screens.length + " monitor(s) connected"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                color: Colors.outline
+                                Layout.bottomMargin: 8
                             }
                         }
 
@@ -2152,4 +2161,3 @@ Item {
             onClosed: root.closeColorPicker()
         }
     }
-}
