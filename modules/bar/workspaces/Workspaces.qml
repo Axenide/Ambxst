@@ -176,7 +176,7 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        acceptedButtons: Qt.BackButton
+        acceptedButtons: Qt.NoButton
         onPressed: event => {
             if (event.button === Qt.BackButton) {
                 AxctlService.dispatch(`togglespecialworkspace`);
@@ -411,18 +411,24 @@ Item {
         Repeater {
             model: effectiveWorkspaceCount
 
-            Button {
+            Item {
                 id: button
                 property int workspaceValue: getWorkspaceId(index)
+                property bool hovered: btnMouse.containsMouse
                 Layout.fillHeight: true
-                HoverHandler {
-                    cursorShape: Qt.PointingHandCursor
-                }
-                onClicked: {
-                console.log("Workspace click:", workspaceValue);
-                AxctlService.dispatch(`workspace ${workspaceValue}`);
-            }
                 width: workspaceButtonWidth
+                implicitWidth: workspaceButtonWidth
+
+                MouseArea {
+                    id: btnMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        console.log("Workspace click:", workspaceValue);
+                        AxctlService.dispatch(`workspace ${workspaceValue}`);
+                    }
+                }
 
                 background: Item {
                     id: workspaceButtonBackground
@@ -458,7 +464,7 @@ Item {
                         font.pixelSize: workspaceLabelFontSize(text)
                         text: `${button.workspaceValue}`
                         elide: Text.ElideRight
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
+                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : button.hovered ? Colors.overBackground : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
 
                         Behavior on opacity {
                             enabled: Config.animDuration > 0
@@ -475,7 +481,7 @@ Item {
                         width: workspaceButtonWidth * 0.2
                         height: width
                         radius: width / 2
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : Colors.overBackground
+                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : button.hovered ? Styling.srItem("primary") : Colors.overBackground
 
                         Behavior on opacity {
                             enabled: Config.animDuration > 0
@@ -554,15 +560,24 @@ Item {
         Repeater {
             model: effectiveWorkspaceCount
 
-            Button {
+            Item {
                 id: buttonVert
                 property int workspaceValue: getWorkspaceId(index)
+                property bool hovered: btnVertMouse.containsMouse
                 Layout.fillWidth: true
-                onClicked: {
-                console.log("Workspace click:", workspaceValue);
-                AxctlService.dispatch(`workspace ${workspaceValue}`);
-            }
                 height: workspaceButtonWidth
+                implicitHeight: workspaceButtonWidth
+
+                MouseArea {
+                    id: btnVertMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        console.log("Workspace click:", workspaceValue);
+                        AxctlService.dispatch(`workspace ${workspaceValue}`);
+                    }
+                }
 
                 background: Item {
                     id: workspaceButtonBackgroundVert
@@ -598,7 +613,7 @@ Item {
                         font.pixelSize: workspaceLabelFontSize(text)
                         text: `${buttonVert.workspaceValue}`
                         elide: Text.ElideRight
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) ? Styling.srItem("primary") : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
+                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) ? Styling.srItem("primary") : buttonVert.hovered ? Colors.overBackground : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
 
                         Behavior on opacity {
                             enabled: Config.animDuration > 0
