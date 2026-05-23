@@ -1507,6 +1507,11 @@ Singleton {
                     property string key: "B"
                     property var action: ({ "id": "nothingless.reload", "args": {} })
                 }
+                property JsonObject "toggle-metrics": JsonObject {
+                    property list<string> modifiers: ["SUPER", "SHIFT"]
+                    property string key: "BACKSPACE"
+                    property var action: ({ "id": "nothingless.toggle-metrics", "args": {} })
+                }
                 property JsonObject quit: JsonObject {
                     property list<string> modifiers: ["SUPER", "CTRL", "ALT"]
                     property string key: "B"
