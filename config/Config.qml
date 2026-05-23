@@ -3532,17 +3532,37 @@ Singleton {
         return normalized.startsWith('#') || normalized.startsWith('rgb');
     }
 
+    // Cache for resolved colors to avoid repeated Colors singleton lookups.
+    // StyledRect calls resolveColor 3-10 times per instance, per frame.
+    // Most color names repeat frequently ("background", "surface", "primary", ...).
+    property var _colorCache: ({})
+    property int _colorCacheHits: 0
+    property int _colorCacheMisses: 0
+
     function resolveColor(colorValue) {
-        if (!colorValue) return "transparent"; // Fallback
-        
-        if (isHexColor(colorValue)) {
-            return colorValue;
+        if (!colorValue) return "transparent";
+
+        // Cache key: use the raw value directly (hex strings skip cache)
+        if (typeof colorValue === "string" && colorValue.charCodeAt(0) === 35) { // '#'
+            return colorValue; // hex colors don't need resolution
         }
-        
-        // Check Colors singleton
+
+        // Fast path: cache hit
+        const cached = root._colorCache[colorValue];
+        if (cached !== undefined) return cached;
+
+        // Resolve
         if (typeof Colors === 'undefined' || !Colors) return "transparent";
-        
-        return Colors[colorValue] || "transparent"; 
+        const resolved = Colors[colorValue] || "transparent";
+
+        // Cache it (simple string key → string value, no eviction needed — color palette is bounded)
+        root._colorCache[colorValue] = resolved;
+        return resolved;
+    }
+
+    // Called when theme/colors change to invalidate cached resolutions
+    function invalidateColorCache() {
+        root._colorCache = {};
     }
 
     function resolveColorWithOpacity(colorValue, opacity) {

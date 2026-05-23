@@ -17,28 +17,34 @@ QtObject {
         return Math.max(Config.theme.monoFontSize + offset, 8);
     }
 
+    // Pre-built "transparent" variant to avoid allocating a new object on every call
+    property var _transparentConfig: null
+
     function getStyledRectConfig(variant) {
         switch (variant) {
         case "transparent":
-            // Internal variant: uses bg config but with opacity, border and radius forced to 0
-            const bgConfig = Config.theme.srBg;
-            return {
-                gradient: bgConfig.gradient,
-                gradientType: bgConfig.gradientType,
-                gradientAngle: bgConfig.gradientAngle,
-                gradientCenterX: bgConfig.gradientCenterX,
-                gradientCenterY: bgConfig.gradientCenterY,
-                halftoneDotMin: bgConfig.halftoneDotMin,
-                halftoneDotMax: bgConfig.halftoneDotMax,
-                halftoneStart: bgConfig.halftoneStart,
-                halftoneEnd: bgConfig.halftoneEnd,
-                halftoneDotColor: bgConfig.halftoneDotColor,
-                halftoneBackgroundColor: bgConfig.halftoneBackgroundColor,
-                itemColor: bgConfig.itemColor,
-                opacity: 0,
-                border: [bgConfig.border[0], 0],
-                radius: 0
-            };
+            // Lazy-init the transparent config (needs bgConfig which may change on theme reload)
+            var bgConfig = Config.theme.srBg;
+            if (!root._transparentConfig) {
+                root._transparentConfig = {
+                    gradient: bgConfig.gradient,
+                    gradientType: bgConfig.gradientType,
+                    gradientAngle: bgConfig.gradientAngle,
+                    gradientCenterX: bgConfig.gradientCenterX,
+                    gradientCenterY: bgConfig.gradientCenterY,
+                    halftoneDotMin: bgConfig.halftoneDotMin,
+                    halftoneDotMax: bgConfig.halftoneDotMax,
+                    halftoneStart: bgConfig.halftoneStart,
+                    halftoneEnd: bgConfig.halftoneEnd,
+                    halftoneDotColor: bgConfig.halftoneDotColor,
+                    halftoneBackgroundColor: bgConfig.halftoneBackgroundColor,
+                    itemColor: bgConfig.itemColor,
+                    opacity: 0,
+                    border: [bgConfig.border[0], 0],
+                    radius: 0
+                };
+            }
+            return root._transparentConfig;
         case "bg":
             return Config.theme.srBg;
         case "popup":

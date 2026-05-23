@@ -15,6 +15,7 @@ class SystemMonitor:
         self.cpu_model = self._detect_cpu_model()
         self.gpu_info = self._detect_gpus()
         self.disk_types = self._detect_disk_types(disks)
+        self._cpu_temp_path = None  # cached hwmon path for CPU temp
 
     def _detect_cpu_model(self):
         try:
@@ -97,27 +98,32 @@ class SystemMonitor:
 
     def _detect_disk_types(self, disks):
         types = {}
+        # Build mount lookup map in one pass over /proc/mounts
+        mount_dev = {}
+        try:
+            with open("/proc/mounts", "r") as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[1] in disks:
+                        mount_dev[parts[1]] = parts[0]
+        except:
+            pass
+
+        # Precompile regex for device base name extraction
+        import re as _re
+        _dev_re = _re.compile(r"p?\d*$")
+
         for mount in disks:
             types[mount] = "unknown"
-            try:
-                with open("/proc/mounts", "r") as f:
-                    for line in f:
-                        parts = line.split()
-                        if parts[1] == mount:
-                            dev = parts[0]
-                            if dev.startswith("/dev/"):
-                                base = re.sub(
-                                    r"p?[0-9]*$", "", dev.replace("/dev/", "")
-                                )
-                                rota_path = f"/sys/block/{base}/queue/rotational"
-                                if os.path.exists(rota_path):
-                                    with open(rota_path, "r") as f2:
-                                        types[mount] = (
-                                            "hdd" if f2.read().strip() == "1" else "ssd"
-                                        )
-                            break
-            except:
-                pass
+            dev = mount_dev.get(mount)
+            if dev and dev.startswith("/dev/"):
+                base = _dev_re.sub("", dev[5:])  # dev.replace("/dev/", "")
+                rota_path = f"/sys/block/{base}/queue/rotational"
+                try:
+                    with open(rota_path, "r") as f:
+                        types[mount] = "hdd" if f.read().strip() == "1" else "ssd"
+                except:
+                    pass
         return types
 
     def get_cpu(self):
@@ -142,8 +148,22 @@ class SystemMonitor:
             return 0.0
 
     def get_cpu_temp(self):
+        # Use cached hwmon path (found once, reused)
+        if self._cpu_temp_path is not None:
+            try:
+                for item in os.listdir(self._cpu_temp_path):
+                    if item.endswith("_input") and item.startswith("temp"):
+                        with open(os.path.join(self._cpu_temp_path, item), "r") as f:
+                            val = int(f.read().strip())
+                            if 10000 < val < 120000:
+                                return val // 1000
+            except:
+                self._cpu_temp_path = None  # invalidate cache on error
+                return -1
+
         base = "/sys/class/hwmon"
         if not os.path.exists(base):
+            self._cpu_temp_path = None
             return -1
         for hwmon in os.listdir(base):
             path = os.path.join(base, hwmon)
@@ -158,6 +178,7 @@ class SystemMonitor:
                     "x86_pkg_temp",
                     "amd_energy",
                 ]:
+                    self._cpu_temp_path = path  # cache for subsequent calls
                     for item in os.listdir(path):
                         if item.endswith("_input") and item.startswith("temp"):
                             with open(os.path.join(path, item), "r") as f:
@@ -166,6 +187,7 @@ class SystemMonitor:
                                     return val // 1000
             except:
                 continue
+        self._cpu_temp_path = None
         return -1
 
     def get_mem(self):
