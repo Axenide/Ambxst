@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/nothingless/nothingless-logo-color.svg" alt="NothingLess" width="400"/>
+  <img src="./assets/not.gif" alt="NothingLess" width="400"/>
   <br><br>
   A high-performance, deeply customizable Wayland shell built with Quickshell.
   <br><br>
