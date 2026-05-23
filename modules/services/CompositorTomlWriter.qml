@@ -295,6 +295,7 @@ Singleton {
                     pushCoreBind(nothingless.system.lens);
                     if (nothingless.system.reload) pushCoreBind(nothingless.system.reload);
                     if (nothingless.system.quit) pushCoreBind(nothingless.system.quit);
+                    if (nothingless.system && nothingless.system["toggle-metrics"]) pushCoreBind(nothingless.system["toggle-metrics"]);
                 }
             }
 
