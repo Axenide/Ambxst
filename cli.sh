@@ -88,9 +88,11 @@ NOTHINGLESS_HYPR_LUA_BLOCK=$(
 	cat <<'EOF'
 -- NothingLess
 loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()
+exec-once = nothingless
+exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 
-# OVERRIDES
-# Down here you can write or source anything that you want to override from NothingLess's settings.
+-- OVERRIDES
+-- Down here you can write or source anything that you want to override from NothingLess's settings.
 EOF
 )
 
@@ -130,7 +132,9 @@ remove_nothingless_hyprland_block() {
 				|| line == "# OVERRIDES" \
 				|| line == "-- OVERRIDES" \
 				|| line == "# Down here you can write or source anything that you want to override from NothingLess'\''s settings." \
-				|| line == "-- Down here you can write or source anything that you want to override from NothingLess'\''s settings."
+				|| line == "-- Down here you can write or source anything that you want to override from NothingLess'\''s settings." \
+				|| line == "exec-once = nothingless" \
+				|| line == "exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon"
 		}
 		{
 			lines[NR] = $0

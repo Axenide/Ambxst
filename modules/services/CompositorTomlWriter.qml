@@ -415,9 +415,12 @@ Singleton {
     function writeHyprlandConfig() {
         const dataDir = (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/nothingless";
         const hyprPath = dataDir + "/hyprland.conf";
+        const luaPath = dataDir + "/hyprland.lua";
 
         let hypr = "# NothingLess auto-generated config\n";
         hypr += "# Sourced by ~/.config/hypr/hyprland.conf\n\n";
+        hypr += "exec-once = nothingless\n";
+        hypr += "exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon\n\n";
 
         if (Config.compositor) {
             if (Config.compositor.showBorder !== undefined)
@@ -436,7 +439,7 @@ Singleton {
 
         const escPath = hyprPath.replace(/'/g, "'\\\\'");
         const escCfg = hypr.replace(/'/g, "'\\\\'");
-        hyprctlProcess.command = ["bash", "-c", "mkdir -p $(dirname '" + escPath + "') && echo '" + escCfg + "' > '" + escPath + "'"];
+        hyprctlProcess.command = ["bash", "-c", "mkdir -p $(dirname '" + escPath + "') && echo '" + escCfg + "' > '" + escPath + "' && echo '" + escCfg + "' > '" + luaPath.replace(/'/g, "'\\\\'") + "'"];
         hyprctlProcess.running = true;
     }
 
