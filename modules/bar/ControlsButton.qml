@@ -125,9 +125,9 @@ Item {
                 }
                 sliderValue: Audio.sink?.audio?.volume ?? 0
                 progressColor: Audio.sink?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
-                wavy: true
-                wavyAmplitude: Audio.sink?.audio?.muted ? 0.5 : 1.5 * sliderValue
-                wavyFrequency: Audio.sink?.audio?.muted ? 1.0 : 8.0 * sliderValue
+                wavy: false
+                wavyAmplitude: 0
+                wavyFrequency: 0
 
                 onValueChanged: newValue => {
                     if (Audio.sink?.audio) {
@@ -162,9 +162,9 @@ Item {
                 icon: Audio.source?.audio?.muted ? Icons.micSlash : Icons.mic
                 sliderValue: Audio.source?.audio?.volume ?? 0
                 progressColor: Audio.source?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
-                wavy: true
-                wavyAmplitude: Audio.source?.audio?.muted ? 0.5 : 1.5 * sliderValue
-                wavyFrequency: Audio.source?.audio?.muted ? 1.0 : 8.0 * sliderValue
+                wavy: false
+                wavyAmplitude: 0
+                wavyFrequency: 0
 
                 onValueChanged: newValue => {
                     if (Audio.source?.audio) {
@@ -201,9 +201,9 @@ Item {
                 icon: Icons.sun
                 sliderValue: currentMonitor?.brightness ?? 0.5
                 progressColor: Styling.srItem("overprimary")
-                wavy: true
-                wavyAmplitude: 1.5 * sliderValue
-                wavyFrequency: 8.0 * sliderValue
+                wavy: false
+                wavyAmplitude: 0
+                wavyFrequency: 0
                 iconRotation: (sliderValue / 1.0) * 180
                 iconScale: 0.8 + (sliderValue / 1.0) * 0.2
 
