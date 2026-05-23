@@ -42,7 +42,7 @@ Item {
     property bool updateOnRelease: false
     property string iconPos: "start"
     property real size: 100
-    property real thickness: 4
+    property real thickness: 6
     property color iconColor: Colors.overBackground
     property real handleSpacing: 4
     property bool resizeParent: true
