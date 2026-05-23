@@ -570,15 +570,13 @@ Singleton {
         const hyprPath = dataDir + "/hyprland.conf";
         const luaPath = dataDir + "/hyprland.lua";
 
-        // Minimal static config — only what's needed before axctl takes over.
-        // All other settings are managed by axctl (live via raw-batch, persisted via axctl.toml).
-        // This file is generated ONCE at startup and never changes, so Hyprland won't
-        // reload and disrupt NothingLess when the user edits their main config.
+        // Minimal static config — only the axctl daemon exec-once.
+        // NothingLess itself is started by the daemon via [startup] exec-once in axctl.toml.
+        // This matches Ambxst's architecture exactly.
         let hypr = "# NothingLess auto-generated config\n";
         hypr += "# Sourced by ~/.config/hypr/hyprland.conf\n";
-        hypr += "# This file is static — all compositor settings are managed by axctl.\n\n";
+        hypr += "# NothingLess is started by axctl daemon, not directly by Hyprland.\n\n";
 
-        hypr += "exec-once = nothingless\n";
         hypr += "exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon\n\n";
 
         hypr += "# Qt/Quickshell GPU acceleration\n";
