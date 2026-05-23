@@ -3532,44 +3532,17 @@ Singleton {
         return normalized.startsWith('#') || normalized.startsWith('rgb');
     }
 
-    // Cache for resolved colors to avoid repeated Colors singleton lookups.
-    // StyledRect calls resolveColor 3-10 times per instance, per frame.
-    // Most color names repeat frequently ("background", "surface", "primary", ...).
-    // Uses a generation counter instead of cross-module invalidation:
-    // every time the cache is accessed after a potential theme change, it
-    // auto-detects staleness by checking one sentinel key.
-    property var _colorCache: ({})
-    property var _colorCacheSentinel: "transparent"  // tracks last known sentinel value
-    property var _colorCacheSentinelKey: "background"  // key used as canary
-
     function resolveColor(colorValue) {
-        if (!colorValue) return "transparent";
-
-        // Cache key: use the raw value directly (hex strings skip cache)
-        if (typeof colorValue === "string" && colorValue.charCodeAt(0) === 35) { // '#'
-            return colorValue; // hex colors don't need resolution
+        if (!colorValue) return "transparent"; // Fallback
+        
+        if (isHexColor(colorValue)) {
+            return colorValue;
         }
-
-        // Auto-invalidate: check if a sentinel key's value has changed since last cache
-        if (typeof Colors !== 'undefined' && Colors) {
-            const currentSentinel = Colors[root._colorCacheSentinelKey];
-            if (currentSentinel !== root._colorCacheSentinel) {
-                root._colorCache = {};
-                root._colorCacheSentinel = currentSentinel;
-            }
-        }
-
-        // Fast path: cache hit
-        const cached = root._colorCache[colorValue];
-        if (cached !== undefined) return cached;
-
-        // Resolve
+        
+        // Check Colors singleton
         if (typeof Colors === 'undefined' || !Colors) return "transparent";
-        const resolved = Colors[colorValue] || "transparent";
-
-        // Cache it (simple string key → string value, no eviction needed — color palette is bounded)
-        root._colorCache[colorValue] = resolved;
-        return resolved;
+        
+        return Colors[colorValue] || "transparent"; 
     }
 
     function resolveColorWithOpacity(colorValue, opacity) {
