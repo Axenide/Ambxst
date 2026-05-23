@@ -20,10 +20,6 @@ Singleton {
         running: false
         stdout: SplitParser {}
     }
-    property Process hyprctlProcess: Process {
-        running: false
-        stdout: SplitParser {}
-    }
 
     function getColorValue(colorName) {
         const resolved = Config.resolveColor(colorName);
@@ -565,46 +561,15 @@ Singleton {
         console.log("CompositorTomlWriter: Written TOML to", root.outputPath);
     }
 
-    function writeHyprlandConfig() {
-        const dataDir = (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/nothingless";
-        const hyprPath = dataDir + "/hyprland.conf";
-        const luaPath = dataDir + "/hyprland.lua";
-
-        // Minimal static config — only the axctl daemon exec-once.
-        // NothingLess itself is started by the daemon via [startup] exec-once in axctl.toml.
-        // This matches Ambxst's architecture exactly.
-        let hypr = "# NothingLess auto-generated config\n";
-        hypr += "# Sourced by ~/.config/hypr/hyprland.conf\n";
-        hypr += "# NothingLess is started by axctl daemon, not directly by Hyprland.\n\n";
-
-        hypr += "exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon\n\n";
-
-        hypr += "# Qt/Quickshell GPU acceleration\n";
-        hypr += "env = QSG_RHI_BACKEND,opengl\n";
-        hypr += "env = QSG_RENDER_LOOP,threaded\n";
-        hypr += "env = QT_QUICK_BACKEND,opengl\n\n";
-
-        hypr += "# Prevent Hyprland logo/wallpaper flash before NothingLess loads\n";
-        hypr += "misc {\n";
-        hypr += "    force_default_wallpaper = -1\n";
-        hypr += "    disable_hyprland_logo = true\n";
-        hypr += "}\n";
-
-        const escPath = hyprPath.replace(/'/g, "'\\\\'");
-        const escCfg = hypr.replace(/'/g, "'\\\\'");
-        hyprctlProcess.command = ["bash", "-c", "mkdir -p $(dirname '" + escPath + "') && echo '" + escCfg + "' > '" + escPath + "' && echo '" + escCfg + "' > '" + luaPath.replace(/'/g, "'\\\\'") + "'"];
-        hyprctlProcess.running = true;
-    }
-
-    function refresh() {
-        writeTomlFile();
-        writeHyprlandConfig();
-    }
+    // Note: hyprland.conf is NOT generated here.
+    // It is created once by 'nothingless install hyprland' and stays static forever.
+    // Regenerating it would trigger Hyprland config reload and disrupt the session.
+    // All compositor settings go through axctl.toml (persist) and axctl raw-batch (live).
 
     Component.onCompleted: {
         Qt.callLater(() => {
             if (Config.loader.loaded) {
-                refresh();
+                writeTomlFile();
             }
         });
     }
@@ -612,7 +577,7 @@ Singleton {
     property Connections configConnections: Connections {
         target: Config.loader
         function onLoaded() {
-            refresh();
+            writeTomlFile();
         }
     }
 

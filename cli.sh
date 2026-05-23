@@ -76,6 +76,7 @@ NOTHINGLESS_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/nothin
 NOTHINGLESS_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
 # NothingLess
+exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 source = ~/.local/share/nothingless/hyprland.conf
 
 # OVERRIDES
@@ -85,6 +86,7 @@ EOF
 NOTHINGLESS_HYPR_LUA_BLOCK=$(
 	cat <<'EOF'
 -- NothingLess
+exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()
 
 -- OVERRIDES
@@ -570,9 +572,47 @@ install)
 		HYPR_DIR="$HOME/.config/hypr"
 		HYPR_LUA="$HYPR_DIR/hyprland.lua"
 		HYPR_CONF="$HYPR_DIR/hyprland.conf"
+		SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/nothingless"
 
-		# Create directory if needed
+		# Create directories if needed
 		mkdir -p "$HYPR_DIR"
+		mkdir -p "$SHARE_DIR"
+
+		# Create the initial sourced config so the daemon starts on first boot
+		# before NothingLess has ever run to generate it.
+		cat > "$SHARE_DIR/hyprland.conf" <<'HYPRCONF'
+# NothingLess — static boot config
+# NothingLess is started by the axctl daemon (exec-once above),
+# not directly by Hyprland. All settings live in axctl.toml.
+
+# Qt/Quickshell GPU acceleration
+env = QSG_RHI_BACKEND,opengl
+env = QSG_RENDER_LOOP,threaded
+env = QT_QUICK_BACKEND,opengl
+
+# Prevent Hyprland logo/wallpaper flash before NothingLess loads
+misc {
+    force_default_wallpaper = -1
+    disable_hyprland_logo = true
+}
+HYPRCONF
+
+		# Same for Lua users
+		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
+-- NothingLess — static boot config
+-- NothingLess is started by the axctl daemon, not directly by Hyprland.
+
+env = QSG_RHI_BACKEND,opengl
+env = QSG_RENDER_LOOP,threaded
+env = QT_QUICK_BACKEND,opengl
+
+misc {
+    force_default_wallpaper = -1
+    disable_hyprland_logo = true
+}
+HYPRLUA
+
+		echo "Created initial compositor config at $SHARE_DIR/"
 
 		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
 			append_nothingless_hyprland_block "$HYPR_LUA" "$NOTHINGLESS_HYPR_LUA_SOURCE" "$NOTHINGLESS_HYPR_LUA_BLOCK"
