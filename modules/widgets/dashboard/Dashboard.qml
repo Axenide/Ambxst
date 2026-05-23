@@ -332,7 +332,7 @@ NotchAnimationBehavior {
                     }
                 }
 
-                onClicked: GlobalShortcuts.toggleSettings(root.screenName)
+                onClicked: GlobalShortcuts.toggleSettings()
             }
         }
 
