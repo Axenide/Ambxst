@@ -1325,8 +1325,8 @@ Singleton {
                 }
             }
 
-            // Get default binds from defaultNothinglessBinds (fallback for keys not yet in user's nothingless)
-            const defaultBinds = current.defaultNothinglessBinds || {};
+            // Get default binds from adapter.defaultNothinglessBinds (fallback for keys not yet in user's nothingless)
+            const defaultBinds = adapter.defaultNothinglessBinds || {};
             
             // Check system binds
             const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit", "toggle-metrics"];
