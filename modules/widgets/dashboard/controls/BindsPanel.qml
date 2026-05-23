@@ -457,12 +457,17 @@ Item {
         if (nothingless.system) {
             const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit", "toggle-metrics"];
             for (const key of systemKeys) {
-                if (nothingless.system[key]) {
+                let bindObj = nothingless.system[key];
+                // Fallback for keys not exposed by JsonAdapter (e.g., hyphenated names)
+                if (!bindObj && adapter.defaultNothinglessBinds && adapter.defaultNothinglessBinds.system) {
+                    bindObj = adapter.defaultNothinglessBinds.system[key];
+                }
+                if (bindObj) {
                     binds.push({
                         category: "System",
                         name: key.charAt(0).toUpperCase() + key.slice(1),
                         path: "nothingless.system." + key,
-                        bind: nothingless.system[key]
+                        bind: bindObj
                     });
                 }
             }
