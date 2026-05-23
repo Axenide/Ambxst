@@ -430,7 +430,7 @@ Item {
                     }
                 }
 
-                background: Item {
+                Item {
                     id: workspaceButtonBackground
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
@@ -579,7 +579,7 @@ Item {
                     }
                 }
 
-                background: Item {
+                Item {
                     id: workspaceButtonBackgroundVert
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
