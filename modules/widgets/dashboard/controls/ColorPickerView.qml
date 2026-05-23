@@ -221,6 +221,14 @@ Item {
         // Color grid (SCROLLABLE)
         GridView {
             id: colorGrid
+            // Capture wheel events to prevent parent Flickable from scrolling
+            WheelHandler {
+                onWheel: event => {
+                    var newY = colorGrid.contentY - event.angleDelta.y;
+                    newY = Math.max(0, Math.min(newY, colorGrid.contentHeight - colorGrid.height));
+                    colorGrid.contentY = newY;
+                }
+            }
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
