@@ -1917,23 +1917,22 @@ Item {
                         ColumnLayout {
                             visible: root.currentSection === "monitors"
                             Layout.fillWidth: true
+                            Layout.preferredHeight: 200
                             spacing: 8
 
-                            Text {
-                                text: "Monitor Layout"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(-1)
-                                font.weight: Font.Medium
-                                color: Colors.overSurfaceVariant
-                                Layout.bottomMargin: -4
-                            }
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 180
+                                color: "#FF0000"
+                                radius: 8
 
-                            Text {
-                                text: Quickshell.screens.length + " monitor(s) connected"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(-2)
-                                color: Colors.outline
-                                Layout.bottomMargin: 8
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "MONITOR SECTION VISIBLE"
+                                    color: "#FFFFFF"
+                                    font.pixelSize: 18
+                                    font.bold: true
+                                }
                             }
                         }
 
