@@ -716,20 +716,47 @@ Singleton {
         }
 
         adapter: JsonAdapter {
+            // Borders & Rounding
+            property bool showBorder: true
             property var activeBorderColor: ["primary"]
             property int borderAngle: 45
             property var inactiveBorderColor: ["surface"]
             property int inactiveBorderAngle: 45
             property int borderSize: 2
             property int rounding: 16
+            property real roundingPower: 2.0
             property bool syncRoundness: true
             property bool syncBorderWidth: false
             property bool syncBorderColor: false
             property bool syncShadowOpacity: false
             property bool syncShadowColor: false
+            property bool resizeOnBorder: false
+            property int extendBorderGrabArea: 15
+            property bool hoverIconOnBorder: true
+
+            // Gaps & Layout
             property int gapsIn: 2
             property int gapsOut: 4
             property string layout: "dwindle"
+            property bool allowTearing: false
+
+            // Snap
+            property bool snapEnabled: true
+            property int snapWindowGap: 10
+            property int snapMonitorGap: 10
+            property bool snapBorderOverlap: false
+            property bool snapRespectGaps: false
+
+            // Opacity & Dim
+            property real activeOpacity: 1.0
+            property real inactiveOpacity: 1.0
+            property real fullscreenOpacity: 1.0
+            property bool dimInactive: false
+            property real dimStrength: 0.5
+            property real dimAround: 0.4
+            property real dimSpecial: 0.2
+
+            // Shadow
             property bool shadowEnabled: true
             property int shadowRange: 8
             property int shadowRenderPower: 3
@@ -740,6 +767,8 @@ Singleton {
             property real shadowOpacity: 0.5
             property string shadowOffset: "0 0"
             property real shadowScale: 1.0
+
+            // Blur
             property bool blurEnabled: true
             property int blurSize: 4
             property int blurPasses: 2
@@ -758,6 +787,117 @@ Singleton {
             property real blurPopupsIgnorealpha: 0.2
             property bool blurInputMethods: false
             property real blurInputMethodsIgnorealpha: 0.2
+
+            // Animations
+            property bool animationsEnabled: true
+
+            // Input: Keyboard
+            property string kbLayout: "us"
+            property string kbVariant: ""
+            property string kbOptions: ""
+            property bool numlockByDefault: false
+            property int repeatRate: 25
+            property int repeatDelay: 600
+
+            // Input: Mouse
+            property real mouseSensitivity: 0.0
+            property string mouseAccelProfile: ""
+            property int followMouse: 1
+            property bool mouseNaturalScroll: false
+            property real mouseScrollFactor: 1.0
+            property bool mouseLeftHanded: false
+            property bool mouseRefocus: false
+            property int floatSwitchOverrideFocus: 0
+
+            // Input: Touchpad
+            property bool touchpadDisableWhileTyping: true
+            property bool touchpadNaturalScroll: true
+            property bool touchpadTapToClick: true
+            property bool touchpadClickfingerBehavior: false
+            property string touchpadTapButtonMap: ""
+            property bool touchpadMiddleButtonEmulation: false
+            property int touchpadDragLock: 0
+            property real touchpadScrollFactor: 1.0
+
+            // Cursor
+            property bool noHardwareCursors: false
+            property bool enableHyprcursor: true
+            property bool noWarps: false
+            property bool persistentWarps: false
+            property bool warpOnChangeWorkspace: false
+            property real cursorZoomFactor: 1.0
+            property int cursorInactiveTimeout: 0
+            property bool cursorHideOnKeyPress: false
+            property bool cursorHideOnTouch: false
+            property bool cursorHideOnTablet: false
+
+            // Gestures
+            property bool workspaceSwipeCreateNew: true
+            property bool workspaceSwipeForever: false
+            property real workspaceSwipeCancelRatio: 0.5
+            property int workspaceSwipeMinSpeedToForce: 30
+            property bool workspaceSwipeDirectionLock: true
+            property bool workspaceSwipeUseR: false
+            property int workspaceSwipeDistance: 300
+            property bool workspaceSwipeInvert: true
+            property bool workspaceSwipeTouch: false
+            property bool workspaceSwipeTouchInvert: false
+
+            // Dwindle Layout
+            property bool dwindlePreserveSplit: true
+            property bool dwindlePseudotile: false
+            property int dwindleForceSplit: 0
+            property bool dwindleSmartSplit: true
+            property real dwindleDefaultSplitRatio: 1.0
+            property real dwindleSplitWidthMultiplier: 1.0
+            property bool dwindlePermanentDirectionOverride: false
+            property bool dwindleUseActiveForSplits: true
+            property bool dwindleSmartResizing: true
+            property real dwindleSpecialScaleFactor: 0.8
+
+            // Master Layout
+            property string masterOrientation: "left"
+            property real masterMfact: 0.55
+            property string masterNewStatus: "slave"
+            property bool masterNewOnTop: false
+            property string masterNewOnActive: "none"
+            property bool masterSmartResizing: true
+            property real masterSpecialScaleFactor: 0.8
+            property bool masterAllowSmallSplit: false
+
+            // Scrolling Layout
+            property real scrollingColumnWidth: 0.3
+            property string scrollingExplicitColumnWidths: ""
+            property string scrollingDirection: "right"
+            property bool scrollingFullscreenOnOneColumn: true
+            property string scrollingFocusFitMethod: "center"
+            property bool scrollingFollowFocus: true
+            property real scrollingFollowMinVisible: 0.1
+
+            // XWayland
+            property bool xwaylandEnabled: true
+            property bool xwaylandForceZeroScaling: false
+            property bool xwaylandUseNearestNeighbor: true
+
+            // Monitor Globals
+            property int vrr: 0
+            property bool vfr: true
+            property bool mouseMoveEnablesDpms: false
+            property bool keyPressEnablesDpms: false
+
+            // Misc
+            property bool disableAutoreload: false
+            property bool focusOnActivate: false
+            property bool animateManualResizes: false
+            property bool animateMouseWindowdragging: true
+            property bool disableHyprlandLogo: true
+            property bool disableSplashRendering: false
+            property int forceDefaultWallpaper: -1
+
+            // Ecosystem
+            property bool noUpdateNews: true
+            property bool noDonationNag: true
+            property bool enforcePermissions: false
         }
     }
 
