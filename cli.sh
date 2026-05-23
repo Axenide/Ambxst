@@ -57,6 +57,8 @@ Commands:
     version, -v, --version            Show NothingLess version
     goodbye                           Uninstall NothingLess :(
     install <target>                    Install compositor config (hyprland)
+    install hyprland --lua            Install with Lua config (Hyprland >= 0.48)
+    install hyprland --conf           Install with config file (default, safe)
     remove <target>                    Remove compositor config (hyprland)
 
 Examples:
@@ -566,21 +568,34 @@ version | -v | --version)
 	;;
 install)
 	TARGET="${2:-}"
+	MODE="auto"
+
+	# Parse optional flags
 	if [ "$TARGET" = "hyprland" ]; then
-		HYPR_DIR="$HOME/.config/hypr"
-		HYPR_LUA="$HYPR_DIR/hyprland.lua"
-		HYPR_CONF="$HYPR_DIR/hyprland.conf"
-		SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/nothingless"
+		shift 2 2>/dev/null || true
+		for arg in "$@"; do
+			case "$arg" in
+				--lua) MODE="lua" ;;
+				--conf) MODE="conf" ;;
+				*) echo "Warning: Unknown option '$arg'. Use --lua or --conf." ;;
+			esac
+		done
+	elif [ "$TARGET" != "hyprland" ]; then
+		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
+		exit 1
+	fi
 
-		# Create directories if needed
-		mkdir -p "$HYPR_DIR"
-		mkdir -p "$SHARE_DIR"
+	HYPR_DIR="$HOME/.config/hypr"
+	HYPR_LUA="$HYPR_DIR/hyprland.lua"
+	HYPR_CONF="$HYPR_DIR/hyprland.conf"
+	SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/nothingless"
 
-		# Create the initial sourced config — minimal with core binds baseline.
-		# The boot flag prevents re-execution on Hyprland config reload.
-		# Core binds are here so Hyprland has them immediately after reload,
-		# before axctl re-applies the full bind set.
-		cat > "$SHARE_DIR/hyprland.conf" <<'HYPRCONF'
+	# Create directories if needed
+	mkdir -p "$HYPR_DIR"
+	mkdir -p "$SHARE_DIR"
+
+	# ---- Base config content - always valid conf syntax ----
+	BASE_CONF=$(cat <<-'ENDCONF'
 exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
 
 # Core binds — baseline for Hyprland reload recovery
@@ -601,40 +616,52 @@ bind = SUPER SHIFT, S, exec, nothingless run screenshot
 bind = SUPER SHIFT, R, exec, nothingless run screenrecord
 bind = SUPER SHIFT, A, exec, nothingless run lens
 bind = SUPER SHIFT, BACKSPACE, exec, nothingless run toggle-metrics
-HYPRCONF
+ENDCONF
+	)
 
-		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
-exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
-
-bind = SUPER, Super_L, exec, nothingless run launcher
-bind = SUPER, D, exec, nothingless run dashboard
-bind = SUPER, A, exec, nothingless run assistant
-bind = SUPER, V, exec, nothingless run clipboard
-bind = SUPER, PERIOD, exec, nothingless run emoji
-bind = SUPER, N, exec, nothingless run notes
-bind = SUPER, T, exec, nothingless run tmux
-bind = SUPER, COMMA, exec, nothingless run wallpapers
-bind = SUPER, L, exec, nothingless lock
-bind = SUPER, TAB, exec, nothingless run overview
-bind = SUPER, ESCAPE, exec, nothingless run powermenu
-bind = SUPER, S, exec, nothingless run tools
-bind = SUPER SHIFT, C, exec, nothingless run config
-bind = SUPER SHIFT, S, exec, nothingless run screenshot
-bind = SUPER SHIFT, R, exec, nothingless run screenrecord
-bind = SUPER SHIFT, A, exec, nothingless run lens
-bind = SUPER SHIFT, BACKSPACE, exec, nothingless run toggle-metrics
-HYPRLUA
-
-		echo "Created initial compositor config at $SHARE_DIR/"
-
-		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
-			append_nothingless_hyprland_block "$HYPR_LUA" "$NOTHINGLESS_HYPR_LUA_SOURCE" "$NOTHINGLESS_HYPR_LUA_BLOCK"
+	# ---- Detect mode if auto ----
+	if [ "$MODE" = "auto" ]; then
+		if [ -f "$HYPR_LUA" ]; then
+			# User already has hyprland.lua → stick with lua mode
+			MODE="lua"
+		elif [ -f "$HYPR_CONF" ]; then
+			# User has hyprland.conf → use conf mode
+			MODE="conf"
 		else
-			append_nothingless_hyprland_block "$HYPR_CONF" "$NOTHINGLESS_HYPR_CONF_SOURCE" "$NOTHINGLESS_HYPR_CONF_BLOCK"
+			# No config exists yet → default to conf (safe)
+			MODE="conf"
 		fi
+	fi
+
+	# ---- Generate config files ----
+	if [ "$MODE" = "lua" ]; then
+		# Write sourced file as valid Lua: returns the config as a string
+		# Hyprland's Lua mode (>= 0.48) expects valid Lua; returning a string
+		# is the simplest way to embed conf syntax inside Lua.
+		{
+			printf "return [[\n"
+			printf "%s\n" "$BASE_CONF"
+			printf "]]\n"
+		} > "$SHARE_DIR/hyprland.lua"
+
+		echo "Created compositor Lua config at $SHARE_DIR/hyprland.lua"
+
+		# Main Hyprland config: inject NothingLess block into hyprland.lua
+		append_nothingless_hyprland_block "$HYPR_LUA" "$NOTHINGLESS_HYPR_LUA_SOURCE" "$NOTHINGLESS_HYPR_LUA_BLOCK"
+
+		# Clean up stale .conf if switching from conf to lua
+		rm -f "$HYPR_CONF" 2>/dev/null || true
 	else
-		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
-		exit 1
+		# Write the plain conf version
+		printf "%s\n" "$BASE_CONF" > "$SHARE_DIR/hyprland.conf"
+
+		echo "Created compositor config at $SHARE_DIR/hyprland.conf"
+
+		# Main Hyprland config: inject NothingLess block into hyprland.conf
+		append_nothingless_hyprland_block "$HYPR_CONF" "$NOTHINGLESS_HYPR_CONF_SOURCE" "$NOTHINGLESS_HYPR_CONF_BLOCK"
+
+		# Clean up stale .lua if switching from lua to conf
+		rm -f "$HYPR_LUA" 2>/dev/null || true
 	fi
 	;;
 remove)
@@ -646,6 +673,11 @@ remove)
 
 		remove_nothingless_hyprland_block "$HYPR_LUA" "$NOTHINGLESS_HYPR_LUA_SOURCE"
 		remove_nothingless_hyprland_block "$HYPR_CONF" "$NOTHINGLESS_HYPR_CONF_SOURCE"
+
+		# Clean up stale .lua if user switched from lua to conf mode
+		if [ ! -f "$HYPR_CONF" ] && [ -f "$HYPR_LUA" ] && [ ! -s "$HYPR_LUA" ] || grep -q "NothingLess" "$HYPR_LUA" 2>/dev/null; then
+			rm -f "$HYPR_LUA" 2>/dev/null || true
+		fi
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
