@@ -896,7 +896,6 @@ Singleton {
 
             // Ecosystem
             property bool noUpdateNews: true
-            property bool noDonationNag: true
             property bool enforcePermissions: false
         }
     }

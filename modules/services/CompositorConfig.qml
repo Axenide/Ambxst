@@ -199,7 +199,140 @@ QtObject {
         batchCommand += ` ; keyword decoration:blur:popups_ignorealpha ${Config.compositor.blurPopupsIgnorealpha}`;
         batchCommand += ` ; keyword decoration:blur:input_methods ${Config.compositor.blurInputMethods}`;
         batchCommand += ` ; keyword decoration:blur:input_methods_ignorealpha ${Config.compositor.blurInputMethodsIgnorealpha}`;
-        batchCommand += ` ; keyword bezier myBezier,0.4,0.0,0.2,1.0`;
+
+        // Opacity
+        batchCommand += ` ; keyword decoration:active_opacity ${Config.compositor.activeOpacity.toFixed(2)}`;
+        batchCommand += ` ; keyword decoration:inactive_opacity ${Config.compositor.inactiveOpacity.toFixed(2)}`;
+        batchCommand += ` ; keyword decoration:fullscreen_opacity ${Config.compositor.fullscreenOpacity.toFixed(2)}`;
+
+        // Dim
+        batchCommand += ` ; keyword decoration:dim_inactive ${Config.compositor.dimInactive}`;
+        batchCommand += ` ; keyword decoration:dim_strength ${Config.compositor.dimStrength.toFixed(2)}`;
+        batchCommand += ` ; keyword decoration:dim_around ${Config.compositor.dimAround.toFixed(2)}`;
+        batchCommand += ` ; keyword decoration:dim_special ${Config.compositor.dimSpecial.toFixed(2)}`;
+
+        // Rounding power
+        batchCommand += ` ; keyword decoration:rounding_power ${Config.compositor.roundingPower.toFixed(1)}`;
+
+        // General extras
+        batchCommand += ` ; keyword general:allow_tearing ${Config.compositor.allowTearing}`;
+        batchCommand += ` ; keyword general:resize_on_border ${Config.compositor.resizeOnBorder}`;
+        batchCommand += ` ; keyword general:extend_border_grab_area ${Config.compositor.extendBorderGrabArea}`;
+        batchCommand += ` ; keyword general:hover_icon_on_border ${Config.compositor.hoverIconOnBorder}`;
+
+        // Snap
+        batchCommand += ` ; keyword general:snap:enabled ${Config.compositor.snapEnabled}`;
+        batchCommand += ` ; keyword general:snap:window_gap ${Config.compositor.snapWindowGap}`;
+        batchCommand += ` ; keyword general:snap:monitor_gap ${Config.compositor.snapMonitorGap}`;
+        batchCommand += ` ; keyword general:snap:border_overlap ${Config.compositor.snapBorderOverlap}`;
+        batchCommand += ` ; keyword general:snap:respect_gaps ${Config.compositor.snapRespectGaps}`;
+
+        // Animations
+        batchCommand += ` ; keyword animations:enabled ${Config.compositor.animationsEnabled}`;
+
+        // Input: Keyboard
+        batchCommand += ` ; keyword input:kb_layout ${Config.compositor.kbLayout}`;
+        if (Config.compositor.kbVariant) batchCommand += ` ; keyword input:kb_variant ${Config.compositor.kbVariant}`;
+        if (Config.compositor.kbOptions) batchCommand += ` ; keyword input:kb_options ${Config.compositor.kbOptions}`;
+        batchCommand += ` ; keyword input:numlock_by_default ${Config.compositor.numlockByDefault}`;
+        batchCommand += ` ; keyword input:repeat_rate ${Config.compositor.repeatRate}`;
+        batchCommand += ` ; keyword input:repeat_delay ${Config.compositor.repeatDelay}`;
+
+        // Input: Mouse
+        batchCommand += ` ; keyword input:sensitivity ${Config.compositor.mouseSensitivity.toFixed(2)}`;
+        if (Config.compositor.mouseAccelProfile) batchCommand += ` ; keyword input:accel_profile ${Config.compositor.mouseAccelProfile}`;
+        batchCommand += ` ; keyword input:follow_mouse ${Config.compositor.followMouse}`;
+        batchCommand += ` ; keyword input:natural_scroll ${Config.compositor.mouseNaturalScroll}`;
+        batchCommand += ` ; keyword input:scroll_factor ${Config.compositor.mouseScrollFactor.toFixed(1)}`;
+        batchCommand += ` ; keyword input:left_handed ${Config.compositor.mouseLeftHanded}`;
+        batchCommand += ` ; keyword input:mouse_refocus ${Config.compositor.mouseRefocus}`;
+        batchCommand += ` ; keyword input:float_switch_override_focus ${Config.compositor.floatSwitchOverrideFocus}`;
+
+        // Input: Touchpad
+        batchCommand += ` ; keyword input:touchpad:disable_while_typing ${Config.compositor.touchpadDisableWhileTyping}`;
+        batchCommand += ` ; keyword input:touchpad:natural_scroll ${Config.compositor.touchpadNaturalScroll}`;
+        batchCommand += ` ; keyword input:touchpad:tap_to_click ${Config.compositor.touchpadTapToClick}`;
+        batchCommand += ` ; keyword input:touchpad:clickfinger_behavior ${Config.compositor.touchpadClickfingerBehavior}`;
+        if (Config.compositor.touchpadTapButtonMap) batchCommand += ` ; keyword input:touchpad:tap_button_map ${Config.compositor.touchpadTapButtonMap}`;
+        batchCommand += ` ; keyword input:touchpad:middle_button_emulation ${Config.compositor.touchpadMiddleButtonEmulation}`;
+        batchCommand += ` ; keyword input:touchpad:drag_lock ${Config.compositor.touchpadDragLock}`;
+        batchCommand += ` ; keyword input:touchpad:scroll_factor ${Config.compositor.touchpadScrollFactor.toFixed(1)}`;
+
+        // Cursor
+        batchCommand += ` ; keyword cursor:no_hardware_cursors ${Config.compositor.noHardwareCursors}`;
+        batchCommand += ` ; keyword cursor:enable_hyprcursor ${Config.compositor.enableHyprcursor}`;
+        batchCommand += ` ; keyword cursor:no_warps ${Config.compositor.noWarps}`;
+        batchCommand += ` ; keyword cursor:persistent_warps ${Config.compositor.persistentWarps}`;
+        batchCommand += ` ; keyword cursor:warp_on_change_workspace ${Config.compositor.warpOnChangeWorkspace}`;
+        batchCommand += ` ; keyword cursor:zoom_factor ${Config.compositor.cursorZoomFactor.toFixed(1)}`;
+        batchCommand += ` ; keyword cursor:inactive_timeout ${Config.compositor.cursorInactiveTimeout}`;
+        batchCommand += ` ; keyword cursor:hide_on_key_press ${Config.compositor.cursorHideOnKeyPress}`;
+        batchCommand += ` ; keyword cursor:hide_on_touch ${Config.compositor.cursorHideOnTouch}`;
+        batchCommand += ` ; keyword cursor:hide_on_tablet ${Config.compositor.cursorHideOnTablet}`;
+
+        // Gestures
+        batchCommand += ` ; keyword gestures:workspace_swipe_create_new ${Config.compositor.workspaceSwipeCreateNew}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_forever ${Config.compositor.workspaceSwipeForever}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_cancel_ratio ${Config.compositor.workspaceSwipeCancelRatio.toFixed(2)}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_min_speed_to_force ${Config.compositor.workspaceSwipeMinSpeedToForce}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_direction_lock ${Config.compositor.workspaceSwipeDirectionLock}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_use_r ${Config.compositor.workspaceSwipeUseR}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_distance ${Config.compositor.workspaceSwipeDistance}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_invert ${Config.compositor.workspaceSwipeInvert}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_touch ${Config.compositor.workspaceSwipeTouch}`;
+        batchCommand += ` ; keyword gestures:workspace_swipe_touch_invert ${Config.compositor.workspaceSwipeTouchInvert}`;
+
+        // Dwindle
+        batchCommand += ` ; keyword dwindle:preserve_split ${Config.compositor.dwindlePreserveSplit}`;
+        batchCommand += ` ; keyword dwindle:pseudotile ${Config.compositor.dwindlePseudotile}`;
+        batchCommand += ` ; keyword dwindle:force_split ${Config.compositor.dwindleForceSplit}`;
+        batchCommand += ` ; keyword dwindle:smart_split ${Config.compositor.dwindleSmartSplit}`;
+        batchCommand += ` ; keyword dwindle:default_split_ratio ${Config.compositor.dwindleDefaultSplitRatio.toFixed(2)}`;
+        batchCommand += ` ; keyword dwindle:split_width_multiplier ${Config.compositor.dwindleSplitWidthMultiplier.toFixed(1)}`;
+        batchCommand += ` ; keyword dwindle:permanent_direction_override ${Config.compositor.dwindlePermanentDirectionOverride}`;
+        batchCommand += ` ; keyword dwindle:use_active_for_splits ${Config.compositor.dwindleUseActiveForSplits}`;
+        batchCommand += ` ; keyword dwindle:smart_resizing ${Config.compositor.dwindleSmartResizing}`;
+        batchCommand += ` ; keyword dwindle:special_scale_factor ${Config.compositor.dwindleSpecialScaleFactor.toFixed(2)}`;
+
+        // Master
+        batchCommand += ` ; keyword master:orientation ${Config.compositor.masterOrientation}`;
+        batchCommand += ` ; keyword master:mfact ${Config.compositor.masterMfact.toFixed(2)}`;
+        batchCommand += ` ; keyword master:new_status ${Config.compositor.masterNewStatus}`;
+        batchCommand += ` ; keyword master:new_on_top ${Config.compositor.masterNewOnTop}`;
+        batchCommand += ` ; keyword master:new_on_active ${Config.compositor.masterNewOnActive}`;
+        batchCommand += ` ; keyword master:smart_resizing ${Config.compositor.masterSmartResizing}`;
+        batchCommand += ` ; keyword master:special_scale_factor ${Config.compositor.masterSpecialScaleFactor.toFixed(2)}`;
+        batchCommand += ` ; keyword master:allow_small_split ${Config.compositor.masterAllowSmallSplit}`;
+
+        // Scrolling
+        batchCommand += ` ; keyword scrolling:column_width ${Config.compositor.scrollingColumnWidth.toFixed(2)}`;
+        if (Config.compositor.scrollingExplicitColumnWidths) batchCommand += ` ; keyword scrolling:explicit_column_widths ${Config.compositor.scrollingExplicitColumnWidths}`;
+        batchCommand += ` ; keyword scrolling:direction ${Config.compositor.scrollingDirection}`;
+        batchCommand += ` ; keyword scrolling:fullscreen_on_one_column ${Config.compositor.scrollingFullscreenOnOneColumn}`;
+        batchCommand += ` ; keyword scrolling:focus_fit_method ${Config.compositor.scrollingFocusFitMethod}`;
+        batchCommand += ` ; keyword scrolling:follow_focus ${Config.compositor.scrollingFollowFocus}`;
+        batchCommand += ` ; keyword scrolling:follow_min_visible ${Config.compositor.scrollingFollowMinVisible.toFixed(2)}`;
+
+        // XWayland
+        batchCommand += ` ; keyword xwayland:enabled ${Config.compositor.xwaylandEnabled}`;
+        batchCommand += ` ; keyword xwayland:force_zero_scaling ${Config.compositor.xwaylandForceZeroScaling}`;
+        batchCommand += ` ; keyword xwayland:use_nearest_neighbor ${Config.compositor.xwaylandUseNearestNeighbor}`;
+
+        // Misc
+        batchCommand += ` ; keyword misc:vrr ${Config.compositor.vrr}`;
+        batchCommand += ` ; keyword misc:vfr ${Config.compositor.vfr}`;
+        batchCommand += ` ; keyword misc:mouse_move_enables_dpms ${Config.compositor.mouseMoveEnablesDpms}`;
+        batchCommand += ` ; keyword misc:key_press_enables_dpms ${Config.compositor.keyPressEnablesDpms}`;
+        batchCommand += ` ; keyword misc:disable_autoreload ${Config.compositor.disableAutoreload}`;
+        batchCommand += ` ; keyword misc:focus_on_activate ${Config.compositor.focusOnActivate}`;
+        batchCommand += ` ; keyword misc:animate_manual_resizes ${Config.compositor.animateManualResizes}`;
+        batchCommand += ` ; keyword misc:animate_mouse_windowdragging ${Config.compositor.animateMouseWindowdragging}`;
+        batchCommand += ` ; keyword misc:disable_hyprland_logo ${Config.compositor.disableHyprlandLogo}`;
+        batchCommand += ` ; keyword misc:disable_splash_rendering ${Config.compositor.disableSplashRendering}`;
+        batchCommand += ` ; keyword misc:force_default_wallpaper ${Config.compositor.forceDefaultWallpaper}`;
+        batchCommand += ` ; keyword misc:no_update_news ${Config.compositor.noUpdateNews}`;
+
+        // Animations and layer rules
         batchCommand += ` ; keyword animation windows,1,2.5,myBezier,popin 80%`;
         batchCommand += ` ; keyword animation border,1,2.5,myBezier`;
         batchCommand += ` ; keyword animation fade,1,2.5,myBezier`;
@@ -349,6 +482,134 @@ QtObject {
         function onBlurInputMethodsIgnorealphaChanged() {
             applyCompositorConfig();
         }
+
+        // Opacity & Dim
+        function onActiveOpacityChanged() { applyCompositorConfig(); }
+        function onInactiveOpacityChanged() { applyCompositorConfig(); }
+        function onFullscreenOpacityChanged() { applyCompositorConfig(); }
+        function onDimInactiveChanged() { applyCompositorConfig(); }
+        function onDimStrengthChanged() { applyCompositorConfig(); }
+        function onDimAroundChanged() { applyCompositorConfig(); }
+        function onDimSpecialChanged() { applyCompositorConfig(); }
+        function onRoundingPowerChanged() { applyCompositorConfig(); }
+
+        // General extras
+        function onAllowTearingChanged() { applyCompositorConfig(); }
+        function onResizeOnBorderChanged() { applyCompositorConfig(); }
+        function onExtendBorderGrabAreaChanged() { applyCompositorConfig(); }
+        function onHoverIconOnBorderChanged() { applyCompositorConfig(); }
+
+        // Snap
+        function onSnapEnabledChanged() { applyCompositorConfig(); }
+        function onSnapWindowGapChanged() { applyCompositorConfig(); }
+        function onSnapMonitorGapChanged() { applyCompositorConfig(); }
+        function onSnapBorderOverlapChanged() { applyCompositorConfig(); }
+        function onSnapRespectGapsChanged() { applyCompositorConfig(); }
+
+        // Animations
+        function onAnimationsEnabledChanged() { applyCompositorConfig(); }
+
+        // Input: Keyboard
+        function onKbLayoutChanged() { applyCompositorConfig(); }
+        function onKbVariantChanged() { applyCompositorConfig(); }
+        function onKbOptionsChanged() { applyCompositorConfig(); }
+        function onNumlockByDefaultChanged() { applyCompositorConfig(); }
+        function onRepeatRateChanged() { applyCompositorConfig(); }
+        function onRepeatDelayChanged() { applyCompositorConfig(); }
+
+        // Input: Mouse
+        function onMouseSensitivityChanged() { applyCompositorConfig(); }
+        function onMouseAccelProfileChanged() { applyCompositorConfig(); }
+        function onFollowMouseChanged() { applyCompositorConfig(); }
+        function onMouseNaturalScrollChanged() { applyCompositorConfig(); }
+        function onMouseScrollFactorChanged() { applyCompositorConfig(); }
+        function onMouseLeftHandedChanged() { applyCompositorConfig(); }
+        function onMouseRefocusChanged() { applyCompositorConfig(); }
+        function onFloatSwitchOverrideFocusChanged() { applyCompositorConfig(); }
+
+        // Input: Touchpad
+        function onTouchpadDisableWhileTypingChanged() { applyCompositorConfig(); }
+        function onTouchpadNaturalScrollChanged() { applyCompositorConfig(); }
+        function onTouchpadTapToClickChanged() { applyCompositorConfig(); }
+        function onTouchpadClickfingerBehaviorChanged() { applyCompositorConfig(); }
+        function onTouchpadTapButtonMapChanged() { applyCompositorConfig(); }
+        function onTouchpadMiddleButtonEmulationChanged() { applyCompositorConfig(); }
+        function onTouchpadDragLockChanged() { applyCompositorConfig(); }
+        function onTouchpadScrollFactorChanged() { applyCompositorConfig(); }
+
+        // Cursor
+        function onNoHardwareCursorsChanged() { applyCompositorConfig(); }
+        function onEnableHyprcursorChanged() { applyCompositorConfig(); }
+        function onNoWarpsChanged() { applyCompositorConfig(); }
+        function onPersistentWarpsChanged() { applyCompositorConfig(); }
+        function onWarpOnChangeWorkspaceChanged() { applyCompositorConfig(); }
+        function onCursorZoomFactorChanged() { applyCompositorConfig(); }
+        function onCursorInactiveTimeoutChanged() { applyCompositorConfig(); }
+        function onCursorHideOnKeyPressChanged() { applyCompositorConfig(); }
+        function onCursorHideOnTouchChanged() { applyCompositorConfig(); }
+        function onCursorHideOnTabletChanged() { applyCompositorConfig(); }
+
+        // Gestures
+        function onWorkspaceSwipeCreateNewChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeForeverChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeCancelRatioChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeMinSpeedToForceChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeDirectionLockChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeUseRChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeDistanceChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeInvertChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeTouchChanged() { applyCompositorConfig(); }
+        function onWorkspaceSwipeTouchInvertChanged() { applyCompositorConfig(); }
+
+        // Dwindle
+        function onDwindlePreserveSplitChanged() { applyCompositorConfig(); }
+        function onDwindlePseudotileChanged() { applyCompositorConfig(); }
+        function onDwindleForceSplitChanged() { applyCompositorConfig(); }
+        function onDwindleSmartSplitChanged() { applyCompositorConfig(); }
+        function onDwindleDefaultSplitRatioChanged() { applyCompositorConfig(); }
+        function onDwindleSplitWidthMultiplierChanged() { applyCompositorConfig(); }
+        function onDwindlePermanentDirectionOverrideChanged() { applyCompositorConfig(); }
+        function onDwindleUseActiveForSplitsChanged() { applyCompositorConfig(); }
+        function onDwindleSmartResizingChanged() { applyCompositorConfig(); }
+        function onDwindleSpecialScaleFactorChanged() { applyCompositorConfig(); }
+
+        // Master
+        function onMasterOrientationChanged() { applyCompositorConfig(); }
+        function onMasterMfactChanged() { applyCompositorConfig(); }
+        function onMasterNewStatusChanged() { applyCompositorConfig(); }
+        function onMasterNewOnTopChanged() { applyCompositorConfig(); }
+        function onMasterNewOnActiveChanged() { applyCompositorConfig(); }
+        function onMasterSmartResizingChanged() { applyCompositorConfig(); }
+        function onMasterSpecialScaleFactorChanged() { applyCompositorConfig(); }
+        function onMasterAllowSmallSplitChanged() { applyCompositorConfig(); }
+
+        // Scrolling
+        function onScrollingColumnWidthChanged() { applyCompositorConfig(); }
+        function onScrollingExplicitColumnWidthsChanged() { applyCompositorConfig(); }
+        function onScrollingDirectionChanged() { applyCompositorConfig(); }
+        function onScrollingFullscreenOnOneColumnChanged() { applyCompositorConfig(); }
+        function onScrollingFocusFitMethodChanged() { applyCompositorConfig(); }
+        function onScrollingFollowFocusChanged() { applyCompositorConfig(); }
+        function onScrollingFollowMinVisibleChanged() { applyCompositorConfig(); }
+
+        // XWayland
+        function onXwaylandEnabledChanged() { applyCompositorConfig(); }
+        function onXwaylandForceZeroScalingChanged() { applyCompositorConfig(); }
+        function onXwaylandUseNearestNeighborChanged() { applyCompositorConfig(); }
+
+        // Misc
+        function onVrrChanged() { applyCompositorConfig(); }
+        function onVfrChanged() { applyCompositorConfig(); }
+        function onMouseMoveEnablesDpmsChanged() { applyCompositorConfig(); }
+        function onKeyPressEnablesDpmsChanged() { applyCompositorConfig(); }
+        function onDisableAutoreloadChanged() { applyCompositorConfig(); }
+        function onFocusOnActivateChanged() { applyCompositorConfig(); }
+        function onAnimateManualResizesChanged() { applyCompositorConfig(); }
+        function onAnimateMouseWindowdraggingChanged() { applyCompositorConfig(); }
+        function onDisableHyprlandLogoChanged() { applyCompositorConfig(); }
+        function onDisableSplashRenderingChanged() { applyCompositorConfig(); }
+        function onForceDefaultWallpaperChanged() { applyCompositorConfig(); }
+        function onNoUpdateNewsChanged() { applyCompositorConfig(); }
     }
 
     property Connections colorsConnections: Connections {

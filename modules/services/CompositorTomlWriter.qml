@@ -551,7 +551,6 @@ Singleton {
         toml += `disable_splash_rendering = ${Config.compositor.disableSplashRendering}\n`;
         toml += `force_default_wallpaper = ${Config.compositor.forceDefaultWallpaper}\n`;
         toml += `no_update_news = ${Config.compositor.noUpdateNews}\n`;
-        toml += `no_donation_nag = ${Config.compositor.noDonationNag}\n`;
 
         return toml;
     }
@@ -821,7 +820,6 @@ Singleton {
         function onDisableSplashRenderingChanged() { writeTomlFile(); }
         function onForceDefaultWallpaperChanged() { writeTomlFile(); }
         function onNoUpdateNewsChanged() { writeTomlFile(); }
-        function onNoDonationNagChanged() { writeTomlFile(); }
         function onEnforcePermissionsChanged() { writeTomlFile(); }
     }
 

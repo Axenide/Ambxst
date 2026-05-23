@@ -2078,15 +2078,6 @@ Item {
                                     Config.compositor.noUpdateNews = value;
                                 }
                             }
-
-                            ToggleRow {
-                                label: "Disable Donation Nag"
-                                checked: Config.compositor.noDonationNag ?? true
-                                onToggled: value => {
-                                    GlobalStates.markCompositorChanged();
-                                    Config.compositor.noDonationNag = value;
-                                }
-                            }
                         }
 
                         // Bottom Padding

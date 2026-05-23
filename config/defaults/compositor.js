@@ -181,6 +181,5 @@ var data = {
 
     // === Ecosystem ===
     "noUpdateNews": true,
-    "noDonationNag": true,
     "enforcePermissions": false
 }

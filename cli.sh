@@ -77,8 +77,6 @@ NOTHINGLESS_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
 # NothingLess
 source = ~/.local/share/nothingless/hyprland.conf
-exec-once = nothingless
-exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 
 # OVERRIDES
 # Down here you can write or source anything that you want to override from NothingLess's settings.
@@ -88,8 +86,6 @@ NOTHINGLESS_HYPR_LUA_BLOCK=$(
 	cat <<'EOF'
 -- NothingLess
 loadfile(os.getenv("HOME") .. "/.local/share/nothingless/hyprland.lua")()
-exec-once = nothingless
-exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 
 -- OVERRIDES
 -- Down here you can write or source anything that you want to override from NothingLess's settings.
