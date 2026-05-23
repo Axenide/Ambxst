@@ -49,11 +49,18 @@ nothingless
 ### Compositor integration
 
 ```bash
-nothingless install hyprland     # Add NothingLess config to Hyprland
-nothingless remove hyprland      # Remove NothingLess config from Hyprland
+nothingless install hyprland           # Auto-detect (default: conf)
+nothingless install hyprland --conf    # Force config file mode (safe default)
+nothingless install hyprland --lua     # Force Lua mode (Hyprland >= 0.48)
+nothingless remove hyprland            # Remove NothingLess config from Hyprland
 ```
 
-This creates a static sourced config at `~/.local/share/nothingless/hyprland.conf` and adds `source = ~/.local/share/nothingless/hyprland.conf` to your Hyprland config. On first boot, `exec-once = nothingless` launches the shell, which starts the axctl daemon internally. All compositor settings are managed by axctl (live via `raw-batch`, persisted via `axctl.toml`).
+**Mode selection:**
+- `--conf` (default): Creates `~/.local/share/nothingless/hyprland.conf` and adds `source = ~/.local/share/nothingless/hyprland.conf` to your Hyprland config. Works on all Hyprland versions.
+- `--lua`: Creates `~/.local/share/nothingless/hyprland.lua` as valid Lua and adds `loadfile(...)()` to your Hyprland config. Requires Hyprland >= 0.48.
+- No flag: Auto-detects based on existing config (`hyprland.lua` → lua, `hyprland.conf` → conf). If neither exists, defaults to `--conf`.
+
+On first boot, `exec-once = nothingless` launches the shell, which starts the axctl daemon internally. All compositor settings are managed by axctl (live via `raw-batch`, persisted via `axctl.toml`).
 
 Supported on **Arch**, **Fedora**, and **NixOS** (requires Hyprland).
 
