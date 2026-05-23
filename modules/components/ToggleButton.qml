@@ -26,7 +26,6 @@ Button {
 
     implicitWidth: 36
     implicitHeight: 36
-    cursorShape: Qt.PointingHandCursor
 
     // Check if buttonIcon is a single character (icon font) or a file path
     readonly property bool isIconPath: buttonIcon.length > 1
@@ -45,7 +44,7 @@ Button {
         Rectangle {
             anchors.fill: parent
             color: parent.item || "transparent"
-            opacity: root.pressed ? 0.5 : (root.hovered ? 0.25 : 0)
+            opacity: root.pressed ? 0.5 : (root.btnHovered ? 0.25 : 0)
             radius: parent.radius ?? 0
 
             Behavior on opacity {
@@ -57,8 +56,13 @@ Button {
         }
     }
 
-    // Cursor pointer on hover
+
+
+    // HoverHandler for cursor and hover detection
+    property bool btnHovered: false
     HoverHandler {
+        id: btnHover
+        onHoveredChanged: root.btnHovered = btnHover.hovered
         cursorShape: Qt.PointingHandCursor
     }
 
@@ -71,7 +75,7 @@ Button {
             textFormat: Text.RichText
             font.family: Icons.font
             font.pixelSize: 18
-            color: root.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground)
+            color: root.pressed ? Colors.background : (root.btnHovered ? Styling.srItem("primary") : (Styling.srItem("overprimary") || Colors.foreground))
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
         }

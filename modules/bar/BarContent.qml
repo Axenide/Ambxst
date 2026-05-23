@@ -64,7 +64,7 @@ Item {
     property bool hoverActive: false
 
     // Track if mouse is over bar area
-    readonly property bool isMouseOverBar: barMouseArea.containsMouse
+    property bool isMouseOverBar: true
 
     // Check if notch hover is active (for synchronized reveal when bar is at same side)
     // NOTE: We access Visibilities.notchPanels directly because UnifiedShellPanel registers itself as the panel ref
@@ -199,8 +199,17 @@ Item {
     // MouseArea for hover detection - contains bar content (like Dock)
     MouseArea {
         id: barMouseArea
-        hoverEnabled: true
+        hoverEnabled: false
         acceptedButtons: Qt.NoButton
+        propagateComposedEvents: true
+
+        // HoverHandler for bar hover detection (without blocking child hovers)
+        HoverHandler {
+            id: barHoverHandler
+            onHoveredChanged: {
+                root.isMouseOverBar = barHoverHandler.hovered;
+            }
+        }
 
         // Size includes margins
         width: root.orientation === "horizontal" ? root.width : (root.reveal ? root.totalBarWidth : Math.max((Config.bar && Config.bar.hoverRegionHeight !== undefined ? Config.bar.hoverRegionHeight : 8), 4) + root.frameOffset)
