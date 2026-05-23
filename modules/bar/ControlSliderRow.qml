@@ -129,7 +129,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 height: 4
                 radius: Styling.radius(0) / 4
-                color: Colors.surfaceBright
+                color: Colors.outline
             }
 
             // Progress fill (wavy or solid)

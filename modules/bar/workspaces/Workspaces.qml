@@ -152,6 +152,11 @@ Item {
 
     readonly property bool effectiveContainBar: Config.bar.containBar && ((Config.bar.frameEnabled !== undefined ? Config.bar.frameEnabled : false))
 
+    // Process for workspace switching
+    property Process wsProcess: Process {
+        running: false
+    }
+
     StyledRect {
         id: bgRect
         variant: "bg"
@@ -425,10 +430,13 @@ Item {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        console.log("Workspace click:", workspaceValue);
-                        AxctlService.dispatch(`workspace ${workspaceValue}`);
+                        console.log("Workspace click:", button.workspaceValue);
+                        // Direct dispatch via Process
+                        wsProcess.command = ["axctl", "workspace", "switch", String(button.workspaceValue)];
+                        wsProcess.running = true;
                     }
                 }
+
 
                 Item {
                     id: workspaceButtonBackground
@@ -575,7 +583,8 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         console.log("Workspace click:", workspaceValue);
-                        AxctlService.dispatch(`workspace ${workspaceValue}`);
+                        wsProcess.command = ["axctl", "workspace", "switch", String(workspaceValue)];
+                        wsProcess.running = true;
                     }
                 }
 
