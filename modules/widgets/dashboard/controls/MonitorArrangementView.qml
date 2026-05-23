@@ -100,7 +100,7 @@ StyledRect {
 
     Timer { id: refreshTimer; interval: 500; onTriggered: root.refreshMonitors() }
 
-    // ── Save monitor config to hyprland.conf AND hyprland.lua ──
+    // ── Save monitor config directly to active Hyprland config ──
     function saveToConfig() {
         saveConfigProcess.running = true;
     }
@@ -108,59 +108,60 @@ StyledRect {
     property Process saveConfigProcess: Process {
         command: [
             "bash", "-c",
-            // Get current monitor data from compositor
+            // Detect which config format is active
+            'if [ -f "$HOME/.config/hypr/hyprland.lua" ]; then' +
+            '  MODE="lua"; CFG="$HOME/.config/hypr/hyprland.lua";' +
+            'elif [ -f "$HOME/.config/hypr/hyprland.conf" ]; then' +
+            '  MODE="conf"; CFG="$HOME/.config/hypr/hyprland.conf";' +
+            'elif [ -f "$HOME/.local/share/nothingless/hyprland.lua" ]; then' +
+            '  MODE="lua"; CFG="$HOME/.local/share/nothingless/hyprland.lua";' +
+            'elif [ -f "$HOME/.local/share/nothingless/hyprland.conf" ]; then' +
+            '  MODE="conf"; CFG="$HOME/.local/share/nothingless/hyprland.conf";' +
+            'else MODE="conf"; CFG="$HOME/.config/hypr/hyprland.conf"; fi;' +
+            // Get current monitor data
             'MON_DATA=$(hyprctl monitors -j 2>/dev/null || echo "[]");' +
-            // Generate monitor config lines
-            'MON_LINES=$(echo "$MON_DATA" | python3 -c "' +
-            'import json,sys;' +
-            'mons=json.load(sys.stdin);' +
+            'if [ "$MODE" = "conf" ]; then' +
+            // .conf format: monitor=NAME,MODE,POS,SCALE
+            '  MON_LINES=$(echo "$MON_DATA" | python3 -c "' +
+            'import json,sys; mons=json.load(sys.stdin);' +
             'for m in mons:' +
-            '  n=m.get(\"name\",\"\");' +
-            '  w=m.get(\"width\",0);' +
-            '  h=m.get(\"height\",0);' +
-            '  x=m.get(\"x\",0);' +
-            '  y=m.get(\"y\",0);' +
-            '  s=m.get(\"scale\",1);' +
-            '  rr=m.get(\"refreshRate\",60);' +
-            '  mode=f\"{w}x{h}@{rr:.2f}Hz\";' +
+            '  n=m.get(\"name\",\"\"); w=m.get(\"width\",0); h=m.get(\"height\",0);' +
+            '  x=m.get(\"x\",0); y=m.get(\"y\",0); s=m.get(\"scale\",1);' +
+            '  rr=m.get(\"refreshRate\",60); mode=f\"{w}x{h}@{(rr):.2f}Hz\";' +
             '  print(f\"monitor={n},{mode},{x}x{y},{s}\")' +
             '");' +
-            // Update hyprland.conf
-            'CONF="$HOME/.config/hypr/hyprland.conf";' +
-            'if [ -f "$CONF" ]; then' +
-            '  grep -v "^monitor=" "$CONF" > "${CONF}.tmp" 2>/dev/null;' +
-            '  echo "$MON_LINES" >> "${CONF}.tmp";' +
-            '  mv "${CONF}.tmp" "$CONF";' +
-            '  echo "[OK] hyprland.conf updated";' +
-            'fi;' +
-            // Update hyprland.lua
-            'LUA="$HOME/.config/hypr/hyprland.lua";' +
-            'if [ -f "$LUA" ]; then' +
-            '  echo "$MON_DATA" | python3 -c "' +
-            'import json,sys;' +
-            'mons=json.load(sys.stdin);' +
+            '  if [ -f "$CFG" ]; then' +
+            '    grep -v "^monitor=" "$CFG" > "${CFG}.tmp" 2>/dev/null;' +
+            '    echo "$MON_LINES" >> "${CFG}.tmp"; mv "${CFG}.tmp" "$CFG";' +
+            '  else echo "$MON_LINES" > "$CFG"; fi;' +
+            '  echo "[OK] Updated $CFG ($MODE format)";' +
+            'else' +
+            // .lua format: hl.cmd("hyprctl dispatch monitor ...") for each monitor
+            '  LUA_LINES=$(echo "$MON_DATA" | python3 -c "' +
+            'import json,sys; mons=json.load(sys.stdin);' +
             'for m in mons:' +
-            '  n=m.get(\"name\",\"\");' +
-            '  w=m.get(\"width\",0);' +
-            '  h=m.get(\"height\",0);' +
-            '  x=m.get(\"x\",0);' +
-            '  y=m.get(\"y\",0);' +
-            '  s=m.get(\"scale\",1);' +
-            '  rr=m.get(\"refreshRate\",60);' +
-            '  mode=f\"preferred,{x}x{y},{s}\";' +
-            '  print(f\'hyprctl dispatch monitor {n},{mode}\')' +
-            '" > /tmp/nothingless_lua_monitors.tmp;' +
-            '  grep -v "hyprctl dispatch monitor" "$LUA" > "${LUA}.tmp" 2>/dev/null;' +
-            '  cat /tmp/nothingless_lua_monitors.tmp >> "${LUA}.tmp";' +
-            '  mv "${LUA}.tmp" "$LUA";' +
-            '  rm -f /tmp/nothingless_lua_monitors.tmp;' +
-            '  echo "[OK] hyprland.lua updated";' +
+            '  n=m.get(\"name\",\"\"); w=m.get(\"width\",0); h=m.get(\"height\",0);' +
+            '  x=m.get(\"x\",0); y=m.get(\"y\",0); s=m.get(\"scale\",1);' +
+            '  rr=m.get(\"refreshRate\",60); mode=f\"{w}x{h}@{(rr):.2f}Hz\";' +
+            '  print(f\"hl.cmd(\\\"hyprctl dispatch monitor {n},{mode},{x}x{y},{s}\\\")\")' +
+            '");' +
+            '  if [ -f "$CFG" ]; then' +
+            '    grep -v "hl.cmd.*dispatch monitor" "$CFG" > "${CFG}.tmp" 2>/dev/null;' +
+            '    echo "-- Monitor configuration (generated by NothingLess)" >> "${CFG}.tmp";' +
+            '    echo "$LUA_LINES" >> "${CFG}.tmp"; mv "${CFG}.tmp" "$CFG";' +
+            '  else' +
+            '    echo "-- Monitor configuration (generated by NothingLess)" > "$CFG";' +
+            '    echo "$LUA_LINES" >> "$CFG";' +
+            '  fi;' +
+            '  echo "[OK] Updated $CFG ($MODE format)";' +
             'fi'
         ]
-        stdout: StdioCollector {}
+        stdout: SplitParser { onRead: data => { saveConfigProcess.buffer += data; } }
         running: false
+        property string buffer: ""
         onExited: exitCode => {
-            console.log("MonitorArrangementView: save output:", saveConfigProcess.stdout.text);
+            console.log("MonitorArrangementView: save output:", saveConfigProcess.buffer);
+            saveConfigProcess.buffer = "";
             root.hasChanges = false;
         }
     }
