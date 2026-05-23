@@ -346,20 +346,17 @@ Item {
                     radius: Styling.radius(0)
                     opacity: schemeListExpanded ? 1 : 0
 
+                    // Intercept wheel events before parent steals them
+                    WheelHandler {
+                        onWheel: event => {
+                            var step = event.angleDelta.y > 0 ? -40 : 40;
+                            var newY = schemeListView.contentY + step;
+                            schemeListView.contentY = Math.max(0, Math.min(newY, schemeListView.contentHeight - schemeListView.height));
+                        }
+                    }
+
                     ListView {
                         id: schemeListView
-                        // Block parent scrollables from stealing events
-                        MouseArea {
-                            anchors.fill: parent
-                            z: 10
-                            hoverEnabled: true
-                            acceptedButtons: Qt.NoButton
-                            preventStealing: true
-                            onWheel: wheel => {
-                                var step = wheel.angleDelta.y > 0 ? -20 : 20;
-                                schemeListView.contentY = Math.max(0, Math.min(schemeListView.contentY + step, schemeListView.contentHeight - schemeListView.height));
-                            }
-                        }
                         anchors.fill: parent
                         clip: true
                         model: combinedModel
