@@ -77,6 +77,7 @@ NOTHINGLESS_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
 # NothingLess
 source = ~/.local/share/nothingless/hyprland.conf
+exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon
 
 # OVERRIDES
 # Down here you can write or source anything that you want to override from NothingLess's settings.
