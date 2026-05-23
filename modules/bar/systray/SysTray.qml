@@ -25,6 +25,26 @@ import qs.modules.components
     // Orientación derivada de la barra
     property bool vertical: bar.orientation === "vertical"
 
+    // Filtered tray items (UntypedObjectModel doesn't support .filter())
+    readonly property var filteredItems: {
+        var result = [];
+        var items = SystemTray.items;
+        var hidden = Config.bar.hiddenIcons;
+        for (var i = 0; i < items.length; i++) {
+            var item = items[i];
+            var title = (item.title || item.tooltipTitle || "").toLowerCase();
+            var hide = false;
+            for (var j = 0; j < hidden.length; j++) {
+                if (title.includes(hidden[j].toLowerCase())) {
+                    hide = true;
+                    break;
+                }
+            }
+            if (!hide) result.push(item);
+        }
+        return result;
+    }
+
     // Hide completely when empty - check both orientations
     readonly property bool hasItems: rowRepeater.count > 0 || columnRepeater.count > 0
 
@@ -43,10 +63,7 @@ import qs.modules.components
 
         Repeater {
             id: rowRepeater
-            model: SystemTray.items.filter(function(item) {
-                const title = (item.title || item.tooltipTitle || "").toLowerCase();
-                return !Config.bar.hiddenIcons.some(function(h) { return title.includes(h.toLowerCase()); });
-            })
+            model: root.filteredItems
 
             SysTrayItem {
                 required property SystemTrayItem modelData
@@ -65,10 +82,7 @@ import qs.modules.components
 
         Repeater {
             id: columnRepeater
-            model: SystemTray.items.filter(function(item) {
-                const title = (item.title || item.tooltipTitle || "").toLowerCase();
-                return !Config.bar.hiddenIcons.some(function(h) { return title.includes(h.toLowerCase()); });
-            })
+            model: root.filteredItems
 
             SysTrayItem {
                 required property SystemTrayItem modelData
