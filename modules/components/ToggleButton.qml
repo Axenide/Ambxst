@@ -26,6 +26,7 @@ Button {
 
     implicitWidth: 36
     implicitHeight: 36
+    cursorShape: Qt.PointingHandCursor
 
     // Check if buttonIcon is a single character (icon font) or a file path
     readonly property bool isIconPath: buttonIcon.length > 1
@@ -54,6 +55,11 @@ Button {
                 }
             }
         }
+    }
+
+    // Cursor pointer on hover
+    HoverHandler {
+        cursorShape: Qt.PointingHandCursor
     }
 
     contentItem: Item {

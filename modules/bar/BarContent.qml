@@ -200,6 +200,7 @@ Item {
     MouseArea {
         id: barMouseArea
         hoverEnabled: true
+        acceptedButtons: Qt.NoButton
 
         // Size includes margins
         width: root.orientation === "horizontal" ? root.width : (root.reveal ? root.totalBarWidth : Math.max((Config.bar && Config.bar.hoverRegionHeight !== undefined ? Config.bar.hoverRegionHeight : 8), 4) + root.frameOffset)

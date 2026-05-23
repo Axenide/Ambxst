@@ -415,6 +415,9 @@ Item {
                 id: button
                 property int workspaceValue: getWorkspaceId(index)
                 Layout.fillHeight: true
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
+                }
                 onClicked: {
                 console.log("Workspace click:", workspaceValue);
                 AxctlService.dispatch(`workspace ${workspaceValue}`);
