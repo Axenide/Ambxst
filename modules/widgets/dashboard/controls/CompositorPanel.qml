@@ -416,9 +416,8 @@ Item {
                     height: 32
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
-
-                    required property int index
                     required property var modelData
+                    required property int index
 
                     // Swatch
                     Rectangle {
@@ -1929,34 +1928,34 @@ Item {
                         }
 
                         Repeater {
-                            model: Quickshell.screens
+                            model: Quickshell.screens.length
                             delegate: StyledRect {
-                                required property var modelData
+                                readonly property var scr: Quickshell.screens[index]
                                 Layout.fillWidth: true
                                 variant: "surface"
                                 radius: Styling.radius(8)
-                                implicitHeight: col.implicitHeight + 16
+                                implicitHeight: monCol.implicitHeight + 16
                                 ColumnLayout {
-                                    id: col
+                                    id: monCol
                                     anchors.fill: parent
                                     anchors.margins: 12
                                     spacing: 6
                                     Text {
-                                        text: modelData.name + "  " + modelData.width + "x" + modelData.height
+                                        text: scr.name + "  " + scr.width + "x" + scr.height
                                         font.bold: true
                                         color: Colors.overSurface
                                     }
                                     Text {
-                                        text: "Position: " + (modelData.x || 0) + "x" + (modelData.y || 0)
+                                        text: "Position: " + (scr.x || 0) + "x" + (scr.y || 0)
                                         color: Colors.outline
                                         font.pixelSize: Styling.fontSize(-1)
                                     }
                                     RowLayout {
                                         spacing: 6
-                                        Button { text: "<< Left"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + Math.max(0,(modelData.x||0)-1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
-                                        Button { text: "Right >>"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + ((modelData.x||0)+1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
-                                        Button { text: "Up ^"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + Math.max(0,(modelData.y||0)-1080) + ',1"]; running: true }', root); }
-                                        Button { text: "v Down"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + ((modelData.y||0)+1080) + ',1"]; running: true }', root); }
+                                        Button { text: "<< Left"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + scr.name + ',preferred,' + Math.max(0,(scr.x||0)-1920) + 'x' + (scr.y||0) + ',1"]; running: true }', root); }
+                                        Button { text: "Right >>"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + scr.name + ',preferred,' + ((scr.x||0)+1920) + 'x' + (scr.y||0) + ',1"]; running: true }', root); }
+                                        Button { text: "Up ^"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + scr.name + ',preferred,' + (scr.x||0) + 'x' + Math.max(0,(scr.y||0)-1080) + ',1"]; running: true }', root); }
+                                        Button { text: "v Down"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + scr.name + ',preferred,' + (scr.x||0) + 'x' + (scr.y||0)+1080 + ',1"]; running: true }', root); }
                                     }
                                 }
                             }
@@ -1964,7 +1963,7 @@ Item {
 
                         Button {
                             text: "Auto-arrange horizontally"
-                            variant: "primary"
+                            // variant: "primary"
                             Layout.fillWidth: true
                             onClicked: {
                                 var py = "python3 -c 'import json,os,sys; m=json.load(sys.stdin); [os.system(\"hyprctl keyword monitor \"+x[\"name\"]+\",preferred,\"+str(i*1920)+\"x0,1\") for i,x in enumerate(m)]'";
