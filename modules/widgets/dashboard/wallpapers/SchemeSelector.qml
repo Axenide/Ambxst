@@ -348,6 +348,18 @@ Item {
 
                     ListView {
                         id: schemeListView
+                        // Block parent scrollables from stealing events
+                        MouseArea {
+                            anchors.fill: parent
+                            z: 10
+                            hoverEnabled: true
+                            acceptedButtons: Qt.NoButton
+                            preventStealing: true
+                            onWheel: wheel => {
+                                var step = wheel.angleDelta.y > 0 ? -20 : 20;
+                                schemeListView.contentY = Math.max(0, Math.min(schemeListView.contentY + step, schemeListView.contentHeight - schemeListView.height));
+                            }
+                        }
                         anchors.fill: parent
                         clip: true
                         model: combinedModel
