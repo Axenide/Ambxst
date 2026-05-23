@@ -576,15 +576,51 @@ install)
 		mkdir -p "$HYPR_DIR"
 		mkdir -p "$SHARE_DIR"
 
-		# Create the initial sourced config — absolute minimum.
-		# Only exec-once with a boot flag. No env vars, no misc blocks.
-		# Everything else is managed by axctl (live + TOML).
+		# Create the initial sourced config — minimal with core binds baseline.
+		# The boot flag prevents re-execution on Hyprland config reload.
+		# Core binds are here so Hyprland has them immediately after reload,
+		# before axctl re-applies the full bind set.
 		cat > "$SHARE_DIR/hyprland.conf" <<'HYPRCONF'
 exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
+
+# Core binds — baseline for Hyprland reload recovery
+bind = SUPER, Super_L, exec, nothingless run launcher
+bind = SUPER, D, exec, nothingless run dashboard
+bind = SUPER, A, exec, nothingless run assistant
+bind = SUPER, V, exec, nothingless run clipboard
+bind = SUPER, PERIOD, exec, nothingless run emoji
+bind = SUPER, N, exec, nothingless run notes
+bind = SUPER, T, exec, nothingless run tmux
+bind = SUPER, COMMA, exec, nothingless run wallpapers
+bind = SUPER, L, exec, nothingless lock
+bind = SUPER, TAB, exec, nothingless run overview
+bind = SUPER, ESCAPE, exec, nothingless run powermenu
+bind = SUPER, S, exec, nothingless run tools
+bind = SUPER SHIFT, C, exec, nothingless run config
+bind = SUPER SHIFT, S, exec, nothingless run screenshot
+bind = SUPER SHIFT, R, exec, nothingless run screenrecord
+bind = SUPER SHIFT, A, exec, nothingless run lens
 HYPRCONF
 
 		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
 exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
+
+bind = SUPER, Super_L, exec, nothingless run launcher
+bind = SUPER, D, exec, nothingless run dashboard
+bind = SUPER, A, exec, nothingless run assistant
+bind = SUPER, V, exec, nothingless run clipboard
+bind = SUPER, PERIOD, exec, nothingless run emoji
+bind = SUPER, N, exec, nothingless run notes
+bind = SUPER, T, exec, nothingless run tmux
+bind = SUPER, COMMA, exec, nothingless run wallpapers
+bind = SUPER, L, exec, nothingless lock
+bind = SUPER, TAB, exec, nothingless run overview
+bind = SUPER, ESCAPE, exec, nothingless run powermenu
+bind = SUPER, S, exec, nothingless run tools
+bind = SUPER SHIFT, C, exec, nothingless run config
+bind = SUPER SHIFT, S, exec, nothingless run screenshot
+bind = SUPER SHIFT, R, exec, nothingless run screenrecord
+bind = SUPER SHIFT, A, exec, nothingless run lens
 HYPRLUA
 
 		echo "Created initial compositor config at $SHARE_DIR/"
