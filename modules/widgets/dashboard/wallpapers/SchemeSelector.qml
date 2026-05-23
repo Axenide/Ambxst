@@ -10,6 +10,8 @@ import qs.config
 Item {
     id: root
     property bool schemeListExpanded: false
+    // Notify parent when list is expanded (to disable parent GridView scroll)
+    signal expandedChanged(bool expanded)
     readonly property var matugenSchemes: ["scheme-content", "scheme-expressive", "scheme-fidelity", "scheme-fruit-salad", "scheme-monochrome", "scheme-neutral", "scheme-rainbow", "scheme-tonal-spot"]
     property var presets: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.colorPresets : []
     onPresetsChanged: console.log("SchemeSelector received presets:", presets)
@@ -191,7 +193,8 @@ Item {
 
                     onClicked: {
                         keyboardNavigationActive = false;
-                        schemeListExpanded = !schemeListExpanded;
+                        schemeListExpanded = !schemeListExpanded
+                    expandedChanged(schemeListExpanded);
                         if (schemeListExpanded) {
                             updateSelectedIndex();
                             positionTimer.restart();
@@ -213,7 +216,8 @@ Item {
                                 event.accepted = true;
                             }
                         } else if (event.key === Qt.Key_Space) {
-                            schemeListExpanded = !schemeListExpanded;
+                            schemeListExpanded = !schemeListExpanded
+                    expandedChanged(schemeListExpanded);
                             if (schemeListExpanded) {
                                 updateSelectedIndex();
                                 positionTimer.restart();
@@ -346,14 +350,7 @@ Item {
                     radius: Styling.radius(0)
                     opacity: schemeListExpanded ? 1 : 0
 
-                    // Intercept wheel events before parent steals them
-                    WheelHandler {
-                        onWheel: event => {
-                            var step = event.angleDelta.y > 0 ? -40 : 40;
-                            var newY = schemeListView.contentY + step;
-                            schemeListView.contentY = Math.max(0, Math.min(newY, schemeListView.contentHeight - schemeListView.height));
-                        }
-                    }
+
 
                     ListView {
                         id: schemeListView
