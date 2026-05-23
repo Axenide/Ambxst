@@ -534,6 +534,7 @@ Singleton {
             property string pillStyle: "default"
             property list<string> screenList: []
             property bool enableFirefoxPlayer: false
+            property bool enableChromiumPlayer: false
             property list<var> barColor: [["surface", 0.0]]
             property bool frameEnabled: false
             property int frameThickness: 6
@@ -547,6 +548,7 @@ Singleton {
             property bool containBar: false
             property bool keepBarShadow: false
             property bool keepBarBorder: false
+            property var hiddenIcons: []
         }
     }
 
@@ -1150,6 +1152,10 @@ Singleton {
                 property bool enabled: true
                 property int lowThreshold: 20
                 property int criticalThreshold: 10
+                property bool autoPowerSave: false
+                property int powerSaveThreshold: 15
+                property bool chargeLimitEnabled: false
+                property int chargeLimit: 80
             }
             property JsonObject idle: JsonObject {
                 property JsonObject general: JsonObject {

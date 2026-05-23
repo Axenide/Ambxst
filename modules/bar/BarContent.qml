@@ -389,6 +389,7 @@ Item {
                         }
 
                         LayoutSelectorButton {
+            visible: !Config.bar.hiddenIcons.includes("layout")
                             id: layoutSelectorButton
                             bar: root
                             layerEnabled: root.shadowsEnabled
@@ -517,6 +518,7 @@ Item {
                         }
 
                         ToolsButton {
+            visible: !Config.bar.hiddenIcons.includes("tools")
                             id: toolsButton
                             startRadius: root.innerRadius
                             endRadius: root.innerRadius
@@ -531,6 +533,7 @@ Item {
                         }
 
                         ControlsButton {
+            visible: !Config.bar.hiddenIcons.includes("controls")
                             id: controlsButton
                             bar: root
                             layerEnabled: root.shadowsEnabled
@@ -539,6 +542,7 @@ Item {
                         }
 
                         Bar.BatteryIndicator {
+            visible: !Config.bar.hiddenIcons.includes("battery")
                             id: batteryIndicator
                             bar: root
                             layerEnabled: root.shadowsEnabled
@@ -746,6 +750,7 @@ Item {
                         }
 
                         Bar.BatteryIndicator {
+            visible: !Config.bar.hiddenIcons.includes("battery")
                             id: batteryIndicatorVert
                             bar: root
                             layerEnabled: root.shadowsEnabled

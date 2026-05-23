@@ -43,7 +43,10 @@ import qs.modules.components
 
         Repeater {
             id: rowRepeater
-            model: SystemTray.items
+            model: SystemTray.items.filter(function(item) {
+                const title = (item.title || item.tooltipTitle || "").toLowerCase();
+                return !Config.bar.hiddenIcons.some(function(h) { return title.includes(h.toLowerCase()); });
+            })
 
             SysTrayItem {
                 required property SystemTrayItem modelData
@@ -62,7 +65,10 @@ import qs.modules.components
 
         Repeater {
             id: columnRepeater
-            model: SystemTray.items
+            model: SystemTray.items.filter(function(item) {
+                const title = (item.title || item.tooltipTitle || "").toLowerCase();
+                return !Config.bar.hiddenIcons.some(function(h) { return title.includes(h.toLowerCase()); });
+            })
 
             SysTrayItem {
                 required property SystemTrayItem modelData

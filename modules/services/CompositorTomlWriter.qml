@@ -221,6 +221,7 @@ Singleton {
         }
 
         toml += `rounding = ${Config.compositorRounding}\n`;
+        toml += `rounding_power = ${Config.compositor.roundingPower.toFixed(1)}\n`;
 
         // Opacity
         toml += "[appearance.opacity]\n";

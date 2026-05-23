@@ -6,7 +6,11 @@ var data = {
     "batteryNotifications": {
         "enabled": true,
         "lowThreshold": 20,
-        "criticalThreshold": 10
+        "criticalThreshold": 10,
+        "autoPowerSave": false,
+        "powerSaveThreshold": 15,
+        "chargeLimit": 0,
+        "chargeLimitEnabled": false
     },
     "idle": {
         "general": {

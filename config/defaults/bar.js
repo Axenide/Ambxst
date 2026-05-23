@@ -9,6 +9,7 @@ var data = {
     "pillStyle": "default",
     "screenList": [],
     "enableFirefoxPlayer": false,
+    "enableChromiumPlayer": false,
     "barColor": [["surface", 0.0]],
     "frameEnabled": false,
     "frameThickness": 6,
@@ -20,5 +21,6 @@ var data = {
     "use12hFormat": false,
     "containBar": false,
     "keepBarShadow": false,
-    "keepBarBorder": false
+    "keepBarBorder": false,
+    "hiddenIcons": []
 }

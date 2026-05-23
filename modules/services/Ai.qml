@@ -102,6 +102,7 @@ Singleton {
     property GroqApiStrategy groqStrategy: GroqApiStrategy {}
     property OllamaApiStrategy ollamaStrategy: OllamaApiStrategy {}
     property MiniMaxApiStrategy minimaxStrategy: MiniMaxApiStrategy {}
+    property DeepSeekApiStrategy deepseekStrategy: DeepSeekApiStrategy {}
 
     property ApiStrategy currentStrategy: openaiStrategy
 
@@ -114,7 +115,7 @@ Singleton {
         case "groq": return groqStrategy;
         case "ollama": return ollamaStrategy;
         case "minimax": return minimaxStrategy;
-        case "custom": return openaiStrategy; // custom endpoints use OpenAI-compatible format by default
+        case "deepseek": return deepseekStrategy;
         default: return openaiStrategy;
         }
     }
@@ -778,6 +779,11 @@ for f in files:
             fetchProcessMiniMax.running = true;
         }
 
+        // DeepSeek — always show models, key can be added later
+        pendingFetches++;
+        fetchProcessDeepSeek.command = ["bash", "-c", "echo 'done'"];
+        fetchProcessDeepSeek.running = true;
+
         if (pendingFetches === 0) {
             fetchingModels = false;
         }
@@ -1037,6 +1043,39 @@ for f in files:
                         provider: "minimax",
                         requires_key: true,
                         key_id: "MINIMAX_API_KEY"
+                    });
+                    if (m) newModels.push(m);
+                }
+                
+                mergeModels(newModels);
+            }
+            checkFetchCompletion();
+        }
+    }
+
+    property Process fetchProcessDeepSeek: Process {
+        running: false
+        stdout: SplitParser {}
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                let newModels = [];
+                
+                let models = [
+                    { name: "DeepSeek-V3", model: "deepseek-chat", description: "Latest DeepSeek model, SOTA reasoning & coding", endpoint: "https://api.deepseek.com" },
+                    { name: "DeepSeek-R1", model: "deepseek-reasoner", description: "DeepSeek reasoning model with chain-of-thought", endpoint: "https://api.deepseek.com" }
+                ];
+                
+                for (let i = 0; i < models.length; i++) {
+                    let item = models[i];
+                    let m = aiModelFactory.createObject(root, {
+                        name: item.name,
+                        icon: Qt.resolvedUrl("../../../assets/aiproviders/deepseek.svg"),
+                        description: item.description,
+                        endpoint: item.endpoint,
+                        model: item.model,
+                        provider: "deepseek",
+                        requires_key: true,
+                        key_id: "DEEPSEEK_API_KEY"
                     });
                     if (m) newModels.push(m);
                 }

@@ -6,8 +6,9 @@
 # FPS escrito a /dev/shm/nothingless_fps para el notch.
 #
 # Usage:
-#   nothing-fps %command%          (Steam launch options)
-#   nothing-fps ./my-game
+#   nothing-fps %command%            Steam launch options / normal
+#   nothing-fps --quiet %command%    Hidden overlay, only sends data to notch
+#   nothing-fps --visible %command%  Show overlay
 
 SHM_FILE="/dev/shm/nothingless_fps"
 cleanup() { rm -f "$SHM_FILE" 2>/dev/null; }
@@ -43,7 +44,23 @@ fi
 # ── Environment ──
 export LD_LIBRARY_PATH="${LHOME}:${LD_LIBRARY_PATH:-}"
 export LD_PRELOAD="${LHOME}/libMangoHud_shim.so${LD_PRELOAD:+:$LD_PRELOAD}"
-export MANGOHUD_CONFIG="fps_only,font_size=14,background_alpha=0.2,position=top-right,offset_x=8,offset_y=8"
+# ── Parse flags ──
+SHOW_OVERLAY=false
+ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --quiet|--hidden)  ;;
+        --visible)  SHOW_OVERLAY=true ;;
+        *) ARGS+=("$arg") ;;
+    esac
+done
+
+# ── MangoHud config ──
+if [ "$SHOW_OVERLAY" = true ]; then
+    export MANGOHUD_CONFIG="fps_only,font_size=14,background_alpha=0.2,position=top-right,offset_x=8,offset_y=8"
+else
+    export MANGOHUD_CONFIG="fps_only,no_display,font_size=14"
+fi
 export MANGOHUD=1
 
-exec env 'nothingless-fps=1' "$@"
+exec env 'nothingless-fps=1' "${ARGS[@]}"
