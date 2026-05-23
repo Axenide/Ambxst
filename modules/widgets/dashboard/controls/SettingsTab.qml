@@ -84,11 +84,20 @@ Rectangle {
                     const sectionId = contentArea.panelComponents[settingsIndexer.currentPanelIndex].section;
                     const newItems = SettingsCrawler.crawl(item, sectionId);
                     settingsIndexer.aggregatedItems = settingsIndexer.aggregatedItems.concat(newItems);
-                    settingsIndexer.currentPanelIndex++;
+                    advanceTimer.start();
                 } else if (status === Loader.Error) {
                     console.warn("Failed to load panel for indexing:", source);
-                    settingsIndexer.currentPanelIndex++;
+                    advanceTimer.start();
                 }
+            }
+        }
+
+        // Timer breaks binding loop: source → statusChanged → currentPanelIndex → source
+        Timer {
+            id: advanceTimer
+            interval: 1
+            onTriggered: {
+                settingsIndexer.currentPanelIndex++;
             }
         }
 

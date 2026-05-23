@@ -1909,34 +1909,6 @@ Item {
                                 color: Colors.overSurfaceVariant
                                 Layout.bottomMargin: -4
                             }
-                        }
-
-                        // =====================
-                        // MONITORS SECTION
-                        // =====================
-                        ColumnLayout {
-                            visible: root.currentSection === "monitors"
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 200
-                            spacing: 8
-
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 180
-                                color: "#FF0000"
-                                radius: 8
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: "MONITOR SECTION VISIBLE"
-                                    color: "#FFFFFF"
-                                    font.pixelSize: 18
-                                    font.bold: true
-                                }
-                            }
-                        }
-
-
 
                             Text {
                                 text: "General"
@@ -2041,24 +2013,6 @@ Item {
                             }
 
                             Text {
-                                text: "Display"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(-2)
-                                font.weight: Font.Medium
-                                color: Colors.overSurfaceVariant
-                                Layout.topMargin: 8
-                            }
-
-                            ToggleRow {
-                                label: "VFR (Variable Frame Rate)"
-                                checked: Config.compositor.vfr ?? true
-                                onToggled: value => {
-                                    GlobalStates.markCompositorChanged();
-                                    Config.compositor.vfr = value;
-                                }
-                            }
-
-                            Text {
                                 text: "Startup"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
@@ -2091,6 +2045,108 @@ Item {
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
                                     Config.compositor.noUpdateNews = value;
+                                }
+                            }
+                        }
+
+                        // =====================
+                        // MONITORS SECTION
+                        // =====================
+                        ColumnLayout {
+                            visible: root.currentSection === "monitors"
+                            Layout.fillWidth: true
+                            spacing: 16
+
+                            Text {
+                                text: "Monitors"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            // ── Global monitor settings ──
+                            Text {
+                                text: "Global Settings"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 4
+                            }
+
+                            ToggleRow {
+                                label: "VFR (Variable Frame Rate)"
+                                checked: Config.compositor.vfr ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.vfr = value;
+                                }
+                            }
+
+                            Text {
+                                text: "DPMS (Power Management)"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            ToggleRow {
+                                label: "Wake on Mouse Move"
+                                checked: Config.compositor.mouseMoveEnablesDpms ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.mouseMoveEnablesDpms = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Wake on Key Press"
+                                checked: Config.compositor.keyPressEnablesDpms ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.keyPressEnablesDpms = value;
+                                }
+                            }
+
+                            // ── Visual arrangement with drag & drop ──
+                            Text {
+                                text: "Layout"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            MonitorArrangementView {
+                                id: arrangementView
+                                Layout.fillWidth: true
+                            }
+
+                            // ── Per-monitor cards (always available via Quickshell.screens) ──
+                            Text {
+                                text: "Per-Monitor Configuration"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            Repeater {
+                                id: monitorRepeater
+                                model: Quickshell.screens
+
+                                delegate: MonitorCard {
+                                    required property int index
+                                    required property var modelData
+                                    monitorIndex: index
+                                    screen: modelData
+                                    Layout.fillWidth: true
                                 }
                             }
                         }
@@ -2160,4 +2216,5 @@ Item {
             onClosed: root.closeColorPicker()
         }
     }
+}
 

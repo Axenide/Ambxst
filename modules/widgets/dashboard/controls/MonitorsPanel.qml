@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 
 Item {
@@ -15,65 +16,58 @@ Item {
         id: layout
         anchors.left: parent.left
         anchors.right: parent.right
-        spacing: 8
+        spacing: 14
 
-        Text {
-            text: "Connected: " + Quickshell.screens.length + " monitor(s)"
-            font.family: Config.theme.font
-            font.pixelSize: Styling.fontSize(-2)
-            color: Colors.outline
+        // ── Visual arrangement with drag & drop ──
+        MonitorArrangementView {
+            id: arrangementView
+            Layout.fillWidth: true
         }
 
+        // ── Section title ──
+        Text {
+            text: "Per-Monitor Settings"
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(-1)
+            font.weight: Font.Medium
+            color: Colors.outline
+            Layout.topMargin: 4
+        }
+
+        // ── Individual monitor cards ──
         Repeater {
-            model: Quickshell.screens.length
+            model: Quickshell.screens
 
-            delegate: Rectangle {
+            delegate: MonitorCard {
                 required property int index
+                required property var modelData
+                monitorIndex: index
+                screen: modelData
                 Layout.fillWidth: true
-                Layout.preferredHeight: 60
-                color: Colors.surface
-                radius: 8
-                border.color: Colors.outline
-                border.width: 1
-
-                property var scr: Quickshell.screens[index]
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.margins: 12
-                    spacing: 8
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Text {
-                            text: parent.parent.scr ? parent.parent.scr.name + "  " + parent.parent.scr.width + "x" + parent.parent.scr.height : "Monitor " + (index + 1)
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(0)
-                            font.bold: true
-                            color: Colors.overSurface
-                        }
-
-                        Text {
-                            text: parent.parent.scr ? "Position: " + (parent.parent.scr.x || 0) + "x" + (parent.parent.scr.y || 0) : ""
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            color: Colors.outline
-                        }
-                    }
-                }
             }
         }
 
-        Button {
-            text: "Reset all positions"
+        // ── Actions ──
+        RowLayout {
             Layout.fillWidth: true
-            Layout.topMargin: 8
-            onClicked: {
-                for (var i = 0; i < Quickshell.screens.length; i++) {
-                    var s = Quickshell.screens[i];
-                    Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + s.name + ',preferred,0x0,1"]; running: true }', root);
+            spacing: 8
+
+            Button {
+                text: "Reset Positions"
+                Layout.fillWidth: true
+                onClicked: {
+                    for (var j = 0; j < Quickshell.screens.length; j++) {
+                        var s = Quickshell.screens[j];
+                        AxctlService.dispatch("monitor " + s.name + ",preferred,0x0,auto");
+                    }
+                }
+            }
+
+            Button {
+                text: "Detect Displays"
+                Layout.fillWidth: true
+                onClicked: {
+                    AxctlService.dispatch("monitor all,preferred,auto,auto");
                 }
             }
         }
