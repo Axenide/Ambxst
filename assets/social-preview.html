@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>NothingLess Social Preview</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;700;800&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700;800&display=swap');
+
+  @font-face {
+    font-family: 'Ndot';
+    src: url('./fonts/Ndot-57-Aligned.ttf') format('truetype');
+  }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -95,21 +100,26 @@
   }
 
   .logo-text {
-    font-size: 110px;
-    font-weight: 800;
-    letter-spacing: -4px;
+    font-family: 'Ndot', monospace;
+    font-size: 100px;
+    font-weight: 400;
+    letter-spacing: 2px;
     line-height: 1;
-    color: #ffffff;
     text-shadow: 0 0 40px rgba(233,9,9,0.4);
   }
 
-  .logo-text .slash {
+  .logo-text .nothin {
+    color: #ffffff;
+  }
+
+  .logo-text .less {
     color: #e90909;
     text-shadow: 0 0 60px rgba(233,9,9,0.6);
   }
 
   .subtitle {
-    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
     font-weight: 300;
     color: #888;
     letter-spacing: 6px;
@@ -242,7 +252,7 @@
   <div class="content">
     <div class="logo-area">
       <div class="logo-text">
-        NOTHING<span class="slash">//</span>LESS
+        <span class="nothin">NOTHIN</span><span class="less">LESS</span>
       </div>
       <div class="subtitle">A <span>WAYLAND</span> SHELL BY LERIART</div>
     </div>
