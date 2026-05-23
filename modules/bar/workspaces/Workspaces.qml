@@ -431,9 +431,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         console.log("Workspace click:", button.workspaceValue);
-                        // Direct dispatch via Process
-                        wsProcess.command = ["axctl", "-c", Quickshell.env("HOME") + "/.local/share/nothingless/axctl.toml", "workspace", "switch", String(button.workspaceValue)];
-                        wsProcess.running = true;
+                        AxctlService.dispatch(`workspace ${button.workspaceValue}`);
                     }
                 }
 
@@ -583,8 +581,7 @@ Item {
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         console.log("Workspace click:", workspaceValue);
-                        wsProcess.command = ["axctl", "-c", Quickshell.env("HOME") + "/.local/share/nothingless/axctl.toml", "workspace", "switch", String(workspaceValue)];
-                        wsProcess.running = true;
+                        AxctlService.dispatch(`workspace ${workspaceValue}`);
                     }
                 }
 

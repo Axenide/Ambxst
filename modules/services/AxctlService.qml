@@ -63,7 +63,7 @@ Singleton {
             cmdArgs = ["system", "execute", command];
         }
 
-        let finalCommand = ["axctl"].concat(cmdArgs.filter(x => x !== "" && x !== undefined));
+        let finalCommand = ["axctl", "-c", root.configPath].concat(cmdArgs.filter(x => x !== "" && x !== undefined));
 
         let proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
         proc.command = finalCommand;
