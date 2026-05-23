@@ -206,9 +206,6 @@ Requires: `meson`, `ninja`, `gcc`, `glslang`, `python-mako`.
 | Area | Ambxst | NothingLess |
 |------|--------|-------------|
 | Compositor settings | ~40 options (border, shadow, blur) | 130+ options across 11 categories |
-| Settings UI | Basic controls | Full settings panel with search, color picker, undo/apply |
-| Config persistence | TOML only | TOML + static sourced hyprland.conf |
-| Daemon startup | Via Hyprland exec-once | Via QML `AxctlService` (survives config reloads) |
 | Config reload handling | Basic | `configreloaded` event detection with instant bind/settings recovery |
 
 ### Performance
@@ -218,15 +215,9 @@ Requires: `meson`, `ninja`, `gcc`, `glslang`, `python-mako`.
 | Video wallpaper | mpv-based | QtMultimedia + FFmpeg (hardware-accelerated, lower overhead) |
 | Rendering backend | Default | Configurable: OpenGL (default) or Vulkan with threaded render loop |
 | GPU optimization | Standard | NVIDIA env vars, GPU texture caching (`GradientCache`) |
-| GLSL shaders | Original set | Optimized: 55+ fragment shaders (reduced draw calls, shared textures) |
+| GLSL shaders | Original set | Optimized (reduced draw calls, shared GPU textures) |
 | FPS monitoring | Not available | Custom MangoHud integration with real-time notch display |
 
-### Features
-
-| Area | Ambxst | NothingLess |
-|------|--------|-------------|
-| Compositor settings | ~40 options | 130+ options across 11 categories with live preview |
-| Settings UI | Basic sliders and toggles | Full panel with search, color picker, categorized sections, undo/apply |
 
 ### Design
 
@@ -236,72 +227,6 @@ Requires: `meson`, `ninja`, `gcc`, `glslang`, `python-mako`.
 | Color scheme | Vibrant themes | Monochrome with subtle red accents |
 | Animations | Heavy, ornate | Minimal, functional |
 | Branding | Color glyphs | Red + white dot-matrix |
-
----
-
-## Project Structure
-
-```
-.
-├── config/               # Config singleton + JSON defaults
-│   └── defaults/*.js     # Blueprint for each config domain
-├── modules/
-│   ├── bar/              # Panel widgets: clock, systray, workspaces, indicators
-│   ├── components/       # Reusable UI primitives + GLSL shaders (55+ files)
-│   ├── corners/          # Rounded screen corners overlay
-│   ├── desktop/          # Desktop background + icon grid
-│   ├── dock/             # App dock
-│   ├── frame/            # Screen border/glow effect
-│   ├── globals/          # GlobalStates.qml - transient runtime state
-│   ├── lockscreen/       # WlSessionLock + PAM authentication
-│   ├── notch/            # Dynamic island UI
-│   ├── notifications/    # Notification popup system + history
-│   ├── services/         # Backend singletons (30+): AI, Battery, Network, etc.
-│   ├── shell/            # UnifiedShellPanel + ReservationWindows + OSD
-│   ├── theme/            # Colors, Icons, Styling singletons + app generators
-│   ├── tools/            # Screenshot, screen recording, mirror, color picker
-│   └── widgets/          # Complex overlays: dashboard, launcher, overview
-│       ├── config/       # Standalone settings window
-│       ├── dashboard/    # Main hub: controls, metrics, assistant, clipboard, notes
-│       ├── defaultview/  # Notch idle content
-│       ├── launcher/     # App search + multi-tab launcher
-│       ├── overview/     # Mission Control workspace overview
-│       ├── powermenu/    # Lock, logout, shutdown actions
-│       ├── presets/      # Theme/layout preset switcher
-│       └── tools/        # Quick utility access
-├── assets/               # Wallpapers, color presets, AI provider configs, sounds
-├── scripts/              # Python/Bash backends (system monitor, clipboard, OCR)
-├── nix/                  # Nix flake, packages, and module definitions
-├── shell.qml             # Entry point: ShellRoot, Variants, service init
-└── cli.sh                # Launch wrapper and IPC controller
-```
-
----
-
-## Development
-
-### Running from source
-
-```bash
-qs -p shell.qml
-# Or via CLI wrapper:
-./cli.sh
-```
-
-### Adding configuration keys
-
-When adding new config properties, always update both:
-- `config/defaults/*.js` -- default values
-- `config/Config.qml` -- `JsonAdapter` property declarations
-
-### Conventions
-
-- **Singletons**: `pragma Singleton` + `Singleton { id: root }` for all services
-- **Imports**: `import qs.modules.*` namespace resolved by Quickshell's module system
-- **Persistence**: `FileView` watches JSON on disk; `JsonAdapter` creates bidirectional bindings
-- **Multi-monitor**: `Variants { model: Quickshell.screens }` for per-screen instances
-- **StyledRect variants**: Use `"pane"`, `"popup"`, `"common"`, `"internalbg"`, `"focus"` for containers
-- **Bulk config updates**: Use `root.pauseAutoSave` when modifying multiple `Config` properties
 
 ---
 
