@@ -127,9 +127,9 @@ Item {
                 anchors.leftMargin: 4
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                height: 4
+                height: 6
                 radius: Styling.radius(0) / 4
-                color: Colors.outline
+                color: Colors.overSurfaceVariant
             }
 
             // Progress fill (wavy or solid)
@@ -157,7 +157,7 @@ Item {
                 anchors.right: dragHandle.left
                 anchors.rightMargin: 4
                 anchors.verticalCenter: parent.verticalCenter
-                height: 4
+                height: 6
                 radius: Styling.radius(0) / 4
                 color: root.progressColor
                 visible: !root.wavy
