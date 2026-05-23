@@ -942,15 +942,15 @@ FocusScope {
                             Layout.preferredHeight: 40
                             visible: interpolationCheckbox.checked
 
-                            model: ["x1", "x2", "x3", "x4", "x5"]
+                            model: ["x2", "x3", "x4", "x5"]
                             currentIndex: {
                                 var mult = GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.interpolationMultiplier : 2
-                                return Math.max(0, mult - 1)
+                                return Math.max(0, Math.min(3, mult - 2))
                             }
                             // CORRECCIÓN: parámetro explícito en función
                             onActivated: function(index) {
                                 if (GlobalStates.wallpaperManager) {
-                                    GlobalStates.wallpaperManager.interpolationMultiplier = index + 1
+                                    GlobalStates.wallpaperManager.interpolationMultiplier = index + 2
                                 }
                             }
 
