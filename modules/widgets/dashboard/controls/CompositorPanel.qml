@@ -2161,3 +2161,4 @@ Item {
             onClosed: root.closeColorPicker()
         }
     }
+
