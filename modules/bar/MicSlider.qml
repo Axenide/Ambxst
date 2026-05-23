@@ -105,12 +105,12 @@ Item {
             smoothDrag: true
             value: 0
             resizeParent: false
-            wavy: true
+            wavy: false
             scroll: root.isExpanded
             iconClickable: root.isExpanded
             sliderVisible: root.isExpanded || micSlider.isDragging || root.externalVolumeChange
-            wavyAmplitude: (root.isExpanded || micSlider.isDragging || root.externalVolumeChange) ? (Audio.source?.audio?.muted ? 0.5 : 1.5 * value) : 0
-            wavyFrequency: (root.isExpanded || micSlider.isDragging || root.externalVolumeChange) ? (Audio.source?.audio?.muted ? 1.0 : 8.0 * value) : 0
+            wavyAmplitude: 0
+            wavyFrequency: 0
             iconPos: root.vertical ? "end" : "start"
             icon: Audio.source?.audio?.muted ? Icons.micSlash : Icons.mic
             progressColor: Audio.source?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")

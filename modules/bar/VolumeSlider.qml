@@ -107,12 +107,12 @@ Item {
             smoothDrag: true
             value: 0
             resizeParent: false
-            wavy: true
+            wavy: false
             scroll: root.isExpanded
             iconClickable: root.isExpanded
             sliderVisible: root.isExpanded || volumeSlider.isDragging || root.externalVolumeChange
-            wavyAmplitude: (root.isExpanded || volumeSlider.isDragging || root.externalVolumeChange) ? (Audio.sink?.audio?.muted ? 0.5 : 1.5 * value) : 0
-            wavyFrequency: (root.isExpanded || volumeSlider.isDragging || root.externalVolumeChange) ? (Audio.sink?.audio?.muted ? 1.0 : 8.0 * value) : 0
+            wavyAmplitude: 0
+            wavyFrequency: 0
             iconPos: root.vertical ? "end" : "start"
             icon: {
                 if (Audio.sink?.audio?.muted)

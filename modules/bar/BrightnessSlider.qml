@@ -133,12 +133,12 @@ Item {
             smoothDrag: true
             value: 0
             resizeParent: false
-            wavy: true
+            wavy: false
             scroll: root.isExpanded
             iconClickable: root.isExpanded
             sliderVisible: root.isExpanded || isDragging || root.externalBrightnessChange
-            wavyAmplitude: (root.isExpanded || isDragging || root.externalBrightnessChange) ? (1.5 * value) : 0
-            wavyFrequency: (root.isExpanded || isDragging || root.externalBrightnessChange) ? (8.0 * value) : 0
+            wavyAmplitude: 0
+            wavyFrequency: 0
             iconPos: root.vertical ? "end" : "start"
             icon: Icons.sun
             iconRotation: root.iconRotation
