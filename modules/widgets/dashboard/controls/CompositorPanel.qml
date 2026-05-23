@@ -1953,16 +1953,16 @@ Item {
                                     }
                                     RowLayout {
                                         spacing: 6
-                                        StyledButton { text: "<< Left"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + Math.max(0,(modelData.x||0)-1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
-                                        StyledButton { text: "Right >>"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + ((modelData.x||0)+1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
-                                        StyledButton { text: "Up ^"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + Math.max(0,(modelData.y||0)-1080) + ',1"]; running: true }', root); }
-                                        StyledButton { text: "v Down"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + ((modelData.y||0)+1080) + ',1"]; running: true }', root); }
+                                        Button { text: "<< Left"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + Math.max(0,(modelData.x||0)-1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
+                                        Button { text: "Right >>"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + ((modelData.x||0)+1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
+                                        Button { text: "Up ^"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + Math.max(0,(modelData.y||0)-1080) + ',1"]; running: true }', root); }
+                                        Button { text: "v Down"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + ((modelData.y||0)+1080) + ',1"]; running: true }', root); }
                                     }
                                 }
                             }
                         }
 
-                        StyledButton {
+                        Button {
                             text: "Auto-arrange horizontally"
                             variant: "primary"
                             Layout.fillWidth: true
