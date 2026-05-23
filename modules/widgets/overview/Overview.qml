@@ -303,16 +303,19 @@ Item {
             implicitWidth: workspaceColumnLayout.implicitWidth
             implicitHeight: workspaceColumnLayout.implicitHeight
 
-            // Pre-filter windows for this monitor and workspace group
+            // Pre-filter windows for the visible workspace group.
+            // Show windows from ALL monitors in every overview instance — the user can
+            // then drag windows from any monitor's overview to any workspace cell.
+            // Each window uses its OWN monitor's metadata for position math (looked up
+            // per-delegate below) so cross-monitor windows render at correct local coords.
             readonly property var filteredWindowData: {
                 const minWs = overviewRoot.workspaceGroup * overviewRoot.workspacesShown;
                 const maxWs = (overviewRoot.workspaceGroup + 1) * overviewRoot.workspacesShown;
-                const monId = overviewRoot.monitorId;
                 const toplevels = ToplevelManager.toplevels.values;
 
                 return overviewRoot.windowList.filter(win => {
                     const wsId = win?.workspace?.id;
-                    return wsId > minWs && wsId <= maxWs && win.monitor === monId;
+                    return wsId > minWs && wsId <= maxWs;
                 }).map(win => ({
                             windowData: win,
                             toplevel: (() => {
@@ -331,12 +334,19 @@ Item {
                 delegate: OverviewWindow {
                     id: window
                     required property var modelData
+                    // Resolve window's own monitor (may differ from overview's monitor when
+                    // showing cross-monitor windows). Used both for position offset AND scale
+                    // so windows always fit the cell regardless of source monitor size.
+                    readonly property var winMonitor: overviewRoot.monitors.find(m => m.id === modelData.windowData.monitor) ?? overviewRoot.monitorData
                     windowData: modelData.windowData
                     toplevel: modelData.toplevel
-                    scale: overviewRoot.scale
+                    // Per-window scale = cell_width / window_monitor_width — keeps each window
+                    // sized as a thumbnail of its OWN monitor, so a DP-2 window in a DP-1 overview
+                    // fills the cell properly instead of rendering at "0.15 * 1920 in a 2560-sized cell".
+                    scale: (winMonitor && winMonitor.width > 0) ? (overviewRoot.workspaceImplicitWidth / winMonitor.width) : overviewRoot.scale
                     availableWorkspaceWidth: overviewRoot.workspaceImplicitWidth
                     availableWorkspaceHeight: overviewRoot.workspaceImplicitHeight
-                    monitorData: overviewRoot.monitorData
+                    monitorData: winMonitor
                     barPosition: overviewRoot.barPosition
                     barReserved: overviewRoot.barReserved
 
