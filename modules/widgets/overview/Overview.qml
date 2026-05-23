@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import qs.modules.globals
 import qs.modules.theme
@@ -260,21 +261,21 @@ Item {
                             }
 
                             MouseArea {
+                                id: cellClickArea
                                 anchors.fill: parent
                                 acceptedButtons: Qt.LeftButton
                                 onClicked: {
-                                    if (overviewRoot.draggingTargetWorkspace === -1) {
-                                        // Only switch workspace, don't close overview
-                                        AxctlService.dispatch(`workspace ${workspaceValue}`);
-                                    }
+                                    // Click on empty cell: switch to workspace + close overview
+                                    // so user can immediately interact / open windows there.
+                                    // Use hyprctl directly — AxctlService.dispatch was unreliable
+                                    // for workspace switches and stale draggingTargetWorkspace
+                                    // state was blocking the original handler.
+                                    overviewRoot.draggingTargetWorkspace = -1;
+                                    Visibilities.setActiveModule("");
+                                    cellSwitchProc.command = ["hyprctl", "dispatch", "workspace", workspaceValue.toString()];
+                                    cellSwitchProc.startDetached();
                                 }
-                                onDoubleClicked: {
-                                    if (overviewRoot.draggingTargetWorkspace === -1) {
-                                        // Double click closes overview and switches workspace
-                                        Visibilities.setActiveModule("");
-                                        AxctlService.dispatch(`workspace ${workspaceValue}`);
-                                    }
-                                }
+                                Process { id: cellSwitchProc }
                             }
 
                             DropArea {
