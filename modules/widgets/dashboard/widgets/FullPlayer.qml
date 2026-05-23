@@ -249,25 +249,7 @@ StyledRect {
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
 
-                        // Placeholder (with WavyLine)
-                        Rectangle {
-                            anchors.fill: parent
-                            color: Colors.surface
-                            visible: !player.hasArtwork && player.wallpaperPath === ""
 
-                            Loader {
-                                active: parent.visible && Config.performance.wavyLine
-                                anchors.centerIn: parent
-                                width: parent.width * 0.6
-                                height: 20
-                                sourceComponent: WavyLine {
-                                    anchors.fill: parent
-                                    color: Colors.primary
-                                    frequency: 2
-                                    amplitudeMultiplier: 2
-                                }
-                            }
-                        }
                     }
                 }
 
