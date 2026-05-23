@@ -315,15 +315,15 @@ QtObject {
         }
     }
 
-    // property Connections compositorConnections: Connections {
-    //     target: AxctlService
-    //     function onRawEvent(event) {
-    //         if (event.name === "configreloaded") {
-    //             console.log("CompositorKeybinds: Detectado configreloaded, reaplicando keybindings...");
-    //             applyKeybinds();
-    //         }
-    //     }
-    // }
+    property Connections compositorConnections: Connections {
+        target: AxctlService
+        function onRawEvent(event) {
+            if (event && event.name === "configreloaded") {
+                console.log("CompositorKeybinds: Hyprland config reloaded, reapplying keybinds...");
+                applyKeybinds();
+            }
+        }
+    }
 
     Component.onCompleted: {
         // Apply immediately if loader is ready.

@@ -655,6 +655,16 @@ QtObject {
         }
     }
 
+    // Re-apply settings when Hyprland config is reloaded (user edits hyprland.conf)
+    property Connections axctlConnections: Connections {
+        target: AxctlService
+        function onRawEvent(event) {
+            if (event && event.name === "configreloaded") {
+                console.log("CompositorConfig: Hyprland config reloaded, reapplying settings...");
+                applyCompositorConfig();
+            }
+        }
+    }
 
     Component.onCompleted: {
         // Apply immediately if Config is already loaded.

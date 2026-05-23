@@ -576,38 +576,15 @@ install)
 		mkdir -p "$HYPR_DIR"
 		mkdir -p "$SHARE_DIR"
 
-		# Create the initial sourced config.
-		# The boot flag prevents Hyprland from re-executing nothingless on config reload.
-		# /tmp is cleared on reboot, so the flag is naturally reset.
+		# Create the initial sourced config — absolute minimum.
+		# Only exec-once with a boot flag. No env vars, no misc blocks.
+		# Everything else is managed by axctl (live + TOML).
 		cat > "$SHARE_DIR/hyprland.conf" <<'HYPRCONF'
-# NothingLess — static boot config (never regenerated)
 exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
-
-# Qt/Quickshell GPU acceleration
-env = QSG_RHI_BACKEND,opengl
-env = QSG_RENDER_LOOP,threaded
-env = QT_QUICK_BACKEND,opengl
-
-# Prevent Hyprland logo/wallpaper flash before NothingLess loads
-misc {
-    force_default_wallpaper = -1
-    disable_hyprland_logo = true
-}
 HYPRCONF
 
-		# Same for Lua users
 		cat > "$SHARE_DIR/hyprland.lua" <<'HYPRLUA'
--- NothingLess — static boot config (never regenerated)
 exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && nothingless; }'
-
-env = QSG_RHI_BACKEND,opengl
-env = QSG_RENDER_LOOP,threaded
-env = QT_QUICK_BACKEND,opengl
-
-misc {
-    force_default_wallpaper = -1
-    disable_hyprland_logo = true
-}
 HYPRLUA
 
 		echo "Created initial compositor config at $SHARE_DIR/"
