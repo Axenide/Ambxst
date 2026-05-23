@@ -1918,10 +1918,13 @@ Item {
                             visible: root.currentSection === "monitors"
                             Layout.fillWidth: true
                             spacing: 8
-                            Loader {
-                                id: monitorsPanelLoader
+                            Text {
+                                text: "TEST: Monitors visible!\nScreens: " + Quickshell.screens.length + " connected"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(0)
+                                color: Colors.overSurface
+                                wrapMode: Text.WordWrap
                                 Layout.fillWidth: true
-                                source: "MonitorsPanel.qml"
                             }
                         }
 
