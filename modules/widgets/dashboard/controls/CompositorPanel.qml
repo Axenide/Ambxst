@@ -1910,21 +1910,68 @@ Item {
                                 Layout.bottomMargin: -4
                             }
 
-                    // =====================
-                    // MONITORS SECTION
-                    // =====================
-                                        ColumnLayout {
-                        visible: root.currentSection === "monitors"
-                        property string settingsSection: "monitors"
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        Loader {
-                            id: monitorsLoader
+                        // =====================
+                        // MONITORS SECTION
+                        // =====================
+                        ColumnLayout {
+                            visible: root.currentSection === "monitors"
+                            property string settingsSection: "monitors"
                             Layout.fillWidth: true
-                            source: Qt.resolvedUrl("MonitorsPanel.qml")
+                            spacing: 8
+
+                            Text {
+                                text: "Monitor Layout"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            Repeater {
+                                model: Quickshell.screens
+                                delegate: StyledRect {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    variant: "surface"
+                                    radius: Styling.radius(8)
+                                    implicitHeight: col.implicitHeight + 16
+                                    ColumnLayout {
+                                        id: col
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 6
+                                        Text {
+                                            text: modelData.name + "  " + modelData.width + "x" + modelData.height
+                                            font.bold: true
+                                            color: Colors.overSurface
+                                        }
+                                        Text {
+                                            text: "Position: " + (modelData.x || 0) + "x" + (modelData.y || 0)
+                                            color: Colors.outline
+                                            font.pixelSize: Styling.fontSize(-1)
+                                        }
+                                        RowLayout {
+                                            spacing: 6
+                                            Button { text: "<< Left"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + Math.max(0,(modelData.x||0)-1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
+                                            Button { text: "Right >>"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + ((modelData.x||0)+1920) + 'x' + (modelData.y||0) + ',1"]; running: true }', root); }
+                                            Button { text: "Up ^"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + Math.max(0,(modelData.y||0)-1080) + ',1"]; running: true }', root); }
+                                            Button { text: "v Down"; onClicked: Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl keyword monitor ' + modelData.name + ',preferred,' + (modelData.x||0) + 'x' + ((modelData.y||0)+1080) + ',1"]; running: true }', root); }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Button {
+                                text: "Auto-arrange horizontally"
+                                // variant: "primary"
+                                Layout.fillWidth: true
+                                onClicked: {
+                                    var py = "python3 -c 'import json,os,sys; m=json.load(sys.stdin); [os.system(\"hyprctl keyword monitor \"+x[\"name\"]+\",preferred,\"+str(i*1920)+\"x0,1\") for i,x in enumerate(m)]'";
+                                    Qt.createQmlObject('import Quickshell.Io; Process { command: ["bash", "-c", "hyprctl monitors -j | ' + py + '"]; running: true }', root);
+                                }
+                            }
                         }
-                    }
 
 
 
