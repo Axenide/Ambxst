@@ -2071,7 +2071,6 @@ Item {
                 }
             }
         }
-    }
 
     // Color picker view (shown when colorPickerActive)
     Item {
