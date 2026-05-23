@@ -17,6 +17,16 @@
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="./assets/screenshots/settings.png" alt="NothingLess Settings" width="45%"/>
+  &nbsp;&nbsp;
+  <img src="./assets/screenshots/gaming.png" alt="NothingLess Gaming" width="45%"/>
+</p>
+
+---
+
 ## Installation
 
 ```bash
