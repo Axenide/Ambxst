@@ -716,6 +716,16 @@ help | --help | -h)
 	export QT_QPA_PLATFORMTHEME=qt6ct
 	unset HL_INITIAL_WORKSPACE_TOKEN
 
+	# Set Qt rendering backend from compositor config (opengl or vulkan)
+	COMPOSITOR_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/nothingless/config/compositor.json"
+	if [ -f "$COMPOSITOR_CFG" ]; then
+		RHI_BACKEND=$(python3 -c "import json; print(json.load(open('$COMPOSITOR_CFG')).get('renderBackend','opengl'))" 2>/dev/null || echo "opengl")
+	else
+		RHI_BACKEND="opengl"
+	fi
+	export QSG_RHI_BACKEND="$RHI_BACKEND"
+	export QSG_RENDER_LOOP="threaded"
+
 	# Cache this script's PID before exec (for fast PID lookups in future CLI calls)
 	echo $$ >/tmp/nothingless.pid
 

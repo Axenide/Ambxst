@@ -171,6 +171,7 @@ var data = {
     "keyPressEnablesDpms": false,
 
     // === Misc ===
+    "renderBackend": "opengl",
     "disableAutoreload": false,
     "focusOnActivate": false,
     "animateManualResizes": false,

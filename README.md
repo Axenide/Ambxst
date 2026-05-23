@@ -39,7 +39,7 @@
 ### Performance
 
 - **QtMultimedia Video Wallpapers** -- Hardware-accelerated video playback for animated backgrounds (MP4, WebM, MOV, AVI, MKV) using FFmpeg
-- **OpenGL Rendering** -- `QSG_RHI_BACKEND=opengl` with threaded render loop for responsive UI even under load
+- **Configurable GPU Backend** -- Supports both OpenGL and Vulkan via `QSG_RHI_BACKEND` with threaded render loop for responsive UI
 - **GPU Texture Caching** -- `GradientCache` singleton enables GPU texture sharing to reduce redundant uploads
 - **NVIDIA Optimizations** -- `LIBVA_DRIVER_NAME`, `GBM_BACKEND`, and `__GLX_VENDOR_LIBRARY_NAME` environment variables for optimal video decode and rendering
 - **FPS Monitoring** -- Custom MangoHud integration captures frame-present events and displays real-time FPS in the notch overlay
@@ -216,7 +216,7 @@ Requires: `meson`, `ninja`, `gcc`, `glslang`, `python-mako`.
 | Area | Ambxst | NothingLess |
 |------|--------|-------------|
 | Video wallpaper | mpv-based | QtMultimedia + FFmpeg (hardware-accelerated, lower overhead) |
-| Rendering backend | Default | OpenGL with threaded render loop (`QSG_RENDER_LOOP=threaded`) |
+| Rendering backend | Default | Configurable: OpenGL (default) or Vulkan with threaded render loop |
 | GPU optimization | Standard | NVIDIA env vars, GPU texture caching (`GradientCache`) |
 | GLSL shaders | Original set | Optimized: 55+ fragment shaders (reduced draw calls, shared textures) |
 | FPS monitoring | Not available | Custom MangoHud integration with real-time notch display |
@@ -227,13 +227,6 @@ Requires: `meson`, `ninja`, `gcc`, `glslang`, `python-mako`.
 |------|--------|-------------|
 | Compositor settings | ~40 options | 130+ options across 11 categories with live preview |
 | Settings UI | Basic sliders and toggles | Full panel with search, color picker, categorized sections, undo/apply |
-| Color presets | Standard set | 13 expanded presets (Ayu, Catppuccin, Everforest, GitHub, Gruvbox, Kanagawa, Nord, Nothing, Paradise, Posterpole, Rose Pine, Tokyonight, Yoru) |
-| OCR / Lens | Standard | Expanded multi-language support (EN, ES, JP, ZH, KO, LA) |
-| QR scanner | Standard | `zbar` integration with improved reliability |
-| Idle management | Standard | Configurable multi-stage timeouts (dim, lock, screen off, suspend) |
-| Brightness control | Standard | Per-monitor with save/restore and relative adjustment |
-| Power profiles | Standard | `powerprofilesctl` with performance/balanced/power-saver |
-| Screen recording | Standard | `gpu-screen-recorder` + `wf-recorder` with FPS overlay support |
 
 ### Design
 

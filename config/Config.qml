@@ -886,6 +886,7 @@ Singleton {
             property bool keyPressEnablesDpms: false
 
             // Misc
+            property string renderBackend: "opengl"
             property bool disableAutoreload: false
             property bool focusOnActivate: false
             property bool animateManualResizes: false
