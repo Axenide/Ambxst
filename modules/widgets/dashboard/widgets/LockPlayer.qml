@@ -111,24 +111,8 @@ StyledRect {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             height: 24
-            sourceComponent: CarouselProgress {
-                anchors.fill: parent
-                frequency: 4
-                color: Colors.surfaceBright
-                amplitudeMultiplier: 4
-                lineWidth: 2
-                fullLength: width
-                opacity: 1.0
-                animationsEnabled: true
-                active: true
-
-                Behavior on color {
-                    enabled: Config.animDuration > 0
-                    ColorAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                }
+            sourceComponent: Rectangle {
+                color: Qt.rgba(Colors.surfaceBright.r, Colors.surfaceBright.g, Colors.surfaceBright.b, 0.4)
             }
         }
     }

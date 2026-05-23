@@ -409,17 +409,6 @@ Item {
                             }
                         }
 
-                        // Wavy Line toggle
-                        ToggleRow {
-                            Layout.fillWidth: true
-                            label: "Wavy Line"
-                            description: "Animated wavy line effect"
-                            checked: Config.performance.wavyLine
-                            onToggled: checked => {
-                                Config.performance.wavyLine = checked;
-                            }
-                        }
-
                         // Rotate Cover Art toggle
                         ToggleRow {
                             Layout.fillWidth: true
