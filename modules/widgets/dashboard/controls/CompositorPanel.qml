@@ -319,6 +319,58 @@ Item {
         }
     }
 
+    // Inline component for text input rows
+    component TextInputRow: RowLayout {
+        id: textInputRowRoot
+        property string label: ""
+        property string text: ""
+        property string placeholder: ""
+        signal textEdited(string newText)
+
+        Layout.fillWidth: true
+        spacing: 8
+
+        Text {
+            text: textInputRowRoot.label
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(0)
+            color: Colors.overBackground
+            Layout.fillWidth: true
+        }
+
+        StyledRect {
+            variant: "common"
+            Layout.preferredWidth: 120
+            Layout.preferredHeight: 32
+            radius: Styling.radius(-2)
+
+            TextInput {
+                id: textInput
+                anchors.fill: parent
+                anchors.margins: 8
+                font.family: Config.theme.font
+                font.pixelSize: Styling.fontSize(0)
+                color: Colors.overBackground
+                selectByMouse: true
+                clip: true
+                verticalAlignment: TextInput.AlignVCenter
+                horizontalAlignment: TextInput.AlignHCenter
+
+                readonly property string configText: textInputRowRoot.text
+                onConfigTextChanged: {
+                    if (!activeFocus && text !== configText) {
+                        text = configText;
+                    }
+                }
+                Component.onCompleted: text = configText
+
+                onEditingFinished: {
+                    textInputRowRoot.textEdited(text);
+                }
+            }
+        }
+    }
+
     // Inline component for Border Gradients (Multi-color list)
     component BorderGradientRow: ColumnLayout {
         id: gradientRow
@@ -664,6 +716,34 @@ Item {
                             SectionButton {
                                 text: "Blur"
                                 sectionId: "blur"
+                            }
+                            SectionButton {
+                                text: "Opacity && Dim"
+                                sectionId: "opacity"
+                            }
+                            SectionButton {
+                                text: "Snap"
+                                sectionId: "snap"
+                            }
+                            SectionButton {
+                                text: "Input"
+                                sectionId: "input"
+                            }
+                            SectionButton {
+                                text: "Cursor"
+                                sectionId: "cursor"
+                            }
+                            SectionButton {
+                                text: "Gestures"
+                                sectionId: "gestures"
+                            }
+                            SectionButton {
+                                text: "Layouts"
+                                sectionId: "layouts"
+                            }
+                            SectionButton {
+                                text: "Advanced"
+                                sectionId: "advanced"
                             }
                         }
 
@@ -1108,6 +1188,903 @@ Item {
                                 onValueEdited: newValue => {
                                     GlobalStates.markCompositorChanged();
                                     Config.compositor.blurVibrancy = newValue;
+                                }
+                            }
+                        }
+
+                        // Opacity & Dim Section
+                        ColumnLayout {
+                            visible: root.currentSection === "opacity"
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: "Opacity && Dim"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            Text {
+                                text: "Window Opacity"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 4
+                            }
+
+                            DecimalInputRow {
+                                label: "Active"
+                                value: Config.compositor.activeOpacity ?? 1.0
+                                minValue: 0.0
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.activeOpacity = newValue;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Inactive"
+                                value: Config.compositor.inactiveOpacity ?? 1.0
+                                minValue: 0.0
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.inactiveOpacity = newValue;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Fullscreen"
+                                value: Config.compositor.fullscreenOpacity ?? 1.0
+                                minValue: 0.0
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.fullscreenOpacity = newValue;
+                                }
+                            }
+
+                            Text {
+                                text: "Dim"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            ToggleRow {
+                                label: "Dim Inactive"
+                                checked: Config.compositor.dimInactive ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dimInactive = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Dim Strength"
+                                value: Config.compositor.dimStrength ?? 0.5
+                                minValue: 0.0
+                                maxValue: 1.0
+                                enabled: Config.compositor.dimInactive
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dimStrength = newValue;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Dim Around"
+                                value: Config.compositor.dimAround ?? 0.4
+                                minValue: 0.0
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dimAround = newValue;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Dim Special"
+                                value: Config.compositor.dimSpecial ?? 0.2
+                                minValue: 0.0
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dimSpecial = newValue;
+                                }
+                            }
+                        }
+
+                        // Snap Section
+                        ColumnLayout {
+                            visible: root.currentSection === "snap"
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: "Snap"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            ToggleRow {
+                                label: "Enabled"
+                                checked: Config.compositor.snapEnabled ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.snapEnabled = value;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Window Gap"
+                                value: Config.compositor.snapWindowGap ?? 10
+                                minValue: 0
+                                maxValue: 100
+                                suffix: "px"
+                                enabled: Config.compositor.snapEnabled
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.snapWindowGap = newValue;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Monitor Gap"
+                                value: Config.compositor.snapMonitorGap ?? 10
+                                minValue: 0
+                                maxValue: 100
+                                suffix: "px"
+                                enabled: Config.compositor.snapEnabled
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.snapMonitorGap = newValue;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Border Overlap"
+                                checked: Config.compositor.snapBorderOverlap ?? false
+                                enabled: Config.compositor.snapEnabled
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.snapBorderOverlap = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Respect Gaps"
+                                checked: Config.compositor.snapRespectGaps ?? false
+                                enabled: Config.compositor.snapEnabled
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.snapRespectGaps = value;
+                                }
+                            }
+                        }
+
+                        // Input Section
+                        ColumnLayout {
+                            visible: root.currentSection === "input"
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: "Input"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            Text {
+                                text: "Keyboard"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 4
+                            }
+
+                            TextInputRow {
+                                label: "Layout"
+                                text: Config.compositor.kbLayout ?? "us"
+                                placeholder: "us"
+                                onTextEdited: newText => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.kbLayout = newText;
+                                }
+                            }
+
+                            TextInputRow {
+                                label: "Variant"
+                                text: Config.compositor.kbVariant ?? ""
+                                placeholder: "e.g. dvorak"
+                                onTextEdited: newText => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.kbVariant = newText;
+                                }
+                            }
+
+                            TextInputRow {
+                                label: "Options"
+                                text: Config.compositor.kbOptions ?? ""
+                                placeholder: "e.g. caps:escape"
+                                onTextEdited: newText => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.kbOptions = newText;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Numlock by Default"
+                                checked: Config.compositor.numlockByDefault ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.numlockByDefault = value;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Repeat Rate"
+                                value: Config.compositor.repeatRate ?? 25
+                                minValue: 0
+                                maxValue: 300
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.repeatRate = newValue;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Repeat Delay"
+                                value: Config.compositor.repeatDelay ?? 600
+                                minValue: 0
+                                maxValue: 2000
+                                suffix: "ms"
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.repeatDelay = newValue;
+                                }
+                            }
+
+                            Text {
+                                text: "Mouse"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            DecimalInputRow {
+                                label: "Sensitivity"
+                                value: Config.compositor.mouseSensitivity ?? 0.0
+                                minValue: -1.0
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.mouseSensitivity = newValue;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Natural Scroll"
+                                checked: Config.compositor.mouseNaturalScroll ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.mouseNaturalScroll = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Left Handed"
+                                checked: Config.compositor.mouseLeftHanded ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.mouseLeftHanded = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Scroll Factor"
+                                value: Config.compositor.mouseScrollFactor ?? 1.0
+                                minValue: 0.1
+                                maxValue: 10.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.mouseScrollFactor = newValue;
+                                }
+                            }
+
+                            Text {
+                                text: "Touchpad"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            ToggleRow {
+                                label: "Disable While Typing"
+                                checked: Config.compositor.touchpadDisableWhileTyping ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.touchpadDisableWhileTyping = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Natural Scroll"
+                                checked: Config.compositor.touchpadNaturalScroll ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.touchpadNaturalScroll = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Tap to Click"
+                                checked: Config.compositor.touchpadTapToClick ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.touchpadTapToClick = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Scroll Factor"
+                                value: Config.compositor.touchpadScrollFactor ?? 1.0
+                                minValue: 0.1
+                                maxValue: 10.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.touchpadScrollFactor = newValue;
+                                }
+                            }
+                        }
+
+                        // Cursor Section
+                        ColumnLayout {
+                            visible: root.currentSection === "cursor"
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: "Cursor"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            ToggleRow {
+                                label: "Enable Hyprcursor"
+                                checked: Config.compositor.enableHyprcursor ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.enableHyprcursor = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "No Hardware Cursors"
+                                checked: Config.compositor.noHardwareCursors ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.noHardwareCursors = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "No Warps"
+                                checked: Config.compositor.noWarps ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.noWarps = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Persistent Warps"
+                                checked: Config.compositor.persistentWarps ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.persistentWarps = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Warp on Workspace Change"
+                                checked: Config.compositor.warpOnChangeWorkspace ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.warpOnChangeWorkspace = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Zoom Factor"
+                                value: Config.compositor.cursorZoomFactor ?? 1.0
+                                minValue: 0.1
+                                maxValue: 10.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.cursorZoomFactor = newValue;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Inactive Timeout"
+                                value: Config.compositor.cursorInactiveTimeout ?? 0
+                                minValue: 0
+                                maxValue: 60
+                                suffix: "s"
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.cursorInactiveTimeout = newValue;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Hide on Key Press"
+                                checked: Config.compositor.cursorHideOnKeyPress ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.cursorHideOnKeyPress = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Hide on Touch"
+                                checked: Config.compositor.cursorHideOnTouch ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.cursorHideOnTouch = value;
+                                }
+                            }
+                        }
+
+                        // Gestures Section
+                        ColumnLayout {
+                            visible: root.currentSection === "gestures"
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: "Gestures"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            ToggleRow {
+                                label: "Create New Workspace"
+                                checked: Config.compositor.workspaceSwipeCreateNew ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeCreateNew = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Swipe Forever"
+                                checked: Config.compositor.workspaceSwipeForever ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeForever = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Direction Lock"
+                                checked: Config.compositor.workspaceSwipeDirectionLock ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeDirectionLock = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Use Relative Workspaces"
+                                checked: Config.compositor.workspaceSwipeUseR ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeUseR = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Invert Direction"
+                                checked: Config.compositor.workspaceSwipeInvert ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeInvert = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Cancel Ratio"
+                                value: Config.compositor.workspaceSwipeCancelRatio ?? 0.5
+                                minValue: 0.0
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeCancelRatio = newValue;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Min Speed to Force"
+                                value: Config.compositor.workspaceSwipeMinSpeedToForce ?? 30
+                                minValue: 0
+                                maxValue: 500
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeMinSpeedToForce = newValue;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Swipe Distance"
+                                value: Config.compositor.workspaceSwipeDistance ?? 300
+                                minValue: 0
+                                maxValue: 1000
+                                suffix: "px"
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.workspaceSwipeDistance = newValue;
+                                }
+                            }
+                        }
+
+                        // Layouts Section
+                        ColumnLayout {
+                            visible: root.currentSection === "layouts"
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: "Layouts"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            Text {
+                                text: "Dwindle"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 4
+                            }
+
+                            ToggleRow {
+                                label: "Preserve Split"
+                                checked: Config.compositor.dwindlePreserveSplit ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dwindlePreserveSplit = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Smart Split"
+                                checked: Config.compositor.dwindleSmartSplit ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dwindleSmartSplit = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Smart Resizing"
+                                checked: Config.compositor.dwindleSmartResizing ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dwindleSmartResizing = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Split Ratio"
+                                value: Config.compositor.dwindleDefaultSplitRatio ?? 1.0
+                                minValue: 0.1
+                                maxValue: 5.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dwindleDefaultSplitRatio = newValue;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Special Scale"
+                                value: Config.compositor.dwindleSpecialScaleFactor ?? 0.8
+                                minValue: 0.1
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.dwindleSpecialScaleFactor = newValue;
+                                }
+                            }
+
+                            Text {
+                                text: "Master"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            DecimalInputRow {
+                                label: "Master Factor"
+                                value: Config.compositor.masterMfact ?? 0.55
+                                minValue: 0.05
+                                maxValue: 0.95
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.masterMfact = newValue;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Smart Resizing"
+                                checked: Config.compositor.masterSmartResizing ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.masterSmartResizing = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Special Scale"
+                                value: Config.compositor.masterSpecialScaleFactor ?? 0.8
+                                minValue: 0.1
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.masterSpecialScaleFactor = newValue;
+                                }
+                            }
+
+                            Text {
+                                text: "Scrolling"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            DecimalInputRow {
+                                label: "Column Width"
+                                value: Config.compositor.scrollingColumnWidth ?? 0.3
+                                minValue: 0.05
+                                maxValue: 1.0
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.scrollingColumnWidth = newValue;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Follow Focus"
+                                checked: Config.compositor.scrollingFollowFocus ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.scrollingFollowFocus = value;
+                                }
+                            }
+
+                            DecimalInputRow {
+                                label: "Min Visible"
+                                value: Config.compositor.scrollingFollowMinVisible ?? 0.1
+                                minValue: 0.0
+                                maxValue: 1.0
+                                enabled: Config.compositor.scrollingFollowFocus
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.scrollingFollowMinVisible = newValue;
+                                }
+                            }
+                        }
+
+                        // Advanced Section
+                        ColumnLayout {
+                            visible: root.currentSection === "advanced"
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: "Advanced"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            Text {
+                                text: "General"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 4
+                            }
+
+                            ToggleRow {
+                                label: "Allow Tearing"
+                                checked: Config.compositor.allowTearing ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.allowTearing = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Animations"
+                                checked: Config.compositor.animationsEnabled ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.animationsEnabled = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Animate Manual Resizes"
+                                checked: Config.compositor.animateManualResizes ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.animateManualResizes = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Animate Mouse Dragging"
+                                checked: Config.compositor.animateMouseWindowdragging ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.animateMouseWindowdragging = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Focus on Activate"
+                                checked: Config.compositor.focusOnActivate ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.focusOnActivate = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Resize on Border"
+                                checked: Config.compositor.resizeOnBorder ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.resizeOnBorder = value;
+                                }
+                            }
+
+                            NumberInputRow {
+                                label: "Border Grab Area"
+                                value: Config.compositor.extendBorderGrabArea ?? 15
+                                minValue: 0
+                                maxValue: 50
+                                suffix: "px"
+                                onValueEdited: newValue => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.extendBorderGrabArea = newValue;
+                                }
+                            }
+
+                            Text {
+                                text: "XWayland"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            ToggleRow {
+                                label: "XWayland Enabled"
+                                checked: Config.compositor.xwaylandEnabled ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.xwaylandEnabled = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Force Zero Scaling"
+                                checked: Config.compositor.xwaylandForceZeroScaling ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.xwaylandForceZeroScaling = value;
+                                }
+                            }
+
+                            Text {
+                                text: "Display"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            ToggleRow {
+                                label: "VFR (Variable Frame Rate)"
+                                checked: Config.compositor.vfr ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.vfr = value;
+                                }
+                            }
+
+                            Text {
+                                text: "Startup"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.topMargin: 8
+                            }
+
+                            ToggleRow {
+                                label: "Disable Logo"
+                                checked: Config.compositor.disableHyprlandLogo ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.disableHyprlandLogo = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Disable Splash"
+                                checked: Config.compositor.disableSplashRendering ?? false
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.disableSplashRendering = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Disable Update News"
+                                checked: Config.compositor.noUpdateNews ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.noUpdateNews = value;
+                                }
+                            }
+
+                            ToggleRow {
+                                label: "Disable Donation Nag"
+                                checked: Config.compositor.noDonationNag ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.noDonationNag = value;
                                 }
                             }
                         }
