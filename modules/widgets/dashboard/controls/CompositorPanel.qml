@@ -662,34 +662,19 @@ Item {
                     CompositorTabButton {
                         label: "AxctlService"
                         image: "../../../../assets/compositors/hyprland.svg"
-                        isSelected: stackLayout.currentIndex === 0
-                        onClicked: stackLayout.currentIndex = 0
-                    }
-
-                    CompositorTabButton {
-                        label: "Coming Soon"
-                        icon: Icons.clock
-                        isSelected: stackLayout.currentIndex === 1
-                        onClicked: stackLayout.currentIndex = 1
+                        isSelected: true
                     }
                 }
             }
 
-            // Stack for content
+            // Content
             Item {
                 Layout.fillWidth: true
-                Layout.preferredHeight: stackLayout.height
+                Layout.preferredHeight: compositorPage.implicitHeight
 
-                StackLayout {
-                    id: stackLayout
-                    width: root.contentWidth
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    height: currentIndex === 0 ? compositorPage.implicitHeight : placeholderPage.implicitHeight
-                    currentIndex: 0
-
-                    // ═══════════════════════════════════════════════════════════════
-                    // COMPOSITOR TAB
-                    // ═══════════════════════════════════════════════════════════════
+                // ═══════════════════════════════════════════════════════════════
+                // COMPOSITOR TAB
+                // ═══════════════════════════════════════════════════════════════
                     ColumnLayout {
                         id: compositorPage
                         Layout.fillWidth: true
@@ -2084,46 +2069,6 @@ Item {
                         Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 16
-                        }
-                    }
-
-                    // ═══════════════════════════════════════════════════════════════
-                    // COMING SOON TAB
-                    // ═══════════════════════════════════════════════════════════════
-                    Item {
-                        id: placeholderPage
-                        Layout.fillWidth: true
-                        implicitHeight: 300
-
-                        ColumnLayout {
-                            anchors.centerIn: parent
-                            spacing: 16
-
-                            Text {
-                                text: Icons.clock
-                                font.family: Icons.font
-                                font.pixelSize: 64
-                                color: Colors.surfaceVariant
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-
-                            Text {
-                                text: "Coming Soon"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(2)
-                                font.bold: true
-                                color: Colors.overBackground
-                                Layout.alignment: Qt.AlignHCenter
-                            }
-
-                            Text {
-                                text: "Support for more compositors\nis planned for future updates."
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(0)
-                                color: Colors.overSurfaceVariant
-                                horizontalAlignment: Text.AlignHCenter
-                                Layout.alignment: Qt.AlignHCenter
-                            }
                         }
                     }
                 }

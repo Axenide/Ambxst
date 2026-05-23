@@ -572,36 +572,153 @@ Singleton {
 
         let hypr = "# NothingLess auto-generated config\n";
         hypr += "# Sourced by ~/.config/hypr/hyprland.conf\n\n";
+
+        // Autostart
         hypr += "exec-once = nothingless\n";
         hypr += "exec-once = axctl -c ~/.local/share/nothingless/axctl.toml daemon\n\n";
 
         if (Config.compositor) {
-            if (Config.compositor.showBorder !== undefined)
-                hypr += "$border_width = " + (Config.compositor.showBorder ? (Config.compositor.borderSize || 2) : 0) + "\n";
-            if (Config.compositor.rounding !== undefined)
-                hypr += "$rounding = " + Config.compositor.rounding + "\n";
-            if (Config.compositor.roundingPower !== undefined)
-                hypr += "$rounding_power = " + Config.compositor.roundingPower.toFixed(1) + "\n";
-            if (Config.compositor.gapsIn !== undefined)
-                hypr += "$gaps_in = " + Config.compositor.gapsIn + "\n";
-            if (Config.compositor.gapsOut !== undefined)
-                hypr += "$gaps_out = " + Config.compositor.gapsOut + "\n";
-            if (Config.compositor.activeBorderColor && Config.compositor.activeBorderColor.length > 0)
-                hypr += "$active_border = " + Config.compositor.activeBorderColor[0] + "\n";
-            if (Config.compositor.inactiveBorderColor && Config.compositor.inactiveBorderColor.length > 0)
-                hypr += "$inactive_border = " + Config.compositor.inactiveBorderColor[0] + "\n";
-            if (Config.compositor.activeOpacity !== undefined)
-                hypr += "$active_opacity = " + Config.compositor.activeOpacity.toFixed(2) + "\n";
-            if (Config.compositor.inactiveOpacity !== undefined)
-                hypr += "$inactive_opacity = " + Config.compositor.inactiveOpacity.toFixed(2) + "\n";
-            if (Config.compositor.allowTearing !== undefined)
-                hypr += "$allow_tearing = " + Config.compositor.allowTearing + "\n";
-            if (Config.compositor.resizeOnBorder !== undefined)
-                hypr += "$resize_on_border = " + Config.compositor.resizeOnBorder + "\n";
-            if (Config.compositor.extendBorderGrabArea !== undefined)
-                hypr += "$extend_border_grab_area = " + Config.compositor.extendBorderGrabArea + "\n";
-            if (Config.compositor.hoverIconOnBorder !== undefined)
-                hypr += "$hover_icon_on_border = " + Config.compositor.hoverIconOnBorder + "\n";
+            // Qt/GPU acceleration env vars
+            hypr += "# Qt/Quickshell GPU acceleration\n";
+            hypr += "env = QSG_RHI_BACKEND,opengl\n";
+            hypr += "env = QSG_RENDER_LOOP,threaded\n";
+            hypr += "env = QT_QUICK_BACKEND,opengl\n\n";
+
+            // Misc
+            hypr += "misc {\n";
+            hypr += "    force_default_wallpaper = " + (Config.compositor.forceDefaultWallpaper ?? -1) + "\n";
+            hypr += "    disable_hyprland_logo = " + (Config.compositor.disableHyprlandLogo ?? true) + "\n";
+            hypr += "    disable_splash_rendering = " + (Config.compositor.disableSplashRendering ?? false) + "\n";
+            hypr += "    no_update_news = " + (Config.compositor.noUpdateNews ?? true) + "\n";
+            hypr += "    animate_mouse_windowdragging = " + (Config.compositor.animateMouseWindowdragging ?? true) + "\n";
+            hypr += "    animate_manual_resizes = " + (Config.compositor.animateManualResizes ?? false) + "\n";
+            hypr += "    focus_on_activate = " + (Config.compositor.focusOnActivate ?? false) + "\n";
+            hypr += "    disable_autoreload = " + (Config.compositor.disableAutoreload ?? false) + "\n";
+            hypr += "    vfr = " + (Config.compositor.vfr ?? true) + "\n";
+            hypr += "    vrr = " + Config.compositor.vrr + "\n";
+            hypr += "}\n\n";
+
+            // General
+            hypr += "general {\n";
+            hypr += "    gaps_in = " + (Config.compositor.gapsIn ?? 2) + "\n";
+            hypr += "    gaps_out = " + (Config.compositor.gapsOut ?? 4) + "\n";
+            hypr += "    border_size = " + (Config.compositorBorderSize ?? 2) + "\n";
+            hypr += "    resize_on_border = " + (Config.compositor.resizeOnBorder ?? false) + "\n";
+            hypr += "    extend_border_grab_area = " + (Config.compositor.extendBorderGrabArea ?? 15) + "\n";
+            hypr += "    hover_icon_on_border = " + (Config.compositor.hoverIconOnBorder ?? true) + "\n";
+            hypr += "    allow_tearing = " + (Config.compositor.allowTearing ?? false) + "\n";
+            hypr += "    snap {\n";
+            hypr += "        enabled = " + (Config.compositor.snapEnabled ?? true) + "\n";
+            hypr += "        window_gap = " + (Config.compositor.snapWindowGap ?? 10) + "\n";
+            hypr += "        monitor_gap = " + (Config.compositor.snapMonitorGap ?? 10) + "\n";
+            hypr += "        border_overlap = " + (Config.compositor.snapBorderOverlap ?? false) + "\n";
+            hypr += "        respect_gaps = " + (Config.compositor.snapRespectGaps ?? false) + "\n";
+            hypr += "    }\n";
+            hypr += "}\n\n";
+
+            // Decoration
+            hypr += "decoration {\n";
+            hypr += "    rounding = " + (Config.compositor.rounding ?? 16) + "\n";
+            hypr += "    rounding_power = " + (Config.compositor.roundingPower ?? 2.0).toFixed(1) + "\n";
+            hypr += "    active_opacity = " + (Config.compositor.activeOpacity ?? 1.0).toFixed(2) + "\n";
+            hypr += "    inactive_opacity = " + (Config.compositor.inactiveOpacity ?? 1.0).toFixed(2) + "\n";
+            hypr += "    fullscreen_opacity = " + (Config.compositor.fullscreenOpacity ?? 1.0).toFixed(2) + "\n";
+            hypr += "    dim_inactive = " + (Config.compositor.dimInactive ?? false) + "\n";
+            hypr += "    dim_strength = " + (Config.compositor.dimStrength ?? 0.5).toFixed(2) + "\n";
+            hypr += "    dim_around = " + (Config.compositor.dimAround ?? 0.4).toFixed(2) + "\n";
+            hypr += "    dim_special = " + (Config.compositor.dimSpecial ?? 0.2).toFixed(2) + "\n";
+            hypr += "    shadow {\n";
+            hypr += "        enabled = " + (Config.compositor.shadowEnabled ?? true) + "\n";
+            hypr += "        range = " + (Config.compositor.shadowRange ?? 8) + "\n";
+            hypr += "        render_power = " + (Config.compositor.shadowRenderPower ?? 3) + "\n";
+            hypr += "        sharp = " + (Config.compositor.shadowSharp ?? false) + "\n";
+            hypr += "        ignore_window = " + (Config.compositor.shadowIgnoreWindow ?? true) + "\n";
+            hypr += "        offset = \"" + (Config.compositor.shadowOffset ?? "0 0") + "\"\n";
+            hypr += "        scale = " + (Config.compositor.shadowScale ?? 1.0).toFixed(2) + "\n";
+            hypr += "    }\n";
+            hypr += "    blur {\n";
+            hypr += "        enabled = " + (Config.compositor.blurEnabled ?? true) + "\n";
+            hypr += "        size = " + (Config.compositor.blurSize ?? 4) + "\n";
+            hypr += "        passes = " + (Config.compositor.blurPasses ?? 2) + "\n";
+            hypr += "        ignore_opacity = " + (Config.compositor.blurIgnoreOpacity ?? true) + "\n";
+            hypr += "        new_optimizations = " + (Config.compositor.blurNewOptimizations ?? true) + "\n";
+            hypr += "        xray = " + (Config.compositor.blurXray ?? false) + "\n";
+            hypr += "        noise = " + (Config.compositor.blurNoise ?? 0.0).toFixed(3) + "\n";
+            hypr += "        contrast = " + (Config.compositor.blurContrast ?? 1.0).toFixed(2) + "\n";
+            hypr += "        brightness = " + (Config.compositor.blurBrightness ?? 1.0).toFixed(2) + "\n";
+            hypr += "        vibrancy = " + (Config.compositor.blurVibrancy ?? 0.0).toFixed(2) + "\n";
+            hypr += "        vibrancy_darkness = " + (Config.compositor.blurVibrancyDarkness ?? 0.0).toFixed(2) + "\n";
+            hypr += "        special = " + (Config.compositor.blurSpecial ?? true) + "\n";
+            hypr += "        popups = " + (Config.compositor.blurPopups ?? false) + "\n";
+            hypr += "    }\n";
+            hypr += "}\n\n";
+
+            // Animations
+            hypr += "animations {\n";
+            hypr += "    enabled = " + (Config.compositor.animationsEnabled ?? true) + "\n";
+            hypr += "}\n\n";
+
+            // Input
+            hypr += "input {\n";
+            hypr += "    kb_layout = " + (Config.compositor.kbLayout || "us") + "\n";
+            if (Config.compositor.kbVariant) hypr += "    kb_variant = " + Config.compositor.kbVariant + "\n";
+            if (Config.compositor.kbOptions) hypr += "    kb_options = " + Config.compositor.kbOptions + "\n";
+            hypr += "    numlock_by_default = " + (Config.compositor.numlockByDefault ?? false) + "\n";
+            hypr += "    repeat_rate = " + (Config.compositor.repeatRate ?? 25) + "\n";
+            hypr += "    repeat_delay = " + (Config.compositor.repeatDelay ?? 600) + "\n";
+            hypr += "    follow_mouse = " + (Config.compositor.followMouse ?? 1) + "\n";
+            hypr += "    sensitivity = " + (Config.compositor.mouseSensitivity ?? 0.0).toFixed(2) + "\n";
+            if (Config.compositor.mouseAccelProfile) hypr += "    accel_profile = " + Config.compositor.mouseAccelProfile + "\n";
+            hypr += "    natural_scroll = " + (Config.compositor.mouseNaturalScroll ?? false) + "\n";
+            hypr += "    scroll_factor = " + (Config.compositor.mouseScrollFactor ?? 1.0).toFixed(1) + "\n";
+            hypr += "    left_handed = " + (Config.compositor.mouseLeftHanded ?? false) + "\n";
+            hypr += "    mouse_refocus = " + (Config.compositor.mouseRefocus ?? false) + "\n";
+            hypr += "    float_switch_override_focus = " + (Config.compositor.floatSwitchOverrideFocus ?? 0) + "\n";
+            hypr += "    touchpad {\n";
+            hypr += "        disable_while_typing = " + (Config.compositor.touchpadDisableWhileTyping ?? true) + "\n";
+            hypr += "        natural_scroll = " + (Config.compositor.touchpadNaturalScroll ?? true) + "\n";
+            hypr += "        tap-to-click = " + (Config.compositor.touchpadTapToClick ?? true) + "\n";
+            hypr += "        clickfinger_behavior = " + (Config.compositor.touchpadClickfingerBehavior ?? false) + "\n";
+            if (Config.compositor.touchpadTapButtonMap) hypr += "        tap_button_map = " + Config.compositor.touchpadTapButtonMap + "\n";
+            hypr += "        middle_button_emulation = " + (Config.compositor.touchpadMiddleButtonEmulation ?? false) + "\n";
+            hypr += "        drag_lock = " + (Config.compositor.touchpadDragLock ?? 0) + "\n";
+            hypr += "        scroll_factor = " + (Config.compositor.touchpadScrollFactor ?? 1.0).toFixed(1) + "\n";
+            hypr += "    }\n";
+            hypr += "}\n\n";
+
+            // Cursor
+            hypr += "cursor {\n";
+            hypr += "    no_hardware_cursors = " + (Config.compositor.noHardwareCursors ?? false) + "\n";
+            hypr += "    enable_hyprcursor = " + (Config.compositor.enableHyprcursor ?? true) + "\n";
+            hypr += "    no_warps = " + (Config.compositor.noWarps ?? false) + "\n";
+            hypr += "    persistent_warps = " + (Config.compositor.persistentWarps ?? false) + "\n";
+            hypr += "    warp_on_change_workspace = " + (Config.compositor.warpOnChangeWorkspace ?? false) + "\n";
+            hypr += "    zoom_factor = " + (Config.compositor.cursorZoomFactor ?? 1.0).toFixed(1) + "\n";
+            hypr += "    inactive_timeout = " + (Config.compositor.cursorInactiveTimeout ?? 0) + "\n";
+            hypr += "    hide_on_key_press = " + (Config.compositor.cursorHideOnKeyPress ?? false) + "\n";
+            hypr += "    hide_on_touch = " + (Config.compositor.cursorHideOnTouch ?? false) + "\n";
+            hypr += "    hide_on_tablet = " + (Config.compositor.cursorHideOnTablet ?? false) + "\n";
+            hypr += "}\n\n";
+
+            // Gestures
+            hypr += "gestures {\n";
+            hypr += "    workspace_swipe = true\n";
+            hypr += "    workspace_swipe_create_new = " + (Config.compositor.workspaceSwipeCreateNew ?? true) + "\n";
+            hypr += "    workspace_swipe_forever = " + (Config.compositor.workspaceSwipeForever ?? false) + "\n";
+            hypr += "    workspace_swipe_cancel_ratio = " + (Config.compositor.workspaceSwipeCancelRatio ?? 0.5).toFixed(2) + "\n";
+            hypr += "    workspace_swipe_min_speed_to_force = " + (Config.compositor.workspaceSwipeMinSpeedToForce ?? 30) + "\n";
+            hypr += "    workspace_swipe_direction_lock = " + (Config.compositor.workspaceSwipeDirectionLock ?? true) + "\n";
+            hypr += "    workspace_swipe_use_r = " + (Config.compositor.workspaceSwipeUseR ?? false) + "\n";
+            hypr += "    workspace_swipe_distance = " + (Config.compositor.workspaceSwipeDistance ?? 300) + "\n";
+            hypr += "    workspace_swipe_invert = " + (Config.compositor.workspaceSwipeInvert ?? true) + "\n";
+            hypr += "}\n\n";
+
+            // XWayland
+            hypr += "xwayland {\n";
+            hypr += "    enabled = " + (Config.compositor.xwaylandEnabled ?? true) + "\n";
+            hypr += "    force_zero_scaling = " + (Config.compositor.xwaylandForceZeroScaling ?? false) + "\n";
+            hypr += "    use_nearest_neighbor = " + (Config.compositor.xwaylandUseNearestNeighbor ?? true) + "\n";
+            hypr += "}\n";
         }
 
         const escPath = hyprPath.replace(/'/g, "'\\\\'");
@@ -618,7 +735,7 @@ Singleton {
     Component.onCompleted: {
         Qt.callLater(() => {
             if (Config.loader.loaded) {
-                writeTomlFile();
+                refresh();
             }
         });
     }
@@ -626,16 +743,16 @@ Singleton {
     property Connections configConnections: Connections {
         target: Config.loader
         function onLoaded() {
-            writeTomlFile();
+            refresh();
         }
     }
 
     property Connections keybindsConnections: Connections {
         target: Config.keybindsLoader
-        function onLoaded() { writeTomlFile(); }
-        function onFileChanged() { writeTomlFile(); }
-        function onAdapterUpdated() { writeTomlFile(); }
-        function onPathChanged() { writeTomlFile(); }
+        function onLoaded() { refresh(); }
+        function onFileChanged() { refresh(); }
+        function onAdapterUpdated() { refresh(); }
+        function onPathChanged() { refresh(); }
     }
 
     // Compositor section connections
@@ -643,204 +760,204 @@ Singleton {
         target: Config.compositor
         
         // Border settings
-        function onShowBorderChanged() { writeTomlFile(); }
-        function onBorderSizeChanged() { writeTomlFile(); }
-        function onRoundingChanged() { writeTomlFile(); writeHyprlandConfig(); }
-        function onRoundingPowerChanged() { writeTomlFile(); writeHyprlandConfig(); }
-        function onGapsInChanged() { writeTomlFile(); writeHyprlandConfig(); }
-        function onGapsOutChanged() { writeTomlFile(); writeHyprlandConfig(); }
-        function onActiveBorderColorChanged() { writeTomlFile(); writeHyprlandConfig(); }
-        function onInactiveBorderColorChanged() { writeTomlFile(); writeHyprlandConfig(); }
-        function onBorderAngleChanged() { writeTomlFile(); }
-        function onInactiveBorderAngleChanged() { writeTomlFile(); }
-        function onResizeOnBorderChanged() { writeTomlFile(); }
-        function onExtendBorderGrabAreaChanged() { writeTomlFile(); }
-        function onHoverIconOnBorderChanged() { writeTomlFile(); }
+        function onShowBorderChanged() { refresh(); }
+        function onBorderSizeChanged() { refresh(); }
+        function onRoundingChanged() { refresh(); }
+        function onRoundingPowerChanged() { refresh(); }
+        function onGapsInChanged() { refresh(); }
+        function onGapsOutChanged() { refresh(); }
+        function onActiveBorderColorChanged() { refresh(); }
+        function onInactiveBorderColorChanged() { refresh(); }
+        function onBorderAngleChanged() { refresh(); }
+        function onInactiveBorderAngleChanged() { refresh(); }
+        function onResizeOnBorderChanged() { refresh(); }
+        function onExtendBorderGrabAreaChanged() { refresh(); }
+        function onHoverIconOnBorderChanged() { refresh(); }
         
         // Sync settings that affect derived values
-        function onSyncRoundnessChanged() { writeTomlFile(); }
-        function onSyncBorderWidthChanged() { writeTomlFile(); }
-        function onSyncBorderColorChanged() { writeTomlFile(); }
-        function onSyncShadowOpacityChanged() { writeTomlFile(); }
-        function onSyncShadowColorChanged() { writeTomlFile(); }
+        function onSyncRoundnessChanged() { refresh(); }
+        function onSyncBorderWidthChanged() { refresh(); }
+        function onSyncBorderColorChanged() { refresh(); }
+        function onSyncShadowOpacityChanged() { refresh(); }
+        function onSyncShadowColorChanged() { refresh(); }
 
         // Layout
-        function onLayoutChanged() { writeTomlFile(); }
-        function onAllowTearingChanged() { writeTomlFile(); }
+        function onLayoutChanged() { refresh(); }
+        function onAllowTearingChanged() { refresh(); }
 
         // Snap
-        function onSnapEnabledChanged() { writeTomlFile(); }
-        function onSnapWindowGapChanged() { writeTomlFile(); }
-        function onSnapMonitorGapChanged() { writeTomlFile(); }
-        function onSnapBorderOverlapChanged() { writeTomlFile(); }
-        function onSnapRespectGapsChanged() { writeTomlFile(); }
+        function onSnapEnabledChanged() { refresh(); }
+        function onSnapWindowGapChanged() { refresh(); }
+        function onSnapMonitorGapChanged() { refresh(); }
+        function onSnapBorderOverlapChanged() { refresh(); }
+        function onSnapRespectGapsChanged() { refresh(); }
 
         // Opacity & Dim
-        function onActiveOpacityChanged() { writeTomlFile(); }
-        function onInactiveOpacityChanged() { writeTomlFile(); }
-        function onFullscreenOpacityChanged() { writeTomlFile(); }
-        function onDimInactiveChanged() { writeTomlFile(); }
-        function onDimStrengthChanged() { writeTomlFile(); }
-        function onDimAroundChanged() { writeTomlFile(); }
-        function onDimSpecialChanged() { writeTomlFile(); }
+        function onActiveOpacityChanged() { refresh(); }
+        function onInactiveOpacityChanged() { refresh(); }
+        function onFullscreenOpacityChanged() { refresh(); }
+        function onDimInactiveChanged() { refresh(); }
+        function onDimStrengthChanged() { refresh(); }
+        function onDimAroundChanged() { refresh(); }
+        function onDimSpecialChanged() { refresh(); }
         
         // Shadow settings
-        function onShadowEnabledChanged() { writeTomlFile(); }
-        function onShadowRangeChanged() { writeTomlFile(); }
-        function onShadowRenderPowerChanged() { writeTomlFile(); }
-        function onShadowSharpChanged() { writeTomlFile(); }
-        function onShadowIgnoreWindowChanged() { writeTomlFile(); }
-        function onShadowColorChanged() { writeTomlFile(); }
-        function onShadowColorInactiveChanged() { writeTomlFile(); }
-        function onShadowOpacityChanged() { writeTomlFile(); }
-        function onShadowOffsetChanged() { writeTomlFile(); }
-        function onShadowScaleChanged() { writeTomlFile(); }
+        function onShadowEnabledChanged() { refresh(); }
+        function onShadowRangeChanged() { refresh(); }
+        function onShadowRenderPowerChanged() { refresh(); }
+        function onShadowSharpChanged() { refresh(); }
+        function onShadowIgnoreWindowChanged() { refresh(); }
+        function onShadowColorChanged() { refresh(); }
+        function onShadowColorInactiveChanged() { refresh(); }
+        function onShadowOpacityChanged() { refresh(); }
+        function onShadowOffsetChanged() { refresh(); }
+        function onShadowScaleChanged() { refresh(); }
         
         // Blur settings
-        function onBlurEnabledChanged() { writeTomlFile(); }
-        function onBlurSizeChanged() { writeTomlFile(); }
-        function onBlurPassesChanged() { writeTomlFile(); }
-        function onBlurIgnoreOpacityChanged() { writeTomlFile(); }
-        function onBlurExplicitIgnoreAlphaChanged() { writeTomlFile(); }
-        function onBlurIgnoreAlphaValueChanged() { writeTomlFile(); }
-        function onBlurNewOptimizationsChanged() { writeTomlFile(); }
-        function onBlurXrayChanged() { writeTomlFile(); }
-        function onBlurNoiseChanged() { writeTomlFile(); }
-        function onBlurContrastChanged() { writeTomlFile(); }
-        function onBlurBrightnessChanged() { writeTomlFile(); }
-        function onBlurVibrancyChanged() { writeTomlFile(); }
-        function onBlurVibrancyDarknessChanged() { writeTomlFile(); }
-        function onBlurSpecialChanged() { writeTomlFile(); }
-        function onBlurPopupsChanged() { writeTomlFile(); }
-        function onBlurPopupsIgnorealphaChanged() { writeTomlFile(); }
-        function onBlurInputMethodsChanged() { writeTomlFile(); }
-        function onBlurInputMethodsIgnorealphaChanged() { writeTomlFile(); }
+        function onBlurEnabledChanged() { refresh(); }
+        function onBlurSizeChanged() { refresh(); }
+        function onBlurPassesChanged() { refresh(); }
+        function onBlurIgnoreOpacityChanged() { refresh(); }
+        function onBlurExplicitIgnoreAlphaChanged() { refresh(); }
+        function onBlurIgnoreAlphaValueChanged() { refresh(); }
+        function onBlurNewOptimizationsChanged() { refresh(); }
+        function onBlurXrayChanged() { refresh(); }
+        function onBlurNoiseChanged() { refresh(); }
+        function onBlurContrastChanged() { refresh(); }
+        function onBlurBrightnessChanged() { refresh(); }
+        function onBlurVibrancyChanged() { refresh(); }
+        function onBlurVibrancyDarknessChanged() { refresh(); }
+        function onBlurSpecialChanged() { refresh(); }
+        function onBlurPopupsChanged() { refresh(); }
+        function onBlurPopupsIgnorealphaChanged() { refresh(); }
+        function onBlurInputMethodsChanged() { refresh(); }
+        function onBlurInputMethodsIgnorealphaChanged() { refresh(); }
 
         // Animations
-        function onAnimationsEnabledChanged() { writeTomlFile(); }
+        function onAnimationsEnabledChanged() { refresh(); }
 
         // Input: Keyboard
-        function onKbLayoutChanged() { writeTomlFile(); }
-        function onKbVariantChanged() { writeTomlFile(); }
-        function onKbOptionsChanged() { writeTomlFile(); }
-        function onNumlockByDefaultChanged() { writeTomlFile(); }
-        function onRepeatRateChanged() { writeTomlFile(); }
-        function onRepeatDelayChanged() { writeTomlFile(); }
+        function onKbLayoutChanged() { refresh(); }
+        function onKbVariantChanged() { refresh(); }
+        function onKbOptionsChanged() { refresh(); }
+        function onNumlockByDefaultChanged() { refresh(); }
+        function onRepeatRateChanged() { refresh(); }
+        function onRepeatDelayChanged() { refresh(); }
 
         // Input: Mouse
-        function onMouseSensitivityChanged() { writeTomlFile(); }
-        function onMouseAccelProfileChanged() { writeTomlFile(); }
-        function onFollowMouseChanged() { writeTomlFile(); }
-        function onMouseNaturalScrollChanged() { writeTomlFile(); }
-        function onMouseScrollFactorChanged() { writeTomlFile(); }
-        function onMouseLeftHandedChanged() { writeTomlFile(); }
-        function onMouseRefocusChanged() { writeTomlFile(); }
-        function onFloatSwitchOverrideFocusChanged() { writeTomlFile(); }
+        function onMouseSensitivityChanged() { refresh(); }
+        function onMouseAccelProfileChanged() { refresh(); }
+        function onFollowMouseChanged() { refresh(); }
+        function onMouseNaturalScrollChanged() { refresh(); }
+        function onMouseScrollFactorChanged() { refresh(); }
+        function onMouseLeftHandedChanged() { refresh(); }
+        function onMouseRefocusChanged() { refresh(); }
+        function onFloatSwitchOverrideFocusChanged() { refresh(); }
 
         // Input: Touchpad
-        function onTouchpadDisableWhileTypingChanged() { writeTomlFile(); }
-        function onTouchpadNaturalScrollChanged() { writeTomlFile(); }
-        function onTouchpadTapToClickChanged() { writeTomlFile(); }
-        function onTouchpadClickfingerBehaviorChanged() { writeTomlFile(); }
-        function onTouchpadTapButtonMapChanged() { writeTomlFile(); }
-        function onTouchpadMiddleButtonEmulationChanged() { writeTomlFile(); }
-        function onTouchpadDragLockChanged() { writeTomlFile(); }
-        function onTouchpadScrollFactorChanged() { writeTomlFile(); }
+        function onTouchpadDisableWhileTypingChanged() { refresh(); }
+        function onTouchpadNaturalScrollChanged() { refresh(); }
+        function onTouchpadTapToClickChanged() { refresh(); }
+        function onTouchpadClickfingerBehaviorChanged() { refresh(); }
+        function onTouchpadTapButtonMapChanged() { refresh(); }
+        function onTouchpadMiddleButtonEmulationChanged() { refresh(); }
+        function onTouchpadDragLockChanged() { refresh(); }
+        function onTouchpadScrollFactorChanged() { refresh(); }
 
         // Cursor
-        function onNoHardwareCursorsChanged() { writeTomlFile(); }
-        function onEnableHyprcursorChanged() { writeTomlFile(); }
-        function onNoWarpsChanged() { writeTomlFile(); }
-        function onPersistentWarpsChanged() { writeTomlFile(); }
-        function onWarpOnChangeWorkspaceChanged() { writeTomlFile(); }
-        function onCursorZoomFactorChanged() { writeTomlFile(); }
-        function onCursorInactiveTimeoutChanged() { writeTomlFile(); }
-        function onCursorHideOnKeyPressChanged() { writeTomlFile(); }
-        function onCursorHideOnTouchChanged() { writeTomlFile(); }
-        function onCursorHideOnTabletChanged() { writeTomlFile(); }
+        function onNoHardwareCursorsChanged() { refresh(); }
+        function onEnableHyprcursorChanged() { refresh(); }
+        function onNoWarpsChanged() { refresh(); }
+        function onPersistentWarpsChanged() { refresh(); }
+        function onWarpOnChangeWorkspaceChanged() { refresh(); }
+        function onCursorZoomFactorChanged() { refresh(); }
+        function onCursorInactiveTimeoutChanged() { refresh(); }
+        function onCursorHideOnKeyPressChanged() { refresh(); }
+        function onCursorHideOnTouchChanged() { refresh(); }
+        function onCursorHideOnTabletChanged() { refresh(); }
 
         // Gestures
-        function onWorkspaceSwipeCreateNewChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeForeverChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeCancelRatioChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeMinSpeedToForceChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeDirectionLockChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeUseRChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeDistanceChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeInvertChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeTouchChanged() { writeTomlFile(); }
-        function onWorkspaceSwipeTouchInvertChanged() { writeTomlFile(); }
+        function onWorkspaceSwipeCreateNewChanged() { refresh(); }
+        function onWorkspaceSwipeForeverChanged() { refresh(); }
+        function onWorkspaceSwipeCancelRatioChanged() { refresh(); }
+        function onWorkspaceSwipeMinSpeedToForceChanged() { refresh(); }
+        function onWorkspaceSwipeDirectionLockChanged() { refresh(); }
+        function onWorkspaceSwipeUseRChanged() { refresh(); }
+        function onWorkspaceSwipeDistanceChanged() { refresh(); }
+        function onWorkspaceSwipeInvertChanged() { refresh(); }
+        function onWorkspaceSwipeTouchChanged() { refresh(); }
+        function onWorkspaceSwipeTouchInvertChanged() { refresh(); }
 
         // Dwindle
-        function onDwindlePreserveSplitChanged() { writeTomlFile(); }
-        function onDwindlePseudotileChanged() { writeTomlFile(); }
-        function onDwindleForceSplitChanged() { writeTomlFile(); }
-        function onDwindleSmartSplitChanged() { writeTomlFile(); }
-        function onDwindleDefaultSplitRatioChanged() { writeTomlFile(); }
-        function onDwindleSplitWidthMultiplierChanged() { writeTomlFile(); }
-        function onDwindlePermanentDirectionOverrideChanged() { writeTomlFile(); }
-        function onDwindleUseActiveForSplitsChanged() { writeTomlFile(); }
-        function onDwindleSmartResizingChanged() { writeTomlFile(); }
-        function onDwindleSpecialScaleFactorChanged() { writeTomlFile(); }
+        function onDwindlePreserveSplitChanged() { refresh(); }
+        function onDwindlePseudotileChanged() { refresh(); }
+        function onDwindleForceSplitChanged() { refresh(); }
+        function onDwindleSmartSplitChanged() { refresh(); }
+        function onDwindleDefaultSplitRatioChanged() { refresh(); }
+        function onDwindleSplitWidthMultiplierChanged() { refresh(); }
+        function onDwindlePermanentDirectionOverrideChanged() { refresh(); }
+        function onDwindleUseActiveForSplitsChanged() { refresh(); }
+        function onDwindleSmartResizingChanged() { refresh(); }
+        function onDwindleSpecialScaleFactorChanged() { refresh(); }
 
         // Master
-        function onMasterOrientationChanged() { writeTomlFile(); }
-        function onMasterMfactChanged() { writeTomlFile(); }
-        function onMasterNewStatusChanged() { writeTomlFile(); }
-        function onMasterNewOnTopChanged() { writeTomlFile(); }
-        function onMasterNewOnActiveChanged() { writeTomlFile(); }
-        function onMasterSmartResizingChanged() { writeTomlFile(); }
-        function onMasterSpecialScaleFactorChanged() { writeTomlFile(); }
-        function onMasterAllowSmallSplitChanged() { writeTomlFile(); }
+        function onMasterOrientationChanged() { refresh(); }
+        function onMasterMfactChanged() { refresh(); }
+        function onMasterNewStatusChanged() { refresh(); }
+        function onMasterNewOnTopChanged() { refresh(); }
+        function onMasterNewOnActiveChanged() { refresh(); }
+        function onMasterSmartResizingChanged() { refresh(); }
+        function onMasterSpecialScaleFactorChanged() { refresh(); }
+        function onMasterAllowSmallSplitChanged() { refresh(); }
 
         // Scrolling
-        function onScrollingColumnWidthChanged() { writeTomlFile(); }
-        function onScrollingExplicitColumnWidthsChanged() { writeTomlFile(); }
-        function onScrollingDirectionChanged() { writeTomlFile(); }
-        function onScrollingFullscreenOnOneColumnChanged() { writeTomlFile(); }
-        function onScrollingFocusFitMethodChanged() { writeTomlFile(); }
-        function onScrollingFollowFocusChanged() { writeTomlFile(); }
-        function onScrollingFollowMinVisibleChanged() { writeTomlFile(); }
+        function onScrollingColumnWidthChanged() { refresh(); }
+        function onScrollingExplicitColumnWidthsChanged() { refresh(); }
+        function onScrollingDirectionChanged() { refresh(); }
+        function onScrollingFullscreenOnOneColumnChanged() { refresh(); }
+        function onScrollingFocusFitMethodChanged() { refresh(); }
+        function onScrollingFollowFocusChanged() { refresh(); }
+        function onScrollingFollowMinVisibleChanged() { refresh(); }
 
         // XWayland
-        function onXwaylandEnabledChanged() { writeTomlFile(); }
-        function onXwaylandForceZeroScalingChanged() { writeTomlFile(); }
-        function onXwaylandUseNearestNeighborChanged() { writeTomlFile(); }
+        function onXwaylandEnabledChanged() { refresh(); }
+        function onXwaylandForceZeroScalingChanged() { refresh(); }
+        function onXwaylandUseNearestNeighborChanged() { refresh(); }
 
         // Monitor Globals / Misc
-        function onVrrChanged() { writeTomlFile(); }
-        function onVfrChanged() { writeTomlFile(); }
-        function onMouseMoveEnablesDpmsChanged() { writeTomlFile(); }
-        function onKeyPressEnablesDpmsChanged() { writeTomlFile(); }
-        function onDisableAutoreloadChanged() { writeTomlFile(); }
-        function onFocusOnActivateChanged() { writeTomlFile(); }
-        function onAnimateManualResizesChanged() { writeTomlFile(); }
-        function onAnimateMouseWindowdraggingChanged() { writeTomlFile(); }
-        function onDisableHyprlandLogoChanged() { writeTomlFile(); }
-        function onDisableSplashRenderingChanged() { writeTomlFile(); }
-        function onForceDefaultWallpaperChanged() { writeTomlFile(); }
-        function onNoUpdateNewsChanged() { writeTomlFile(); }
-        function onEnforcePermissionsChanged() { writeTomlFile(); }
+        function onVrrChanged() { refresh(); }
+        function onVfrChanged() { refresh(); }
+        function onMouseMoveEnablesDpmsChanged() { refresh(); }
+        function onKeyPressEnablesDpmsChanged() { refresh(); }
+        function onDisableAutoreloadChanged() { refresh(); }
+        function onFocusOnActivateChanged() { refresh(); }
+        function onAnimateManualResizesChanged() { refresh(); }
+        function onAnimateMouseWindowdraggingChanged() { refresh(); }
+        function onDisableHyprlandLogoChanged() { refresh(); }
+        function onDisableSplashRenderingChanged() { refresh(); }
+        function onForceDefaultWallpaperChanged() { refresh(); }
+        function onNoUpdateNewsChanged() { refresh(); }
+        function onEnforcePermissionsChanged() { refresh(); }
     }
 
     // Theme connections (for blur ignorealpha calculation and shadow color sync)
     property Connections themeConnections: Connections {
         target: Config.theme
-        function onSrBarBgChanged() { writeTomlFile(); }
-        function onSrBgChanged() { writeTomlFile(); }
-        function onShadowColorChanged() { writeTomlFile(); }
-        function onShadowOpacityChanged() { writeTomlFile(); }
+        function onSrBarBgChanged() { refresh(); }
+        function onSrBgChanged() { refresh(); }
+        function onShadowColorChanged() { refresh(); }
+        function onShadowOpacityChanged() { refresh(); }
     }
 
     // Bar position connection (for workspace animation orientation)
     property Connections barConnections: Connections {
         target: Config.bar
-        function onPositionChanged() { writeTomlFile(); }
+        function onPositionChanged() { refresh(); }
     }
 
     // GlobalStates connection (for layout)
     property Connections globalStatesConnections: Connections {
         target: GlobalStates
-        function onCompositorLayoutChanged() { writeTomlFile(); }
+        function onCompositorLayoutChanged() { refresh(); }
     }
 }
