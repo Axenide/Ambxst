@@ -247,6 +247,18 @@ run)
 
 	# toggle-metrics: write directly to notch.json (no IPC needed)
 	if [ "$CMD" = "toggle-metrics" ]; then
+		# Debounce: prevent double-fire from Hyprland key repeat
+		LOCK_FILE="/tmp/nothingless_toggle_metrics.lock"
+		if [ -f "$LOCK_FILE" ]; then
+			last_run=$(cat "$LOCK_FILE")
+			now=$(date +%s%N)
+			elapsed=$(( (now - last_run) / 1000000 ))
+			if [ "$elapsed" -lt 500 ]; then
+				exit 0
+			fi
+		fi
+		date +%s%N > "$LOCK_FILE"
+
 		NOTCH_JSON="${XDG_CONFIG_HOME:-$HOME/.config}/nothingless/config/notch.json"
 		if [ -f "$NOTCH_JSON" ]; then
 			# Toggle showMetrics in the JSON
