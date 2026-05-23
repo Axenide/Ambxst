@@ -31,6 +31,19 @@ NothingLess strips the bloat and doubles down on speed, responsiveness, and clea
 
 ---
 
+## Assets
+
+| File | Path |
+|---|---|
+| Logo (color) | `assets/nothingless/nothingless-logo-color.svg` |
+| Logo (mono) | `assets/nothingless/nothingless-logo.svg` |
+| Icon (color) | `assets/nothingless/nothingless-icon-color.svg` |
+| Icon (mono) | `assets/nothingless/nothingless-icon.svg` |
+| Wallpaper | `assets/nothingless/nothingless-wallpaper.svg` |
+| Boot splash | `assets/nothingless/NOTHING_splash.webp` |
+
+---
+
 ## Installation
 
 ```bash
