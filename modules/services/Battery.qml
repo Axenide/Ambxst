@@ -18,6 +18,10 @@ Singleton {
     readonly property int chargeState: available ? primaryDevice.state : UPowerDevice.Unknown
     property int lastBatteryAlertThreshold: 0
 
+    property Process powerSaveProcess: Process {
+        running: false
+    }
+
     // Add some helpful descriptive properties if needed
     readonly property string timeToEmpty: available && primaryDevice.timeToEmpty > 0 ? formatTime(primaryDevice.timeToEmpty) : ""
     readonly property string timeToFull: available && primaryDevice.timeToFull > 0 ? formatTime(primaryDevice.timeToFull) : ""
@@ -42,13 +46,35 @@ Singleton {
     }
 
     function evaluateBatteryAlert() {
-        if (!available || isPluggedIn) {
+        if (!available) return;
+
+        const cfg = Config.system.batteryNotifications;
+        if (!cfg || !cfg.enabled) return;
+
+        const roundedPercentage = Math.floor(percentage);
+
+        // ── Charge limit suggestion ──
+        if (cfg.chargeLimitEnabled && cfg.chargeLimit > 0 && isPluggedIn) {
+            if (roundedPercentage >= cfg.chargeLimit && lastBatteryAlertThreshold !== cfg.chargeLimit) {
+                sendChargeLimitAlert(roundedPercentage, cfg.chargeLimit);
+                lastBatteryAlertThreshold = cfg.chargeLimit;
+            }
+            return; // Don't fire low battery alerts while charging
+        }
+
+        if (isPluggedIn) {
             lastBatteryAlertThreshold = 0;
             return;
         }
 
-        const roundedPercentage = Math.floor(percentage);
-        const threshold = roundedPercentage <= 10 ? 10 : (roundedPercentage <= 20 ? 20 : 0);
+        // ── Auto power-save ──
+        if (cfg.autoPowerSave && roundedPercentage <= cfg.powerSaveThreshold) {
+            enablePowerSave();
+        }
+
+        // ── Low battery alerts ──
+        const threshold = roundedPercentage <= cfg.criticalThreshold ? cfg.criticalThreshold :
+                         (roundedPercentage <= cfg.lowThreshold ? cfg.lowThreshold : 0);
         if (threshold === 0) {
             lastBatteryAlertThreshold = 0;
             return;
@@ -60,6 +86,26 @@ Singleton {
 
         sendBatteryAlert(threshold, roundedPercentage);
         lastBatteryAlertThreshold = threshold;
+    }
+
+    function enablePowerSave() {
+        if (Quickshell.env("XDG_CURRENT_DESKTOP")?.toLowerCase().includes("hyprland")) {
+            // Lower refresh rate, dim screen, reduce brightness
+            powerSaveProcess.command = ["bash", "-c", "hyprctl keyword misc:vfr 1; hyprctl keyword decoration:dim_inactive true; hyprctl keyword decoration:dim_strength 0.5; brightnessctl set 30% 2>/dev/null || true"];
+            powerSaveProcess.running = true;
+        }
+    }
+
+    function sendChargeLimitAlert(roundedPercentage, limit) {
+        Notifications.notifyInternal({
+            "appName": "Battery",
+            "summary": "Charge limit reached",
+            "body": "Battery at " + roundedPercentage + "%. Unplug to preserve battery health (limit: " + limit + "%).",
+            "urgency": NotificationUrgency.Normal,
+            "historyPriority": 80,
+            "replaceKey": "battery-charge-limit",
+            "expireTimeout": 15000
+        });
     }
 
     function sendBatteryAlert(threshold, roundedPercentage) {
