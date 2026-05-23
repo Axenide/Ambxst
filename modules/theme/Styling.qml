@@ -3,6 +3,7 @@ import QtQuick
 import qs.config
 
 QtObject {
+    id: root
     readonly property string defaultFont: Config.defaultFont
 
     function radius(offset) {
