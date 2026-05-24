@@ -27,12 +27,18 @@ Item {
     readonly property var allItems: SystemTray.items || []
 
     // Per-item visibility — persisted in Config.bar.hiddenIcons
+    property int _hiddenVersion: 0
+    Connections {
+        target: Config.bar
+        function onHiddenIconsChanged() { root._hiddenVersion++; }
+    }
     function itemKey(item) {
         return (item.title || item.tooltipTitle || item.id || "").toString().toLowerCase();
     }
     function isHidden(item) {
         var key = root.itemKey(item);
         if (!key) return false;
+        var _ = root._hiddenVersion;
         var hidden = Config.bar.hiddenIcons || [];
         for (var i = 0; i < hidden.length; i++) {
             if (key.includes(hidden[i].toLowerCase())) return true;
