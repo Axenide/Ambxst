@@ -32,14 +32,21 @@ Item {
     // Explicit _vc property (no readonly binding — updated by _recalc)
     property int _vc: 0
     function _recalc() {
-        if (!SystemTray || !SystemTray.items) { _vc = 0; return; }
-        if (_hid.length === 0) { _vc = SystemTray.items.length; return; }
-        var n = 0;
-        for (var i = 0; i < SystemTray.items.length; i++) {
-            var it = SystemTray.items[i];
-            if (_hid.indexOf(root._key(i, it)) < 0) n++;
+        try {
+            if (!SystemTray || !SystemTray.items) { _vc = 0; return; }
+            var len = SystemTray.items && SystemTray.items.length;
+            if (!len) { _vc = 0; return; }
+            if (_hid.length === 0) { _vc = len; return; }
+            var n = 0;
+            for (var i = 0; i < len; i++) {
+                var it = SystemTray.items[i];
+                if (it && _hid.indexOf(root._key(i, it)) < 0) n++;
+            }
+            _vc = n;
+        } catch(e) {
+            console.warn('_recalc:', e);
+            _vc = 0;
         }
-        _vc = n;
     }
     function _toggle(k) {
         var a = _hid.slice();
@@ -57,7 +64,7 @@ Item {
     Connections { target: setRep; function onCountChanged() { _setN = setRep.count; _recalc(); } }
     Component.onCompleted: _recalc()
 
-    readonly property int _dw: expanded && _vc > 0 ? Math.min(_vc, 10) * 26 + 8 : 0
+    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 26 + 8) : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
@@ -133,7 +140,7 @@ Item {
         id: dockBg
         anchors.left: toggleBtn.right; anchors.right: parent.right
         anchors.top: parent.top; anchors.bottom: parent.bottom
-        visible: expanded && _vc > 0
+        visible: expanded && _dockN > 0
         variant: "bg"; enableShadow: false; clip: true
         topLeftRadius: 0; topRightRadius: root.endRadius
         bottomLeftRadius: 0; bottomRightRadius: root.endRadius
@@ -183,11 +190,8 @@ Item {
     // ── Native context menu ──
     BarPopup {
         id: ctxPopup; anchorItem: root; bar: root.bar
-        contentWidth: 240
-        contentHeight: Math.min(ctxCol.implicitHeight + 16, 400)
         QsMenuOpener { id: mo; menu: root._ctxItem ? root._ctxItem.menu : null }
         ColumnLayout {
-            id: ctxCol
             anchors.fill: parent; anchors.margins: 4; spacing: 2
             Repeater {
                 model: mo.children ? mo.children.values : []
