@@ -23,48 +23,9 @@ Item {
     property real endRadius: radius
     property bool expanded: false
     property var _ctxItem: null
-    property var _hid: []
 
-    function _key(i, it) {
-        return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
-    }
-
-    // Explicit _vc property (no readonly binding — updated by _recalc)
-    property int _vc: 0
-    function _recalc() {
-        try {
-            if (!SystemTray || !SystemTray.items) { _vc = 0; return; }
-            var len = SystemTray.items && SystemTray.items.length;
-            if (!len) { _vc = 0; return; }
-            if (_hid.length === 0) { _vc = len; return; }
-            var n = 0;
-            for (var i = 0; i < len; i++) {
-                var it = SystemTray.items[i];
-                if (it && _hid.indexOf(root._key(i, it)) < 0) n++;
-            }
-            _vc = n;
-        } catch(e) {
-            console.warn('_recalc:', e);
-            _vc = 0;
-        }
-    }
-    function _toggle(k) {
-        var a = _hid.slice();
-        var i = a.indexOf(k);
-        if (i >= 0) a.splice(i, 1); else a.push(k);
-        _hid = a;
-        _recalc();
-    }
-
-    // Repeater count (reliable — detects model changes internally)
-    property int _dockN: dockRep ? dockRep.count : 0
-    property int _setN: setRep ? setRep.count : 0
-
-    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; _setN = setRep.count; _recalc(); } }
-    Connections { target: setRep; function onCountChanged() { _setN = setRep.count; _recalc(); } }
-    Component.onCompleted: _recalc()
-
-    readonly property int _dw: expanded && _vc > 0 ? Math.min(_vc, 10) * 28 + 8 : 0
+    readonly property int _n: SystemTray && SystemTray.items ? SystemTray.items.length : 0
+    readonly property int _dw: expanded && _n > 0 ? Math.min(_n, 10) * 28 + 8 : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
@@ -112,40 +73,39 @@ Item {
             anchors.top: parent.top; anchors.right: parent.right
             anchors.topMargin: -2; anchors.rightMargin: -2
             width: 14; height: 14; radius: 7; variant: "primary"
-            visible: _vc > 0 && !root.expanded
+            visible: _n > 0 && !root.expanded
             Text {
                 anchors.centerIn: parent
-                text: Math.min(_vc, 9)
+                text: Math.min(_n, 9)
                 font.family: Config.theme.font; font.pixelSize: 8; font.bold: true; color: Colors.background
-            }
-        }
-
-        MouseArea {
-            anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            onClicked: event => {
-                if (event.button === Qt.LeftButton) {
-                    _recalc();
-                    root.expanded = !root.expanded;
-                } else {
-                    _recalc();
-                    if (_setN > 0) setPopup.open();
-                }
             }
         }
 
         StyledToolTip {
             visible: root.isHovered && !root.expanded
-            tooltipText: _vc > 0 ? _vc + " visible" : "No icons"
+            tooltipText: _n > 0 ? _n + " tray icons" : "No tray icons"
         }
     }
 
-    // ── Expanded inline dock ──
+    // ── Click area on top ──
+    MouseArea {
+        anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        onClicked: event => {
+            if (event.button === Qt.LeftButton) {
+                root.expanded = !root.expanded;
+            } else if (_n > 0) {
+                setPopup.open();
+            }
+        }
+    }
+
+    // ── Expanded dock ──
     StyledRect {
         id: dockBg
         anchors.left: toggleBtn.right; anchors.right: parent.right
         anchors.top: parent.top; anchors.bottom: parent.bottom
-        visible: expanded && _vc > 0
+        visible: expanded && _n > 0
         variant: "bg"; enableShadow: false; clip: true
         topLeftRadius: 0; topRightRadius: root.endRadius
         bottomLeftRadius: 0; bottomRightRadius: root.endRadius
@@ -164,8 +124,6 @@ Item {
                     required property SystemTrayItem modelData
                     required property int index
                     width: 26; height: 26
-                    readonly property string _k: root._key(index, modelData)
-                    visible: root._hid.indexOf(_k) < 0
                     property bool hov: false
                     HoverHandler { onHoveredChanged: hov = hovered }
                     StyledRect {
@@ -174,7 +132,7 @@ Item {
                         Behavior on opacity { NumberAnimation { duration: 80 } }
                     }
                     IconImage {
-                        anchors.centerIn: parent; width: 16; height: 16
+                        anchors.centerIn: parent; width: 18; height: 18
                         source: modelData.icon; smooth: true
                     }
                     MouseArea {
@@ -195,8 +153,11 @@ Item {
     // ── Native context menu ──
     BarPopup {
         id: ctxPopup; anchorItem: root; bar: root.bar
+        contentWidth: 240
+        contentHeight: Math.min(ctxCol.implicitHeight + 16, 400)
         QsMenuOpener { id: mo; menu: root._ctxItem ? root._ctxItem.menu : null }
         ColumnLayout {
+            id: ctxCol
             anchors.fill: parent; anchors.margins: 4; spacing: 2
             Repeater {
                 model: mo.children ? mo.children.values : []
@@ -228,7 +189,7 @@ Item {
             id: setCol
             anchors.fill: parent; anchors.margins: 6; spacing: 2
             Text {
-                text: "Tray (" + _vc + "/" + _setN + ")"
+                text: "Tray Icons (" + _n + ")"
                 font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); font.bold: true
                 color: Colors.overBackground
                 Layout.fillWidth: true; Layout.bottomMargin: 4; leftPadding: 4
@@ -239,21 +200,7 @@ Item {
                 delegate: Item {
                     required property SystemTrayItem modelData
                     required property int index
-                    Layout.fillWidth: true; Layout.preferredHeight: 34
-                    readonly property string _k: root._key(index, modelData)
-
-                    // Row click (declared FIRST for correct stacking)
-                    MouseArea {
-                        id: rowMA
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: event => {
-                            if (event.button === Qt.LeftButton) { modelData.activate(); setPopup.close(); }
-                            else if (event.button === Qt.RightButton && modelData.hasMenu) {
-                                root._ctxItem = modelData; ctxPopup.open();
-                            }
-                        }
-                    }
+                    Layout.fillWidth: true; Layout.preferredHeight: 32
 
                     StyledRect {
                         anchors.fill: parent; radius: 4
@@ -263,23 +210,23 @@ Item {
 
                     RowLayout {
                         anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 8
-                        Text {
-                            text: root._hid.indexOf(_k) >= 0 ? Icons.circleNotch : Icons.circle
-                            font.family: Icons.font; font.pixelSize: 16
-                            color: root._hid.indexOf(_k) >= 0 ? Colors.outline : Styling.srItem("primary")
-                            Layout.alignment: Qt.AlignVCenter
-                            MouseArea {
-                                anchors.fill: parent; anchors.margins: -4
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: event => { root._toggle(_k); event.accepted = true; }
-                            }
-                        }
                         IconImage { width: 20; height: 20; source: modelData.icon; smooth: true; Layout.alignment: Qt.AlignVCenter }
                         Text {
                             text: modelData.tooltipTitle || modelData.title || "App #" + (index + 1)
                             font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground; elide: Text.ElideRight
                             Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
+                        }
+                    }
+
+                    MouseArea {
+                        id: rowMA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: event => {
+                            if (event.button === Qt.LeftButton) { modelData.activate(); setPopup.close(); }
+                            else if (event.button === Qt.RightButton && modelData.hasMenu) {
+                                root._ctxItem = modelData; ctxPopup.open();
+                            }
                         }
                     }
                 }
