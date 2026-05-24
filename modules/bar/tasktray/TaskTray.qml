@@ -85,7 +85,7 @@ Item {
 
         MouseArea {
             anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
-            onClicked: {
+            onClicked: event => {
                 root.expanded = !root.expanded;
         }
         }
@@ -135,9 +135,8 @@ property bool hov: false
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         onClicked: event => {
                             if (event.button === Qt.LeftButton) modelData.activate();
-                            else if (event.button === Qt.RightButton) {
+                            else if (event.button === Qt.RightButton ) {
                                 root._ctxItem = modelData; ctxPopup.open();
-                            }
                         }
                     }
                 }
@@ -173,3 +172,4 @@ property bool hov: false
         }
     }
 
+}
