@@ -821,42 +821,6 @@ Item {
                                 }
                             }
                         }
-                        Text {
-                            text: "Hidden Systray Icons"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.Medium
-                            color: Colors.overSurfaceVariant
-                            Layout.bottomMargin: -4
-                        }
-                        Text {
-                            text: "Toggle apps to hide them from the system tray"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.outline
-                            Layout.bottomMargin: 8
-                        }
-                        Repeater {
-                            model: SystemTray.items
-                            delegate: ToggleRow {
-                                required property SystemTrayItem modelData
-                                label: modelData.title || modelData.tooltipTitle || "Unknown"
-                                checked: Config.bar.hiddenIcons.includes((modelData.title || modelData.tooltipTitle || "").toLowerCase())
-                                onToggled: value => {
-                                    let title = (modelData.title || modelData.tooltipTitle || "").toLowerCase();
-                                    let list = Config.bar.hiddenIcons.slice();
-                                    if (value) {
-                                        if (!list.includes(title)) list.push(title);
-                                    } else {
-                                        let idx = list.indexOf(title);
-                                        if (idx >= 0) list.splice(idx, 1);
-                                    }
-                                    Config.bar.hiddenIcons = list;
-                                    GlobalStates.markShellChanged();
-                                }
-                            }
-                        }
-
                         Separator {
                             Layout.fillWidth: true
                         }
