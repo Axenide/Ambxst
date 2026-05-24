@@ -174,35 +174,25 @@ def generate_lua_lines(monitors):
 
 
 def apply_live(monitors):
-    """Apply monitor changes live via hyprctl dispatch"""
-    for m in monitors:
-        name = m["name"]
-        if not name:
-            continue
-
-        if not m["enabled"]:
-            continue
-
-        mode = f"{m['width']}x{m['height']}@{m['refreshRate']:.2f}Hz"
-        pos = f"{m['x']}x{m['y']}"
-
-        try:
-            subprocess.run(
-                ["hyprctl", "dispatch", f"monitor {name},{mode},{pos},{m['scale']}"],
-                capture_output=True, timeout=3
-            )
-        except Exception as e:
-            print(f"[WARN] Failed to apply {name}: {e}", file=sys.stderr)
-
-        if m.get("transform", 0) != 0:
+    """Apply monitor changes via hyprctl reload (reads monitors.conf)"""
+    try:
+        subprocess.run(["hyprctl", "reload"], capture_output=True, timeout=5)
+        print("[OK] Applied via hyprctl reload")
+    except Exception as e:
+        print(f"[WARN] hyprctl reload failed: {e}", file=sys.stderr)
+        for m in monitors:
+            name = m.get("name", "")
+            if not name or not m.get("enabled", True):
+                continue
+            mode = f"{m['width']}x{m['height']}@{m['refreshRate']:.2f}Hz"
+            pos = f"{m['x']}x{m['y']}"
             try:
                 subprocess.run(
-                    ["hyprctl", "dispatch", f"monitor {name},transform,{m['transform']}"],
+                    ["hyprctl", "dispatch", f"monitor {name},{mode},{pos},{m['scale']}"],
                     capture_output=True, timeout=3
                 )
-            except Exception:
-                pass
-
+            except Exception as e:
+                print(f"[WARN] Failed to apply {name}: {e}", file=sys.stderr)
 
 def write_conf(lines, path):
     """Write .conf file with backup"""
