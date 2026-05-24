@@ -43,7 +43,7 @@ Item {
         var h = _hidden;
         for (var i = 0; i < allItems.length; i++) {
             var it = allItems[i];
-            var k = (it.title || it.tooltipTitle || it.id || "").toString();
+            var k = i + "_" + (it.title || it.tooltipTitle || it.id || "item" + i).toString();
             if (h.indexOf(k) < 0) n++;
         }
         return n;
@@ -140,7 +140,7 @@ Item {
                 delegate: Item {
                     required property SystemTrayItem modelData
                     width: 26; height: 26
-                    readonly property string _k: (modelData.title || modelData.tooltipTitle || modelData.id || "").toString()
+                    readonly property string _k: index + "_" + (modelData.title || modelData.tooltipTitle || modelData.id || "item" + index).toString()
                     visible: root._hidden.indexOf(_k) < 0
 
                     property bool hov: false
@@ -239,7 +239,7 @@ Item {
                     required property SystemTrayItem modelData
                     Layout.fillWidth: true; Layout.preferredHeight: 34
 
-                    readonly property string _key: (modelData.title || modelData.tooltipTitle || modelData.id || "").toString()
+                    readonly property string _key: index + "_" + (modelData.title || modelData.tooltipTitle || modelData.id || "item" + index).toString()
 
                     // Click area for the whole row — declared FIRST so it's BEHIND the contents
                     MouseArea {
