@@ -570,7 +570,7 @@ StyledRect {
                             var m = root.monitors[i];
                             parts.push(m.name + " @ " + m.x + "," + m.y);
                         }
-                        return (root.hasChanges ? Icons.check + "  " : Icons.cursorMove + "  ") + parts.join("  ·  ");
+                        return (root.hasChanges ? Icons.shieldCheck + "  " : Icons.handGrab + "  ") + parts.join("  ·  ");
                     }
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-3)
@@ -579,7 +579,7 @@ StyledRect {
                 }
 
                 Text {
-                    text: Icons.zoomIn + " 1:" + root.viewScale.toFixed(2)
+                    text: Icons.glassPlus + " 1:" + root.viewScale.toFixed(2)
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-4)
                     color: Colors.outlineVariant
