@@ -4,7 +4,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Wayland
+import Quickshell.Services.SystemTray
+import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.services
 import qs.modules.components
@@ -12,12 +13,11 @@ import qs.modules.globals
 import qs.config
 
 /**
- * TaskTray — Running applications in the bar with show/hide toggle
+ * TaskTray — Systray overflow tray with toggle button
  *
- * Matches the visual style of LayoutSelectorButton and other bar buttons.
- * Toggle icon with StyledRect bg/primary variants, hover animation.
- * Shows running app icons in a dock-like container when expanded.
- * Right-click → BarPopup with full app list.
+ * Toggle icon (same style as LayoutSelectorButton) shows/hides system tray icons.
+ * When expanded, tray items appear in a dock-like container.
+ * Right-click → BarPopup with all tray items.
  */
 Item {
     id: root
@@ -36,26 +36,12 @@ Item {
     readonly property bool showToggleButton: Config.bar?.taskTrayShowToggle ?? true
 
     // State
-    property bool expanded: true
-    readonly property bool hasRunningApps: runningApps.length > 0
+    property bool expanded: false  // collapsed by default
+    readonly property bool hasItems: SystemTray.items.length > 0
+    readonly property bool popupOpen: trayPopup.isOpen
 
-    // Running apps (from TaskbarApps, filtered to only those with windows)
-    readonly property var runningApps: {
-        var all = TaskbarApps.apps;
-        if (!all) return [];
-        var result = [];
-        for (var i = 0; i < all.length; i++) {
-            var app = all[i];
-            if (app.appId === "SEPARATOR") continue;
-            if (app.toplevels && app.toplevels.length > 0) {
-                result.push(app);
-            }
-        }
-        return result;
-    }
-
-    // Popup visibility
-    property bool popupOpen: taskPopup.isOpen
+    // Get systray items
+    readonly property var trayItems: SystemTray.items || []
 
     // Layout sizing
     Layout.preferredWidth: vertical ? 36 : implicitContentWidth
@@ -64,21 +50,19 @@ Item {
     Layout.fillHeight: !vertical
 
     readonly property int toggleSize: 36
-    readonly property int appItemSize: 32
+    readonly property int trayItemSize: 24
 
     readonly property int implicitContentWidth: {
-        var w = 0;
-        if (showToggleButton) w += toggleSize;
-        if (expanded && hasRunningApps) {
-            w += 4 + (runningApps.length * (appItemSize + 2));
+        var w = showToggleButton ? toggleSize : 0;
+        if (expanded && hasItems) {
+            w += 4 + (trayItems.length * (trayItemSize + 4));
         }
         return Math.max(36, w);
     }
     readonly property int implicitContentHeight: {
-        var h = 0;
-        if (showToggleButton) h += toggleSize;
-        if (expanded && hasRunningApps) {
-            h += 4 + (runningApps.length * (appItemSize + 2));
+        var h = showToggleButton ? toggleSize : 0;
+        if (expanded && hasItems) {
+            h += 4 + (trayItems.length * (trayItemSize + 4));
         }
         return Math.max(36, h);
     }
@@ -121,7 +105,6 @@ Item {
         bottomLeftRadius: vertical ? endRadius : startRadius
         bottomRightRadius: vertical ? endRadius : endRadius
 
-        // Hover overlay
         Rectangle {
             anchors.fill: parent
             color: Styling.srItem("overprimary")
@@ -133,7 +116,6 @@ Item {
             }
         }
 
-        // Icon
         Text {
             anchors.centerIn: parent
             text: Icons.terminalWindow
@@ -142,23 +124,17 @@ Item {
             color: root.popupOpen ? toggleBtn.item : Styling.srItem("overprimary")
         }
 
-        // Running count badge when collapsed
+        // Badge when collapsed
         StyledRect {
-            anchors.top: parent.top
-            anchors.right: parent.right
-            anchors.topMargin: -2
-            anchors.rightMargin: -2
-            width: 16; height: 16
-            radius: 8
+            anchors.top: parent.top; anchors.right: parent.right
+            anchors.topMargin: -2; anchors.rightMargin: -2
+            width: 16; height: 16; radius: 8
             variant: "primary"
-            visible: hasRunningApps && !root.expanded
-
+            visible: hasItems && !root.expanded
             Text {
                 anchors.centerIn: parent
-                text: Math.min(runningApps.length, 99)
-                font.family: Config.theme.font
-                font.pixelSize: 9
-                font.bold: true
+                text: Math.min(trayItems.length, 99)
+                font.family: Config.theme.font; font.pixelSize: 9; font.bold: true
                 color: Colors.background
             }
         }
@@ -169,7 +145,7 @@ Item {
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: mouse => {
                 if (mouse.button === Qt.RightButton) {
-                    taskPopup.open();
+                    trayPopup.open();
                 } else {
                     root.expanded = !root.expanded;
                 }
@@ -178,11 +154,11 @@ Item {
 
         StyledToolTip {
             visible: root.isHovered && !root.popupOpen
-            tooltipText: hasRunningApps ? runningApps.length + " tasks running" : "No running tasks"
+            tooltipText: hasItems ? trayItems.length + " system tray items" : "No tray items"
         }
     }
 
-    // ── Running app icons (dock-style container) ──
+    // ── Systray icons dock ──
     StyledRect {
         id: dockBg
         anchors {
@@ -191,11 +167,11 @@ Item {
             verticalCenter: parent.verticalCenter
         }
         width: dockRow.implicitWidth + 8
-        height: 32
+        height: 30
         variant: "bg"
         radius: 6
         enableShadow: root.layerEnabled
-        visible: expanded && hasRunningApps
+        visible: expanded && hasItems
 
         opacity: expanded ? 1.0 : 0.0
         Behavior on opacity {
@@ -209,13 +185,51 @@ Item {
             spacing: 2
 
             Repeater {
-                model: root.runningApps
+                model: root.trayItems
 
-                TaskTrayItem {
-                    required property var modelData
-                    appData: modelData
-                    iconSize: 18
-                    Layout.alignment: Qt.AlignVCenter
+                delegate: MouseArea {
+                    id: trayIconArea
+                    required property SystemTrayItem modelData
+                    width: trayItemSize
+                    height: trayItemSize
+                    cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    property bool iconHovered: false
+
+                    HoverHandler {
+                        onHoveredChanged: trayIconArea.iconHovered = hovered
+                    }
+
+                    // Hover background
+                    StyledRect {
+                        anchors.fill: parent; anchors.margins: 1
+                        variant: "bg"; radius: 4
+                        opacity: trayIconArea.iconHovered ? 0.5 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 80 } }
+                    }
+
+                    IconImage {
+                        id: trayIconImg
+                        anchors.centerIn: parent
+                        width: 18; height: 18
+                        source: trayIconArea.modelData.icon
+                        smooth: true
+                    }
+
+                    Tinted {
+                        sourceItem: trayIconImg
+                        anchors.fill: trayIconImg
+                    }
+
+                    onClicked: event => {
+                        if (event.button === Qt.LeftButton) {
+                            trayIconArea.modelData.activate();
+                        } else if (event.button === Qt.RightButton && trayIconArea.modelData.hasMenu) {
+                            var popup = trayIconArea.modelData.menu;
+                            if (popup) popup.open();
+                        }
+                        event.accepted = true;
+                    }
                 }
             }
         }
@@ -223,7 +237,7 @@ Item {
 
     // ── Popup (right-click) ──
     BarPopup {
-        id: taskPopup
+        id: trayPopup
         anchorItem: showToggleButton ? toggleBtn : root
         bar: root.bar
 
@@ -233,7 +247,7 @@ Item {
             spacing: 2
 
             Text {
-                text: "Running Tasks"
+                text: "System Tray"
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.bold: true
@@ -244,21 +258,18 @@ Item {
             }
 
             Repeater {
-                model: root.runningApps
+                model: root.trayItems
 
                 delegate: Item {
-                    id: popupItem
-                    required property var modelData
-
+                    required property SystemTrayItem modelData
                     Layout.fillWidth: true
                     Layout.preferredHeight: 32
 
                     StyledRect {
-                        id: itemBg
                         anchors.fill: parent
-                        variant: itemMouse.containsMouse ? "focus" : "bg"
+                        variant: popupMouse.containsMouse ? "focus" : "bg"
                         radius: 4
-                        opacity: itemMouse.containsMouse ? 1.0 : 0.7
+                        opacity: popupMouse.containsMouse ? 1.0 : 0.7
                         Behavior on opacity { NumberAnimation { duration: 80 } }
                     }
 
@@ -267,52 +278,47 @@ Item {
                         anchors.leftMargin: 6; anchors.rightMargin: 6
                         spacing: 8
 
-                        Image {
-                            width: 18; height: 18
-                            source: "image://icon/" + AppSearch.guessIcon(modelData.appId)
-                            sourceSize.width: 36; sourceSize.height: 36
-                            fillMode: Image.PreserveAspectFit
+                        IconImage {
+                            id: popupIcon
+                            width: 20; height: 20
+                            source: modelData.icon
+                            smooth: true
+                        }
+
+                        Tinted {
+                            sourceItem: popupIcon
+                            anchors.fill: popupIcon
                         }
 
                         Text {
-                            text: modelData.appId
+                            text: modelData.tooltipTitle || modelData.title || "App"
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground
                             elide: Text.ElideRight
                             Layout.fillWidth: true
                         }
-
-                        Text {
-                            text: Icons.caretRight
-                            font.family: Icons.font
-                            font.pixelSize: 12
-                            color: Colors.outline
-                            visible: itemMouse.containsMouse
-                        }
                     }
 
                     MouseArea {
-                        id: itemMouse
+                        id: popupMouse
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
                         onClicked: {
-                            if (modelData.toplevels && modelData.toplevels.length > 0) {
-                                modelData.toplevels[0].activate();
-                            }
-                            taskPopup.close();
+                            modelData.activate();
+                            trayPopup.close();
                         }
                     }
                 }
             }
 
             Text {
-                text: runningApps.length === 0 ? "No running tasks" : ""
+                text: !hasItems ? "No tray icons" : ""
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 color: Colors.outline
-                visible: runningApps.length === 0
+                visible: !hasItems
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 Layout.topMargin: 12
