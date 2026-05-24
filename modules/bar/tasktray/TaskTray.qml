@@ -42,7 +42,7 @@ Item {
     Layout.preferredHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
-    width: 36; height: 36
+    width: vertical ? 36 : expandW; height: 36
 
     Behavior on Layout.preferredWidth {
         enabled: !vertical && Config.animDuration > 0
