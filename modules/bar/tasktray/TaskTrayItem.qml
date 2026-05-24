@@ -40,8 +40,6 @@ Item {
         width: root.iconSize
         height: root.iconSize
         source: "image://desktop-icon/" + root.appData.appId
-        sourceSize.width: root.iconSize * 2
-        sourceSize.height: root.iconSize * 2
         visible: root.expanded
         opacity: root.isFocused ? 1.0 : 0.75
     }
@@ -112,7 +110,7 @@ Item {
 
                     onTriggered: {
                         modelData.activate();
-                        menu.dismiss();
+                        menu.close();
                     }
                 }
 
@@ -126,7 +124,7 @@ Item {
                 text: root.appData.pinned ? "Unpin from dock" : "Pin to dock"
                 onTriggered: {
                     TaskbarApps.togglePin(root.appData.appId);
-                    menu.dismiss();
+                    menu.close();
                 }
             }
         }
