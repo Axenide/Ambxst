@@ -64,7 +64,7 @@ Item {
     Connections { target: setRep; function onCountChanged() { _setN = setRep.count; _recalc(); } }
     Component.onCompleted: _recalc()
 
-    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 32 + 10) : 0
+    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 36 + 10) : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
@@ -148,14 +148,14 @@ Item {
         }
 
         RowLayout {
-            anchors.centerIn: parent; spacing: 4
+            anchors.centerIn: parent; spacing: 6
             Repeater {
                 id: dockRep
                 model: SystemTray && SystemTray.items ? SystemTray.items : []
                 delegate: Item {
                     required property SystemTrayItem modelData
                     required property int index
-                    width: 26; height: 26
+                    width: 30; height: 30
                     readonly property string _k: root._key(index, modelData)
                     visible: root._hid.indexOf(_k) < 0
                     property bool hov: false
