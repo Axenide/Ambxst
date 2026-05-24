@@ -85,7 +85,7 @@ Item {
 
         MouseArea {
             anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
-            onClicked: {
+onClicked: event => {
                 root.expanded = !root.expanded;
         }
         }
@@ -133,10 +133,11 @@ property bool hov: false
                 }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: {
+                        onClicked: event => {
                             if (event.button === Qt.LeftButton) modelData.activate();
                             else if (event.button === Qt.RightButton && modelData.hasMenu) {
                                 root._ctxItem = modelData; ctxPopup.open();
+                            }
                         }
                     }
                 }
@@ -166,7 +167,7 @@ property bool hov: false
                             Text { text: modelData.text || ""; font.family: Styling.defaultFont; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; elide: Text.ElideRight; Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter }
                     }
                 }
-                    MouseArea { id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: { if (modelData.trigger) modelData.trigger(); ctxPopup.close(); root._ctxItem = null; } }
+                    MouseArea { id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: event => { if (modelData.trigger) modelData.trigger(); ctxPopup.close(); root._ctxItem = null; } }
             }
         }
         }
