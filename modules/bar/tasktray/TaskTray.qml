@@ -64,7 +64,7 @@ Item {
     Connections { target: setRep; function onCountChanged() { _setN = setRep.count; _recalc(); } }
     Component.onCompleted: _recalc()
 
-    readonly property int _dw: expanded && _vc > 0 ? Math.min(_vc, 10) * 32 + 10 : 0
+    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 32 + 10) : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
@@ -124,13 +124,8 @@ Item {
             anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: event => {
-                if (event.button === Qt.LeftButton) {
-                    _recalc();
-                    root.expanded = !root.expanded;
-                } else {
-                    _recalc();
-                    if (_vc > 0) setPopup.open();
-                }
+                if (event.button === Qt.LeftButton) root.expanded = !root.expanded;
+                else if (_setN > 0) setPopup.open();
             }
         }
 
@@ -145,7 +140,7 @@ Item {
         id: dockBg
         anchors.left: toggleBtn.right; anchors.right: parent.right
         anchors.top: parent.top; anchors.bottom: parent.bottom
-        visible: expanded && _vc > 0
+        visible: expanded && _dockN > 0
         variant: "bg"; enableShadow: false; clip: true
         topLeftRadius: 0; topRightRadius: root.endRadius
         bottomLeftRadius: 0; bottomRightRadius: root.endRadius
