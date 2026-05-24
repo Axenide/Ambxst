@@ -10,6 +10,7 @@ import qs.modules.theme
 import qs.modules.services
 import qs.modules.components
 import qs.config
+import QtQuick
 
 Item {
     id: root
@@ -22,46 +23,14 @@ Item {
     property real startRadius: radius
     property real endRadius: radius
     property bool expanded: false
-    property var _ctxItem: null
-    property var _hid: []
-
-    function _key(i, it) {
-        return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
-    }
-
-    // Explicit _dockN property (no readonly binding — updated by _recalc)
     property int _dockN: 0
-    function _recalc() {
-        try {
-            if (!SystemTray || !SystemTray.items) { _dockN = 0; return; }
-            var len = SystemTray.items && SystemTray.items.length;
-            if (!len) { _dockN = 0; return; }
-            if (_hid.length === 0) { _dockN = len; return; }
-            var n = 0;
-            for (var i = 0; i < len; i++) {
-                var it = SystemTray.items[i];
-                if (it && _hid.indexOf(root._key(i, it)) < 0) n++;
-        }
-            _dockN = n;
-        } catch(e) {
-            console.warn('_recalc:', e);
-            _dockN = 0;
-        }
-    }
-    function _toggle(k) {
-        var a = _hid.slice();
-        var i = a.indexOf(k);
-        if (i >= 0) a.splice(i, 1); else a.push(k);
-        _hid = a;
-        _recalc();
-    }
-
+    property var _ctxItem: null
     // Repeater count (reliable — detects model changes internally)
     property int _dockN: dockRep ? dockRep.count : 0
     
 
-    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count;  _recalc(); } }
-    Connections { target: dockRep; function onCountChanged() {  _recalc(); } }
+    
+    
     
 
     readonly property int _dw: expanded && _dockN > 0 ? Math.max(40, Math.min(_dockN, 10) * 32 + 10) : 0
@@ -77,6 +46,7 @@ Item {
         NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
     }
 
+    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; } }
     HoverHandler { onHoveredChanged: root.isHovered = hovered }
 
     // ── Toggle button ──
