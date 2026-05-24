@@ -538,9 +538,6 @@ Item {
                             bar: root
                             orientation: root.orientation
                             iconSize: 20
-                            enableShadow: root.shadowsEnabled
-                            startRadius: root.innerRadius
-                            endRadius: root.innerRadius
                         }
 
                         ControlsButton {
@@ -605,9 +602,6 @@ Item {
                             bar: root
                             orientation: root.orientation
                             iconSize: 20
-                            enableShadow: root.shadowsEnabled
-                            startRadius: root.innerRadius
-                            endRadius: root.innerRadius
                         }
 
                         ToolsButton {
