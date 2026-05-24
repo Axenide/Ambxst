@@ -64,7 +64,7 @@ Item {
     Connections { target: setRep; function onCountChanged() { _setN = setRep.count; _recalc(); } }
     Component.onCompleted: _recalc()
 
-    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 40 + 10) : 0
+    readonly property int _dw: expanded && dockRep.count > 0 ? Math.max(40, Math.min(dockRep.count, 10) * 40 + 10) : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
