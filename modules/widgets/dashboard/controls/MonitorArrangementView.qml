@@ -531,6 +531,7 @@ StyledRect {
                                 root.dragIdx = -1
                                 root.hasChanges = true
                                 root.positionChanged(index, rx, ry)
+                                AxctlService.dispatch("monitor " + modelData.name + ",preferred," + rx + "x" + ry + ",auto")
                             }
                         }
 
