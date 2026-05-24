@@ -25,11 +25,13 @@ Item {
     property var _ctxItem: null
     property var _hid: []
 
+    property int _vkey: 0
     function _toggle(k) {
         var a = _hid.slice();
         var i = a.indexOf(k);
         if (i >= 0) a.splice(i, 1); else a.push(k);
         _hid = a;
+        _vkey++;
     }
 
     function _key(i, it) {
@@ -44,7 +46,7 @@ Item {
     Connections { target: setRep; function onCountChanged() { _setN = setRep.count; } }
 
     // Hidden filter count
-    readonly property int _vc: {
+    readonly property int _vc: { root._vkey;
         if (!SystemTray || !SystemTray.items) return 0;
         if (_hid.length === 0) return SystemTray.items.length;
         var n = 0, h = _hid;
@@ -54,13 +56,13 @@ Item {
         return n;
     }
 
-    readonly property int _dw: expanded && _vc > 0 ? Math.min(_vc, 10) * 26 + 8 : 0
+    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 26 + 8) : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
-    width: 36 + (expanded ? 2 + _dw : 0); height: 36
+    height: 36
 
     Behavior on Layout.preferredWidth {
         enabled: !vertical && Config.animDuration > 0
