@@ -68,15 +68,16 @@ def normalize_monitors(monitors_data):
     normalized = []
 
     for m in monitors_data:
+        meta = m.get("metadata", {})
         entry = {
             "name": m.get("name", ""),
             "width": m.get("width", 0),
             "height": m.get("height", 0),
-            "x": m.get("x", 0),
-            "y": m.get("y", 0),
+            "x": m.get("x", meta.get("x", 0)),
+            "y": m.get("y", meta.get("y", 0)),
             "scale": m.get("scale", 1.0),
             "refreshRate": m.get("refreshRate", m.get("refresh_rate", 60)),
-            "transform": m.get("transform", 0),
+            "transform": m.get("transform", meta.get("transform", 0)),
             "enabled": m.get("enabled", True),
             "bitdepth": m.get("bitdepth", m.get("bit_depth", 0)),
             "mirror": m.get("mirror", ""),
