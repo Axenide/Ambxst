@@ -24,11 +24,10 @@ Item {
     property bool expanded: false
     property var _ctxItem: null
     property var _hid: []
-    property int _ver: 0
-    Connections {
-        target: SystemTray
-        function onItemsChanged() { root._ver++; }
-    }
+    // Poll timer: SystemTray.items is constant (no change notification)
+    // Timer forces periodic re-evaluation of _vc for badge/dock count
+    property int _tick: 0
+    Timer { interval: 2000; repeat: true; running: true; onTriggered: root._tick++; }
 
     function _toggle(k) {
         var a = _hid.slice();
@@ -42,7 +41,7 @@ Item {
     }
 
     readonly property int _vc: {
-        var v = root._ver;
+        root._tick;
         var n = 0, h = _hid;
         if (!SystemTray || !SystemTray.items) return 0;
         for (var i = 0; i < SystemTray.items.length; i++) {
@@ -51,7 +50,7 @@ Item {
         return n;
     }
 
-    readonly property int _n: { root._ver; return SystemTray && SystemTray.items ? SystemTray.items.length : 0; }
+
 
     Layout.preferredWidth: 36
     Layout.preferredHeight: 36
@@ -135,7 +134,7 @@ Item {
         width: _vc > 0 ? Math.min(_vc, 10) * 28 + 10 : 40
         variant: "bg"; radius: 6
         enableShadow: root.layerEnabled && Config.showBackground
-        visible: root.expanded && _n > 0
+        visible: root.expanded && dockRep.count > 0
 
         opacity: root.expanded ? 1.0 : 0.0
         scale: root.expanded ? 1.0 : 0.8
@@ -146,6 +145,7 @@ Item {
         RowLayout {
             anchors.centerIn: parent; spacing: 2
             Repeater {
+                id: dockRep
                 model: SystemTray && SystemTray.items ? SystemTray.items : []
                 delegate: Item {
                     required property SystemTrayItem modelData
@@ -212,12 +212,13 @@ Item {
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 6; spacing: 2
             Text {
-                text: "Tray Icons (" + _vc + "/" + _n + ")"
+                text: "Tray Icons (" + _vc + "/" + (SystemTray && SystemTray.items ? SystemTray.items.length : 0) + ")"
                 font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); font.bold: true
                 color: Colors.overBackground
                 Layout.fillWidth: true; Layout.bottomMargin: 4; leftPadding: 4
             }
             Repeater {
+                id: setRep
                 model: SystemTray && SystemTray.items ? SystemTray.items : []
                 delegate: Item {
                     required property SystemTrayItem modelData
