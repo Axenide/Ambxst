@@ -75,19 +75,13 @@ Item {
             anchors.centerIn: parent
             text: Icons.dotsThree; font.family: Icons.font; font.pixelSize: 18
             color: Styling.srItem("overprimary")
+            rotation: root.expanded ? 90 : 0
+            Behavior on rotation {
+                enabled: Config.animDuration > 0
+                NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+            }
         }
 
-        StyledRect {
-            anchors.top: parent.top; anchors.right: parent.right
-            anchors.topMargin: -2; anchors.rightMargin: -2
-            width: 14; height: 14; radius: 7; variant: "primary"
-            visible: _dockN > 0 && !root.expanded
-            Text {
-                anchors.centerIn: parent
-                text: Math.min(_dockN, 9)
-                font.family: Config.theme.font; font.pixelSize: 8; font.bold: true; color: Colors.background
-        }
-        }
 
         MouseArea {
             anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
