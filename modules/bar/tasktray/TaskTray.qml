@@ -24,7 +24,7 @@ Item {
     property real endRadius: radius
 
     property bool expanded: false
-    readonly property var allItems: SystemTray.items || []
+    readonly property var allItems: typeof SystemTray !== "undefined" && SystemTray.items ? SystemTray.items : []
 
     // Debug: visibility version counter
     property int visVer: 0
