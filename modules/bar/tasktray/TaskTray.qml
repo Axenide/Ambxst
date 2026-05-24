@@ -29,23 +29,23 @@ Item {
         return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
     }
 
-    // Explicit _vc property (no readonly binding — updated by _recalc)
-    property int _vc: 0
+    // Explicit _n property (no readonly binding — updated by _recalc)
+    property int _n: 0
     function _recalc() {
         try {
-            if (!SystemTray || !SystemTray.items) { _vc = 0; return; }
+            if (!SystemTray || !SystemTray.items) { _n = 0; return; }
             var len = SystemTray.items && SystemTray.items.length;
-            if (!len) { _vc = 0; return; }
-            if (_hid.length === 0) { _vc = len; return; }
+            if (!len) { _n = 0; return; }
+            if (_hid.length === 0) { _n = len; return; }
             var n = 0;
             for (var i = 0; i < len; i++) {
                 var it = SystemTray.items[i];
                 if (it && _hid.indexOf(root._key(i, it)) < 0) n++;
             }
-            _vc = n;
+            _n = n;
         } catch(e) {
             console.warn('_recalc:', e);
-            _vc = 0;
+            _n = 0;
         }
     }
     function _toggle(k) {
@@ -58,13 +58,13 @@ Item {
 
     // Repeater count (reliable — detects model changes internally)
     property int _dockN: dockRep ? dockRep.count : 0
-    property int _setN: setRep ? setRep.count : 0
+    // _setN removed: setRep ? setRep.count : 0
 
-    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; _setN = setRep.count; _recalc(); } }
-    Connections { target: setRep; function onCountChanged() { _setN = setRep.count; _recalc(); } }
-    Component.onCompleted: _recalc()
+    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; } }
+    
+    
 
-    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 32 + 10) : 0
+    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_n, 10) * 32 + 10) : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
@@ -87,9 +87,9 @@ Item {
         variant: "bg"
         enableShadow: root.layerEnabled && Config.showBackground
         topLeftRadius: root.vertical ? root.startRadius : root.startRadius
-        topRightRadius: root.expanded ? 0 : root.endRadius
+        topRightRadius: root.endRadius
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
-        bottomRightRadius: root.expanded ? 0 : root.endRadius
+        bottomRightRadius: root.endRadius
 
         Rectangle {
             anchors.fill: parent
@@ -112,26 +112,22 @@ Item {
             anchors.top: parent.top; anchors.right: parent.right
             anchors.topMargin: -2; anchors.rightMargin: -2
             width: 14; height: 14; radius: 7; variant: "primary"
-            visible: _vc > 0 && !root.expanded
+            visible: _n > 0 && !root.expanded
             Text {
                 anchors.centerIn: parent
-                text: Math.min(_vc, 9)
+                text: Math.min(_n, 9)
                 font.family: Config.theme.font; font.pixelSize: 8; font.bold: true; color: Colors.background
             }
         }
 
         MouseArea {
             anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            onClicked: event => {
-                if (event.button === Qt.LeftButton) root.expanded = !root.expanded;
-                else if (_setN > 0) setPopup.open();
-            }
+            onClicked: root.expanded = !root.expanded;
         }
 
         StyledToolTip {
             visible: root.isHovered && !root.expanded
-            tooltipText: _vc > 0 ? _vc + " visible" : "No icons"
+            tooltipText: _n > 0 ? _n + " visible" : "No icons"
         }
     }
 
@@ -214,72 +210,5 @@ Item {
         }
     }
 
-    // ── Settings popup ──
-    BarPopup {
-        id: setPopup; anchorItem: root; bar: root.bar
-        contentWidth: setCol.implicitWidth + 16
-        contentHeight: Math.min(setCol.implicitHeight + 16, 400)
-        ColumnLayout {
-            id: setCol
-            anchors.fill: parent; anchors.margins: 6; spacing: 4
-            Text {
-                text: "Tray (" + _vc + "/" + _setN + ")"
-                font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); font.bold: true
-                color: Colors.overBackground
-                Layout.fillWidth: true; Layout.bottomMargin: 4; leftPadding: 4
-            }
-            Repeater {
-                id: setRep
-                model: SystemTray && SystemTray.items ? SystemTray.items : []
-                delegate: Item {
-                    required property SystemTrayItem modelData
-                    required property int index
-                    Layout.fillWidth: true; Layout.preferredHeight: 34
-                    readonly property string _k: root._key(index, modelData)
-
-                    // Row click (declared FIRST for correct stacking)
-                    MouseArea {
-                        id: rowMA
-                        anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: event => {
-                            if (event.button === Qt.LeftButton) { modelData.activate(); setPopup.close(); }
-                            else if (event.button === Qt.RightButton && modelData.hasMenu) {
-                                root._ctxItem = modelData; ctxPopup.open();
-                            }
-                        }
-                    }
-
-                    StyledRect {
-                        anchors.fill: parent; radius: 4
-                        variant: rowMA.containsMouse ? "focus" : "bg"
-                        opacity: rowMA.containsMouse ? 1.0 : 0.7
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 8
-                        Text {
-                            text: root._hid.indexOf(_k) >= 0 ? Icons.circleNotch : Icons.circle
-                            font.family: Icons.font; font.pixelSize: 16
-                            color: root._hid.indexOf(_k) >= 0 ? Colors.outline : Styling.srItem("primary")
-                            Layout.alignment: Qt.AlignVCenter
-                            MouseArea {
-                                anchors.fill: parent; anchors.margins: -4
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: event => { root._toggle(_k); event.accepted = true; }
-                            }
-                        }
-                        IconImage { width: 20; height: 20; source: modelData.icon; smooth: true; Layout.alignment: Qt.AlignVCenter }
-                        Text {
-                            text: modelData.tooltipTitle || modelData.title || "App #" + (index + 1)
-                            font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.overBackground; elide: Text.ElideRight
-                            Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
-                        }
-                    }
-                }
-            }
-            Item { Layout.fillHeight: true }
-        }
     }
 }
