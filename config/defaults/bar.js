@@ -22,5 +22,8 @@ var data = {
     "containBar": false,
     "keepBarShadow": false,
     "keepBarBorder": false,
-    "hiddenIcons": []
+    "hiddenIcons": [],
+    "taskTrayEnabled": true,
+    "taskTrayShowToggle": true,
+    "taskTrayAlwaysVisible": []
 }

@@ -1019,7 +1019,56 @@ Item {
                     Separator {
                         Layout.fillWidth: true
                         visible: false
-                    }
+                    
+                        // Task Tray toggle
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: Icons.terminalWindow + "   Task Tray"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: Colors.overBackground
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            Switch {
+                                id: taskTraySwitch
+                                checked: Config.bar.taskTrayEnabled ?? true
+                                onCheckedChanged: {
+                                    if (checked !== (Config.bar.taskTrayEnabled ?? true)) {
+                                        Config.bar.taskTrayEnabled = checked;
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: Icons.dotsThree + "   Show Toggle Button"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: Colors.overBackground
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            Switch {
+                                id: showToggleSwitch
+                                checked: Config.bar.taskTrayShowToggle ?? true
+                                onCheckedChanged: {
+                                    if (checked !== (Config.bar.taskTrayShowToggle ?? true)) {
+                                        Config.bar.taskTrayShowToggle = checked;
+                                    }
+                                }
+                            }
+                        }
+}
 
                     // ═══════════════════════════════════════════════════════════════
                     // NOTCH SECTION

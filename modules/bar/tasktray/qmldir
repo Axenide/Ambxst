@@ -1,0 +1,3 @@
+module qs.modules.bar.tasktray
+TaskTray 1.0 TaskTray.qml
+TaskTrayItem 1.0 TaskTrayItem.qml

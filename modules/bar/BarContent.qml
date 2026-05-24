@@ -8,6 +8,7 @@ import qs.modules.bar.workspaces
 import qs.modules.theme
 import qs.modules.bar.clock
 import qs.modules.bar.systray
+import qs.modules.bar.tasktray
 import qs.modules.widgets.overview
 import qs.modules.widgets.dashboard
 import qs.modules.widgets.powermenu
@@ -532,6 +533,16 @@ Item {
                             endRadius: root.innerRadius
                         }
 
+                        // Running tasks tray
+                        TaskTray {
+                            bar: root
+                            orientation: root.orientation
+                            iconSize: 20
+                            enableShadow: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
                         ControlsButton {
             visible: !Config.bar.hiddenIcons.includes("controls")
                             id: controlsButton
@@ -585,6 +596,15 @@ Item {
 
                         SysTray {
                             bar: root
+                            enableShadow: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        TaskTray {
+                            bar: root
+                            orientation: root.orientation
+                            iconSize: 20
                             enableShadow: root.shadowsEnabled
                             startRadius: root.innerRadius
                             endRadius: root.innerRadius
