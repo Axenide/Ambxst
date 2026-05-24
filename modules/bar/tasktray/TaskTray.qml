@@ -79,11 +79,9 @@ Item {
 
     HoverHandler { onHoveredChanged: root.isHovered = hovered }
 
-    // ── Toggle button ──
+    // ── Unified background (toggle + dock) ──
     StyledRect {
-        id: toggleBtn
-        width: 36
-        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+        anchors.fill: parent
         variant: "bg"
         enableShadow: root.layerEnabled && Config.showBackground
         topLeftRadius: root.vertical ? root.startRadius : root.startRadius
@@ -94,11 +92,6 @@ Item {
         Rectangle {
             anchors.fill: parent
             color: Styling.srItem("overprimary")
-            rotation: root.expanded ? 90 : 0
-            Behavior on rotation {
-                enabled: Config.animDuration > 0
-                NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
-            }
             opacity: root.isHovered && !root.expanded ? 0.25 : 0
             radius: parent.radius ?? 0
             Behavior on opacity {
@@ -106,49 +99,36 @@ Item {
                 NumberAnimation { duration: Config.animDuration / 2 }
             }
         }
+    }
 
-        Text {
-            anchors.centerIn: parent
-            text: Icons.dotsThree; font.family: Icons.font; font.pixelSize: 18
-            color: Styling.srItem("overprimary")
-            rotation: root.expanded ? 90 : 0
-            Behavior on rotation {
-                enabled: Config.animDuration > 0
-                NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
-            }
-        }
-
-
-        MouseArea {
-            anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
-            onClicked: event => {
-                root.expanded = !root.expanded;
-            }
-        }
-
-        StyledToolTip {
-            visible: root.isHovered && !root.expanded
-            tooltipText: _vc > 0 ? _vc + " visible" : "No icons"
+    // ── Toggle icon ──
+    Text {
+        x: 9; y: 9
+        text: Icons.dotsThree; font.family: Icons.font; font.pixelSize: 18
+        color: Styling.srItem("overprimary")
+        rotation: root.expanded ? 90 : 0
+        Behavior on rotation {
+            enabled: Config.animDuration > 0
+            NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
         }
     }
 
-    // ── Expanded inline dock ──
-    StyledRect {
-        id: dockBg
-        anchors.left: toggleBtn.right; anchors.right: parent.right
-        anchors.top: parent.top; anchors.bottom: parent.bottom
-        visible: expanded && _dockN > 0
-        variant: "bg"; enableShadow: false; clip: true
-        topLeftRadius: 0; topRightRadius: root.expanded ? 0 : root.endRadius
-        bottomLeftRadius: 0; bottomRightRadius: root.expanded ? 0 : root.endRadius
-        opacity: expanded ? 1.0 : 0.0
-        Behavior on opacity {
-            enabled: Config.animDuration > 0
-            NumberAnimation { duration: Config.animDuration / 2 }
-        }
+    // ── Click receiver ──
+    MouseArea {
+        anchors.fill: parent; z: 20; cursorShape: Qt.PointingHandCursor
+        onClicked: event => { root.expanded = !root.expanded; }
+    }
 
+    StyledToolTip {
+        visible: root.isHovered && !root.expanded
+        tooltipText: _vc > 0 ? _vc + " visible" : "No icons"
+    }
+
+    // ── Dock icons ──
         RowLayout {
-            anchors.centerIn: parent; spacing: 6
+        anchors.left: parent.left; anchors.leftMargin: 40
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: 6
             Repeater {
                 id: dockRep
                 model: SystemTray && SystemTray.items ? SystemTray.items : []
@@ -182,7 +162,7 @@ Item {
                 }
             }
         }
-    }
+
 
     // ── Native context menu ──
     BarPopup {
