@@ -29,23 +29,23 @@ Item {
         return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
     }
 
-    // Explicit _n property (no readonly binding — updated by _recalc)
-    property int _n: 0
+    // Explicit _dockN property (no readonly binding — updated by _recalc)
+    property int _dockN: 0
     function _recalc() {
         try {
-            if (!SystemTray || !SystemTray.items) { _n = 0; return; }
+            if (!SystemTray || !SystemTray.items) { _dockN = 0; return; }
             var len = SystemTray.items && SystemTray.items.length;
-            if (!len) { _n = 0; return; }
-            if (_hid.length === 0) { _n = len; return; }
+            if (!len) { _dockN = 0; return; }
+            if (_hid.length === 0) { _dockN = len; return; }
             var n = 0;
             for (var i = 0; i < len; i++) {
                 var it = SystemTray.items[i];
                 if (it && _hid.indexOf(root._key(i, it)) < 0) n++;
-            }
-            _n = n;
+        }
+            _dockN = n;
         } catch(e) {
             console.warn('_recalc:', e);
-            _n = 0;
+            _dockN = 0;
         }
     }
     function _toggle(k) {
@@ -58,13 +58,13 @@ Item {
 
     // Repeater count (reliable — detects model changes internally)
     property int _dockN: dockRep ? dockRep.count : 0
-    // _setN removed: setRep ? setRep.count : 0
-
-    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; } }
-    
     
 
-    readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_n, 10) * 32 + 10) : 0
+    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count;  _recalc(); } }
+    Connections { target: dockRep; function onCountChanged() {  _recalc(); } }
+    
+
+    readonly property int _dw: expanded && _dockN > 0 ? Math.max(40, Math.min(_dockN, 10) * 32 + 10) : 0
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
@@ -99,7 +99,7 @@ Item {
             Behavior on opacity {
                 enabled: Config.animDuration > 0
                 NumberAnimation { duration: Config.animDuration / 2 }
-            }
+        }
         }
 
         Text {
@@ -112,22 +112,24 @@ Item {
             anchors.top: parent.top; anchors.right: parent.right
             anchors.topMargin: -2; anchors.rightMargin: -2
             width: 14; height: 14; radius: 7; variant: "primary"
-            visible: _n > 0 && !root.expanded
+            visible: _dockN > 0 && !root.expanded
             Text {
                 anchors.centerIn: parent
-                text: Math.min(_n, 9)
+                text: Math.min(_dockN, 9)
                 font.family: Config.theme.font; font.pixelSize: 8; font.bold: true; color: Colors.background
-            }
+        }
         }
 
         MouseArea {
             anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
-            onClicked: root.expanded = !root.expanded;
+            onClicked: {
+                root.expanded = !root.expanded;
+        }
         }
 
         StyledToolTip {
             visible: root.isHovered && !root.expanded
-            tooltipText: _n > 0 ? _n + " visible" : "No icons"
+            tooltipText: _dockN > 0 ? _dockN + " visible" : "No icons"
         }
     }
 
@@ -155,31 +157,28 @@ Item {
                     required property SystemTrayItem modelData
                     required property int index
                     width: 24; height: 24
-                    readonly property string _k: root._key(index, modelData)
-                    visible: root._hid.indexOf(_k) < 0
-                    property bool hov: false
+property bool hov: false
                     HoverHandler { onHoveredChanged: hov = hovered }
                     StyledRect {
                         anchors.fill: parent; anchors.margins: 1; radius: 4
                         variant: "bg"; opacity: hov ? 0.5 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 80 } }
-                    }
+                }
                     IconImage {
                         anchors.centerIn: parent; width: 16; height: 16
                         source: modelData.icon; smooth: true
-                    }
+                }
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: event => {
+                        onClicked: {
                             if (event.button === Qt.LeftButton) modelData.activate();
                             else if (event.button === Qt.RightButton && modelData.hasMenu) {
                                 root._ctxItem = modelData; ctxPopup.open();
-                            }
                         }
                     }
                 }
             }
+        }
         }
     }
 
@@ -202,13 +201,12 @@ Item {
                             anchors.fill: parent; anchors.leftMargin: 8; spacing: 6
                             IconImage { width: 16; height: 16; source: modelData.icon ?? ""; smooth: true; visible: modelData.icon !== undefined; Layout.alignment: Qt.AlignVCenter }
                             Text { text: modelData.text || ""; font.family: Styling.defaultFont; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; elide: Text.ElideRight; Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter }
-                        }
                     }
-                    MouseArea { id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: event => { if (modelData.trigger) modelData.trigger(); ctxPopup.close(); root._ctxItem = null; } }
                 }
+                    MouseArea { id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: { if (modelData.trigger) modelData.trigger(); ctxPopup.close(); root._ctxItem = null; } }
             }
+        }
         }
     }
 
-    }
 }
