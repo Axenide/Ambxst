@@ -200,7 +200,7 @@ Item {
                             Text { text: modelData.text || ""; font.family: Styling.defaultFont; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; elide: Text.ElideRight; Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter }
                         }
                     }
-                    MouseArea { id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: { if (modelData.trigger) modelData.trigger(); ctxPopup.close(); root._ctxItem = null; } }
+                    MouseArea { id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: event => { if (modelData.trigger) modelData.trigger(); ctxPopup.close(); root._ctxItem = null; } }
                 }
             }
         }
@@ -253,7 +253,7 @@ Item {
                             MouseArea {
                                 anchors.fill: parent; anchors.margins: -4
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { root._toggle(_k); event.accepted = true; }
+                                onClicked: event => { root._toggle(_k); event.accepted = true; }
                             }
                         }
                         IconImage { width: 20; height: 20; source: modelData.icon; smooth: true; Layout.alignment: Qt.AlignVCenter }
