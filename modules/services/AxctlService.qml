@@ -59,6 +59,9 @@ Singleton {
         } else if (action === "togglespecialworkspace") {
             cmdArgs = ["workspace", "toggle-special"];
             if (rawArgs) cmdArgs.push(rawArgs);
+        } else if (action === "monitor") {
+            // Monitor commands go directly to hyprctl dispatch
+            cmdArgs = ["system", "execute", "hyprctl dispatch " + command];
         } else {
             cmdArgs = ["system", "execute", command];
         }
