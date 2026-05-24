@@ -24,6 +24,11 @@ Item {
     property bool expanded: false
     property var _ctxItem: null
     property var _hid: []
+    property int _ver: 0
+    Connections {
+        target: SystemTray
+        function onItemsChanged() { root._ver++; }
+    }
 
     function _toggle(k) {
         var a = _hid.slice();
@@ -37,6 +42,7 @@ Item {
     }
 
     readonly property int _vc: {
+        var v = root._ver;
         var n = 0, h = _hid;
         if (!SystemTray || !SystemTray.items) return 0;
         for (var i = 0; i < SystemTray.items.length; i++) {
@@ -45,7 +51,7 @@ Item {
         return n;
     }
 
-    readonly property int _n: SystemTray && SystemTray.items ? SystemTray.items.length : 0
+    readonly property int _n: { root._ver; return SystemTray && SystemTray.items ? SystemTray.items.length : 0; }
 
     Layout.preferredWidth: 36
     Layout.preferredHeight: 36
@@ -105,9 +111,9 @@ Item {
         z: 100
         cursorShape: Qt.PointingHandCursor
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: mouse => {
-            console.log("TaskTray click:", mouse.button);
-            if (mouse.button === Qt.LeftButton) {
+        onClicked: event => {
+            console.log("TaskTray click:", event.button);
+            if (event.button === Qt.LeftButton) {
                 root.expanded = !root.expanded;
             } else {
                 setPopup.open();
@@ -247,7 +253,7 @@ Item {
                             MouseArea {
                                 anchors.fill: parent; anchors.margins: -4
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: { root._toggle(_k); mouse.accepted = true; }
+                                onClicked: { root._toggle(_k); event.accepted = true; }
                             }
                         }
                         IconImage { width: 20; height: 20; source: modelData.icon; smooth: true; Layout.alignment: Qt.AlignVCenter }
