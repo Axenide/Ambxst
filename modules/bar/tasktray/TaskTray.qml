@@ -70,6 +70,7 @@ Item {
     Layout.preferredHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
+    clip: true
     height: 36
 
     Behavior on Layout.preferredWidth {
@@ -125,7 +126,9 @@ Item {
     }
 
     // ── Dock icons ──
-        RowLayout {
+    RowLayout {
+        opacity: expanded ? 1.0 : 0.0
+        Behavior on opacity { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration / 2 } }
         anchors.left: parent.left; anchors.leftMargin: 40
         anchors.verticalCenter: parent.verticalCenter
         spacing: 4
