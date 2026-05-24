@@ -26,6 +26,13 @@ Singleton {
 
     signal syncFinished(bool success, string message)
     signal syncStarted()
+    property Process reloadProcess: Process {
+        command: ["hyprctl", "reload"]
+        running: false
+        onExited: exitCode => {
+            console.log("MonitorsWriter: hyprctl reload " + (exitCode === 0 ? "OK" : "exit " + exitCode));
+        }
+    }
 
     /**
      * Build a snapshot of current monitor data from AxctlService + Quickshell.screens
@@ -155,6 +162,10 @@ Singleton {
                 var output = (syncDataProcess.stdout ? syncDataProcess.stdout.text : "") +
                              (syncDataProcess.stderr ? syncDataProcess.stderr.text : "");
                 console.log("MonitorsWriter: sync with data: " + (output.trim() || "OK"));
+                
+            // Apply via hyprctl reload
+            reloadProcess.running = true;
+
                 root.syncFinished(true, output.trim());
             
             // Refresh TOML config after monitor sync
