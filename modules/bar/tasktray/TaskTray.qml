@@ -24,6 +24,7 @@ Item {
     property real endRadius: radius
     property bool expanded: false
     property var _ctxItem: null
+    property var _ctxAnchor: null
     // Repeater count (reliable — detects model changes internally)
     property int _dockN: dockRep ? dockRep.count : 0
     
@@ -147,7 +148,7 @@ property bool hov: false
 
     // ── Native context menu ──
     BarPopup {
-        id: ctxPopup; anchorItem: root; bar: root.bar
+        id: ctxPopup; anchorItem: _ctxAnchor || root; bar: root.bar
         QsMenuOpener { id: mo; menu: root._ctxItem ? root._ctxItem.menu : null }
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 4; spacing: 4
