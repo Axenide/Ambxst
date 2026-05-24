@@ -110,7 +110,10 @@ StyledRect {
         var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         for (var i = 0; i < mons.length; i++) {
             var m = mons[i];
-            var w = m.width || 1920, h = m.height || 1080;
+            // Use logical dimensions (physical / scale) so the canvas fits correctly
+            var scale = m.scale || 1.0;
+            var w = (m.width || 1920) / scale;
+            var h = (m.height || 1080) / scale;
             var x = m.x || 0, y = m.y || 0;
             if (x < minX) minX = x;
             if (y < minY) minY = y;
@@ -351,8 +354,11 @@ StyledRect {
 
                         x: root.realToCanvasX(realX)
                         y: root.realToCanvasY(realY)
-                        width: Math.max(50, modelData.width * root.viewScale)
-                        height: Math.max(35, modelData.height * root.viewScale)
+                        // Show at logical size (physical / scale) like nwg-displays
+                        readonly property real logicalW: modelData.width / (modelData.scale || 1.0)
+                        readonly property real logicalH: modelData.height / (modelData.scale || 1.0)
+                        width: Math.max(50, logicalW * root.viewScale)
+                        height: Math.max(35, logicalH * root.viewScale)
 
                         // Body
                         StyledRect {
@@ -382,13 +388,17 @@ StyledRect {
                                 font.family: Config.theme.font
                                 font.pixelSize: Math.max(7, Math.min(10, Styling.fontSize(-4)))
                                 color: Colors.outline
+                            }                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: modelData.width + "×" + modelData.height + "  @" + modelData.scale.toFixed(2) + "x"
+                                font.pixelSize: Math.max(7, Math.min(10, Styling.fontSize(-4)))
+                                color: Colors.outline
                             }
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.width + "×" + modelData.height
-                                font.family: Config.theme.font
+                                text: Math.round(logicalW) + "×" + Math.round(logicalH) + " logical"
                                 font.pixelSize: Math.max(7, Math.min(10, Styling.fontSize(-4)))
-                                color: Colors.outline
+                                color: Colors.outlineVariant
                             }
                         }
 
@@ -433,8 +443,8 @@ StyledRect {
                                 var newY = Math.round((startRealY + dRY) / 10) * 10
 
                                 // Snap to other monitors
-                                var mw = modelData.width
-                                var mh = modelData.height
+                                var mw = logicalW
+                                var mh = logicalH
                                 var snapPx = 50
 
                                 for (var k = 0; k < root.monitors.length; k++) {
@@ -442,7 +452,8 @@ StyledRect {
                                     var o = root.monitors[k]
                                     if (!o) continue
                                     var ox = o.x, oy = o.y
-                                    var ow = o.width, oh = o.height
+                                    var ow = (o.width || 1920) / (o.scale || 1.0)
+                                    var oh = (o.height || 1080) / (o.scale || 1.0)
 
                                     if (Math.abs(newX - (ox + ow)) < snapPx) newX = ox + ow
                                     if (Math.abs((newX + mw) - ox) < snapPx) newX = ox - mw
@@ -463,8 +474,8 @@ StyledRect {
 
                                 var rx = root.dragNewX
                                 var ry = root.dragNewY
-                                var mw = modelData.width
-                                var mh = modelData.height
+                                var mw = logicalW
+                                var mh = logicalH
 
                                 // Stronger snap on release
                                 var snapPx = 80
@@ -473,7 +484,8 @@ StyledRect {
                                     var o = root.monitors[k]
                                     if (!o) continue
                                     var ox = o.x, oy = o.y
-                                    var ow = o.width, oh = o.height
+                                    var ow = (o.width || 1920) / (o.scale || 1.0)
+                                    var oh = (o.height || 1080) / (o.scale || 1.0)
 
                                     if (Math.abs(rx - (ox + ow)) < snapPx) rx = ox + ow
                                     if (Math.abs((rx + mw) - ox) < snapPx) rx = ox - mw
@@ -488,14 +500,16 @@ StyledRect {
                                     if (j === index) continue
                                     var o2 = root.monitors[j]
                                     if (!o2) continue
-                                    if (rx < o2.x + o2.width && rx + mw > o2.x && ry < o2.y + o2.height && ry + mh > o2.y) {
-                                        var dL = rx + mw - o2.x, dR = o2.x + o2.width - rx
-                                        var dU = ry + mh - o2.y, dD = o2.y + o2.height - ry
+                                    var o2w = (o2.width || 1920) / (o2.scale || 1.0)
+                                    var o2h = (o2.height || 1080) / (o2.scale || 1.0)
+                                    if (rx < o2.x + o2w && rx + mw > o2.x && ry < o2.y + o2h && ry + mh > o2.y) {
+                                        var dL = rx + mw - o2.x, dR = o2.x + o2w - rx
+                                        var dU = ry + mh - o2.y, dD = o2.y + o2h - ry
                                         var minD = Math.min(dL, dR, dU, dD)
                                         if (minD === dL) rx = o2.x - mw
-                                        else if (minD === dR) rx = o2.x + o2.width
+                                        else if (minD === dR) rx = o2.x + o2w
                                         else if (minD === dU) ry = o2.y - mh
-                                        else ry = o2.y + o2.height
+                                        else ry = o2.y + o2h
                                     }
                                 }
 
