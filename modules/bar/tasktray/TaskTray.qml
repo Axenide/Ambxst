@@ -12,13 +12,6 @@ import qs.modules.components
 import qs.modules.globals
 import qs.config
 
-/**
- * TaskTray — Systray overflow tray with toggle button
- *
- * Toggle icon (same style as LayoutSelectorButton) shows/hides system tray icons.
- * When expanded, tray items appear in a dock-like container.
- * Right-click → BarPopup with all tray items.
- */
 Item {
     id: root
 
@@ -31,44 +24,33 @@ Item {
     property real startRadius: radius
     property real endRadius: radius
 
-    // Config
     readonly property bool taskTrayEnabled: Config.bar?.taskTrayEnabled ?? true
     readonly property bool showToggleButton: Config.bar?.taskTrayShowToggle ?? true
 
-    // State
-    property bool expanded: false  // collapsed by default
+    property bool expanded: false
     readonly property bool hasItems: SystemTray.items.length > 0
     readonly property bool popupOpen: trayPopup.isOpen
-
-    // Get systray items
     readonly property var trayItems: SystemTray.items || []
 
-    // Layout sizing
-    Layout.preferredWidth: vertical ? 36 : implicitContentWidth
-    Layout.preferredHeight: vertical ? implicitContentHeight : 36
+    // ── Same exact sizing as ControlsButton / LayoutSelectorButton ──
+    Layout.preferredWidth: 36
+    Layout.preferredHeight: 36
+    Layout.maximumWidth: 36
+    Layout.maximumHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
 
-    readonly property int toggleSize: 36
+    width: vertical ? 36 : implicitWidthOverride
+    height: vertical ? implicitHeightOverride : 36
+
     readonly property int trayItemSize: 24
 
-    readonly property int implicitContentWidth: {
-        var w = showToggleButton ? toggleSize : 0;
-        if (expanded && hasItems) {
-            w += 4 + (trayItems.length * (trayItemSize + 4));
-        }
-        return Math.max(36, w);
-    }
-    readonly property int implicitContentHeight: {
-        var h = showToggleButton ? toggleSize : 0;
-        if (expanded && hasItems) {
-            h += 4 + (trayItems.length * (trayItemSize + 4));
-        }
-        return Math.max(36, h);
-    }
+    // Override width/height when expanded to include the dock
+    readonly property int dockWidth: expanded && hasItems ? (dockRow.implicitWidth + 8) : 0
+    readonly property int dockHeight: expanded && hasItems ? (dockRow.implicitHeight + 8) : 0
 
-    width: vertical ? 36 : implicitContentWidth
-    height: vertical ? implicitContentHeight : 36
+    readonly property int implicitWidthOverride: showToggleButton ? 36 + 2 + dockWidth : dockWidth
+    readonly property int implicitHeightOverride: showToggleButton ? 36 + 2 + dockHeight : dockHeight
 
     Behavior on width {
         enabled: !vertical && Config.animDuration > 0
@@ -83,21 +65,17 @@ Item {
         onHoveredChanged: root.isHovered = hovered
     }
 
-    // ── Toggle button ──
+    // ── Toggle button: same size as LayoutSelectorButton ──
     StyledRect {
         id: toggleBtn
         visible: showToggleButton
         variant: root.popupOpen ? "primary" : "bg"
         anchors {
-            left: vertical ? undefined : parent.left
-            top: vertical ? parent.top : undefined
-            leftMargin: vertical ? 0 : 2
-            topMargin: vertical ? 2 : 0
-            verticalCenter: vertical ? undefined : parent.verticalCenter
-            horizontalCenter: vertical ? parent.horizontalCenter : undefined
+            left: parent.left
+            top: parent.top
+            bottom: parent.bottom
         }
-        width: toggleSize - 4
-        height: toggleSize - 4
+        width: 36
         enableShadow: root.layerEnabled
 
         topLeftRadius: vertical ? startRadius : startRadius
@@ -124,7 +102,6 @@ Item {
             color: root.popupOpen ? toggleBtn.item : Styling.srItem("overprimary")
         }
 
-        // Badge when collapsed
         StyledRect {
             anchors.top: parent.top; anchors.right: parent.right
             anchors.topMargin: -2; anchors.rightMargin: -2
@@ -154,11 +131,11 @@ Item {
 
         StyledToolTip {
             visible: root.isHovered && !root.popupOpen
-            tooltipText: hasItems ? trayItems.length + " system tray items" : "No tray items"
+            tooltipText: hasItems ? trayItems.length + " items hidden" : "No hidden items"
         }
     }
 
-    // ── Systray icons dock ──
+    // ── Systray dock: always exists so animation works, visibility via opacity ──
     StyledRect {
         id: dockBg
         anchors {
@@ -171,12 +148,17 @@ Item {
         variant: "bg"
         radius: 6
         enableShadow: root.layerEnabled
-        visible: expanded && hasItems
+        visible: hasItems
 
         opacity: expanded ? 1.0 : 0.0
+        scale: expanded ? 1.0 : 0.8
         Behavior on opacity {
             enabled: Config.animDuration > 0
             NumberAnimation { duration: Config.animDuration / 2 }
+        }
+        Behavior on scale {
+            enabled: Config.animDuration > 0
+            NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
         }
 
         RowLayout {
@@ -200,7 +182,6 @@ Item {
                         onHoveredChanged: trayIconArea.iconHovered = hovered
                     }
 
-                    // Hover background
                     StyledRect {
                         anchors.fill: parent; anchors.margins: 1
                         variant: "bg"; radius: 4
@@ -235,10 +216,10 @@ Item {
         }
     }
 
-    // ── Popup (right-click) ──
+    // ── Popup with per-item toggle option ──
     BarPopup {
         id: trayPopup
-        anchorItem: showToggleButton ? toggleBtn : root
+        anchorItem: toggleBtn
         bar: root.bar
 
         ColumnLayout {
@@ -247,7 +228,7 @@ Item {
             spacing: 2
 
             Text {
-                text: "System Tray"
+                text: "Hidden Icons"
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.bold: true
@@ -270,7 +251,6 @@ Item {
                         variant: popupMouse.containsMouse ? "focus" : "bg"
                         radius: 4
                         opacity: popupMouse.containsMouse ? 1.0 : 0.7
-                        Behavior on opacity { NumberAnimation { duration: 80 } }
                     }
 
                     RowLayout {
@@ -283,11 +263,7 @@ Item {
                             width: 20; height: 20
                             source: modelData.icon
                             smooth: true
-                        }
-
-                        Tinted {
-                            sourceItem: popupIcon
-                            anchors.fill: popupIcon
+                            Layout.alignment: Qt.AlignVCenter
                         }
 
                         Text {
@@ -297,6 +273,15 @@ Item {
                             color: Colors.overBackground
                             elide: Text.ElideRight
                             Layout.fillWidth: true
+                            Layout.alignment: Qt.AlignVCenter
+                        }
+
+                        Text {
+                            text: Icons.caretRight
+                            font.family: Icons.font; font.pixelSize: 12
+                            color: Colors.outline
+                            visible: popupMouse.containsMouse
+                            Layout.alignment: Qt.AlignVCenter
                         }
                     }
 
@@ -313,14 +298,66 @@ Item {
                 }
             }
 
+            // Toggle separator + option
+            MenuSeparator {
+                Layout.fillWidth: true
+                visible: hasItems
+                Layout.topMargin: 4
+                Layout.bottomMargin: 4
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 32
+
+                StyledRect {
+                    anchors.fill: parent
+                    variant: toggleOption.containsMouse ? "focus" : "bg"
+                    radius: 4
+                    opacity: toggleOption.containsMouse ? 1.0 : 0.7
+                }
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 6; anchors.rightMargin: 6
+                    spacing: 8
+
+                    Text {
+                        text: root.expanded ? Icons.minus : Icons.plus
+                        font.family: Icons.font; font.pixelSize: 16
+                        color: Colors.overBackground
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+
+                    Text {
+                        text: root.expanded ? "Hide icons in tray" : "Show icons in tray"
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.overBackground
+                        Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignVCenter
+                    }
+                }
+
+                MouseArea {
+                    id: toggleOption
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    onClicked: {
+                        root.expanded = !root.expanded;
+                        trayPopup.close();
+                    }
+                }
+            }
+
             Text {
-                text: !hasItems ? "No tray icons" : ""
+                text: !hasItems ? "No hidden icons" : ""
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 color: Colors.outline
                 visible: !hasItems
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
                 Layout.topMargin: 12
             }
 
