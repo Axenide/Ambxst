@@ -49,14 +49,13 @@ Item {
         return n;
     }
 
-    readonly property int _dw: expanded && _visCount > 0 ? Math.min(_visCount, 10) * 28 + 10 : 0
+    readonly property int _dw: expanded && _visCount > 0 ? Math.min(_visCount, 10) * 28 + 10 : (expanded && allItems.length > 0 ? 40 : 0)
 
     Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
-    width: 36 + (expanded ? 2 + _dw : 0); height: 36
-
+    
     Behavior on Layout.preferredWidth {
         enabled: !vertical && Config.animDuration > 0
         NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
@@ -124,7 +123,7 @@ Item {
         id: dockBg
         anchors.left: toggleBtn.right; anchors.right: parent.right
         anchors.top: parent.top; anchors.bottom: parent.bottom
-        visible: expanded && _visCount > 0
+        visible: expanded && allItems.length > 0
         variant: "bg"; enableShadow: false; clip: true
         topLeftRadius: 0; topRightRadius: root.endRadius
         bottomLeftRadius: 0; bottomRightRadius: root.endRadius
