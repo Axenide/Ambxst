@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import qs.modules.components
 import Quickshell.Wayland
 import qs.modules.theme
 import qs.modules.services
