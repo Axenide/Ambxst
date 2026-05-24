@@ -56,9 +56,9 @@ Item {
         variant: "bg"
         enableShadow: root.layerEnabled && Config.showBackground
         topLeftRadius: root.vertical ? root.startRadius : root.startRadius
-        topRightRadius: root.endRadius
+        topRightRadius: root.expanded ? 0 : root.endRadius
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
-        bottomRightRadius: root.endRadius
+        bottomRightRadius: root.expanded ? 0 : root.endRadius
 
         Rectangle {
             anchors.fill: parent
