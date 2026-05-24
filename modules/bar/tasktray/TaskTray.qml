@@ -46,7 +46,7 @@ Item {
     Connections { target: setRep; function onCountChanged() { _setN = setRep.count; } }
 
     // Hidden filter count
-    readonly property int _vc: { root._vkey;
+    readonly property int _vc: { root._vkey; root._hid.length;
         if (!SystemTray || !SystemTray.items) return 0;
         if (_hid.length === 0) return SystemTray.items.length;
         var n = 0, h = _hid;
@@ -209,7 +209,10 @@ Item {
     // ── Settings popup ──
     BarPopup {
         id: setPopup; anchorItem: root; bar: root.bar
+        contentWidth: setCol.implicitWidth + 16
+        contentHeight: Math.min(setCol.implicitHeight + 16, 400)
         ColumnLayout {
+            id: setCol
             anchors.fill: parent; anchors.margins: 6; spacing: 2
             Text {
                 text: "Tray (" + _vc + "/" + _setN + ")"
