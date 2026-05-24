@@ -87,9 +87,9 @@ Item {
         variant: "bg"
         enableShadow: root.layerEnabled && Config.showBackground
         topLeftRadius: root.vertical ? root.startRadius : root.startRadius
-        topRightRadius: root.endRadius
+        topRightRadius: root.expanded ? 0 : root.endRadius
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
-        bottomRightRadius: root.endRadius
+        bottomRightRadius: root.expanded ? 0 : root.endRadius
 
         Rectangle {
             anchors.fill: parent
@@ -139,8 +139,8 @@ Item {
         anchors.top: parent.top; anchors.bottom: parent.bottom
         visible: expanded && _dockN > 0
         variant: "bg"; enableShadow: false; clip: true
-        topLeftRadius: 0; topRightRadius: root.endRadius
-        bottomLeftRadius: 0; bottomRightRadius: root.endRadius
+        topLeftRadius: 0; topRightRadius: root.expanded ? 0 : root.endRadius
+        bottomLeftRadius: 0; bottomRightRadius: root.expanded ? 0 : root.endRadius
         opacity: expanded ? 1.0 : 0.0
         Behavior on opacity {
             enabled: Config.animDuration > 0
@@ -155,7 +155,7 @@ Item {
                 delegate: Item {
                     required property SystemTrayItem modelData
                     required property int index
-                    width: 24; height: 24
+                    width: 26; height: 26
                     readonly property string _k: root._key(index, modelData)
                     visible: root._hid.indexOf(_k) < 0
                     property bool hov: false
@@ -166,7 +166,7 @@ Item {
                         Behavior on opacity { NumberAnimation { duration: 80 } }
                     }
                     IconImage {
-                        anchors.centerIn: parent; width: 16; height: 16
+                        anchors.centerIn: parent; width: 18; height: 18
                         source: modelData.icon; smooth: true
                     }
                     MouseArea {
@@ -187,8 +187,11 @@ Item {
     // ── Native context menu ──
     BarPopup {
         id: ctxPopup; anchorItem: root; bar: root.bar
+        contentWidth: Math.max(220, ctxCol.implicitWidth + 16)
+        contentHeight: Math.min(ctxCol.implicitHeight + 16, 400)
         QsMenuOpener { id: mo; menu: root._ctxItem ? root._ctxItem.menu : null }
         ColumnLayout {
+            id: ctxCol
             anchors.fill: parent; anchors.margins: 4; spacing: 4
             Repeater {
                 model: mo.children ? mo.children.values : []
@@ -201,7 +204,7 @@ Item {
                         anchors.fill: parent; radius: 4; variant: mm.containsMouse ? "focus" : "bg"; visible: !sep
                         RowLayout {
                             anchors.fill: parent; anchors.leftMargin: 8; spacing: 6
-                            IconImage { width: 16; height: 16; source: modelData.icon ?? ""; smooth: true; visible: modelData.icon !== undefined; Layout.alignment: Qt.AlignVCenter }
+                            IconImage { width: 18; height: 18; source: modelData.icon ?? ""; smooth: true; visible: modelData.icon !== undefined; Layout.alignment: Qt.AlignVCenter }
                             Text { text: modelData.text || ""; font.family: Styling.defaultFont; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; elide: Text.ElideRight; Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter }
                         }
                     }
