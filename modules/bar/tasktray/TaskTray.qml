@@ -26,21 +26,33 @@ Item {
     property bool expanded: false
     readonly property var allItems: SystemTray.items || []
 
-    // Per-item visibility
-    property var hiddenMap: ({})
+    // Per-item visibility — persisted in Config.bar.hiddenIcons
     function itemKey(item) {
-        return (item.title || item.tooltipTitle || item.id || "key_" + Math.random()).toString().toLowerCase();
+        return (item.title || item.tooltipTitle || item.id || "").toString().toLowerCase();
     }
     function isHidden(item) {
         var key = root.itemKey(item);
-        return hiddenMap[key] === true;
+        if (!key) return false;
+        var hidden = Config.bar.hiddenIcons || [];
+        for (var i = 0; i < hidden.length; i++) {
+            if (key.includes(hidden[i].toLowerCase())) return true;
+        }
+        return false;
     }
     function toggleHidden(item) {
         var key = root.itemKey(item);
-        console.log("TaskTray toggle:", key);
-        var h = Object.assign({}, root.hiddenMap);
-        h[key] = !h[key];
-        root.hiddenMap = h;
+        if (!key) return;
+        var hidden = (Config.bar.hiddenIcons || []).slice();
+        var idx = -1;
+        for (var i = 0; i < hidden.length; i++) {
+            if (key.includes(hidden[i].toLowerCase())) { idx = i; break; }
+        }
+        if (idx >= 0) {
+            hidden.splice(idx, 1);
+        } else {
+            hidden.push(key);
+        }
+        Config.bar.hiddenIcons = hidden;
     }
 
     readonly property int totalCount: allItems.length
