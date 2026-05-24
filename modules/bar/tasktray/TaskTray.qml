@@ -24,10 +24,6 @@ Item {
     property bool expanded: false
     property var _ctxItem: null
     property var _hid: []
-    // Poll timer: SystemTray.items is constant (no change notification)
-    // Timer forces periodic re-evaluation of _vc for badge/dock count
-    property int _tick: 0
-    Timer { interval: 2000; repeat: true; running: true; onTriggered: root._tick++; }
 
     function _toggle(k) {
         var a = _hid.slice();
@@ -40,44 +36,55 @@ Item {
         return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
     }
 
+    // Repeater count-based visibility (reliable)
+    property int _dockN: dockRep ? dockRep.count : 0
+    property int _setN: setRep ? setRep.count : 0
+
+    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; _setN = setRep.count; } }
+    Connections { target: setRep; function onCountChanged() { _setN = setRep.count; } }
+
+    // Hidden filter count
     readonly property int _vc: {
-        root._tick;
-        var n = 0, h = _hid;
         if (!SystemTray || !SystemTray.items) return 0;
+        if (_hid.length === 0) return SystemTray.items.length;
+        var n = 0, h = _hid;
         for (var i = 0; i < SystemTray.items.length; i++) {
             if (h.indexOf(_key(i, SystemTray.items[i])) < 0) n++;
         }
         return n;
     }
 
+    readonly property int _dw: expanded && _vc > 0 ? Math.min(_vc, 10) * 26 + 8 : 0
 
-
-    Layout.preferredWidth: 36
+    Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
-    Layout.maximumWidth: 36
-    Layout.maximumHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
-    width: 36; height: 36
-    clip: false
+    width: 36 + (expanded ? 2 + _dw : 0); height: 36
+
+    Behavior on Layout.preferredWidth {
+        enabled: !vertical && Config.animDuration > 0
+        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+    }
 
     HoverHandler { onHoveredChanged: root.isHovered = hovered }
 
-    // ── Toggle button background ──
+    // ── Toggle button ──
     StyledRect {
         id: toggleBtn
-        anchors.fill: parent
+        width: 36
+        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
         variant: "bg"
         enableShadow: root.layerEnabled && Config.showBackground
         topLeftRadius: root.vertical ? root.startRadius : root.startRadius
-        topRightRadius: root.endRadius
+        topRightRadius: root.expanded ? 0 : root.endRadius
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
-        bottomRightRadius: root.endRadius
+        bottomRightRadius: root.expanded ? 0 : root.endRadius
 
         Rectangle {
             anchors.fill: parent
             color: Styling.srItem("overprimary")
-            opacity: root.isHovered ? 0.25 : 0
+            opacity: root.isHovered && !root.expanded ? 0.25 : 0
             radius: parent.radius ?? 0
             Behavior on opacity {
                 enabled: Config.animDuration > 0
@@ -102,45 +109,36 @@ Item {
                 font.family: Config.theme.font; font.pixelSize: 8; font.bold: true; color: Colors.background
             }
         }
-    }
 
-    // ── Click receiver (on top of everything inside toggleBtn) ──
-    MouseArea {
-        anchors.fill: parent
-        z: 100
-        cursorShape: Qt.PointingHandCursor
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        onClicked: event => {
-            console.log("TaskTray click:", event.button);
-            if (event.button === Qt.LeftButton) {
-                root.expanded = !root.expanded;
-            } else {
-                setPopup.open();
+        MouseArea {
+            anchors.fill: parent; z: 5; cursorShape: Qt.PointingHandCursor
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: event => {
+                if (event.button === Qt.LeftButton) root.expanded = !root.expanded;
+                else if (_setN > 0) setPopup.open();
             }
+        }
+
+        StyledToolTip {
+            visible: root.isHovered && !root.expanded
+            tooltipText: _vc > 0 ? _vc + " visible" : "No icons"
         }
     }
 
-    StyledToolTip {
-        visible: root.isHovered && !root.expanded
-        tooltipText: _vc > 0 ? _vc + " visible" : "No icons"
-    }
-
-    // ── Floating dock ──
+    // ── Expanded inline dock ──
     StyledRect {
-        id: dock
-        anchors.left: parent.right; anchors.leftMargin: 2
-        anchors.verticalCenter: parent.verticalCenter
-        height: 30
-        width: _vc > 0 ? Math.min(_vc, 10) * 28 + 10 : 40
-        variant: "bg"; radius: 6
-        enableShadow: root.layerEnabled && Config.showBackground
-        visible: root.expanded && dockRep.count > 0
-
-        opacity: root.expanded ? 1.0 : 0.0
-        scale: root.expanded ? 1.0 : 0.8
-        transformOrigin: Item.LeftCenter
-        Behavior on opacity { NumberAnimation { duration: Config.animDuration > 0 ? Config.animDuration / 2 : 100 } }
-        Behavior on scale { NumberAnimation { duration: Config.animDuration > 0 ? Config.animDuration / 2 : 100; easing.type: Easing.OutCubic } }
+        id: dockBg
+        anchors.left: toggleBtn.right; anchors.right: parent.right
+        anchors.top: parent.top; anchors.bottom: parent.bottom
+        visible: expanded && _dockN > 0
+        variant: "bg"; enableShadow: false; clip: true
+        topLeftRadius: 0; topRightRadius: root.endRadius
+        bottomLeftRadius: 0; bottomRightRadius: root.endRadius
+        opacity: expanded ? 1.0 : 0.0
+        Behavior on opacity {
+            enabled: Config.animDuration > 0
+            NumberAnimation { duration: Config.animDuration / 2 }
+        }
 
         RowLayout {
             anchors.centerIn: parent; spacing: 2
@@ -150,7 +148,7 @@ Item {
                 delegate: Item {
                     required property SystemTrayItem modelData
                     required property int index
-                    width: 26; height: 26
+                    width: 24; height: 24
                     readonly property string _k: root._key(index, modelData)
                     visible: root._hid.indexOf(_k) < 0
                     property bool hov: false
@@ -161,7 +159,7 @@ Item {
                         Behavior on opacity { NumberAnimation { duration: 80 } }
                     }
                     IconImage {
-                        anchors.centerIn: parent; width: 18; height: 18
+                        anchors.centerIn: parent; width: 16; height: 16
                         source: modelData.icon; smooth: true
                     }
                     MouseArea {
@@ -212,7 +210,7 @@ Item {
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 6; spacing: 2
             Text {
-                text: "Tray Icons (" + _vc + "/" + (SystemTray && SystemTray.items ? SystemTray.items.length : 0) + ")"
+                text: "Tray (" + _vc + "/" + _setN + ")"
                 font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); font.bold: true
                 color: Colors.overBackground
                 Layout.fillWidth: true; Layout.bottomMargin: 4; leftPadding: 4
@@ -226,6 +224,7 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 34
                     readonly property string _k: root._key(index, modelData)
 
+                    // Row click (declared FIRST for correct stacking)
                     MouseArea {
                         id: rowMA
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
