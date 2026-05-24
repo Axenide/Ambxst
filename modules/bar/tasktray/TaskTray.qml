@@ -131,6 +131,7 @@ Item {
 
     // ── Dock icons ──
     RowLayout {
+        visible: !root.vertical
         opacity: expanded ? 1.0 : 0.0
         Behavior on opacity { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration / 2 } }
         anchors.left: root.vertical ? undefined : parent.left
