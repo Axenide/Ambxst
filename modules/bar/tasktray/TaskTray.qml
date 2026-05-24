@@ -23,7 +23,6 @@ Item {
     property real startRadius: radius
     property real endRadius: radius
     property bool expanded: false
-    property int _dockN: 0
     property var _ctxItem: null
     // Repeater count (reliable — detects model changes internally)
     property int _dockN: dockRep ? dockRep.count : 0
