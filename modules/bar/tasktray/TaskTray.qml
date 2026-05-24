@@ -28,12 +28,16 @@ Item {
 
     // Per-item visibility
     property var hiddenMap: ({})
+    function itemKey(item) {
+        return (item.title || item.tooltipTitle || item.id || "key_" + Math.random()).toString().toLowerCase();
+    }
     function isHidden(item) {
-        var key = (item.title || item.tooltipTitle || "").toLowerCase();
+        var key = root.itemKey(item);
         return hiddenMap[key] === true;
     }
     function toggleHidden(item) {
-        var key = (item.title || item.tooltipTitle || "").toLowerCase();
+        var key = root.itemKey(item);
+        console.log("TaskTray toggle:", key);
         var h = Object.assign({}, root.hiddenMap);
         h[key] = !h[key];
         root.hiddenMap = h;
@@ -269,15 +273,22 @@ Item {
                     RowLayout {
                         anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 8
 
-                        Text {
-                            text: root.isHidden(modelData) ? Icons.circleNotch : Icons.circle
-                            font.family: Icons.font; font.pixelSize: 16
-                            color: root.isHidden(modelData) ? Colors.outline : Styling.srItem("primary")
+                        Item {
+                            width: 24; height: 24
                             Layout.alignment: Qt.AlignVCenter
+                            Text {
+                                anchors.centerIn: parent
+                                text: root.isHidden(modelData) ? Icons.circleNotch : Icons.circle
+                                font.family: Icons.font; font.pixelSize: 16
+                                color: root.isHidden(modelData) ? Colors.outline : Styling.srItem("primary")
+                            }
                             MouseArea {
-                                anchors.fill: parent; anchors.margins: -6
+                                anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: root.toggleHidden(modelData)
+                                onClicked: {
+                                    root.toggleHidden(modelData);
+                                    mouse.accepted = true;
+                                }
                             }
                         }
 
