@@ -26,68 +26,36 @@ Item {
     property bool expanded: false
     readonly property var allItems: typeof SystemTray !== "undefined" && SystemTray.items ? SystemTray.items : []
 
-    // Debug: visibility version counter
-    property int visVer: 0
-    property int clickCount: 0
-
-    Connections {
-        target: Config.bar
-        function onHiddenIconsChanged() {
-            root.visVer++;
-            console.log("TaskTray: hiddenIcons changed →", JSON.stringify(Config.bar.hiddenIcons));
-        }
+    // Local hidden items list — triggers reactive updates when reassigned
+    property var _hidden: []
+    function _toggle(key) {
+        var a = _hidden.slice();
+        var i = a.indexOf(key);
+        if (i >= 0) a.splice(i, 1); else a.push(key);
+        _hidden = a;
+        console.log("_hidden:", JSON.stringify(a));
     }
 
-    function isItemHidden(item) {
-        if (!item) return false;
-        var key = (item.title || item.tooltipTitle || item.id || "").toString().toLowerCase();
-        if (!key) return false;
-        // Force dependency on visVer so this function re-evaluates
-        var v = root.visVer;
-        var h = Config.bar.hiddenIcons || [];
-        for (var i = 0; i < h.length; i++) {
-            if (key.indexOf(h[i].toLowerCase()) >= 0) return true;
-        }
-        return false;
-    }
+    property var _ctxItem: null
 
-    function toggleItemVis(item) {
-        if (!item) return;
-        root.clickCount++;
-        var key = (item.title || item.tooltipTitle || item.id || "").toString().toLowerCase();
-        if (!key) { console.log("TaskTray: empty key"); return; }
-        
-        var h = (Config.bar.hiddenIcons || []).slice();
-        var found = -1;
-        for (var i = 0; i < h.length; i++) {
-            if (key.indexOf(h[i].toLowerCase()) >= 0) { found = i; break; }
-        }
-        if (found >= 0) {
-            h.splice(found, 1);
-            console.log("TaskTray: unhide", key, "→", JSON.stringify(h));
-        } else {
-            h.push(key);
-            console.log("TaskTray: hide", key, "→", JSON.stringify(h));
-        }
-        Config.bar.hiddenIcons = h;
-    }
-
-    readonly property int visibleCount: {
-        var n = 0; var v = root.visVer;
+    readonly property int _visCount: {
+        var n = 0;
+        var h = _hidden;
         for (var i = 0; i < allItems.length; i++) {
-            if (!root.isItemHidden(allItems[i])) n++;
+            var it = allItems[i];
+            var k = (it.title || it.tooltipTitle || it.id || "").toString();
+            if (h.indexOf(k) < 0) n++;
         }
         return n;
     }
 
-    property var contextItem: null
+    readonly property int _dw: expanded && _visCount > 0 ? Math.min(_visCount, 10) * 28 + 10 : 0
 
-    readonly property int dockW: expanded && visibleCount > 0 ? Math.min(visibleCount, 10) * 28 + 10 : 0
-    Layout.preferredWidth: 36 + (expanded ? 2 + dockW : 0)
+    Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
     Layout.preferredHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
-    width: 36 + (expanded ? 2 + dockW : 0); height: 36
+    width: 36 + (expanded ? 2 + _dw : 0); height: 36
 
     Behavior on Layout.preferredWidth {
         enabled: !vertical && Config.animDuration > 0
@@ -96,15 +64,17 @@ Item {
 
     HoverHandler { onHoveredChanged: root.isHovered = hovered }
 
+    // ── Toggle button ──
     StyledRect {
         id: toggleBtn
-        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
         width: 36; variant: "bg"
+        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
         enableShadow: root.layerEnabled && Config.showBackground; z: 2
         topLeftRadius: root.vertical ? root.startRadius : root.startRadius
         topRightRadius: root.expanded ? 0 : root.endRadius
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
         bottomRightRadius: root.expanded ? 0 : root.endRadius
+
         Rectangle {
             anchors.fill: parent
             color: Styling.srItem("overprimary")
@@ -115,44 +85,46 @@ Item {
                 NumberAnimation { duration: Config.animDuration / 2 }
             }
         }
+
         Text {
             anchors.centerIn: parent
-            text: Icons.dotsThree
-            font.family: Icons.font; font.pixelSize: 18
+            text: Icons.dotsThree; font.family: Icons.font; font.pixelSize: 18
             color: Styling.srItem("overprimary")
         }
+
         StyledRect {
             anchors.top: parent.top; anchors.right: parent.right
             anchors.topMargin: -2; anchors.rightMargin: -2
             width: 14; height: 14; radius: 7; variant: "primary"
-            visible: visibleCount > 0 && !root.expanded
+            visible: _visCount > 0 && !root.expanded
             Text {
                 anchors.centerIn: parent
-                text: Math.min(visibleCount, 9)
+                text: Math.min(_visCount, 9)
                 font.family: Config.theme.font; font.pixelSize: 8; font.bold: true; color: Colors.background
             }
         }
+
         MouseArea {
-            anchors.fill: parent
-            cursorShape: Qt.PointingHandCursor
+            anchors.fill: parent; cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             onClicked: mouse => {
                 if (mouse.button === Qt.LeftButton) root.expanded = !root.expanded;
                 else settingsPopup.open();
             }
         }
+
         StyledToolTip {
             visible: root.isHovered && !root.expanded
-            tooltipText: visibleCount > 0 ? visibleCount + " visible" : "Empty tray"
+            tooltipText: _visCount > 0 ? _visCount + " visible" : "Empty tray"
         }
     }
 
-    // Expanded dock
+    // ── Expanded dock ──
     StyledRect {
         id: dockBg
         anchors.left: toggleBtn.right; anchors.right: parent.right
         anchors.top: parent.top; anchors.bottom: parent.bottom
-        visible: expanded && visibleCount > 0
+        visible: expanded && _visCount > 0
         variant: "bg"; enableShadow: false; clip: true
         topLeftRadius: 0; topRightRadius: root.endRadius
         bottomLeftRadius: 0; bottomRightRadius: root.endRadius
@@ -161,6 +133,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation { duration: Config.animDuration / 2 }
         }
+
         RowLayout {
             anchors.centerIn: parent; spacing: 2
             Repeater {
@@ -168,35 +141,30 @@ Item {
                 delegate: Item {
                     required property SystemTrayItem modelData
                     width: 26; height: 26
-                    // Inline visibility check for proper reactivity
-                    visible: {
-                        var key = (modelData.title || modelData.tooltipTitle || modelData.id || "").toString().toLowerCase();
-                        if (!key) return true;
-                        var _ = root.visVer;
-                        var h = Config.bar.hiddenIcons || [];
-                        for (var i = 0; i < h.length; i++) {
-                            if (key.indexOf(h[i].toLowerCase()) >= 0) return false;
-                        }
-                        return true;
-                    }
+                    readonly property string _k: (modelData.title || modelData.tooltipTitle || modelData.id || "").toString()
+                    visible: root._hidden.indexOf(_k) < 0
+
                     property bool hov: false
                     HoverHandler { onHoveredChanged: hov = hovered }
+
                     StyledRect {
                         anchors.fill: parent; anchors.margins: 1; radius: 4
                         variant: "bg"; opacity: hov ? 0.5 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 80 } }
                     }
+
                     IconImage {
                         anchors.centerIn: parent; width: 18; height: 18
                         source: modelData.icon; smooth: true
                     }
+
                     MouseArea {
                         anchors.fill: parent; cursorShape: Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         onClicked: event => {
                             if (event.button === Qt.LeftButton) modelData.activate();
                             else if (event.button === Qt.RightButton && modelData.hasMenu) {
-                                root.contextItem = modelData; ctxPopup.open();
+                                root._ctxItem = modelData; ctxPopup.open();
                             }
                         }
                     }
@@ -205,10 +173,10 @@ Item {
         }
     }
 
-    // Native context menu
+    // ── Native context menu ──
     BarPopup {
         id: ctxPopup; anchorItem: root; bar: root.bar
-        QsMenuOpener { id: mo; menu: root.contextItem ? root.contextItem.menu : null }
+        QsMenuOpener { id: mo; menu: root._ctxItem ? root._ctxItem.menu : null }
         ColumnLayout {
             anchors.fill: parent; anchors.margins: 4; spacing: 2
             Repeater {
@@ -243,7 +211,7 @@ Item {
                         id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
                         onClicked: {
                             if (modelData.trigger) modelData.trigger();
-                            ctxPopup.close(); root.contextItem = null;
+                            ctxPopup.close(); root._ctxItem = null;
                         }
                     }
                 }
@@ -251,7 +219,7 @@ Item {
         }
     }
 
-    // Settings popup
+    // ── Settings popup ──
     BarPopup {
         id: settingsPopup; anchorItem: toggleBtn; bar: root.bar
 
@@ -259,17 +227,10 @@ Item {
             anchors.fill: parent; anchors.margins: 6; spacing: 2
 
             Text {
-                text: "Tray Icons (" + visibleCount + "/" + allItems.length + ")"
+                text: "Tray Icons (" + _visCount + "/" + allItems.length + ")"
                 font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1)
                 font.bold: true; color: Colors.overBackground
                 Layout.fillWidth: true; Layout.bottomMargin: 4; leftPadding: 4
-            }
-
-            // Debug info
-            Text {
-                text: "ver:" + root.visVer + " clicks:" + root.clickCount + " hidden:" + (Config.bar.hiddenIcons || []).length
-                font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-5)
-                color: Colors.outline; visible: false // hide by default, enable for debug
             }
 
             Repeater {
@@ -279,49 +240,48 @@ Item {
                     required property SystemTrayItem modelData
                     Layout.fillWidth: true; Layout.preferredHeight: 34
 
+                    readonly property string _key: (modelData.title || modelData.tooltipTitle || modelData.id || "").toString()
+
+                    // Click area for the whole row — declared FIRST so it's BEHIND the contents
+                    MouseArea {
+                        id: _rowMA
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: event => {
+                            if (event.button === Qt.LeftButton) { modelData.activate(); settingsPopup.close(); }
+                            else if (event.button === Qt.RightButton && modelData.hasMenu) {
+                                root._ctxItem = modelData; ctxPopup.open();
+                            }
+                        }
+                    }
+
                     StyledRect {
                         anchors.fill: parent
-                        variant: sm.containsMouse ? "focus" : "bg"
-                        radius: 4; opacity: sm.containsMouse ? 1.0 : 0.7
+                        radius: 4
+                        variant: _rowMA.containsMouse ? "focus" : "bg"
+                        opacity: _rowMA.containsMouse ? 1.0 : 0.7
                     }
 
                     RowLayout {
                         anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 8
 
-                        // Toggle circle — inline binding for reactivity
+                        // Circle toggle — declared AFTER _rowMA so it's on top
                         Text {
-                            id: circleIcon
-                            text: {
-                                var key = (modelData.title || modelData.tooltipTitle || modelData.id || "").toString().toLowerCase();
-                                var _ = root.visVer;
-                                var h = Config.bar.hiddenIcons || [];
-                                var hidden = false;
-                                for (var i = 0; i < h.length; i++) {
-                                    if (key.indexOf(h[i].toLowerCase()) >= 0) { hidden = true; break; }
-                                }
-                                return hidden ? Icons.circleNotch : Icons.circle;
-                            }
+                            id: _circle
+                            text: root._hidden.indexOf(_key) >= 0 ? Icons.circleNotch : Icons.circle
                             font.family: Icons.font; font.pixelSize: 16
-                            color: {
-                                var key = (modelData.title || modelData.tooltipTitle || modelData.id || "").toString().toLowerCase();
-                                var _ = root.visVer;
-                                var h = Config.bar.hiddenIcons || [];
-                                var hidden = false;
-                                for (var i = 0; i < h.length; i++) {
-                                    if (key.indexOf(h[i].toLowerCase()) >= 0) { hidden = true; break; }
-                                }
-                                return hidden ? Colors.outline : Styling.srItem("primary");
-                            }
+                            color: root._hidden.indexOf(_key) >= 0 ? Colors.outline : Styling.srItem("primary")
                             Layout.alignment: Qt.AlignVCenter
-                        }
 
-                        // Activate on click
-                        MouseArea {
-                            anchors.fill: circleIcon; anchors.margins: -4
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.toggleItemVis(modelData);
-                                mouse.accepted = true;
+                            MouseArea {
+                                anchors.fill: parent; anchors.margins: -4
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    root._toggle(_key);
+                                    mouse.accepted = true;
+                                }
                             }
                         }
 
@@ -335,18 +295,6 @@ Item {
                             font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground; elide: Text.ElideRight
                             Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
-                        }
-                    }
-
-                    MouseArea {
-                        id: sm; anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: event => {
-                            if (event.button === Qt.LeftButton) { modelData.activate(); settingsPopup.close(); }
-                            else if (event.button === Qt.RightButton && modelData.hasMenu) {
-                                root.contextItem = modelData; ctxPopup.open();
-                            }
                         }
                     }
                 }
