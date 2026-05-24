@@ -149,9 +149,20 @@ property bool hov: false
     // ── Native context menu ──
     BarPopup {
         id: ctxPopup; anchorItem: _ctxAnchor || root; bar: root.bar
+        contentWidth: 240
+        contentHeight: Math.max(50, Math.min(ctxCol.implicitHeight + 16, 400))
         QsMenuOpener { id: mo; menu: root._ctxItem ? root._ctxItem.menu : null }
         ColumnLayout {
-            anchors.fill: parent; anchors.margins: 4; spacing: 4
+            id: ctxCol
+            anchors.fill: parent; anchors.margins: 6; spacing: 2
+            Text {
+                text: "No actions"
+                font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                color: Colors.outline
+                visible: !mo.children || !mo.children.values || mo.children.values.length === 0
+                Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
+                Layout.topMargin: 8; Layout.bottomMargin: 8
+            }
             Repeater {
                 model: mo.children ? mo.children.values : []
                 delegate: Item {
