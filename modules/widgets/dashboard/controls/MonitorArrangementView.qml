@@ -305,15 +305,13 @@ StyledRect {
                 width: Math.max(parent.width, root.viewBounds_.spanW * root.viewScale + 20)
                 height: Math.max(parent.height, root.viewBounds_.spanH * root.viewScale + 20)
 
-                // Grid lines at real-coordinate intervals
+                // Subtle grid at 500px intervals
                 Repeater {
                     model: Math.floor(root.viewBounds_.spanW / 500) + 2
                     Rectangle {
                         x: root.realToCanvasX(root.viewBounds_.minX + index * 500)
-                        y: 0
-                        width: 1
-                        height: scrollBox.height
-                        color: Qt.rgba(Colors.outlineVariant.r, Colors.outlineVariant.g, Colors.outlineVariant.b, 0.1)
+                        y: 0; width: 1; height: scrollBox.height
+                        color: Qt.rgba(Colors.outlineVariant.r, Colors.outlineVariant.g, Colors.outlineVariant.b, 0.06)
                     }
                 }
                 Repeater {
@@ -321,23 +319,23 @@ StyledRect {
                     Rectangle {
                         x: 0
                         y: root.realToCanvasY(root.viewBounds_.minY + index * 500)
-                        width: scrollBox.width
-                        height: 1
-                        color: Qt.rgba(Colors.outlineVariant.r, Colors.outlineVariant.g, Colors.outlineVariant.b, 0.1)
+                        width: scrollBox.width; height: 1
+                        color: Qt.rgba(Colors.outlineVariant.r, Colors.outlineVariant.g, Colors.outlineVariant.b, 0.06)
                     }
                 }
 
-                // Origin marker
-                Rectangle {
-                    x: root.realToCanvasX(0) - 4
-                    y: root.realToCanvasY(0) - 4
-                    width: 8; height: 8; radius: 4
-                    color: Qt.rgba(Colors.outline.r, Colors.outline.g, Colors.outline.b, 0.4)
+                // Origin marker (0,0)
+                StyledRect {
+                    x: root.realToCanvasX(0) - 5
+                    y: root.realToCanvasY(0) - 5
+                    width: 10; height: 10
+                    radius: Styling.radius(-10)
+                    variant: "primary"
+                    opacity: 0.6
                 }
-
-                // Origin cross
-                Rectangle { x: root.realToCanvasX(0) - 1; y: 0; width: 2; height: scrollBox.height; color: Qt.rgba(Colors.outline.r, Colors.outline.g, Colors.outline.b, 0.06); }
-                Rectangle { x: 0; y: root.realToCanvasY(0) - 1; width: scrollBox.width; height: 2; color: Qt.rgba(Colors.outline.r, Colors.outline.g, Colors.outline.b, 0.06); }
+                // Origin axes
+                Rectangle { x: root.realToCanvasX(0) - 1; y: 0; width: 2; height: scrollBox.height; color: Qt.rgba(Colors.outline.r, Colors.outline.g, Colors.outline.b, 0.04); }
+                Rectangle { x: 0; y: root.realToCanvasY(0) - 1; width: scrollBox.width; height: 2; color: Qt.rgba(Colors.outline.r, Colors.outline.g, Colors.outline.b, 0.04); }
 
                 // Monitor items
                 Repeater {
@@ -363,8 +361,9 @@ StyledRect {
                         // Body
                         StyledRect {
                             anchors.fill: parent
-                            variant: modelData.focused ? "primary" : "internalbg"
-                            radius: 6
+                            variant: modelData.focused ? "primary" : "common"
+                            radius: Styling.radius(-2)
+                            enableShadow: true
                             border.width: modelData.focused ? 1.5 : 1
                             border.color: modelData.focused
                                 ? Styling.srItem("primary")
@@ -390,13 +389,14 @@ StyledRect {
                                 color: Colors.outline
                             }                            Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: modelData.width + "×" + modelData.height + "  @" + modelData.scale.toFixed(2) + "x"
+                                text: modelData.width + "×" + modelData.height
+                                font.family: Config.theme.font
                                 font.pixelSize: Math.max(7, Math.min(10, Styling.fontSize(-4)))
                                 color: Colors.outline
                             }
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: Math.round(logicalW) + "×" + Math.round(logicalH) + " logical"
+                                text: "@" + modelData.scale.toFixed(2) + "x  (" + Math.round(logicalW) + "×" + Math.round(logicalH) + " logical)"
                                 font.pixelSize: Math.max(7, Math.min(10, Styling.fontSize(-4)))
                                 color: Colors.outlineVariant
                             }
@@ -536,11 +536,12 @@ StyledRect {
                         }
 
                         // Hover glow
-                        Rectangle {
-                            anchors.fill: parent; anchors.margins: -3; radius: 8
-                            color: "transparent"; border.width: 1.5
-                            border.color: Qt.rgba(Styling.srItem("primary").r, Styling.srItem("primary").g, Styling.srItem("primary").b, 0.4)
-                            visible: dragArea.containsMouse || dragArea.pressed
+                        StyledRect {
+                            anchors.fill: parent; anchors.margins: -3
+                            variant: "common"
+                            radius: Styling.radius(-1)
+                            opacity: dragArea.containsMouse ? 0.3 : 0.0
+                            Behavior on opacity { NumberAnimation { duration: 150 } }
                             z: -1
                         }
                     }
@@ -548,33 +549,41 @@ StyledRect {
             }
         }
 
-        // Info bar
-        RowLayout {
+        // Info bar — clean status line
+        StyledRect {
             Layout.fillWidth: true
-            spacing: 8
+            Layout.preferredHeight: 24
+            variant: "internalbg"
+            radius: Styling.radius(-4)
 
-            Text {
-                Layout.fillWidth: true
-                text: {
-                    if (root.monitors.length === 0) return "No monitors detected";
-                    var parts = [];
-                    for (var i = 0; i < root.monitors.length; i++) {
-                        var m = root.monitors[i];
-                        parts.push(m.name + " @ " + m.x + "," + m.y);
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 10; anchors.rightMargin: 10
+                spacing: 8
+
+                Text {
+                    Layout.fillWidth: true
+                    text: {
+                        if (root.monitors.length === 0) return "No monitors detected";
+                        var parts = [];
+                        for (var i = 0; i < root.monitors.length; i++) {
+                            var m = root.monitors[i];
+                            parts.push(m.name + " @ " + m.x + "," + m.y);
+                        }
+                        return (root.hasChanges ? Icons.check + "  " : Icons.cursorMove + "  ") + parts.join("  ·  ");
                     }
-                    return (root.hasChanges ? "✓ " : "🖱 ") + parts.join("  ·  ");
+                    font.family: Config.theme.font
+                    font.pixelSize: Styling.fontSize(-3)
+                    color: Colors.outline
+                    elide: Text.ElideRight
                 }
-                font.family: Config.theme.font
-                font.pixelSize: Styling.fontSize(-4)
-                color: Colors.outline
-                elide: Text.ElideRight
-            }
 
-            Text {
-                text: "1:" + root.viewScale.toFixed(2)
-                font.family: Config.theme.font
-                font.pixelSize: Styling.fontSize(-5)
-                color: Colors.outlineVariant
+                Text {
+                    text: Icons.zoomIn + " 1:" + root.viewScale.toFixed(2)
+                    font.family: Config.theme.font
+                    font.pixelSize: Styling.fontSize(-4)
+                    color: Colors.outlineVariant
+                }
             }
         }
     }
