@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import Quickshell.Widgets
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Wayland
@@ -87,7 +88,7 @@ Item {
                     }
                 }
                 var nextIdx = (currentIdx + 1) % toplevels.length;
-                ToplevelManager.focus(toplevels[nextIdx].address);
+                toplevels[nextIdx].activate();
             } else if (root.appData.pinned) {
                 // Launch pinned app
                 TaskbarApps.launchApp(root.appData.appId);
@@ -110,7 +111,7 @@ Item {
                     icon.source: "image://desktop-icon/" + root.appData.appId
 
                     onTriggered: {
-                        ToplevelManager.focus(modelData.address);
+                        modelData.activate();
                         menu.dismiss();
                     }
                 }
