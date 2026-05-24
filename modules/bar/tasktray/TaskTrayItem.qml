@@ -1,23 +1,22 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import qs.modules.components
 import Quickshell.Wayland
 import qs.modules.theme
 import qs.modules.services
+import qs.modules.components
 import qs.config
 
 /**
- * TaskTrayItem — Single running app icon in the task tray
- * Matches the style of dock app buttons (small, clean, indicator dot)
+ * TaskTrayItem — Running app icon in the task tray dock
+ * Shows app icon with clean styling. Left-click to focus, right-click for window list.
  */
 Item {
     id: root
 
-    required property var appData  // TaskbarApps entry (appId, toplevels, pinned, toplevelCount)
+    required property var appData
     property int iconSize: 18
 
     readonly property bool hasWindows: appData && appData.toplevels && appData.toplevels.length > 0
@@ -37,18 +36,19 @@ Item {
         onHoveredChanged: root.isHovered = hovered
     }
 
-    // Hover background
+    // Hover/active background
     StyledRect {
         anchors.fill: parent
-        variant: "bg"
+        anchors.margins: 1
+        variant: root.isActive ? "primary" : (root.isHovered ? "focus" : "bg")
         radius: 4
-        opacity: root.isHovered ? 0.4 : 0.0
+        enableShadow: false
+        opacity: root.isActive ? 1.0 : (root.isHovered ? 0.8 : 0.0)
         Behavior on opacity { NumberAnimation { duration: 100 } }
     }
 
     // App icon
     Image {
-        id: appIcon
         anchors.centerIn: parent
         width: root.iconSize
         height: root.iconSize
@@ -56,25 +56,9 @@ Item {
         sourceSize.width: root.iconSize * 2
         sourceSize.height: root.iconSize * 2
         fillMode: Image.PreserveAspectFit
-        opacity: root.isActive ? 1.0 : 0.7
-        Behavior on opacity { NumberAnimation { duration: 100 } }
     }
 
-    // Active indicator
-    Rectangle {
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottomMargin: 2
-        width: root.isActive ? 5 : 3
-        height: root.isActive ? 5 : 3
-        radius: width / 2
-        color: root.isActive ? Styling.srItem("primary") : Colors.outline
-        opacity: root.hasWindows ? 1.0 : 0.0
-        Behavior on width { NumberAnimation { duration: 150 } }
-        Behavior on opacity { NumberAnimation { duration: 150 } }
-    }
-
-    // Click handlers
+    // Click handler
     MouseArea {
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
@@ -82,7 +66,6 @@ Item {
 
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
-                // Show window list context menu
                 var menu = winMenuComponent.createObject(root);
                 menu.appData = root.appData;
                 menu.popup();
@@ -100,7 +83,6 @@ Item {
                 var next = (idx + 1) % windows.length;
                 windows[next].activate();
             } else if (root.appData.pinned) {
-                // Launch pinned app
                 TaskbarApps.launchApp(root.appData.appId);
             }
         }
@@ -115,7 +97,6 @@ Item {
 
             Instantiator {
                 model: root.appData.toplevels || []
-
                 MenuItem {
                     required property var modelData
                     text: modelData.title || modelData.appId || "Window"
@@ -124,7 +105,6 @@ Item {
                         menu.close();
                     }
                 }
-
                 onObjectAdded: (idx, obj) => menu.insertItem(idx, obj)
                 onObjectRemoved: (idx, obj) => menu.removeItem(obj)
             }

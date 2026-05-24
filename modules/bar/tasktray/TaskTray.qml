@@ -8,21 +8,23 @@ import Quickshell.Wayland
 import qs.modules.theme
 import qs.modules.services
 import qs.modules.components
+import qs.modules.globals
 import qs.config
 
 /**
  * TaskTray — Running applications in the bar with show/hide toggle
  *
- * Matches the visual style of other bar components (ControlsButton, BatteryIndicator, etc.).
- * Toggle button: StyledRect with primary variant when open.
- * Animated expand/collapse of app icons.
- * Right-click toggle → BarPopup with task list.
+ * Matches the visual style of LayoutSelectorButton and other bar buttons.
+ * Toggle icon with StyledRect bg/primary variants, hover animation.
+ * Shows running app icons in a dock-like container when expanded.
+ * Right-click → BarPopup with full app list.
  */
 Item {
     id: root
 
     required property var bar
     property bool vertical: bar.orientation === "vertical"
+    property bool isHovered: false
     property bool layerEnabled: true
 
     property real radius: 0
@@ -35,12 +37,10 @@ Item {
 
     // State
     property bool expanded: true
-    property bool isHovered: false
     readonly property bool hasRunningApps: runningApps.length > 0
 
-    // Available running apps (non-pinned, with windows)
+    // Running apps (from TaskbarApps, filtered to only those with windows)
     readonly property var runningApps: {
-        // Return ALL taskbar apps for the popup, but only running ones for inline display
         var all = TaskbarApps.apps;
         if (!all) return [];
         var result = [];
@@ -54,28 +54,45 @@ Item {
         return result;
     }
 
-    // Size: same as other bar buttons (36x36 for the button, plus app icons)
-    Layout.preferredWidth: vertical ? 36 : implicitWidth
-    Layout.preferredHeight: vertical ? implicitHeight : 36
+    // Popup visibility
+    property bool popupOpen: taskPopup.isOpen
+
+    // Layout sizing
+    Layout.preferredWidth: vertical ? 36 : implicitContentWidth
+    Layout.preferredHeight: vertical ? implicitContentHeight : 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
 
-    width: vertical ? 36 : (showToggleButton ? toggleButtonSize + appIconsWidth : appIconsWidth)
-    height: vertical ? (showToggleButton ? toggleButtonSize + appIconsHeight : appIconsHeight) : 36
-    implicitWidth: width
-    implicitHeight: height
+    readonly property int toggleSize: 36
+    readonly property int appItemSize: 32
 
-    readonly property int toggleButtonSize: 36
-    readonly property int appIconsWidth: expanded ? (itemsRow.implicitWidth + 4) : 0
-    readonly property int appIconsHeight: expanded ? itemsColumn.implicitHeight + 4 : 0
+    readonly property int implicitContentWidth: {
+        var w = 0;
+        if (showToggleButton) w += toggleSize;
+        if (expanded && hasRunningApps) {
+            w += 4 + (runningApps.length * (appItemSize + 2));
+        }
+        return Math.max(36, w);
+    }
+    readonly property int implicitContentHeight: {
+        var h = 0;
+        if (showToggleButton) h += toggleSize;
+        if (expanded && hasRunningApps) {
+            h += 4 + (runningApps.length * (appItemSize + 2));
+        }
+        return Math.max(36, h);
+    }
 
-    Behavior on width { enabled: !vertical; NumberAnimation { duration: Config.animDuration > 0 ? Config.animDuration : 150; easing.type: Easing.OutCubic } }
-    Behavior on height { enabled: vertical; NumberAnimation { duration: Config.animDuration > 0 ? Config.animDuration : 150; easing.type: Easing.OutCubic } }
+    width: vertical ? 36 : implicitContentWidth
+    height: vertical ? implicitContentHeight : 36
 
-    // ── Tooltip ──
-    StyledToolTip {
-        show: root.isHovered && !root.expanded && showToggleButton
-        tooltipText: "Running tasks"
+    Behavior on width {
+        enabled: !vertical && Config.animDuration > 0
+        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+    }
+    Behavior on height {
+        enabled: vertical && Config.animDuration > 0
+        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
     }
 
     HoverHandler {
@@ -86,7 +103,7 @@ Item {
     StyledRect {
         id: toggleBtn
         visible: showToggleButton
-        variant: root.expanded ? "primary" : "bg"
+        variant: root.popupOpen ? "primary" : "bg"
         anchors {
             left: vertical ? undefined : parent.left
             top: vertical ? parent.top : undefined
@@ -95,122 +112,116 @@ Item {
             verticalCenter: vertical ? undefined : parent.verticalCenter
             horizontalCenter: vertical ? parent.horizontalCenter : undefined
         }
-        width: toggleButtonSize - 4
-        height: toggleButtonSize - 4
+        width: toggleSize - 4
+        height: toggleSize - 4
         enableShadow: root.layerEnabled
 
-        topLeftRadius: root.vertical ? root.startRadius : root.startRadius
-        topRightRadius: root.vertical ? root.startRadius : root.endRadius
-        bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
-        bottomRightRadius: root.vertical ? root.endRadius : root.endRadius
+        topLeftRadius: vertical ? startRadius : startRadius
+        topRightRadius: vertical ? startRadius : endRadius
+        bottomLeftRadius: vertical ? endRadius : startRadius
+        bottomRightRadius: vertical ? endRadius : endRadius
 
         // Hover overlay
         Rectangle {
             anchors.fill: parent
             color: Styling.srItem("overprimary")
-            opacity: root.expanded ? 0 : (root.isHovered ? 0.25 : 0)
+            opacity: root.popupOpen ? 0 : (root.isHovered ? 0.25 : 0)
             radius: parent.radius ?? 0
-            Behavior on opacity { NumberAnimation { duration: 100 } }
+            Behavior on opacity {
+                enabled: Config.animDuration > 0
+                NumberAnimation { duration: Config.animDuration / 2 }
+            }
         }
 
-        // Icon: window/list icon
+        // Icon
         Text {
             anchors.centerIn: parent
             text: Icons.terminalWindow
             font.family: Icons.font
-            font.pixelSize: 16
-            color: root.expanded ? Styling.srItem("overprimary") : Colors.overBackground
-            Behavior on color { ColorAnimation { duration: 100 } }
+            font.pixelSize: 18
+            color: root.popupOpen ? toggleBtn.item : Styling.srItem("overprimary")
         }
 
-        // Running app count indicator (small dot)
-        Rectangle {
-            anchors.bottom: parent.bottom
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottomMargin: 3
-            width: root.expanded ? 6 : 4
-            height: root.expanded ? 6 : 4
-            radius: width / 2
-            color: root.hasRunningApps
-                ? (root.expanded ? Styling.srItem("overprimary") : Styling.srItem("primary"))
-                : Colors.outline
-            opacity: root.hasRunningApps ? 1.0 : 0.3
-            Behavior on width { NumberAnimation { duration: 150 } }
-            Behavior on color { ColorAnimation { duration: 150 } }
+        // Running count badge when collapsed
+        StyledRect {
+            anchors.top: parent.top
+            anchors.right: parent.right
+            anchors.topMargin: -2
+            anchors.rightMargin: -2
+            width: 16; height: 16
+            radius: 8
+            variant: "primary"
+            visible: hasRunningApps && !root.expanded
+
+            Text {
+                anchors.centerIn: parent
+                text: Math.min(runningApps.length, 99)
+                font.family: Config.theme.font
+                font.pixelSize: 9
+                font.bold: true
+                color: Colors.background
+            }
         }
 
         MouseArea {
-            id: toggleArea
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
             acceptedButtons: Qt.LeftButton | Qt.RightButton
-
             onClicked: mouse => {
                 if (mouse.button === Qt.RightButton) {
-                    root.showPopup();
+                    taskPopup.open();
                 } else {
                     root.expanded = !root.expanded;
                 }
             }
         }
+
+        StyledToolTip {
+            visible: root.isHovered && !root.popupOpen
+            tooltipText: hasRunningApps ? runningApps.length + " tasks running" : "No running tasks"
+        }
     }
 
-    // ── Running app icons (inline, animated) ──
-    RowLayout {
-        id: itemsRow
-        visible: !vertical && (expanded || !showToggleButton)
+    // ── Running app icons (dock-style container) ──
+    StyledRect {
+        id: dockBg
         anchors {
             left: showToggleButton ? toggleBtn.right : parent.left
             leftMargin: 2
             verticalCenter: parent.verticalCenter
         }
-        spacing: 2
-        opacity: expanded || !showToggleButton ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 100 } }
+        width: dockRow.implicitWidth + 8
+        height: 32
+        variant: "bg"
+        radius: 6
+        enableShadow: root.layerEnabled
+        visible: expanded && hasRunningApps
 
-        Repeater {
-            model: root.runningApps
-
-            TaskTrayItem {
-                required property var modelData
-                appData: modelData
-                iconSize: 18
-                Layout.alignment: Qt.AlignVCenter
-            }
+        opacity: expanded ? 1.0 : 0.0
+        Behavior on opacity {
+            enabled: Config.animDuration > 0
+            NumberAnimation { duration: Config.animDuration / 2 }
         }
-    }
 
-    ColumnLayout {
-        id: itemsColumn
-        visible: vertical && (expanded || !showToggleButton)
-        anchors {
-            top: showToggleButton ? toggleBtn.bottom : parent.top
-            topMargin: 2
-            horizontalCenter: parent.horizontalCenter
-        }
-        spacing: 2
-        opacity: expanded || !showToggleButton ? 1.0 : 0.0
-        Behavior on opacity { NumberAnimation { duration: 100 } }
+        RowLayout {
+            id: dockRow
+            anchors.centerIn: parent
+            spacing: 2
 
-        Repeater {
-            model: root.runningApps
+            Repeater {
+                model: root.runningApps
 
-            TaskTrayItem {
-                required property var modelData
-                appData: modelData
-                iconSize: 18
-                Layout.alignment: Qt.AlignHCenter
+                TaskTrayItem {
+                    required property var modelData
+                    appData: modelData
+                    iconSize: 18
+                    Layout.alignment: Qt.AlignVCenter
+                }
             }
         }
     }
 
     // ── Popup (right-click) ──
-    property bool popupOpen: taskPopup.isOpen
-
-    function showPopup() {
-        taskPopup.open();
-    }
-
     BarPopup {
         id: taskPopup
         anchorItem: showToggleButton ? toggleBtn : root
@@ -221,7 +232,6 @@ Item {
             anchors.margins: 6
             spacing: 2
 
-            // Header
             Text {
                 text: "Running Tasks"
                 font.family: Config.theme.font
@@ -233,18 +243,15 @@ Item {
                 leftPadding: 4
             }
 
-            // App list
             Repeater {
                 model: root.runningApps
 
                 delegate: Item {
                     id: popupItem
-                    required property int index
                     required property var modelData
 
                     Layout.fillWidth: true
                     Layout.preferredHeight: 32
-                    height: 32
 
                     StyledRect {
                         id: itemBg
@@ -267,25 +274,13 @@ Item {
                             fillMode: Image.PreserveAspectFit
                         }
 
-                        ColumnLayout {
+                        Text {
+                            text: modelData.appId
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overBackground
+                            elide: Text.ElideRight
                             Layout.fillWidth: true
-                            spacing: 0
-
-                            Text {
-                                text: modelData.appId
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(-2)
-                                font.bold: true
-                                color: Colors.overBackground
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                            }
-                            Text {
-                                text: modelData.toplevelCount + " window" + (modelData.toplevelCount !== 1 ? "s" : "")
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(-4)
-                                color: Colors.outline
-                            }
                         }
 
                         Text {
@@ -302,7 +297,6 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
-
                         onClicked: {
                             if (modelData.toplevels && modelData.toplevels.length > 0) {
                                 modelData.toplevels[0].activate();
@@ -313,13 +307,12 @@ Item {
                 }
             }
 
-            // Empty state
             Text {
-                text: "No running tasks"
+                text: runningApps.length === 0 ? "No running tasks" : ""
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 color: Colors.outline
-                visible: root.runningApps.length === 0
+                visible: runningApps.length === 0
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
                 Layout.topMargin: 12
