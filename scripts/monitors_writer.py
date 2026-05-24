@@ -222,6 +222,50 @@ def write_lua(lines, path):
     print(f"[OK] Wrote {path} ({len(lines)} lines)")
 
 
+def _inject_monitors_conf(lines, path):
+    """Inject monitor=  lines into NothingLess hyprland.conf between markers"""
+    start_mark = "# === NOTHINGLESS MONITORS ===\n"
+    end_mark = "# === END MONITORS ===\n"
+    monitor_lines = [l for l in lines if l.startswith("monitor=")]
+    block = start_mark + "\n".join(monitor_lines) + "\n" + end_mark
+    
+    with open(path) as f:
+        content = f.read()
+    
+    # Remove old block if exists
+    if start_mark in content:
+        before = content.split(start_mark)[0]
+        after = content.split(end_mark)[1] if end_mark in content else ""
+        content = before + after
+    
+    # Append new block
+    content = content.rstrip() + "\n\n" + block
+    with open(path, "w") as f:
+        f.write(content)
+    print(f"[OK] Injected {len(monitor_lines)} monitors into {path}")
+
+
+def _inject_monitors_lua(lines, path):
+    """Inject hl.monitor() lines into NothingLess hyprland.lua between markers"""
+    start_mark = "-- === NOTHINGLESS MONITORS ===\n"
+    end_mark = "-- === END MONITORS ===\n"
+    lua_lines = [l for l in lines if l.startswith("hl.monitor")]
+    block = start_mark + "\n".join(lua_lines) + "\n" + end_mark
+    
+    with open(path) as f:
+        content = f.read()
+    
+    if start_mark in content:
+        before = content.split(start_mark)[0]
+        after = content.split(end_mark)[1] if end_mark in content else ""
+        content = before + after
+    
+    content = content.rstrip() + "\n\n" + block
+    with open(path, "w") as f:
+        f.write(content)
+    print(f"[OK] Injected monitors into {path}")
+
+
 def cmd_sync(args):
     """Read monitors and write configs"""
     config_dir = get_config_dir()
@@ -245,6 +289,15 @@ def cmd_sync(args):
 
     write_conf(conf_lines, conf_path)
     write_lua(lua_lines, lua_path)
+
+    # Also inject into NothingLess hyprland.conf (sourced by hyprland.conf)
+    nl_dir = os.path.expanduser("~/.local/share/nothingless")
+    nl_conf = os.path.join(nl_dir, "hyprland.conf")
+    nl_lua = os.path.join(nl_dir, "hyprland.lua")
+    if os.path.isfile(nl_conf):
+        _inject_monitors_conf(conf_lines, nl_conf)
+    if os.path.isfile(nl_lua):
+        _inject_monitors_lua(lua_lines, nl_lua)
 
     if not args.no_apply:
         print("[INFO] Applying live...")
