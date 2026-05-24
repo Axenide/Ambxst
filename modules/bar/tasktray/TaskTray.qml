@@ -26,8 +26,8 @@ Item {
     property bool expanded: false
     readonly property var allItems: SystemTray.items || []
 
-    // Per-item visibility state
-    property var hiddenMap: ({})  // keyed by item title
+    // Per-item visibility
+    property var hiddenMap: ({})
     function isHidden(item) {
         var key = (item.title || item.tooltipTitle || "").toLowerCase();
         return hiddenMap[key] === true;
@@ -39,47 +39,51 @@ Item {
         root.hiddenMap = h;
     }
 
-    readonly property var visibleItems: {
-        var items = root.allItems;
-        var result = [];
-        for (var i = 0; i < items.length; i++) {
-            if (!root.isHidden(items[i])) result.push(items[i]);
-        }
-        return result;
-    }
-    readonly property int visibleCount: visibleItems.length
     readonly property int totalCount: allItems.length
+    readonly property int visibleCount: {
+        var n = 0;
+        for (var i = 0; i < allItems.length; i++) {
+            if (!root.isHidden(allItems[i])) n++;
+        }
+        return n;
+    }
 
     property var contextItem: null
 
-    // ── Sizing ──
-    Layout.preferredWidth: 36
+    // ── Dynamic sizing: grows when expanded ──
+    readonly property int dockW: expanded && visibleCount > 0 ? visibleCount * 28 + 10 : 0
+    Layout.preferredWidth: 36 + (expanded ? 2 + dockW : 0)
     Layout.preferredHeight: 36
-    Layout.maximumWidth: 36
-    Layout.maximumHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
-    width: 36; height: 36
+    width: 36 + (expanded ? 2 + dockW : 0)
+    height: 36
+
+    Behavior on Layout.preferredWidth {
+        enabled: !vertical && Config.animDuration > 0
+        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+    }
 
     HoverHandler { onHoveredChanged: root.isHovered = hovered }
 
-    // ── Toggle button ──
+    // ── Toggle button (always 36px on the left) ──
     StyledRect {
         id: toggleBtn
-        anchors.fill: parent
+        anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
+        width: 36
         variant: "bg"
         enableShadow: root.layerEnabled && Config.showBackground
-        z: 10
+        z: 2
 
         topLeftRadius: root.vertical ? root.startRadius : root.startRadius
-        topRightRadius: root.endRadius
+        topRightRadius: root.expanded ? 0 : root.endRadius
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
-        bottomRightRadius: root.endRadius
+        bottomRightRadius: root.expanded ? 0 : root.endRadius
 
         Rectangle {
             anchors.fill: parent
             color: Styling.srItem("overprimary")
-            opacity: root.isHovered ? 0.25 : 0
+            opacity: root.isHovered && !root.expanded ? 0.25 : 0
             radius: parent.radius ?? 0
             Behavior on opacity {
                 enabled: Config.animDuration > 0
@@ -102,8 +106,7 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: Math.min(visibleCount, 9)
-                font.family: Config.theme.font; font.pixelSize: 8; font.bold: true
-                color: Colors.background
+                font.family: Config.theme.font; font.pixelSize: 8; font.bold: true; color: Colors.background
             }
         }
 
@@ -123,44 +126,40 @@ Item {
         }
     }
 
-    // ── Floating dock (appears to the right) ──
+    // ── Expanded dock (inline, to the right of toggle) ──
     StyledRect {
         id: dockBg
-        anchors {
-            left: toggleBtn.right; leftMargin: 2
-            verticalCenter: parent.verticalCenter
-        }
-        height: 30
-        width: dockRow.implicitWidth + 8
+        anchors.left: toggleBtn.right; anchors.right: parent.right
+        anchors.top: parent.top; anchors.bottom: parent.bottom
+        visible: expanded && visibleCount > 0
         variant: "bg"
-        radius: 6
-        enableShadow: root.layerEnabled && Config.showBackground
-        z: 10
+        enableShadow: false
         clip: true
 
-        visible: root.expanded && visibleCount > 0
-        opacity: root.expanded ? 1.0 : 0.0
-        scale: root.expanded ? 1.0 : 0.8
-        transformOrigin: Item.LeftCenter
+        topLeftRadius: 0
+        topRightRadius: root.endRadius
+        bottomLeftRadius: 0
+        bottomRightRadius: root.endRadius
+
+        opacity: expanded ? 1.0 : 0.0
         Behavior on opacity {
             enabled: Config.animDuration > 0
             NumberAnimation { duration: Config.animDuration / 2 }
         }
-        Behavior on scale {
-            enabled: Config.animDuration > 0
-            NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
-        }
 
         RowLayout {
-            id: dockRow; anchors.centerIn: parent; spacing: 2
+            anchors.centerIn: parent
+            spacing: 2
 
             Repeater {
-                model: root.visibleItems
+                model: root.allItems
 
                 delegate: Item {
                     required property SystemTrayItem modelData
-                    width: 24; height: 24
+                    width: 26; height: 26
+                    visible: !root.isHidden(modelData)
                     property bool hov: false
+
                     HoverHandler { onHoveredChanged: hov = hovered }
 
                     StyledRect {
@@ -180,8 +179,9 @@ Item {
                         cursorShape: Qt.PointingHandCursor
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         onClicked: event => {
-                            if (event.button === Qt.LeftButton) modelData.activate();
-                            else if (event.button === Qt.RightButton && modelData.hasMenu) {
+                            if (event.button === Qt.LeftButton) {
+                                modelData.activate();
+                            } else if (event.button === Qt.RightButton && modelData.hasMenu) {
                                 root.contextItem = modelData;
                                 ctxPopup.open();
                             }
@@ -239,7 +239,7 @@ Item {
         }
     }
 
-    // ── Settings popup ──
+    // ── Settings popup (right-click on toggle) ──
     BarPopup {
         id: settingsPopup; anchorItem: toggleBtn; bar: root.bar
 
@@ -247,7 +247,7 @@ Item {
             anchors.fill: parent; anchors.margins: 6; spacing: 2
 
             Text {
-                text: "Tray Icons (" + visibleCount + "/" + totalCount + " visible)"
+                text: "Tray Icons (" + visibleCount + "/" + totalCount + ")"
                 font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1)
                 font.bold: true; color: Colors.overBackground
                 Layout.fillWidth: true; Layout.bottomMargin: 4; leftPadding: 4
@@ -269,14 +269,13 @@ Item {
                     RowLayout {
                         anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 8
 
-                        // Eye toggle
                         Text {
                             text: root.isHidden(modelData) ? Icons.circleNotch : Icons.circle
                             font.family: Icons.font; font.pixelSize: 16
                             color: root.isHidden(modelData) ? Colors.outline : Styling.srItem("primary")
                             Layout.alignment: Qt.AlignVCenter
                             MouseArea {
-                                anchors.fill: parent; anchors.margins: -4
+                                anchors.fill: parent; anchors.margins: -6
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.toggleHidden(modelData)
                             }
@@ -292,12 +291,6 @@ Item {
                             font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground; elide: Text.ElideRight
                             Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
-                        }
-
-                        Text {
-                            text: Icons.caretRight
-                            font.family: Icons.font; font.pixelSize: 12; color: Colors.outline
-                            visible: sm.containsMouse; Layout.alignment: Qt.AlignVCenter
                         }
                     }
 
