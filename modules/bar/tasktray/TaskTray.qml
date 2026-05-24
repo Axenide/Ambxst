@@ -25,10 +25,10 @@ Item {
     property int _t: 0
     Timer { interval: 2000; repeat: true; running: true; onTriggered: _t++; }
 
-    readonly property int _n: { _t; return SystemTray && SystemTray.items ? SystemTray.items.length : 0; }
-    readonly property int _dw: expanded && _n > 0 ? Math.min(_n, 10) * 32 + 10 : 0
+    readonly property int _n: { _t; return SystemTray && SystemTray.items ? (SystemTray.items.length || 0) : 0; }
+    readonly property int _dw: expanded && _n > 0 ? Math.min(Math.max(_n, 0), 10) * 32 + 10 : 0
 
-    Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
+    Layout.preferredWidth: 36 + (expanded ? 2 + Math.max(0, _dw) : 0)
     Layout.preferredHeight: 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
