@@ -457,6 +457,8 @@ Item {
                         // Running tasks tray
                         TaskTray {
                             bar: root
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
                         }
                         ControlsButton {
             visible: !Config.bar.hiddenIcons.includes("controls")
@@ -511,6 +513,8 @@ Item {
                         }
                         TaskTray {
                             bar: root
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
                         }
                         ToolsButton {
                             id: toolsButtonVert
