@@ -457,7 +457,6 @@ Item {
                         // Running tasks tray
                         TaskTray {
                             bar: root
-                            orientation: root.orientation
                         }
                         ControlsButton {
             visible: !Config.bar.hiddenIcons.includes("controls")
@@ -512,7 +511,6 @@ Item {
                         }
                         TaskTray {
                             bar: root
-                            orientation: root.orientation
                         }
                         ToolsButton {
                             id: toolsButtonVert
