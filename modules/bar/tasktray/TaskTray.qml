@@ -9,17 +9,8 @@ import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.services
 import qs.modules.components
-import qs.modules.globals
 import qs.config
 
-/**
- * TaskTray — Systray overflow tray with toggle button
- *
- * Matches LayoutSelectorButton / ControlsButton styling exactly.
- * Toggle icon: StyledRect bg/primary with rounded corners from parent bar.
- * Expanded dock floats/overlaps to the right (z: 10) so it doesn't require layout resize.
- * Right-click toggle → BarPopup. Right-click tray icon → native QsMenuOpener.
- */
 Item {
     id: root
 
@@ -32,17 +23,17 @@ Item {
     property real startRadius: radius
     property real endRadius: radius
 
-    // Config
     readonly property bool taskTrayEnabled: Config.bar?.taskTrayEnabled ?? true
     readonly property bool showToggleButton: Config.bar?.taskTrayShowToggle ?? true
 
-    // State
     property bool expanded: false
     readonly property bool hasItems: SystemTray.items.length > 0
     readonly property bool popupOpen: trayPopup.isOpen
     readonly property var trayItems: SystemTray.items || []
 
-    // ── EXACT same sizing as LayoutSelectorButton ──
+    // Tray icon context menu state
+    property var activeTrayItem: null
+
     Layout.preferredWidth: 36
     Layout.preferredHeight: 36
     Layout.maximumWidth: 36
@@ -50,14 +41,13 @@ Item {
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
 
-    width: 36
-    height: 36
+    width: 36; height: 36
 
     HoverHandler {
         onHoveredChanged: root.isHovered = hovered
     }
 
-    // ── Toggle button — matches LayoutSelectorButton pixel-perfect ──
+    // ── Toggle button — matches LayoutSelectorButton ──
     StyledRect {
         id: toggleBtn
         anchors.fill: parent
@@ -70,7 +60,6 @@ Item {
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
         bottomRightRadius: root.vertical ? root.endRadius : root.endRadius
 
-        // Hover overlay — same as LayoutSelectorButton
         Rectangle {
             anchors.fill: parent
             color: Styling.srItem("overprimary")
@@ -85,12 +74,11 @@ Item {
         Text {
             anchors.centerIn: parent
             text: Icons.terminalWindow
-            font.family: Icons.font
-            font.pixelSize: 18
+            font.family: Icons.font; font.pixelSize: 18
             color: root.popupOpen ? toggleBtn.item : Styling.srItem("overprimary")
         }
 
-        // Badge when collapsed
+        // Badge
         StyledRect {
             anchors.top: parent.top; anchors.right: parent.right
             anchors.topMargin: -2; anchors.rightMargin: -2
@@ -124,26 +112,23 @@ Item {
         }
     }
 
-    // ── Systray dock — floats/overlaps to the right (z: 10) ──
+    // ── Systray dock — floating popout ──
     StyledRect {
         id: dockBg
         anchors {
-            left: toggleBtn.right
-            leftMargin: 2
+            left: toggleBtn.right; leftMargin: 2
             verticalCenter: parent.verticalCenter
         }
         width: dockRow.implicitWidth + 8
         height: 30
-        variant: "bg"
-        radius: 6
+        variant: "bg"; radius: 6
         enableShadow: root.layerEnabled
         visible: hasItems
-        z: 10  // Float over adjacent bar items
+        z: 10
 
         opacity: expanded ? 1.0 : 0.0
         scale: expanded ? 1.0 : 0.8
         transformOrigin: Item.LeftCenter
-
         Behavior on opacity {
             enabled: Config.animDuration > 0
             NumberAnimation { duration: Config.animDuration / 2 }
@@ -161,19 +146,17 @@ Item {
             Repeater {
                 model: root.trayItems
 
-                delegate: MouseArea {
+                delegate: Item {
                     id: trayIconArea
                     required property SystemTrayItem modelData
-                    width: 24
-                    height: 24
-                    cursorShape: Qt.PointingHandCursor
-                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    width: 24; height: 24
                     property bool iconHovered: false
 
                     HoverHandler {
                         onHoveredChanged: trayIconArea.iconHovered = hovered
                     }
 
+                    // Hover bg
                     StyledRect {
                         anchors.fill: parent; anchors.margins: 1
                         variant: "bg"; radius: 4
@@ -181,6 +164,7 @@ Item {
                         Behavior on opacity { NumberAnimation { duration: 80 } }
                     }
 
+                    // Tray icon
                     IconImage {
                         id: trayIconImg
                         anchors.centerIn: parent
@@ -194,47 +178,126 @@ Item {
                         anchors.fill: trayIconImg
                     }
 
-                    onClicked: event => {
-                        if (event.button === Qt.LeftButton) {
-                            trayIconArea.modelData.activate();
-                        } else {
-                            // Open native menu via QsMenuOpener
-                            if (trayIconArea.modelData.hasMenu) {
-                                trayMenuOpener.menu = trayIconArea.modelData.menu;
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: event => {
+                            if (event.button === Qt.LeftButton) {
+                                trayIconArea.modelData.activate();
+                            } else {
+                                // Show native tray context menu
+                                if (trayIconArea.modelData.hasMenu) {
+                                    root.activeTrayItem = trayIconArea.modelData;
+                                    trayMenuPopup.open();
+                                }
                             }
+                            event.accepted = true;
                         }
-                        event.accepted = true;
                     }
                 }
             }
         }
     }
 
-    // QsMenuOpener for native systray menus (single instance)
-    QsMenuOpener {
-        id: trayMenuOpener
+    // ── Per-icon native context menu ──
+    BarPopup {
+        id: trayMenuPopup
+        anchorItem: dockBg
+        bar: root.bar
+        visible: root.activeTrayItem !== null
+
+        // QsMenuOpener unwraps the StatusNotifier menu items
+        QsMenuOpener {
+            id: trayMenuOpener
+            menu: root.activeTrayItem ? root.activeTrayItem.menu : null
+        }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 4
+            spacing: 2
+
+            Repeater {
+                model: trayMenuOpener.children ? trayMenuOpener.children.values : []
+
+                delegate: Item {
+                    required property var modelData
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 28
+
+                    readonly property bool isSeparator: modelData.isSeparator === true
+
+                    // Separator
+                    Rectangle {
+                        anchors.left: parent.left; anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        height: 1; color: Colors.outlineVariant
+                        visible: isSeparator
+                    }
+
+                    // Menu item
+                    StyledRect {
+                        anchors.fill: parent
+                        radius: 4
+                        variant: menuMouse.containsMouse ? "focus" : "bg"
+                        visible: !isSeparator
+
+                        RowLayout {
+                            anchors.fill: parent; anchors.leftMargin: 8
+                            spacing: 8
+
+                            // Icon
+                            IconImage {
+                                width: 16; height: 16
+                                source: modelData.icon ?? ""
+                                smooth: true
+                                visible: modelData.icon !== undefined
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            Text {
+                                text: modelData.text || ""
+                                font.family: Styling.defaultFont
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: Colors.overBackground
+                                elide: Text.ElideRight
+                                Layout.fillWidth: true
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                        }
+
+                        MouseArea {
+                            id: menuMouse
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+                            onClicked: {
+                                if (modelData.trigger) modelData.trigger();
+                                trayMenuPopup.close();
+                                root.activeTrayItem = null;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    // ── Right-click popup ──
+    // ── Toggle popup (right-click) ──
     BarPopup {
         id: trayPopup
         anchorItem: toggleBtn
         bar: root.bar
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 6
-            spacing: 2
+            anchors.fill: parent; anchors.margins: 6; spacing: 2
 
             Text {
-                text: "System Tray"
-                font.family: Config.theme.font
-                font.pixelSize: Styling.fontSize(-1)
-                font.bold: true
-                color: Colors.overBackground
-                Layout.fillWidth: true
-                Layout.bottomMargin: 4
-                leftPadding: 4
+                text: "Hidden Icons"
+                font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1)
+                font.bold: true; color: Colors.overBackground
+                Layout.fillWidth: true; Layout.bottomMargin: 4; leftPadding: 4
             }
 
             Repeater {
@@ -242,83 +305,65 @@ Item {
 
                 delegate: Item {
                     required property SystemTrayItem modelData
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 32
+                    Layout.fillWidth: true; Layout.preferredHeight: 32
 
                     StyledRect {
                         anchors.fill: parent
                         variant: popupMouse.containsMouse ? "focus" : "bg"
-                        radius: 4
-                        opacity: popupMouse.containsMouse ? 1.0 : 0.7
+                        radius: 4; opacity: popupMouse.containsMouse ? 1.0 : 0.7
                     }
 
                     RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 6; anchors.rightMargin: 6
-                        spacing: 8
+                        anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 8
 
                         IconImage {
-                            id: popupIcon
                             width: 20; height: 20
-                            source: modelData.icon
-                            smooth: true
+                            source: modelData.icon; smooth: true
                             Layout.alignment: Qt.AlignVCenter
                         }
 
                         Text {
                             text: modelData.tooltipTitle || modelData.title || "App"
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.overBackground
-                            elide: Text.ElideRight
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignVCenter
+                            font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overBackground; elide: Text.ElideRight
+                            Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
                         }
 
                         Text {
                             text: Icons.caretRight
-                            font.family: Icons.font; font.pixelSize: 12
-                            color: Colors.outline
-                            visible: popupMouse.containsMouse
-                            Layout.alignment: Qt.AlignVCenter
+                            font.family: Icons.font; font.pixelSize: 12; color: Colors.outline
+                            visible: popupMouse.containsMouse; Layout.alignment: Qt.AlignVCenter
                         }
                     }
 
                     MouseArea {
-                        id: popupMouse
-                        anchors.fill: parent
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
+                        id: popupMouse; anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor; hoverEnabled: true
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
                         onClicked: event => {
                             if (event.button === Qt.LeftButton) {
-                                modelData.activate();
-                                trayPopup.close();
+                                modelData.activate(); trayPopup.close();
                             } else if (event.button === Qt.RightButton && modelData.hasMenu) {
-                                trayMenuOpener.menu = modelData.menu;
+                                root.activeTrayItem = modelData;
+                                trayMenuPopup.open();
                             }
                         }
                     }
                 }
             }
 
-            // Toggle option
             MenuSeparator {
-                Layout.fillWidth: true
-                visible: hasItems
+                Layout.fillWidth: true; visible: hasItems
                 Layout.topMargin: 4; Layout.bottomMargin: 4
             }
 
             Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 32
-
+                Layout.fillWidth: true; Layout.preferredHeight: 32
                 StyledRect {
                     anchors.fill: parent
                     variant: toggleOption.containsMouse ? "focus" : "bg"
                     radius: 4; opacity: toggleOption.containsMouse ? 1.0 : 0.7
                 }
-
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 6; anchors.rightMargin: 6; spacing: 8
                     Text {
@@ -332,14 +377,10 @@ Item {
                         color: Colors.overBackground; Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter
                     }
                 }
-
                 MouseArea {
-                    id: toggleOption
-                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true
-                    onClicked: {
-                        root.expanded = !root.expanded;
-                        trayPopup.close();
-                    }
+                    id: toggleOption; anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor; hoverEnabled: true
+                    onClicked: { root.expanded = !root.expanded; trayPopup.close(); }
                 }
             }
 
