@@ -24,6 +24,7 @@ Item {
     property real startRadius: radius
     property real endRadius: radius
 
+    // Config
     readonly property bool taskTrayEnabled: Config.bar?.taskTrayEnabled ?? true
     readonly property bool showToggleButton: Config.bar?.taskTrayShowToggle ?? true
 
@@ -32,31 +33,28 @@ Item {
     readonly property bool popupOpen: trayPopup.isOpen
     readonly property var trayItems: SystemTray.items || []
 
-    // ── Same exact sizing as ControlsButton / LayoutSelectorButton ──
-    Layout.preferredWidth: 36
-    Layout.preferredHeight: 36
-    Layout.maximumWidth: 36
-    Layout.maximumHeight: 36
-    Layout.fillWidth: vertical
-    Layout.fillHeight: !vertical
-
-    width: vertical ? 36 : implicitWidthOverride
-    height: vertical ? implicitHeightOverride : 36
-
+    // Dynamic sizing — grows when expanded
+    readonly property int toggleSize: 36
     readonly property int trayItemSize: 24
-
-    // Override width/height when expanded to include the dock
     readonly property int dockWidth: expanded && hasItems ? (dockRow.implicitWidth + 8) : 0
     readonly property int dockHeight: expanded && hasItems ? (dockRow.implicitHeight + 8) : 0
 
-    readonly property int implicitWidthOverride: showToggleButton ? 36 + 2 + dockWidth : dockWidth
-    readonly property int implicitHeightOverride: showToggleButton ? 36 + 2 + dockHeight : dockHeight
+    readonly property int expandWidth: (showToggleButton ? toggleSize + 2 : 0) + dockWidth
+    readonly property int expandHeight: (showToggleButton ? toggleSize + 2 : 0) + dockHeight
 
-    Behavior on width {
+    Layout.preferredWidth: Math.max(toggleSize, expandWidth)
+    Layout.preferredHeight: Math.max(toggleSize, expandHeight)
+    Layout.fillWidth: vertical
+    Layout.fillHeight: !vertical
+
+    width: vertical ? Layout.preferredHeight : Layout.preferredWidth
+    height: vertical ? Layout.preferredWidth : Layout.preferredHeight
+
+    Behavior on Layout.preferredWidth {
         enabled: !vertical && Config.animDuration > 0
         NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
     }
-    Behavior on height {
+    Behavior on Layout.preferredHeight {
         enabled: vertical && Config.animDuration > 0
         NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
     }
@@ -65,7 +63,7 @@ Item {
         onHoveredChanged: root.isHovered = hovered
     }
 
-    // ── Toggle button: same size as LayoutSelectorButton ──
+    // ── Toggle button — same size as LayoutSelectorButton ──
     StyledRect {
         id: toggleBtn
         visible: showToggleButton
@@ -75,7 +73,7 @@ Item {
             top: parent.top
             bottom: parent.bottom
         }
-        width: 36
+        width: toggleSize
         enableShadow: root.layerEnabled
 
         topLeftRadius: vertical ? startRadius : startRadius
@@ -135,7 +133,7 @@ Item {
         }
     }
 
-    // ── Systray dock: always exists so animation works, visibility via opacity ──
+    // ── Systray icons dock ──
     StyledRect {
         id: dockBg
         anchors {
@@ -205,9 +203,13 @@ Item {
                     onClicked: event => {
                         if (event.button === Qt.LeftButton) {
                             trayIconArea.modelData.activate();
-                        } else if (event.button === Qt.RightButton && trayIconArea.modelData.hasMenu) {
-                            var popup = trayIconArea.modelData.menu;
-                            if (popup) popup.open();
+                        } else if (event.button === Qt.RightButton) {
+                            // Open native systray menu via QsMenuOpener
+                            if (trayIconArea.modelData.hasMenu) {
+                                var opener = qsMenuOpenerComp.createObject(trayIconArea);
+                                opener.menu = trayIconArea.modelData.menu;
+                                opener.open();
+                            }
                         }
                         event.accepted = true;
                     }
@@ -216,7 +218,12 @@ Item {
         }
     }
 
-    // ── Popup with per-item toggle option ──
+    Component {
+        id: qsMenuOpenerComp
+        QsMenuOpener {}
+    }
+
+    // ── Popup ──
     BarPopup {
         id: trayPopup
         anchorItem: toggleBtn
@@ -228,7 +235,7 @@ Item {
             spacing: 2
 
             Text {
-                text: "Hidden Icons"
+                text: "System Tray"
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.bold: true
@@ -247,6 +254,7 @@ Item {
                     Layout.preferredHeight: 32
 
                     StyledRect {
+                        id: popupBg
                         anchors.fill: parent
                         variant: popupMouse.containsMouse ? "focus" : "bg"
                         radius: 4
@@ -276,6 +284,7 @@ Item {
                             Layout.alignment: Qt.AlignVCenter
                         }
 
+                        // Right-click sends to native menu; left-click activates
                         Text {
                             text: Icons.caretRight
                             font.family: Icons.font; font.pixelSize: 12
@@ -290,15 +299,22 @@ Item {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
-                        onClicked: {
-                            modelData.activate();
-                            trayPopup.close();
+                        acceptedButtons: Qt.LeftButton | Qt.RightButton
+                        onClicked: event => {
+                            if (event.button === Qt.LeftButton) {
+                                modelData.activate();
+                                trayPopup.close();
+                            } else if (event.button === Qt.RightButton && modelData.hasMenu) {
+                                var opener = qsMenuOpenerComp.createObject(popupBg);
+                                opener.menu = modelData.menu;
+                                opener.open();
+                            }
                         }
                     }
                 }
             }
 
-            // Toggle separator + option
+            // Toggle option
             MenuSeparator {
                 Layout.fillWidth: true
                 visible: hasItems
@@ -330,7 +346,7 @@ Item {
                     }
 
                     Text {
-                        text: root.expanded ? "Hide icons in tray" : "Show icons in tray"
+                        text: root.expanded ? "Hide tray icons" : "Show tray icons"
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-2)
                         color: Colors.overBackground
@@ -352,7 +368,7 @@ Item {
             }
 
             Text {
-                text: !hasItems ? "No hidden icons" : ""
+                text: !hasItems ? "No tray icons" : ""
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 color: Colors.outline
