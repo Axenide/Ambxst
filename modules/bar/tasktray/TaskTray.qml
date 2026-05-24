@@ -240,7 +240,6 @@ Item {
                             IconImage {
                                 width: 20; height: 20
                                 source: "image://desktop-icon/" + modelData.appId
-                                sourceSize.width: 40; sourceSize.height: 40
                             }
 
                             ColumnLayout {
