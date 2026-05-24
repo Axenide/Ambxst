@@ -66,15 +66,19 @@ Item {
 
     readonly property int _dw: expanded && dockRep.count > 0 ? Math.max(40, Math.min(dockRep.count, 10) * 40 + 10) : 0
 
-    Layout.preferredWidth: 36 + (expanded ? 2 + _dw : 0)
-    Layout.preferredHeight: 36
+    Layout.preferredWidth: root.vertical ? 36 : (36 + (expanded ? 2 + _dw : 0))
+    Layout.preferredHeight: root.vertical ? (36 + (expanded ? 2 + _dw : 0)) : 36
     Layout.fillWidth: vertical
     Layout.fillHeight: !vertical
     clip: true
-    height: 36
+
+    Behavior on Layout.preferredHeight {
+        enabled: root.vertical && Config.animDuration > 0
+        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+    }
 
     Behavior on Layout.preferredWidth {
-        enabled: !vertical && Config.animDuration > 0
+        enabled: !root.vertical && Config.animDuration > 0
         NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
     }
 
@@ -129,8 +133,12 @@ Item {
     RowLayout {
         opacity: expanded ? 1.0 : 0.0
         Behavior on opacity { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration / 2 } }
-        anchors.left: parent.left; anchors.leftMargin: 40
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.left: root.vertical ? undefined : parent.left
+        anchors.leftMargin: root.vertical ? 0 : 40
+        anchors.verticalCenter: root.vertical ? undefined : parent.verticalCenter
+        anchors.top: root.vertical ? parent.top : undefined
+        anchors.topMargin: root.vertical ? 40 : 0
+        anchors.horizontalCenter: root.vertical ? parent.horizontalCenter : undefined
         spacing: 4
             Repeater {
                 id: dockRep
@@ -167,6 +175,46 @@ Item {
         }
 
 
+
+    // ── Dock icons (vertical) ──
+    ColumnLayout {
+        opacity: expanded ? 1.0 : 0.0
+        Behavior on opacity { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration / 2 } }
+        anchors.top: parent.top; anchors.topMargin: 40
+        anchors.horizontalCenter: parent.horizontalCenter
+        spacing: 4
+        visible: root.vertical && dockRep.count > 0
+
+        Repeater {
+            id: dockRepVert
+            model: dockRep.model
+            delegate: Item {
+                required property SystemTrayItem modelData
+                required property int index
+                width: 36; height: 36
+                visible: true
+                StyledRect {
+                    anchors.fill: parent; anchors.margins: 1; radius: 4
+                    variant: "bg"
+                    opacity: 0
+                }
+                IconImage {
+                    anchors.centerIn: parent; width: 18; height: 18
+                    source: modelData.icon; smooth: true
+                }
+                MouseArea {
+                    anchors.fill: parent; cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: event => {
+                        if (event.button === Qt.LeftButton) modelData.activate();
+                        else if (event.button === Qt.RightButton) {
+                            root._ctxItem = modelData; ctxPopup.open();
+                        }
+                    }
+                }
+            }
+        }
+    }
     // ── Native context menu ──
     BarPopup {
         id: ctxPopup; anchorItem: root; bar: root.bar
