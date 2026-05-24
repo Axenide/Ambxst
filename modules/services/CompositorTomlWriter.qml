@@ -549,6 +549,41 @@ Singleton {
         toml += `force_default_wallpaper = ${Config.compositor.forceDefaultWallpaper}\n`;
         toml += `no_update_news = ${Config.compositor.noUpdateNews}\n`;
 
+        // Monitors
+        toml += "\n[monitors]\n";
+        try {
+            var screens = Quickshell.screens;
+            if (screens) {
+                var axMons = AxctlService.monitors.values || [];
+                for (var mi = 0; mi < screens.length; mi++) {
+                    var scr = screens[mi];
+                    if (!scr || !scr.name) continue;
+                    var ax = null;
+                    for (var mj = 0; mj < axMons.length; mj++) {
+                        if (axMons[mj].name === scr.name) { ax = axMons[mj]; break; }
+                    }
+                    var w = ax ? (ax.width || scr.width || 1920) : (scr.width || 1920);
+                    var h = ax ? (ax.height || scr.height || 1080) : (scr.height || 1080);
+                    var x = scr.x || 0;
+                    var y = scr.y || 0;
+                    var s = ax ? (ax.scale || 1.0) : 1.0;
+                    var rr = ax ? (ax.refreshRate || 60) : 60;
+                    var t = ax ? (ax.transform || 0) : 0;
+
+                    toml += "[[monitors]]\n";
+                    toml += "name = \"" + scr.name + "\"\n";
+                    toml += "mode = \"" + w + "x" + h + "@" + rr.toFixed(2) + "Hz\"\n";
+                    toml += "position = \"" + x + "x" + y + "\"\n";
+                    toml += "scale = " + s + "\n";
+                    if (t > 0) toml += "transform = " + t + "\n";
+                    toml += "enabled = true\n";
+                    toml += "\n";
+                }
+            }
+        } catch (e) {
+            console.warn("CompositorTomlWriter: Error writing monitors section:", e);
+        }
+
         return toml;
     }
 

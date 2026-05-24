@@ -180,7 +180,11 @@ StyledRect {
         else if (key === "transform") cmd = "monitor " + monName + ",preferred,auto,auto,transform," + value;
         else if (key === "vrr") cmd = "monitor " + monName + ",preferred,auto,auto,vrr," + value;
         else if (key === "disabled") cmd = "monitor " + monName + "," + (value ? "disable" : "preferred,auto,auto");
-        if (cmd) AxctlService.dispatch(cmd);
+        if (cmd) {
+            AxctlService.dispatch(cmd);
+            // Persist to disk (debounced)
+            monitorSyncDebounce.restart();
+        }
     }
 
     // ──────────────────────────────────────────
@@ -446,10 +450,22 @@ StyledRect {
         Text { text: label; font.family: Config.theme.font; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; Layout.preferredWidth: 80 }
     }
 
+    // Debounced monitor config sync (after settings change)
+    Timer {
+        id: monitorSyncDebounce
+        interval: 2500
+        repeat: false
+        onTriggered: MonitorsWriter.sync()
+    }
+
     // ── Connections ──
     Connections {
         target: AxctlService
-        function onMonitorsChanged() { root.updateAxctlMatch(); }
+        function onMonitorsChanged() {
+            root.updateAxctlMatch();
+            // Sync to disk after Axctl reports the change
+            monitorSyncDebounce.restart();
+        }
     }
 
     onDetailedInfoChanged: {
