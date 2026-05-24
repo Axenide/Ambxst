@@ -25,36 +25,37 @@ Item {
     property var _ctxItem: null
     property var _hid: []
 
-    property int _vkey: 0
+    function _key(i, it) {
+        return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
+    }
+
+    // Explicit _vc property (no readonly binding — updated by _recalc)
+    property int _vc: 0
+    function _recalc() {
+        if (!SystemTray || !SystemTray.items) { _vc = 0; return; }
+        if (_hid.length === 0) { _vc = SystemTray.items.length; return; }
+        var n = 0;
+        for (var i = 0; i < SystemTray.items.length; i++) {
+            var it = SystemTray.items[i];
+            if (_hid.indexOf(root._key(i, it)) < 0) n++;
+        }
+        _vc = n;
+    }
     function _toggle(k) {
         var a = _hid.slice();
         var i = a.indexOf(k);
         if (i >= 0) a.splice(i, 1); else a.push(k);
         _hid = a;
-        _vkey++;
+        _recalc();
     }
 
-    function _key(i, it) {
-        return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
-    }
-
-    // Repeater count-based visibility (reliable)
+    // Repeater count (reliable — detects model changes internally)
     property int _dockN: dockRep ? dockRep.count : 0
     property int _setN: setRep ? setRep.count : 0
 
-    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; _setN = setRep.count; } }
-    Connections { target: setRep; function onCountChanged() { _setN = setRep.count; } }
-
-    // Hidden filter count
-    readonly property int _vc: { root._vkey; root._hid.length;
-        if (!SystemTray || !SystemTray.items) return 0;
-        if (_hid.length === 0) return SystemTray.items.length;
-        var n = 0, h = _hid;
-        for (var i = 0; i < SystemTray.items.length; i++) {
-            if (h.indexOf(_key(i, SystemTray.items[i])) < 0) n++;
-        }
-        return n;
-    }
+    Connections { target: dockRep; function onCountChanged() { _dockN = dockRep.count; _setN = setRep.count; _recalc(); } }
+    Connections { target: setRep; function onCountChanged() { _setN = setRep.count; _recalc(); } }
+    Component.onCompleted: _recalc()
 
     readonly property int _dw: expanded && _setN > 0 ? Math.max(40, Math.min(_vc, 10) * 26 + 8) : 0
 
