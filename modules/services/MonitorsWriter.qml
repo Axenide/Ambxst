@@ -18,7 +18,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string scriptPath: Quickshell.thisFile.parent + "/../scripts/monitors_writer.py"
+    readonly property string scriptPath: Quickshell.thisFile.parent + "../../scripts/monitors_writer.py"
     readonly property string hyprConfigDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/hypr"
 
     property bool isSyncing: false
