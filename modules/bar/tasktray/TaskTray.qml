@@ -129,7 +129,7 @@ Item {
                     root.expanded = !root.expanded;
                 } else {
                     _recalc();
-                    if (_setN > 0) setPopup.open();
+                    if (_vc > 0) setPopup.open();
                 }
             }
         }
@@ -163,7 +163,7 @@ Item {
                 delegate: Item {
                     required property SystemTrayItem modelData
                     required property int index
-                    width: 26; height: 26
+                    width: 24; height: 24
                     readonly property string _k: root._key(index, modelData)
                     visible: root._hid.indexOf(_k) < 0
                     property bool hov: false
