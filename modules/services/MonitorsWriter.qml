@@ -129,7 +129,14 @@ Singleton {
                              (syncProcess.stderr ? syncProcess.stderr.text : "");
                 console.log("MonitorsWriter: " + (output.trim() || "sync completed"));
                 root.syncFinished(true, output.trim());
-            } else {
+            
+            // Refresh TOML config after monitor sync
+            try {
+                if (typeof CompositorTomlWriter !== "undefined") {
+                    CompositorTomlWriter.writeTomlFile();
+                }
+            } catch (e) { /* CompositorTomlWriter may not be loaded yet */ }
+} else {
                 root.lastError = (syncProcess.stderr ? syncProcess.stderr.text : "exit code " + exitCode);
                 console.error("MonitorsWriter: sync failed:", root.lastError);
                 root.syncFinished(false, "Sync failed: " + root.lastError);
@@ -149,7 +156,14 @@ Singleton {
                              (syncDataProcess.stderr ? syncDataProcess.stderr.text : "");
                 console.log("MonitorsWriter: sync with data: " + (output.trim() || "OK"));
                 root.syncFinished(true, output.trim());
-            } else {
+            
+            // Refresh TOML config after monitor sync
+            try {
+                if (typeof CompositorTomlWriter !== "undefined") {
+                    CompositorTomlWriter.writeTomlFile();
+                }
+            } catch (e) { /* CompositorTomlWriter may not be loaded yet */ }
+} else {
                 root.lastError = (syncDataProcess.stderr ? syncDataProcess.stderr.text : "exit code " + exitCode);
                 console.error("MonitorsWriter: sync with data failed:", root.lastError);
                 root.syncFinished(false, "Failed: " + root.lastError);
