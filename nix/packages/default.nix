@@ -1,10 +1,27 @@
 # Main NothingLess package
-{ pkgs, lib, self, system, axctl, version }:
+{
+  pkgs,
+  lib,
+  self,
+  system,
+  axctl,
+  version,
+}:
 
 let
-  quickshellPkg = pkgs.quickshell;
   axctlPkg = axctl.packages.${system}.default;
-
+  quickshellPkg = pkgs.quickshell.overrideAttrs (old: {
+    buildInputs = (old.buildInputs or [ ]) ++ [
+      pkgs.qt6.qtdeclarative
+      pkgs.qt6.qtbase
+      pkgs.qt6.qtmultimedia
+      pkgs.qt6.qtsvg
+      pkgs.kdePackages.kirigami
+      pkgs.kdePackages.kirigami-addons
+      pkgs.kdePackages.qqc2-desktop-style
+      pkgs.kdePackages.syntax-highlighting
+    ];
+  });
   # Import sub-packages
   ttf-phosphor-icons = import ./phosphor-icons.nix { inherit pkgs; };
 
@@ -17,13 +34,8 @@ let
   tesseractPkgs = import ./tesseract.nix { inherit pkgs; };
 
   # Combine all packages (NixOS-specific deps handled by the module)
-  baseEnv = corePkgs
-    ++ [ axctlPkg ]
-    ++ toolsPkgs
-    ++ mediaPkgs
-    ++ appsPkgs
-    ++ fontsPkgs
-    ++ tesseractPkgs;
+  baseEnv =
+    corePkgs ++ [ axctlPkg ] ++ toolsPkgs ++ mediaPkgs ++ appsPkgs ++ fontsPkgs ++ tesseractPkgs;
 
   envNothingLess = pkgs.buildEnv {
     name = "NothingLess-env";
@@ -66,8 +78,12 @@ let
     exec ${shellSrc}/cli.sh "$@"
   '';
 
-in pkgs.buildEnv {
+in
+pkgs.buildEnv {
   name = "NothingLess-${version}";
-  paths = [ envNothingLess launcher ];
+  paths = [
+    envNothingLess
+    launcher
+  ];
   meta.mainProgram = "nothingless";
 }
