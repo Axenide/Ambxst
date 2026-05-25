@@ -29,7 +29,6 @@ Item {
         return i + "_" + (it.title || it.tooltipTitle || it.id || "t" + i);
     }
 
-    // Explicit _vc property (no readonly binding — updated by _recalc)
     property int _vc: 0
     function _recalc() {
         try {
@@ -56,7 +55,6 @@ Item {
         _recalc();
     }
 
-    // Repeater count (reliable — detects model changes internally)
     property int _dockN: dockRep ? dockRep.count : 0
     property int _setN: setRep ? setRep.count : 0
 
@@ -84,7 +82,6 @@ Item {
 
     HoverHandler { onHoveredChanged: root.isHovered = hovered }
 
-    // ── Unified background (toggle + dock) ──
     StyledRect {
         anchors.fill: parent
         variant: "bg"
@@ -106,7 +103,6 @@ Item {
         }
     }
 
-    // ── Toggle icon ──
     Text {
         x: 9; y: 9
         text: Icons.dotsThree; font.family: Icons.font; font.pixelSize: 18
@@ -118,7 +114,6 @@ Item {
         }
     }
 
-    // ── Click receiver ──
     MouseArea {
         anchors.fill: parent; z: 20; cursorShape: Qt.PointingHandCursor
         onClicked: event => { root.expanded = !root.expanded; }
@@ -129,7 +124,6 @@ Item {
         tooltipText: _vc > 0 ? _vc + " visible" : "No icons"
     }
 
-    // ── Dock icons ──
     RowLayout {
         visible: !root.vertical
         opacity: expanded ? 1.0 : 0.0
@@ -175,9 +169,6 @@ Item {
             }
         }
 
-
-
-    // ── Dock icons (vertical) ──
     ColumnLayout {
         opacity: expanded ? 1.0 : 0.0
         Behavior on opacity { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration / 2 } }
@@ -216,31 +207,128 @@ Item {
             }
         }
     }
-    // ── Native context menu ──
+
+    // ── Context menu ──
     BarPopup {
         id: ctxPopup; anchorItem: root; bar: root.bar
-        contentWidth: Math.max(220, ctxCol.implicitWidth + 16)
+        contentWidth: 240
         contentHeight: Math.min(ctxCol.implicitHeight + 16, 400)
+        popupPadding: 6; visualMargin: 16
+
         QsMenuOpener { id: mo; menu: root._ctxItem ? root._ctxItem.menu : null }
-        ColumnLayout {
-            id: ctxCol
-            anchors.fill: parent; anchors.margins: 4; spacing: 4
-            Repeater {
-                model: mo.children ? mo.children.values : []
-                delegate: Item {
-                    required property var modelData
-                    Layout.fillWidth: true; Layout.preferredHeight: 28
-                    readonly property bool sep: modelData.isSeparator === true
-                    Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter; height: 1; color: Colors.outlineVariant; visible: sep }
-                    StyledRect {
-                        anchors.fill: parent; radius: 4; variant: mm.containsMouse ? "focus" : "bg"; visible: !sep
-                        RowLayout {
-                            anchors.fill: parent; anchors.leftMargin: 8; spacing: 6
-                            IconImage { width: 18; height: 18; source: modelData.icon ?? ""; smooth: true; visible: modelData.icon !== undefined; Layout.alignment: Qt.AlignVCenter }
-                            Text { text: modelData.text || ""; font.family: Styling.defaultFont; font.pixelSize: Styling.fontSize(-1); color: Colors.overBackground; elide: Text.ElideRight; Layout.fillWidth: true; Layout.alignment: Qt.AlignVCenter }
+
+        ScrollView {
+            anchors.fill: parent; clip: true
+            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+
+            ColumnLayout {
+                id: ctxCol; width: parent.width; spacing: 2
+
+                Repeater {
+                    model: mo.children
+
+                    delegate: Item {
+                        required property QsMenuHandle modelData
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 32
+
+                        // Separador
+                        Rectangle {
+                            anchors.left: parent.left; anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: 1; color: Colors.surfaceBright
+                            visible: modelData.isSeparator
+                            anchors.leftMargin: 8; anchors.rightMargin: 8
+                        }
+
+                        readonly property bool _isCheck: modelData.buttonType === 1
+                        readonly property bool _isRadio: modelData.buttonType === 2
+                        property bool _hover: false
+
+                        // Check/Radio
+                        Item {
+                            x: 8; y: 8; width: 16; height: 16
+                            visible: !modelData.isSeparator && modelData.buttonType !== 0
+                            Rectangle {
+                                anchors.centerIn: parent; width: 14; height: 14
+                                radius: _isRadio ? 7 : 3
+                                color: modelData.checkState !== 0 ? Colors.primary : "transparent"
+                                border.color: modelData.checkState !== 0 ? Colors.primary : Colors.outline
+                                border.width: 1.5
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: modelData.checkState !== 0 && !_isRadio
+                                    text: modelData.checkState === 1 ? "\u2212" : "\u2713"
+                                    color: Colors.overPrimary; font.pixelSize: 10; font.bold: true
+                                }
+                                Rectangle {
+                                    anchors.centerIn: parent
+                                    visible: modelData.checkState !== 0 && _isRadio
+                                    width: 7; height: 7; radius: 4; color: Colors.primary
+                                }
+                            }
+                        }
+
+                        // Icono
+                        Text {
+                            x: modelData.buttonType !== 0 ? 30 : 10
+                            y: 8; width: 16; height: 16
+                            visible: !modelData.isSeparator && modelData.icon !== "" && modelData.buttonType === 0
+                            text: modelData.icon; font.family: Icons.font; font.pixelSize: 14
+                            color: _hover ? Colors.overPrimary : Colors.overBackground
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        // Texto
+                        Text {
+                            readonly property real _ix: modelData.buttonType !== 0 ? 30 : (modelData.icon !== "" && modelData.buttonType === 0 ? 30 : 10)
+                            x: _ix; y: 6; height: 20
+                            width: parent.width - _ix - 22
+                            visible: !modelData.isSeparator
+                            text: {
+                                var t = modelData.text || "";
+                                if (t.startsWith(":/// ")) t = t.substring(5);
+                                return t.trim();
+                            }
+                            color: _hover ? Colors.overPrimary : Colors.overBackground
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            elide: Text.ElideRight
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        // Chevron submenu
+                        Text {
+                            x: parent.width - 20; y: 8; width: 12; height: 16
+                            visible: !modelData.isSeparator && modelData.hasChildren
+                            text: "\u25B8"; font.pixelSize: Styling.fontSize(0)
+                            color: _hover ? Colors.overPrimary : Colors.overBackground
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        // Fondo hover
+                        Rectangle {
+                            anchors.fill: parent; anchors.margins: 2
+                            radius: Styling.radius(0)
+                            visible: _hover && !modelData.isSeparator
+                            color: Styling.srItem("overprimary")
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            hoverEnabled: true; cursorShape: Qt.PointingHandCursor
+                            enabled: !modelData.isSeparator
+                            onEntered: _hover = true
+                            onExited: _hover = false
+                            onClicked: {
+                                if (!modelData.isSeparator) {
+                                    modelData.triggered();
+                                    ctxPopup.close();
+                                    Qt.callLater(() => { root._ctxItem = null; });
+                                }
+                            }
                         }
                     }
-                    MouseArea { id: mm; anchors.fill: parent; cursorShape: Qt.PointingHandCursor; hoverEnabled: true; onClicked: event => { if (modelData.trigger) modelData.trigger(); ctxPopup.close(); root._ctxItem = null; } }
                 }
             }
         }
@@ -269,7 +357,6 @@ Item {
                     Layout.fillWidth: true; Layout.preferredHeight: 34
                     readonly property string _k: root._key(index, modelData)
 
-                    // Row click (declared FIRST for correct stacking)
                     MouseArea {
                         id: rowMA
                         anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor

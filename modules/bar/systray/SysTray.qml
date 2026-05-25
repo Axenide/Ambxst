@@ -25,6 +25,7 @@ import qs.modules.components
 
     // Orientación derivada de la barra
     property bool vertical: bar.orientation === "vertical"
+    property bool isExpanded: true
 
     // Filtered tray items (UntypedObjectModel doesn't support .filter())
     readonly property var filteredItems: {
@@ -47,7 +48,7 @@ import qs.modules.components
     }
 
     // Hide completely when empty - check both orientations
-    readonly property bool hasItems: rowRepeater.count > 0 || columnRepeater.count > 0
+    readonly property bool hasItems: SystemTray.items.length > 0
 
     // Ajustes de tamaño dinámicos según orientación
     height: vertical ? implicitHeight : parent.height
@@ -62,9 +63,27 @@ import qs.modules.components
         anchors.margins: 8
         spacing: 8
 
+        MouseArea {
+            id: toggleBtnRow
+            Layout.alignment: Qt.AlignCenter
+            implicitWidth: 20
+            implicitHeight: 20
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.isExpanded = !root.isExpanded
+
+            Text {
+                anchors.centerIn: parent
+                text: root.isExpanded ? Icons.caretLeft : Icons.caretRight
+                font.family: Icons.font
+                font.pixelSize: Styling.fontSize(-1)
+                color: toggleBtnRow.containsMouse ? Colors.primary : Colors.onSurfaceVariant
+            }
+        }
+
         Repeater {
             id: rowRepeater
-            model: root.filteredItems
+            model: root.isExpanded ? root.filteredItems : []
 
             SysTrayItem {
                 required property SystemTrayItem modelData
@@ -81,9 +100,27 @@ import qs.modules.components
         anchors.margins: 8
         spacing: 8
 
+        MouseArea {
+            id: toggleBtnCol
+            Layout.alignment: Qt.AlignCenter
+            implicitWidth: 20
+            implicitHeight: 20
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: root.isExpanded = !root.isExpanded
+
+            Text {
+                anchors.centerIn: parent
+                text: root.isExpanded ? Icons.caretUp : Icons.caretDown
+                font.family: Icons.font
+                font.pixelSize: Styling.fontSize(-1)
+                color: toggleBtnCol.containsMouse ? Colors.primary : Colors.onSurfaceVariant
+            }
+        }
+
         Repeater {
             id: columnRepeater
-            model: root.filteredItems
+            model: root.isExpanded ? root.filteredItems : []
 
             SysTrayItem {
                 required property SystemTrayItem modelData
