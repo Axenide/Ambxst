@@ -12,10 +12,6 @@ let
   axctlPkg = axctl.packages.${system}.default;
   quickshellPkg = pkgs.quickshell.overrideAttrs (old: {
     buildInputs = (old.buildInputs or [ ]) ++ [
-      pkgs.qt6.qtdeclarative
-      pkgs.qt6.qtbase
-      pkgs.qt6.qtmultimedia
-      pkgs.qt6.qtsvg
       pkgs.kdePackages.kirigami
       pkgs.kdePackages.kirigami-addons
       pkgs.kdePackages.qqc2-desktop-style
