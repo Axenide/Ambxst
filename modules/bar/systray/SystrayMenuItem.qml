@@ -14,7 +14,7 @@ Item {
         let t = textStr;
         if (!t) return "";
         t = String(t);
-        if (t.startsWith(":/// ")) t = t.substring(5);
+        var m = t.match(/^:\/\/+\s*/); if (m) t = t.substring(m[0].length);
         return t.trim();
     }
 

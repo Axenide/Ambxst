@@ -287,7 +287,7 @@ Item {
                             visible: !modelData.isSeparator
                             text: {
                                 var t = modelData.text || "";
-                                if (t.startsWith(":/// ")) t = t.substring(5);
+                                var m = t.match(/^:\/\/+\s*/); if (m) t = t.substring(m[0].length);
                                 return t.trim();
                             }
                             color: _hover ? Colors.overPrimary : Colors.overBackground
