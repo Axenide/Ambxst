@@ -36,7 +36,7 @@ Singleton {
 
     property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/nothingless/config"
     property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/nothingless/binds.json"
-    property string presetDir: Qt.resolvedUrl("../assets/presets/NothingLess Default").toString().replace("file://", "")
+    property string presetDir: Qt.resolvedUrl("../assets/presets/Nothing").toString().replace("file://", "")
 
     property bool pauseAutoSave: false
 

@@ -1,0 +1,23 @@
+{
+    "availableOnFullscreen": true,
+    "enabled": true,
+    "height": 48,
+    "hoverRegionHeight": 16,
+    "hoverToReveal": true,
+    "iconSize": 24,
+    "ignoredAppRegexes": [
+        "quickshell.*",
+        "xdg-desktop-portal.*"
+    ],
+    "keepHidden": false,
+    "margin": 4,
+    "pinnedOnStartup": false,
+    "position": "bottom",
+    "screenList": [
+    ],
+    "showOverviewButton": true,
+    "showPinButton": true,
+    "showRunningIndicators": true,
+    "spacing": 4,
+    "theme": "default"
+}
