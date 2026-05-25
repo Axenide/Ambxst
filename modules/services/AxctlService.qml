@@ -26,6 +26,7 @@ Singleton {
     }
 
     signal rawEvent(var event)
+    signal monitorsUpdated()
 
     // Config path for axctl daemon
     property string configPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/nothingless/axctl.toml"
@@ -154,6 +155,7 @@ Singleton {
             if (focused !== root.focusedMonitor) {
                 root.focusedMonitor = focused;
             }
+            root.monitorsUpdated();
         }
     }
 

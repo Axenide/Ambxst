@@ -2112,42 +2112,9 @@ Item {
                                 }
                             }
 
-                            // ── Visual arrangement with drag & drop ──
-                            Text {
-                                text: "Layout"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(-2)
-                                font.weight: Font.Medium
-                                color: Colors.overSurfaceVariant
-                                Layout.topMargin: 8
-                            }
-
-                            MonitorArrangementView {
-                                id: arrangementView
+                            // ── Monitors configuration (nwg-displays style) ──
+                            MonitorsPanel {
                                 Layout.fillWidth: true
-                            }
-
-                            // ── Per-monitor cards (always available via Quickshell.screens) ──
-                            Text {
-                                text: "Per-Monitor Configuration"
-                                font.family: Config.theme.font
-                                font.pixelSize: Styling.fontSize(-2)
-                                font.weight: Font.Medium
-                                color: Colors.overSurfaceVariant
-                                Layout.topMargin: 8
-                            }
-
-                            Repeater {
-                                id: monitorRepeater
-                                model: Quickshell.screens
-
-                                delegate: MonitorCard {
-                                    required property int index
-                                    required property var modelData
-                                    monitorIndex: index
-                                    screen: modelData
-                                    Layout.fillWidth: true
-                                }
                             }
                         }
 
