@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import Quickshell.Services.SystemTray
 import qs.modules.globals
 import qs.config
@@ -1816,9 +1817,30 @@ Item {
                         }
 
                         ActionButton {
-                            text: "About NothingLess " + Config.version
+                            text: "About NothingLess"
                             icon: Icons.info
                             onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/Leriart/NothingLess"])
+                        }
+
+                        ActionButton {
+                            id: checkUpdatesBtn
+                            text: {
+                                if (UpdateService.isChecking) return "Checking for updates..."
+                                if (UpdateService.updateAvailable) return "Update available: " + UpdateService.latestVersion
+                                if (UpdateService.lastCheckTime > 0) return "Check Updates (Up to date)"
+                                return "Check Updates"
+                            }
+                            icon: UpdateService.isChecking ? Icons.circleNotch : (UpdateService.updateAvailable ? Icons.arrowFatLinesDown : Icons.arrowCounterClockwise)
+                            onClicked: UpdateService.checkUpdates()
+                        }
+
+                        ActionButton {
+                            visible: UpdateService.updateAvailable
+                            text: "Update Now"
+                            icon: Icons.arrowFatLinesDown
+                            onClicked: {
+                                Quickshell.execDetached(["bash", "-c", "curl -sL https://github.com/Leriart/NothingLess/raw/main/install.sh | sh"]);
+                            }
                         }
 
 

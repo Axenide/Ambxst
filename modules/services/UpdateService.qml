@@ -18,6 +18,11 @@ Singleton {
     property double lastCheckTime: 0
     property double nextCheckTime: 0
 
+    // Public state for UI binding
+    property bool isChecking: false
+    property bool updateAvailable: false
+    property string latestVersion: ""
+
     FileView {
         id: cacheFileView
         path: root.cacheFile
@@ -75,20 +80,30 @@ Singleton {
     }
 
     function checkUpdates() {
+        if (root.isChecking) return;
+        root.isChecking = true;
+        root.updateAvailable = false;
+        root.latestVersion = "";
+
         const xhr = new XMLHttpRequest();
         xhr.open("GET", root.repoUrl);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
+                root.isChecking = false;
                 if (xhr.status === 200) {
                     try {
                         const tags = JSON.parse(xhr.responseText);
                         if (tags && Array.isArray(tags) && tags.length > 0) {
                             const latestTag = tags[0].name.replace(/^v/, "");
+                            root.latestVersion = latestTag;
                             if (isNewer(latestTag, root.currentVersion)) {
+                                root.updateAvailable = true;
                                 if (latestTag !== root.lastDetectedVersion || !isNotificationInHistory()) {
                                     sendUpdateNotification(latestTag);
                                     root.lastDetectedVersion = latestTag;
                                 }
+                            } else {
+                                root.updateAvailable = false;
                             }
                         }
                     } catch (e) {
@@ -154,8 +169,7 @@ Singleton {
                 root.nextCheckTime = Date.now() + 8 * 3600000;
                 root.saveCache();
             } else if (action === "update") {
-                const updateCmd = "kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty sh -c \"sleep 0.2 && kitten @ --to unix:/tmp/mykitty send-text 'nothingless update'; exec $SHELL\"";
-                Quickshell.execDetached(["bash", "-c", updateCmd]);
+                Quickshell.execDetached(["bash", "-c", "curl -sL https://github.com/Leriart/NothingLess/raw/main/install.sh | sh"]);
             }
         }
     }
