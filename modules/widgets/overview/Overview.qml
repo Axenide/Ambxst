@@ -3,8 +3,8 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
-import Quickshell.Wayland
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.components
@@ -15,20 +15,34 @@ import qs.config
 Item {
     id: overviewRoot
 
-    // ── Direct hyprctl query for fresh window data ──
-    property Process _hyprctlClients: Process {
-        command: ["hyprctl", "clients", "-j"]
+    // Direct hyprctl for workspace switching
+    Process {
+        id: wsSwitchProcess
+    }
+
+    // Fetch all workspace states via hyprctl -j (includes empty/off-screen)
+    property var workspaceStates: []
+    Process {
+        id: wsStateProcess
+        command: ["hyprctl", "workspaces", "-j"]
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
                     var raw = JSON.parse(text);
-                    if (raw && raw.length > 0 && typeof CompositorData !== "undefined")
-                        CompositorData.windowList = raw;
+                    if (Array.isArray(raw))
+                        overviewRoot.workspaceStates = raw;
                 } catch (e) {}
             }
         }
     }
-    function refreshFromHyprctl() { _hyprctlClients.running = true; }
+    // Refresh workspace states when overview opens + periodically
+    Timer {
+        id: wsStateTimer
+        interval: 800
+        running: GlobalStates.overviewOpen
+        repeat: true
+        onTriggered: { if (!wsStateProcess.running) wsStateProcess.running = true; }
+    }
 
     // Config
     readonly property real scale: Config.overview.scale
@@ -73,13 +87,6 @@ Item {
     // Drag state
     property int draggingFromWorkspace: -1
     property int draggingTargetWorkspace: -1
-    property int _refreshToken: 0
-    function forceRefresh() { _refreshToken++; }
-    function refreshWithHyprctl() {
-        refreshFromHyprctl();
-        forceRefresh();
-    }
-    Component.onCompleted: refreshWithHyprctl()
 
     // Search
     property string searchQuery: ""
@@ -87,7 +94,135 @@ Item {
     property int selectedMatchIndex: 0
     function resetSearch() { searchQuery = ""; matchingWindows = []; selectedMatchIndex = 0; }
     onSearchQueryChanged: updateMatchingWindows()
-    onWindowListChanged: updateMatchingWindows()
+    onWindowListChanged: {
+        updateMatchingWindows();
+        Qt.callLater(_updateFilteredWindows);
+    }
+    onAllMonitorsChanged: Qt.callLater(_updateFilteredWindows)
+
+    // Force refresh after user actions (drag, click)
+    function refreshOverview() {
+        if (typeof CompositorData !== "undefined" && CompositorData.refreshFromHyprctl)
+            CompositorData.refreshFromHyprctl();
+        Qt.callLater(_updateFilteredWindows);
+    }
+
+    // Poll for position/size updates while overview is visible.
+    // windowList may be mutated in-place by axctl; this ensures
+    // the cache key detects moves/resizes even without a full list change.
+    Timer {
+        id: positionPollTimer
+        interval: 400
+        running: GlobalStates.overviewOpen
+        repeat: true
+        onTriggered: overviewRoot._updateFilteredWindows()
+    }
+
+    // Stable cache for filtered windows to avoid destroying/recreating delegates
+    // every time axctl pushes a minor update (focus change, etc.)
+    property var _filteredWindowsCache: []
+    property string _filteredWindowsCacheKey: ""
+
+    Component.onCompleted: {
+        _updateFilteredWindows();
+        wsStateProcess.running = true;
+    }
+
+    function _updateFilteredWindows() {
+        var list = overviewRoot.windowList;
+        var keyParts = [];
+        var result = [];
+        for (var i = 0; i < list.length; i++) {
+            var w = list[i];
+            if (!w || !w.workspace || !w.workspace.id || w.workspace.id <= 0 || w.workspace.id > workspacesShown)
+                continue;
+            // Include position and size in key so windows reposition/resize reactively
+            keyParts.push(w.address + ":" + w.workspace.id
+                + ":@" + (w.at?.[0] ?? 0) + "," + (w.at?.[1] ?? 0)
+                + ":" + (w.size?.[0] ?? 0) + "x" + (w.size?.[1] ?? 0));
+            var winMon = overviewRoot.allMonitors.find(function(m) { return m.id === w.monitor; });
+            result.push({
+                windowData: w,
+                winMonData: winMon
+            });
+        }
+        var newKey = keyParts.join('|');
+        if (newKey !== _filteredWindowsCacheKey) {
+            _filteredWindowsCacheKey = newKey;
+            // Compute fill dimensions so windows tile without overlapping
+            _filteredWindowsCache = _computeFillSizes(result);
+        }
+    }
+
+    // For each window, calculate how far it can extend right/down before
+    // hitting a neighbor, so cards fill their region without overlapping.
+    // Must use the same coordinate system as OverviewWindow (bar-adjusted,
+    // rotation-aware) to stay in sync with the delegate calculations.
+    function _computeFillSizes(items) {
+        var i, j, a, b;
+        var bp = overviewRoot.barPosition;
+        var br = overviewRoot.barReserved;
+        for (i = 0; i < items.length; i++) {
+            a = items[i];
+            var wd = a.windowData;
+            var wsId = wd.workspace?.id ?? 0;
+            var md = a.winMonData;
+            // Same rotation-aware effective dimensions as OverviewWindow
+            var ro = md && (md.transform % 2 === 1);
+            var monW = md ? (ro ? (md.height || 1080) : (md.width || 1920)) : 1920;
+            var monH = md ? (ro ? (md.width || 1920) : (md.height || 1080)) : 1080;
+            monW = monW > 0 ? monW : 1920;
+            monH = monH > 0 ? monH : 1080;
+
+            // Window position relative to monitor, same as OverviewWindow.relX/relY
+            var ax = (wd.at?.[0] ?? 0) - (md?.x ?? 0);
+            var ay = (wd.at?.[1] ?? 0) - (md?.y ?? 0);
+            if (bp === "left") ax -= br;
+            if (bp === "top") ay -= br;
+            // Clamp to monitor bounds
+            ax = Math.max(0, ax);
+            ay = Math.max(0, ay);
+            var aw = wd.size?.[0] ?? monW;
+            var ah = wd.size?.[1] ?? monH;
+            // Effective monitor area (bar-adjusted)
+            var effW = monW - (bp === "left" || bp === "right" ? br : 0);
+            var effH = monH - (bp === "top" || bp === "bottom" ? br : 0);
+
+            // Default: fill to effective monitor edge
+            var rightLimit = effW;
+            var bottomLimit = effH;
+
+            for (j = 0; j < items.length; j++) {
+                if (i === j) continue;
+                b = items[j];
+                if ((b.windowData.workspace?.id ?? 0) !== wsId) continue;
+                if ((b.winMonData?.id ?? -1) !== (md?.id ?? -1)) continue;
+
+                var bx = (b.windowData.at?.[0] ?? 0) - (b.winMonData?.x ?? 0);
+                var by = (b.windowData.at?.[1] ?? 0) - (b.winMonData?.y ?? 0);
+                if (bp === "left") bx -= br;
+                if (bp === "top") by -= br;
+                var bw = b.windowData.size?.[0] ?? monW;
+                var bh = b.windowData.size?.[1] ?? monH;
+
+                // b is to the right AND shares vertical space → tightens right limit
+                // Skip if b is fully contained inside a (e.g., floating window over maximized)
+                var bContainedInA = (bx >= ax && by >= ay && bx + bw <= ax + aw && by + bh <= ay + ah);
+                if (!bContainedInA && bx > ax && by < ay + ah && by + bh > ay)
+                    rightLimit = Math.min(rightLimit, bx);
+                // b is below AND shares horizontal space → tightens bottom limit
+                if (!bContainedInA && by > ay && bx < ax + aw && bx + bw > ax)
+                    bottomLimit = Math.min(bottomLimit, by);
+            }
+
+            // Fill ratios: extend to neighbor, but never smaller than own size
+            var relW = aw > 200 ? Math.max(0.05, Math.min(1, aw / effW)) : 0.85;
+            var relH = ah > 200 ? Math.max(0.05, Math.min(1, ah / effH)) : 0.85;
+            a.fillW = effW > 0 ? Math.max(relW, Math.min(1, (rightLimit - ax) / effW)) : 0.85;
+            a.fillH = effH > 0 ? Math.max(relH, Math.min(1, (bottomLimit - ay) / effH)) : 0.85;
+        }
+        return items;
+    }
 
     function fuzzyMatch(q, t) {
         if (q.length === 0) return true;
@@ -124,31 +259,9 @@ Item {
     function isWindowSelected(addr) { return matchingWindows.length > 0 && selectedMatchIndex >= 0 && matchingWindows[selectedMatchIndex]?.address === addr; }
 
     // ── Build filtered windows list (ALL monitors, workspaces 1..workspacesShown) ──
-    // Each window carries its OWN monitor data for correct positioning
-    readonly property var filteredWindows: {
-        var _ = overviewRoot._refreshToken;
-        var toplevels = ToplevelManager.toplevels.values;
-        var result = [];
-        var list = overviewRoot.windowList;
-        for (var i = 0; i < list.length; i++) {
-            var w = list[i];
-            if (!w || !w.workspace || !w.workspace.id || w.workspace.id <= 0 || w.workspace.id > workspacesShown)
-                continue;
-            var winMon = overviewRoot.allMonitors.find(function(m) { return m.id === w.monitor; });
-            result.push({
-                windowData: w,
-                winMonData: winMon,
-                toplevel: (function() {
-                    var cls = w.class || "";
-                    if (!cls) return null;
-                    var cands = toplevels.filter(function(t) { return t.appId === cls; });
-                    if (cands.length <= 1) return cands[0] || null;
-                    return cands.find(function(t) { return t.title === (w.title || ""); }) || cands[0];
-                })()
-            });
-        }
-        return result;
-    }
+    // Each window carries its OWN monitor data for correct positioning.
+    // toplevel is resolved lazily inside the delegate to keep this array stable.
+    readonly property var filteredWindows: _filteredWindowsCache
 
     implicitWidth: bg.implicitWidth
     implicitHeight: bg.implicitHeight
@@ -194,8 +307,15 @@ Item {
                             }
                             MouseArea {
                                 anchors.fill: parent; acceptedButtons: Qt.LeftButton
-                                onClicked: AxctlService.dispatch("workspace " + wsNum)
-                                onDoubleClicked: { Visibilities.setActiveModule(""); AxctlService.dispatch("workspace " + wsNum); }
+                                onClicked: {
+                                    wsSwitchProcess.command = ["hyprctl", "dispatch", "workspace", String(wsNum)];
+                                    wsSwitchProcess.running = true;
+                                }
+                                onDoubleClicked: {
+                                    Visibilities.setActiveModule("");
+                                    wsSwitchProcess.command = ["hyprctl", "dispatch", "workspace", String(wsNum)];
+                                    wsSwitchProcess.running = true;
+                                }
                             }
                             DropArea {
                                 anchors.fill: parent
@@ -215,6 +335,26 @@ Item {
             implicitWidth: mainGrid.implicitWidth
             implicitHeight: mainGrid.implicitHeight
 
+            // Workspace-click fallback for empty cells.
+            // First child = behind Repeater items. Only catches clicks
+            // that miss all window delegates.
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.LeftButton
+                onClicked: mouse => {
+                    var cw = overviewRoot.wsCellW + workspacePadding + workspaceSpacing;
+                    var ch = overviewRoot.wsCellH + workspacePadding + workspaceSpacing;
+                    var col = Math.floor((mouse.x - workspacePadding / 2) / cw);
+                    var row = Math.floor((mouse.y - workspacePadding / 2) / ch);
+                    if (col >= 0 && col < overviewRoot.columns && row >= 0 && row < overviewRoot.rows) {
+                        wsSwitchProcess.command = ["hyprctl", "dispatch", "workspace",
+                            String(row * overviewRoot.columns + col + 1)];
+                        wsSwitchProcess.running = true;
+                        Qt.callLater(overviewRoot.refreshOverview);
+                    }
+                }
+            }
+
             Repeater {
                 model: overviewRoot.filteredWindows
 
@@ -222,8 +362,20 @@ Item {
                     id: win
                     required property var modelData
                     windowData: modelData.windowData
-                    toplevel: modelData.toplevel
-                    scale: overviewRoot.scale
+                    toplevel: {
+                        var w = modelData.windowData;
+                        if (!w) return null;
+                        var cls = w.class || "";
+                        if (!cls) return null;
+                        var cands = ToplevelManager.toplevels.values.filter(function(t) { return t.appId === cls; });
+                        if (cands.length === 0) return null;
+                        var titleMatch = cands.find(function(t) { return t.title === (w.title || ""); });
+                        if (titleMatch) return titleMatch;
+                        var wt = (w.title || "").toLowerCase();
+                        var partial = cands.find(function(t) { var tt = (t.title || "").toLowerCase(); return wt.includes(tt) || tt.includes(wt); });
+                        if (partial) return partial;
+                        return null;
+                    }
                     availableWorkspaceWidth: overviewRoot.wsCellW
                     availableWorkspaceHeight: overviewRoot.wsCellH
                     monitorData: modelData.winMonData || overviewRoot.monitorData
@@ -245,8 +397,7 @@ Item {
                         overviewRoot.draggingFromWorkspace = -1;
                         if (targetWs > 0 && targetWs !== windowData?.workspace.id) {
                             AxctlService.dispatch("movetoworkspacesilent " + targetWs + ",address:" + (windowData?.address || ""));
-                            Qt.callLater(function() { overviewRoot.refreshFromHyprctl(); });
-                            overviewRoot.forceRefresh();
+                            Qt.callLater(function() { CompositorData.refreshFromHyprctl(); });
                         }
                     }
                     onWindowClicked: {
