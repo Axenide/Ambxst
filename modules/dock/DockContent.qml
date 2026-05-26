@@ -520,8 +520,10 @@ Item {
 
                         onClicked: {
                             let visibilities = Visibilities.getForScreen(root.screen.name);
-                            if (visibilities) {
-                                visibilities.overview = !visibilities.overview;
+                            if (visibilities && visibilities.overview) {
+                                Visibilities.setActiveModule("");
+                            } else {
+                                Visibilities.setActiveModule("overview");
                             }
                         }
 
@@ -654,8 +656,10 @@ Item {
 
                         onClicked: {
                             let visibilities = Visibilities.getForScreen(root.screen.name);
-                            if (visibilities) {
-                                visibilities.overview = !visibilities.overview;
+                            if (visibilities && visibilities.overview) {
+                                Visibilities.setActiveModule("");
+                            } else {
+                                Visibilities.setActiveModule("overview");
                             }
                         }
 

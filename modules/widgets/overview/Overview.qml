@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Io
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.components
@@ -11,12 +12,25 @@ import qs.modules.bar.workspaces
 import qs.modules.services
 import qs.config
 
-
-
 Item {
     id: overviewRoot
 
-    // Cache config values to avoid repeated lookups
+    // ── Direct hyprctl query for fresh window data ──
+    property Process _hyprctlClients: Process {
+        command: ["hyprctl", "clients", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var raw = JSON.parse(text);
+                    if (raw && raw.length > 0 && typeof CompositorData !== "undefined")
+                        CompositorData.windowList = raw;
+                } catch (e) {}
+            }
+        }
+    }
+    function refreshFromHyprctl() { _hyprctlClients.running = true; }
+
+    // Config
     readonly property real scale: Config.overview.scale
     readonly property int rows: Config.overview.rows
     readonly property int columns: Config.overview.columns
@@ -25,271 +39,168 @@ Item {
     readonly property real workspacePadding: 8
     readonly property color activeBorderColor: Styling.srItem("overprimary")
 
-    // Use the screen's monitor instead of focused monitor for multi-monitor support
-    property var currentScreen: null  // This will be set from parent
+    property var currentScreen: null
     readonly property var monitor: currentScreen ? AxctlService.monitorFor(currentScreen) : AxctlService.focusedMonitor
-    readonly property int workspaceGroup: Math.floor((monitor?.activeWorkspace?.id - 1 || 0) / workspacesShown)
-
-    // Cache these references
     readonly property var windowList: CompositorData.windowList
-    readonly property var monitors: CompositorData.monitors
+    readonly property var allMonitors: CompositorData.monitors
     readonly property int monitorId: monitor?.id ?? -1
-    readonly property var monitorData: monitors.find(m => m.id === monitorId) ?? null
-
+    readonly property var monitorData: allMonitors.find(m => m.id === monitorId) ?? null
     readonly property string barPosition: Config.bar.position
     readonly property var barPanel: monitor ? Visibilities.getBarPanelForScreen(monitor.name) : null
     readonly property bool isBarPinned: barPanel ? barPanel.pinned : (Config.bar.pinnedOnStartup ?? true)
     readonly property int barReserved: isBarPinned ? (Config.showBackground ? 44 : 40) : 0
 
-    // Search functionality (controlled from parent)
+    // Workspace cell size (based on current screen's monitor)
+    readonly property real wsCellW: {
+        if (!monitorData) return 200;
+        var ro = (monitorData.transform % 2 === 1);
+        var ms = monitorData.scale || 1.0;
+        var w = ro ? (monitor?.height || 1920) : (monitor?.width || 1920);
+        var sw = (w / ms) * scale;
+        if (barPosition === "left" || barPosition === "right") sw -= barReserved * scale;
+        return Math.max(0, Math.round(sw));
+    }
+    readonly property real wsCellH: {
+        if (!monitorData) return 150;
+        var ro = (monitorData.transform % 2 === 1);
+        var ms = monitorData.scale || 1.0;
+        var h = ro ? (monitor?.width || 1080) : (monitor?.height || 1080);
+        var sh = (h / ms) * scale;
+        if (barPosition === "top" || barPosition === "bottom") sh -= barReserved * scale;
+        return Math.max(0, Math.round(sh));
+    }
+
+    // Drag state
+    property int draggingFromWorkspace: -1
+    property int draggingTargetWorkspace: -1
+    property int _refreshToken: 0
+    function forceRefresh() { _refreshToken++; }
+    function refreshWithHyprctl() {
+        refreshFromHyprctl();
+        forceRefresh();
+    }
+    Component.onCompleted: refreshWithHyprctl()
+
+    // Search
     property string searchQuery: ""
     property var matchingWindows: []
     property int selectedMatchIndex: 0
-
-    // Reset search state
-    function resetSearch() {
-        searchQuery = "";
-        matchingWindows = [];
-        selectedMatchIndex = 0;
-    }
-
-    // Update matching windows when search query or window list changes
+    function resetSearch() { searchQuery = ""; matchingWindows = []; selectedMatchIndex = 0; }
     onSearchQueryChanged: updateMatchingWindows()
     onWindowListChanged: updateMatchingWindows()
 
-    // Fuzzy match: checks if all characters of query appear in order in target
-    function fuzzyMatch(query, target) {
-        if (query.length === 0)
-            return true;
-        if (target.length === 0)
-            return false;
-
-        let queryIndex = 0;
-        for (let i = 0; i < target.length && queryIndex < query.length; i++) {
-            if (target[i] === query[queryIndex]) {
-                queryIndex++;
-            }
-        }
-        return queryIndex === query.length;
+    function fuzzyMatch(q, t) {
+        if (q.length === 0) return true;
+        if (t.length === 0) return false;
+        var qi = 0;
+        for (var i = 0; i < t.length && qi < q.length; i++) { if (t[i] === q[qi]) qi++; }
+        return qi === q.length;
     }
-
-    // Score a fuzzy match (higher is better)
-    function fuzzyScore(query, target) {
-        if (query.length === 0)
-            return 0;
-        if (target.length === 0)
-            return -1;
-
-        // Exact match gets highest score
-        if (target.includes(query))
-            return 1000 + (100 - target.length);
-
-        // Check for fuzzy match
-        let queryIndex = 0;
-        let consecutiveMatches = 0;
-        let maxConsecutive = 0;
-        let score = 0;
-
-        for (let i = 0; i < target.length && queryIndex < query.length; i++) {
-            if (target[i] === query[queryIndex]) {
-                queryIndex++;
-                consecutiveMatches++;
-                maxConsecutive = Math.max(maxConsecutive, consecutiveMatches);
-                // Bonus for matches at word boundaries
-                if (i === 0 || target[i - 1] === ' ' || target[i - 1] === '-' || target[i - 1] === '_') {
-                    score += 10;
-                }
-            } else {
-                consecutiveMatches = 0;
-            }
+    function fuzzyScore(q, t) {
+        if (q.length === 0) return 0;
+        if (t.length === 0) return -1;
+        if (t.includes(q)) return 1000 + (100 - t.length);
+        var qi = 0, cons = 0, maxc = 0, score = 0;
+        for (var i = 0; i < t.length && qi < q.length; i++) {
+            if (t[i] === q[qi]) { qi++; cons++; maxc = Math.max(maxc, cons);
+                if (i === 0 || t[i-1] === ' ' || t[i-1] === '-' || t[i-1] === '_') score += 10; }
+            else cons = 0;
         }
-
-        if (queryIndex !== query.length)
-            return -1; // No match
-
-        return score + maxConsecutive * 5;
+        if (qi !== q.length) return -1;
+        return score + maxc * 5;
     }
-
     function updateMatchingWindows() {
-        if (searchQuery.length === 0) {
-            matchingWindows = [];
-            selectedMatchIndex = 0;
-            return;
+        if (searchQuery.length === 0) { matchingWindows = []; selectedMatchIndex = 0; return; }
+        var q = searchQuery.toLowerCase();
+        var m = windowList.filter(function(w) {
+            if (!w) return false;
+            return fuzzyMatch(q, (w.title || "").toLowerCase()) || fuzzyMatch(q, (w.class || "").toLowerCase());
+        }).map(function(w) {
+            return { window: w, score: Math.max(fuzzyScore(q, (w.title || "").toLowerCase()), fuzzyScore(q, (w.class || "").toLowerCase())) };
+        }).sort(function(a,b) { return b.score - a.score; }).map(function(i) { return i.window; });
+        matchingWindows = m; selectedMatchIndex = m.length > 0 ? 0 : -1;
+    }
+    function isWindowMatched(addr) { return searchQuery.length > 0 && matchingWindows.some(function(w) { return w?.address === addr; }); }
+    function isWindowSelected(addr) { return matchingWindows.length > 0 && selectedMatchIndex >= 0 && matchingWindows[selectedMatchIndex]?.address === addr; }
+
+    // ── Build filtered windows list (ALL monitors, workspaces 1..workspacesShown) ──
+    // Each window carries its OWN monitor data for correct positioning
+    readonly property var filteredWindows: {
+        var _ = overviewRoot._refreshToken;
+        var toplevels = ToplevelManager.toplevels.values;
+        var result = [];
+        var list = overviewRoot.windowList;
+        for (var i = 0; i < list.length; i++) {
+            var w = list[i];
+            if (!w || !w.workspace || !w.workspace.id || w.workspace.id <= 0 || w.workspace.id > workspacesShown)
+                continue;
+            var winMon = overviewRoot.allMonitors.find(function(m) { return m.id === w.monitor; });
+            result.push({
+                windowData: w,
+                winMonData: winMon,
+                toplevel: (function() {
+                    var cls = w.class || "";
+                    if (!cls) return null;
+                    var cands = toplevels.filter(function(t) { return t.appId === cls; });
+                    if (cands.length <= 1) return cands[0] || null;
+                    return cands.find(function(t) { return t.title === (w.title || ""); }) || cands[0];
+                })()
+            });
         }
-
-        const query = searchQuery.toLowerCase();
-        const matches = windowList.filter(win => {
-            if (!win)
-                return false;
-            const title = (win.title || "").toLowerCase();
-            const windowClass = (win.class || "").toLowerCase();
-            return fuzzyMatch(query, title) || fuzzyMatch(query, windowClass);
-        }).map(win => ({
-                    window: win,
-                    score: Math.max(fuzzyScore(query, (win.title || "").toLowerCase()), fuzzyScore(query, (win.class || "").toLowerCase()))
-                })).sort((a, b) => b.score - a.score).map(item => item.window);
-
-        matchingWindows = matches;
-        selectedMatchIndex = matches.length > 0 ? 0 : -1;
+        return result;
     }
 
-    function navigateToSelectedWindow() {
-        if (matchingWindows.length === 0 || selectedMatchIndex < 0)
-            return;
-
-        const win = matchingWindows[selectedMatchIndex];
-        if (!win)
-            return;
-
-        // Close overview and focus the matched window
-        Visibilities.setActiveModule("", true);
-        Qt.callLater(() => {
-            AxctlService.dispatch(`focuswindow address:${win.address}`);
-        });
-    }
-
-    function selectNextMatch() {
-        if (matchingWindows.length === 0)
-            return;
-        selectedMatchIndex = (selectedMatchIndex + 1) % matchingWindows.length;
-    }
-
-    function selectPrevMatch() {
-        if (matchingWindows.length === 0)
-            return;
-        selectedMatchIndex = (selectedMatchIndex - 1 + matchingWindows.length) % matchingWindows.length;
-    }
-
-    function isWindowMatched(windowAddress) {
-        if (searchQuery.length === 0)
-            return false;
-        return matchingWindows.some(win => win?.address === windowAddress);
-    }
-
-    function isWindowSelected(windowAddress) {
-        if (matchingWindows.length === 0 || selectedMatchIndex < 0)
-            return false;
-        return matchingWindows[selectedMatchIndex]?.address === windowAddress;
-    }
-
-    // Pre-calculate workspace dimensions once
-    readonly property real workspaceImplicitWidth: {
-        if (!monitorData)
-            return 200;
-        const isRotated = (monitorData.transform % 2 === 1);
-        const monitorScale = monitorData.scale || 1.0;
-        const width = isRotated ? (monitor?.height || 1920) : (monitor?.width || 1920);
-        let scaledWidth = (width / monitorScale) * scale;
-        if (barPosition === "left" || barPosition === "right") {
-            scaledWidth -= barReserved * scale;
-        }
-        return Math.max(0, Math.round(scaledWidth));
-    }
-
-    readonly property real workspaceImplicitHeight: {
-        if (!monitorData)
-            return 150;
-        const isRotated = (monitorData.transform % 2 === 1);
-        const monitorScale = monitorData.scale || 1.0;
-        const height = isRotated ? (monitor?.width || 1080) : (monitor?.height || 1080);
-        let scaledHeight = (height / monitorScale) * scale;
-        if (barPosition === "top" || barPosition === "bottom") {
-            scaledHeight -= barReserved * scale;
-        }
-        return Math.max(0, Math.round(scaledHeight));
-    }
-
-    property int draggingFromWorkspace: -1
-    property int draggingTargetWorkspace: -1
-
-    implicitWidth: overviewBackground.implicitWidth
-    implicitHeight: overviewBackground.implicitHeight
+    implicitWidth: bg.implicitWidth
+    implicitHeight: bg.implicitHeight
 
     Item {
-        id: overviewBackground
+        id: bg
         anchors.centerIn: parent
 
-        implicitWidth: workspaceColumnLayout.implicitWidth
-        implicitHeight: workspaceColumnLayout.implicitHeight
-
         ColumnLayout {
-            id: workspaceColumnLayout
+            id: mainGrid
             anchors.centerIn: parent
             spacing: workspaceSpacing
 
             Repeater {
                 model: overviewRoot.rows
                 delegate: RowLayout {
-                    id: row
-                    property int rowIndex: index
                     spacing: workspaceSpacing
-
                     Repeater {
                         model: overviewRoot.columns
                         Rectangle {
-                            id: workspace
-                            property int colIndex: index
-                            property int workspaceValue: overviewRoot.workspaceGroup * workspacesShown + rowIndex * overviewRoot.columns + colIndex + 1
-                            property color defaultWorkspaceColor: Colors.background
-                            property color hoveredWorkspaceColor: Colors.surfaceContainer
-                            property color hoveredBorderColor: Colors.outline
-                            property bool hoveredWhileDragging: false
+                            id: cell
+                            property int wsNum: rowIndex * overviewRoot.columns + index + 1
+                            readonly property bool isDropTarget: overviewRoot.draggingTargetWorkspace === wsNum
 
-                            implicitWidth: overviewRoot.workspaceImplicitWidth + workspacePadding
-                            implicitHeight: overviewRoot.workspaceImplicitHeight + workspacePadding
-                            color: "transparent"
-                            radius: Styling.radius(2)
-                            border.width: 2
-                            border.color: hoveredWhileDragging ? hoveredBorderColor : "transparent"
+                            implicitWidth: overviewRoot.wsCellW + workspacePadding
+                            implicitHeight: overviewRoot.wsCellH + workspacePadding
+                            color: "transparent"; radius: Styling.radius(2)
+                            border.width: 2; border.color: isDropTarget ? Colors.outline : "transparent"
                             clip: true
 
-                            // Wallpaper background for each workspace
                             TintedWallpaper {
-                                id: workspaceWallpaper
-                                anchors.fill: parent
-                                radius: Styling.radius(2)
+                                anchors.fill: parent; radius: Styling.radius(2)
                                 tintEnabled: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.tintEnabled : false
-
-                                property string lockscreenFramePath: {
-                                    if (!GlobalStates.wallpaperManager)
-                                        return "";
-                                    return GlobalStates.wallpaperManager.getLockscreenFramePath(GlobalStates.wallpaperManager.currentWallpaper);
-                                }
-
-                                source: lockscreenFramePath ? "file://" + lockscreenFramePath : ""
+                                property string lfp: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.getLockscreenFramePath(GlobalStates.wallpaperManager.currentWallpaper) : ""
+                                source: lfp ? "file://" + lfp : ""
                             }
-
+                            Text {
+                                anchors.centerIn: parent
+                                text: String(wsNum)
+                                font.family: Config.theme.font
+                                font.pixelSize: Math.max(20, Math.round(wsCellH * 0.12))
+                                font.bold: true; color: Colors.onSurface; opacity: 0.3; z: 5
+                            }
                             MouseArea {
-                                anchors.fill: parent
-                                acceptedButtons: Qt.LeftButton
-                                onClicked: {
-                                    if (overviewRoot.draggingTargetWorkspace === -1) {
-                                        // Only switch workspace, don't close overview
-                                        AxctlService.dispatch(`workspace ${workspaceValue}`);
-                                    }
-                                }
-                                onDoubleClicked: {
-                                    if (overviewRoot.draggingTargetWorkspace === -1) {
-                                        // Double click closes overview and switches workspace
-                                        Visibilities.setActiveModule("");
-                                        AxctlService.dispatch(`workspace ${workspaceValue}`);
-                                    }
-                                }
+                                anchors.fill: parent; acceptedButtons: Qt.LeftButton
+                                onClicked: AxctlService.dispatch("workspace " + wsNum)
+                                onDoubleClicked: { Visibilities.setActiveModule(""); AxctlService.dispatch("workspace " + wsNum); }
                             }
-
                             DropArea {
                                 anchors.fill: parent
-                                onEntered: {
-                                    overviewRoot.draggingTargetWorkspace = workspaceValue;
-                                    if (overviewRoot.draggingFromWorkspace == overviewRoot.draggingTargetWorkspace)
-                                        return;
-                                    hoveredWhileDragging = true;
-                                }
-                                onExited: {
-                                    hoveredWhileDragging = false;
-                                    if (overviewRoot.draggingTargetWorkspace == workspaceValue)
-                                        overviewRoot.draggingTargetWorkspace = -1;
-                                }
+                                onEntered: overviewRoot.draggingTargetWorkspace = wsNum
+                                onExited: { if (overviewRoot.draggingTargetWorkspace === wsNum) overviewRoot.draggingTargetWorkspace = -1; }
                             }
                         }
                     }
@@ -297,108 +208,52 @@ Item {
             }
         }
 
+        // Window overlay
         Item {
-            id: windowSpace
+            id: winLayer
             anchors.centerIn: parent
-            implicitWidth: workspaceColumnLayout.implicitWidth
-            implicitHeight: workspaceColumnLayout.implicitHeight
-
-            // Pre-filter windows for this monitor and workspace group
-            readonly property var filteredWindowData: {
-                const minWs = overviewRoot.workspaceGroup * overviewRoot.workspacesShown;
-                const maxWs = (overviewRoot.workspaceGroup + 1) * overviewRoot.workspacesShown;
-                const monId = overviewRoot.monitorId;
-                const toplevels = ToplevelManager.toplevels.values;
-
-                return overviewRoot.windowList.filter(win => {
-                    const wsId = win?.workspace?.id;
-                    return wsId > minWs && wsId <= maxWs && win.monitor === monId;
-                }).map(win => ({
-                            windowData: win,
-                            toplevel: (() => {
-                                const cls = win.class || "";
-                                if (!cls) return null;
-                                const candidates = toplevels.filter(t => t.appId === cls);
-                                if (candidates.length <= 1) return candidates[0] || null;
-                                return candidates.find(t => t.title === (win.title || "")) || candidates[0];
-                            })()
-                        }));
-            }
+            implicitWidth: mainGrid.implicitWidth
+            implicitHeight: mainGrid.implicitHeight
 
             Repeater {
-                model: windowSpace.filteredWindowData
+                model: overviewRoot.filteredWindows
 
                 delegate: OverviewWindow {
-                    id: window
+                    id: win
                     required property var modelData
                     windowData: modelData.windowData
                     toplevel: modelData.toplevel
                     scale: overviewRoot.scale
-                    availableWorkspaceWidth: overviewRoot.workspaceImplicitWidth
-                    availableWorkspaceHeight: overviewRoot.workspaceImplicitHeight
-                    monitorData: overviewRoot.monitorData
+                    availableWorkspaceWidth: overviewRoot.wsCellW
+                    availableWorkspaceHeight: overviewRoot.wsCellH
+                    monitorData: modelData.winMonData || overviewRoot.monitorData
                     barPosition: overviewRoot.barPosition
                     barReserved: overviewRoot.barReserved
 
-                    // Search highlighting
+                    overviewRootRef: overviewRoot
                     isSearchMatch: overviewRoot.isWindowMatched(windowData?.address)
                     isSearchSelected: overviewRoot.isWindowSelected(windowData?.address)
 
-                    property int workspaceColIndex: (windowData?.workspace.id - 1) % overviewRoot.columns
-                    property int workspaceRowIndex: Math.floor((windowData?.workspace.id - 1) % overviewRoot.workspacesShown / overviewRoot.columns)
-
-                    xOffset: Math.round((overviewRoot.workspaceImplicitWidth + workspacePadding + workspaceSpacing) * workspaceColIndex + workspacePadding / 2)
-                    yOffset: Math.round((overviewRoot.workspaceImplicitHeight + workspacePadding + workspaceSpacing) * workspaceRowIndex + workspacePadding / 2)
+                    // Grid cell offset based on workspace ID
+                    property int wCol: (windowData?.workspace.id - 1) % overviewRoot.columns
+                    property int wRow: Math.floor((windowData?.workspace.id - 1) % overviewRoot.workspacesShown / overviewRoot.columns)
+                    xOffset: Math.round((overviewRoot.wsCellW + workspacePadding + workspaceSpacing) * wCol + workspacePadding / 2)
+                    yOffset: Math.round((overviewRoot.wsCellH + workspacePadding + workspaceSpacing) * wRow + workspacePadding / 2)
 
                     onDragStarted: overviewRoot.draggingFromWorkspace = windowData?.workspace.id || -1
-                    onDragFinished: targetWorkspace => {
+                    onDragFinished: function(targetWs) {
                         overviewRoot.draggingFromWorkspace = -1;
-                        if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
-                            AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
+                        if (targetWs > 0 && targetWs !== windowData?.workspace.id) {
+                            AxctlService.dispatch("movetoworkspacesilent " + targetWs + ",address:" + (windowData?.address || ""));
+                            Qt.callLater(function() { overviewRoot.refreshFromHyprctl(); });
+                            overviewRoot.forceRefresh();
                         }
                     }
                     onWindowClicked: {
-                        // Close overview and focus the specific clicked window
-                        // Skip generic focus restoration since we're handling it specifically
                         Visibilities.setActiveModule("", true);
-                        Qt.callLater(() => {
-                            AxctlService.dispatch(`focuswindow address:${windowData.address}`);
-                        });
+                        Qt.callLater(function() { AxctlService.dispatch("focuswindow address:" + windowData.address); });
                     }
-                    onWindowClosed: {
-                        AxctlService.dispatch(`closewindow address:${windowData.address}`);
-                    }
-                }
-            }
-
-            Rectangle {
-                id: focusedWorkspaceIndicator
-                property int activeWorkspaceInGroup: (monitor?.activeWorkspace?.id || 1) - (overviewRoot.workspaceGroup * overviewRoot.workspacesShown)
-                property int activeWorkspaceRowIndex: Math.floor((activeWorkspaceInGroup - 1) / overviewRoot.columns)
-                property int activeWorkspaceColIndex: (activeWorkspaceInGroup - 1) % overviewRoot.columns
-
-                x: Math.round((overviewRoot.workspaceImplicitWidth + workspacePadding + workspaceSpacing) * activeWorkspaceColIndex)
-                y: Math.round((overviewRoot.workspaceImplicitHeight + workspacePadding + workspaceSpacing) * activeWorkspaceRowIndex)
-                width: Math.round(overviewRoot.workspaceImplicitWidth + workspacePadding)
-                height: Math.round(overviewRoot.workspaceImplicitHeight + workspacePadding)
-                color: "transparent"
-                radius: Styling.radius(2)
-                border.width: 2
-                border.color: overviewRoot.activeBorderColor
-
-                Behavior on x {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                }
-                Behavior on y {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                    onWindowClosed: { AxctlService.dispatch("closewindow address:" + windowData.address); }
                 }
             }
         }

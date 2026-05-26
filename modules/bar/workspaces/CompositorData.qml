@@ -20,6 +20,36 @@ Singleton {
         // No-op: state is now pushed inline via axctl subscribe events
     }
 
+    // Force refresh from hyprctl (used by overview after drag-and-drop)
+    property Process _refreshProcess: Process {
+        command: ["hyprctl", "clients", "-j"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    var raw = JSON.parse(text);
+                    if (raw && raw.length > 0)
+                        root.refreshFromJson(raw);
+                } catch (e) {}
+            }
+        }
+    }
+
+    function refreshFromHyprctl() {
+        _refreshProcess.running = true;
+    }
+
+    function refreshFromJson(raw) {
+        root.windowList = raw;
+        let tempWinByAddress = {}
+        for (var i = 0; i < root.windowList.length; ++i) {
+            var win = root.windowList[i]
+            tempWinByAddress[win.address] = win
+        }
+        root.windowByAddress = tempWinByAddress
+        root.addresses = root.windowList.map((win) => win.address)
+        updateMaps()
+    }
+
     function updateMaps() {
         let occupationMap = {}
         let windowsMap = {}

@@ -28,6 +28,9 @@ Item {
     property string barPosition: "top"
     property int barReserved: 0
 
+    // Reference to overview root (for drag state)
+    property Item overviewRootRef: null
+
     // Search highlighting
     property bool isSearchMatch: false
     property bool isSearchSelected: false
@@ -41,8 +44,9 @@ Item {
     readonly property real initX: {
         if (useOverridePosition && overrideX >= 0)
             return overrideX;
-
-        let base = (windowData?.at?.[0] || 0) - (monitorData?.x || 0);
+        // hyprctl clients -j returns ABSOLUTE coordinates
+        var mx = (monitorData && monitorData.x !== undefined) ? monitorData.x : 0;
+        var base = (windowData?.at?.[0] || 0) - mx;
         if (barPosition === "left")
             base -= barReserved;
         return Math.round(Math.max(base * scale, 0) + xOffset);
@@ -50,16 +54,26 @@ Item {
     readonly property real initY: {
         if (useOverridePosition && overrideY >= 0)
             return overrideY;
-        let base = (windowData?.at?.[1] || 0) - (monitorData?.y || 0);
+        // hyprctl clients -j returns ABSOLUTE coordinates
+        var my = (monitorData && monitorData.y !== undefined) ? monitorData.y : 0;
+        var base = (windowData?.at?.[1] || 0) - my;
         if (barPosition === "top")
             base -= barReserved;
         return Math.round(Math.max(base * scale, 0) + yOffset);
     }
-    readonly property real targetWindowWidth: Math.round((windowData?.size[0] || 100) * scale)
-    readonly property real targetWindowHeight: Math.round((windowData?.size[1] || 100) * scale)
+    // Use real window size when available (>200px), otherwise fill 85% of workspace cell
+    readonly property real targetWindowWidth: Math.round(Math.min(
+        (windowData?.size[0] > 200 ? windowData.size[0] : Math.round(availableWorkspaceWidth * 0.85 / scale)) * scale,
+        availableWorkspaceWidth))
+    readonly property real targetWindowHeight: Math.round(Math.min(
+        (windowData?.size[1] > 200 ? windowData.size[1] : Math.round(availableWorkspaceHeight * 0.85 / scale)) * scale,
+        availableWorkspaceHeight))
     readonly property bool compactMode: targetWindowHeight < 60 || targetWindowWidth < 60
     readonly property string iconPath: AppSearch.guessIcon(windowData?.class || "")
     readonly property int calculatedRadius: Styling.radius(-2)
+
+    // Drag tracking
+    property bool _isDragging: false
 
     signal dragStarted
     signal dragFinished(int targetWorkspace)
@@ -87,11 +101,13 @@ Item {
         }
     }
 
-    // Watch for windowData changes to reset override when real data updates
+    // Watch for windowData changes: reset override and sync position
     onWindowDataChanged: {
-        if (useOverridePosition) {
+        if (useOverridePosition)
             resetOverrideTimer.restart();
-        }
+        // Re-apply position after data refresh (drag.target broke the binding)
+        x = initX;
+        y = initY;
     }
 
     Behavior on x {
@@ -137,6 +153,23 @@ Item {
             live: GlobalStates.overviewOpen
             visible: Config.performance.windowPreview
         }
+
+        // Retry capture periodically when preview has no content
+        Timer {
+            id: retryPreviewTimer
+            interval: 600
+            running: GlobalStates.overviewOpen && Config.performance.windowPreview
+            repeat: true
+            onTriggered: {
+                if (!windowPreview.hasContent && root.toplevel) {
+                    // Toggle capture source to force retry
+                    windowPreview.captureSource = null;
+                    Qt.callLater(function() {
+                        windowPreview.captureSource = Config.performance.windowPreview && GlobalStates.overviewOpen ? root.toplevel : null;
+                    });
+                }
+            }
+        }
     }
 
     // Background rectangle with rounded corners
@@ -144,10 +177,12 @@ Item {
         id: previewBackground
         anchors.fill: parent
         radius: root.calculatedRadius
-        color: pressed ? Colors.surfaceBright : hovered ? Colors.surface : Colors.background
-        border.color: root.isSearchSelected ? Colors.tertiary : root.isSearchMatch ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-        border.width: root.isSearchSelected ? 3 : root.isSearchMatch ? 2 : (hovered ? 2 : 0)
+        color: pressed ? Colors.surfaceBright : hovered ? Colors.surface : Colors.surfaceContainer
+        border.color: root.isSearchSelected ? Colors.tertiary : root.isSearchMatch ? Styling.srItem("overprimary") : Colors.outlineVariant
+        border.width: root.isSearchSelected ? 3 : root.isSearchMatch ? 2 : (hovered ? 2 : 1)
         visible: !windowPreview.hasContent || !Config.performance.windowPreview
+        opacity: !windowPreview.hasContent ? 1.0 : 0.0
+        Behavior on opacity { NumberAnimation { duration: 150 } }
 
         Behavior on color {
             enabled: Config.animDuration > 0
@@ -249,120 +284,63 @@ Item {
 
         onEntered: {
             root.hovered = true;
-            // Only focus window on hover if it's in the current workspace
-            if (root.windowData) {
-                // Get current active workspace from AxctlService
-                let currentWorkspace = AxctlService.focusedMonitor?.activeWorkspace?.id;
-                let windowWorkspace = root.windowData?.workspace?.id;
-
-                // Only focus if the window is in the current workspace
-                if (currentWorkspace && windowWorkspace && currentWorkspace === windowWorkspace) {
-                    AxctlService.dispatch(`focuswindow address:${windowData.address}`);
-                }
-            }
         }
         onExited: root.hovered = false
 
         onPressed: mouse => {
             root.pressed = true;
+            root._isDragging = false;
             root.Drag.active = true;
             root.Drag.source = root;
             root.dragStarted();
         }
 
-        onReleased: mouse => {
-            const overviewRoot = parent.parent.parent.parent;
-            let targetWorkspace = overviewRoot.draggingTargetWorkspace;
+        onPositionChanged: {
+            if (!root._isDragging && root.Drag.active)
+                root._isDragging = true;
+        }
 
+        onReleased: mouse => {
             root.pressed = false;
             root.Drag.active = false;
 
-            if (mouse.button === Qt.LeftButton) {
-                // If targetWorkspace is -1, calculate it from current position
-                if (targetWorkspace === -1) {
-                    // Calculate which workspace we're over based on position
-                    const workspaceColIndex = Math.floor((root.x - root.xOffset + root.availableWorkspaceWidth / 2) / (root.availableWorkspaceWidth + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing));
-                    const workspaceRowIndex = Math.floor((root.y - root.yOffset + root.availableWorkspaceHeight / 2) / (root.availableWorkspaceHeight + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing));
-                    
-                    if (workspaceColIndex >= 0 && workspaceColIndex < overviewRoot.columns && 
-                        workspaceRowIndex >= 0 && workspaceRowIndex < overviewRoot.rows) {
-                        targetWorkspace = overviewRoot.workspaceGroup * overviewRoot.workspacesShown + 
-                                        workspaceRowIndex * overviewRoot.columns + workspaceColIndex + 1;
-                    } else {
-                        // Out of bounds, default to current workspace
-                        targetWorkspace = windowData?.workspace.id;
-                    }
+            if (mouse.button === Qt.LeftButton && root._isDragging) {
+                // Calculate target workspace from MOUSE position (more accurate than window pos)
+                // Mouse in winLayer coordinates = window.pos + mouse.offset
+                var ov = root.overviewRootRef;
+                var targetWs = -1;
+
+                if (ov && ov.columns && ov.rows) {
+                    // Mouse position in winLayer coordinates (winLayer == grid coords)
+                    var mx = root.x + mouse.x;
+                    var my = root.y + mouse.y;
+                    // Cell dimensions (grid spacing + cell size + padding)
+                    var cw = root.availableWorkspaceWidth + ov.workspacePadding + ov.workspaceSpacing;
+                    var ch = root.availableWorkspaceHeight + ov.workspacePadding + ov.workspaceSpacing;
+                    // Cell index from mouse position (cells start at padding/2)
+                    var colIdx = Math.floor((mx - ov.workspacePadding / 2) / cw);
+                    var rowIdx = Math.floor((my - ov.workspacePadding / 2) / ch);
+
+                    if (colIdx >= 0 && colIdx < ov.columns && rowIdx >= 0 && rowIdx < ov.rows)
+                        targetWs = rowIdx * ov.columns + colIdx + 1;
                 }
 
-                root.dragFinished(targetWorkspace);
-                overviewRoot.draggingTargetWorkspace = -1;
+                // If grid calculation failed, try DropArea state
+                if (targetWs <= 0 && ov)
+                    targetWs = ov.draggingTargetWorkspace;
 
-                // Check if moving to different workspace
-                if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
-                    // Moving to different workspace
-                    if (windowData?.floating && (root.x !== root.initX || root.y !== root.initY)) {
-                        // Calculate position in the target workspace
-                        // Get target workspace offset
-                        const targetColIndex = (targetWorkspace - 1) % overviewRoot.columns;
-                        const targetRowIndex = Math.floor((targetWorkspace - 1) % overviewRoot.workspacesShown / overviewRoot.columns);
-                        const targetXOffset = Math.round((overviewRoot.workspaceImplicitWidth + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing) * targetColIndex + overviewRoot.workspacePadding / 2);
-                        const targetYOffset = Math.round((overviewRoot.workspaceImplicitHeight + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing) * targetRowIndex + overviewRoot.workspacePadding / 2);
-                        
-                        // Calculate relative position in target workspace
-                        const relativeX = root.x - targetXOffset;
-                        const relativeY = root.y - targetYOffset;
-                        
-                        // Convert to percentage
-                        const percentageX = Math.round((relativeX / root.availableWorkspaceWidth) * 100);
-                        const percentageY = Math.round((relativeY / root.availableWorkspaceHeight) * 100);
-                        
-                        // Move to workspace and set position
-                        AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
-                        AxctlService.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${windowData?.address}`);
-                        
-                        // Force immediate window data update
-                        CompositorData.updateWindowList();
-                    } else {
-                        // Just move workspace without repositioning
-                        AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
-                        
-                        // Force immediate window data update
-                        CompositorData.updateWindowList();
-                    }
-                    
-                    // Reset position in overview
-                    root.x = root.initX;
-                    root.y = root.initY;
-                } else if (windowData?.floating && (root.x !== root.initX || root.y !== root.initY)) {
-                    // Dropped on same workspace and floating - reposition
-                    const relativeX = root.x - root.xOffset;
-                    const relativeY = root.y - root.yOffset;
-                    
-                    const percentageX = Math.round((relativeX / root.availableWorkspaceWidth) * 100);
-                    const percentageY = Math.round((relativeY / root.availableWorkspaceHeight) * 100);
-                    
-                    const draggedX = root.x;
-                    const draggedY = root.y;
-                    
-                    AxctlService.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${windowData?.address}`);
-                    
-                    // Force immediate window data update
-                    CompositorData.updateWindowList();
-                    
-                    // Set override position for immediate visual update
-                    root.overrideX = draggedX;
-                    root.overrideY = draggedY;
-                    root.useOverridePosition = true;
-                    
-                    root.x = draggedX;
-                    root.y = draggedY;
-                    
-                    resetOverrideTimer.restart();
-                } else {
-                    // Reset position for non-floating or non-moved windows
-                    root.x = root.initX;
-                    root.y = root.initY;
-                }
+                // If still nothing, stay on current workspace
+                if (targetWs <= 0)
+                    targetWs = windowData?.workspace?.id || -1;
+
+                // Signal the delegate handles the move + refresh
+                root.dragFinished(targetWs);
+                if (ov) ov.draggingTargetWorkspace = -1;
+
+                // Don't dispatch here — the delegate's onDragFinished handles it
+                // Just reset visual position (will be updated when data refreshes)
+                root.x = root.initX;
+                root.y = root.initY;
             }
         }
 
