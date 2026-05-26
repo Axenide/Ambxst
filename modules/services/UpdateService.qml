@@ -9,12 +9,14 @@ Singleton {
     id: root
 
     readonly property string currentVersion: Config.version
-    readonly property string repoUrl: "https://api.github.com/repos/Leriart/NothingLess/tags"
+    readonly property string repoCommitsUrl: "https://api.github.com/repos/Leriart/NothingLess/commits/main"
     readonly property string changelogUrl: "https://github.com/Leriart/NothingLess/releases"
     // QUICKSHELL-GIT: readonly property string cacheFile: Quickshell.cachePath("update_check.json")
     readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/nothingless/update_check.json"
+    readonly property string installPath: Quickshell.env("HOME") + "/.local/src/nothingless"
 
-    property string lastDetectedVersion: ""
+    property string lastSeenCommit: ""
+    property string localCommit: ""
     property double lastCheckTime: 0
     property double nextCheckTime: 0
 
@@ -33,7 +35,7 @@ Singleton {
                     const data = JSON.parse(content);
                     root.lastCheckTime = data.lastCheckTime || 0;
                     root.nextCheckTime = data.nextCheckTime || 0;
-                    root.lastDetectedVersion = data.lastDetectedVersion || "";
+                    root.lastSeenCommit = data.lastSeenCommit || "";
                 } else {
                     root.nextCheckTime = Date.now();
                 }
@@ -48,7 +50,7 @@ Singleton {
         const data = {
             lastCheckTime: root.lastCheckTime,
             nextCheckTime: root.nextCheckTime,
-            lastDetectedVersion: root.lastDetectedVersion
+            lastSeenCommit: root.lastSeenCommit
         };
         cacheFileView.setText(JSON.stringify(data));
     }
@@ -85,34 +87,59 @@ Singleton {
         root.updateAvailable = false;
         root.latestVersion = "";
 
+        // First, detect local commit via git
+        detectLocalCommit(function() {
+            _fetchRemoteCommit();
+        });
+    }
+
+    function detectLocalCommit(callback) {
+        const proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+        proc.command = ["git", "-C", root.installPath, "rev-parse", "--short", "HEAD"];
+        proc.stdout = Qt.createQmlObject('import Quickshell.Io; StdioCollector {}', proc);
+        proc.onExited.connect(function(exitCode) {
+            if (exitCode === 0) {
+                root.localCommit = proc.stdout.text().trim();
+            }
+            proc.destroy();
+            if (callback) callback();
+        });
+        proc.running = true;
+    }
+
+    function _fetchRemoteCommit() {
         const xhr = new XMLHttpRequest();
-        xhr.open("GET", root.repoUrl);
+        xhr.open("GET", root.repoCommitsUrl);
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 root.isChecking = false;
                 if (xhr.status === 200) {
                     try {
-                        const tags = JSON.parse(xhr.responseText);
-                        if (tags && Array.isArray(tags) && tags.length > 0) {
-                            const latestTag = tags[0].name.replace(/^v/, "");
-                            root.latestVersion = latestTag;
-                            if (isNewer(latestTag, root.currentVersion)) {
+                        const commit = JSON.parse(xhr.responseText);
+                        if (commit && commit.sha) {
+                            const remoteSha = commit.sha.substring(0, 7);
+                            root.latestVersion = remoteSha;
+
+                            // Compare remote commit with local commit (or last seen)
+                            const knownCommit = root.localCommit || root.lastSeenCommit;
+                            if (knownCommit && remoteSha !== knownCommit) {
                                 root.updateAvailable = true;
-                                if (latestTag !== root.lastDetectedVersion || !isNotificationInHistory()) {
-                                    sendUpdateNotification(latestTag);
-                                    root.lastDetectedVersion = latestTag;
+                                if (remoteSha !== root.lastSeenCommit || !isNotificationInHistory()) {
+                                    sendUpdateNotification(remoteSha);
+                                    root.lastSeenCommit = remoteSha;
                                 }
                             } else {
                                 root.updateAvailable = false;
+                                // Update lastSeenCommit to match current state
+                                root.lastSeenCommit = knownCommit || remoteSha;
                             }
                         }
                     } catch (e) {
-                        console.log("[UpdateService] Error parsing GitHub tags:", e);
+                        console.log("[UpdateService] Error parsing GitHub commit:", e);
                     }
                 }
                 root.lastCheckTime = Date.now();
                 
-                // If nextCheckTime is in the past or now, set it to 1 hour from now
                 if (root.nextCheckTime <= Date.now()) {
                     root.nextCheckTime = Date.now() + 3600000;
                 }
@@ -121,18 +148,6 @@ Singleton {
             }
         }
         xhr.send();
-    }
-
-    function isNewer(latest, current) {
-        const l = latest.split('.').map(Number);
-        const c = current.split('.').map(Number);
-        for (let i = 0; i < Math.max(l.length, c.length); i++) {
-            const lv = l[i] || 0;
-            const cv = c[i] || 0;
-            if (lv > cv) return true;
-            if (lv < cv) return false;
-        }
-        return false;
     }
 
     function isNotificationInHistory() {
@@ -146,9 +161,10 @@ Singleton {
         return false;
     }
 
-    function sendUpdateNotification(newVersion) {
+    function sendUpdateNotification(newSha) {
         const summary = "NothingLess update available!";
-        const body = newVersion + " available! (Installed " + root.currentVersion + ")";
+        const localInfo = root.localCommit ? " (local: " + root.localCommit + ")" : "";
+        const body = "New commit: " + newSha + localInfo;
         const cmd = "notify-send -a 'NothingLess Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later' --action=update=Update";
         
         notificationProcess.running = false;

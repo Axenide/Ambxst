@@ -1826,8 +1826,14 @@ Item {
                             id: checkUpdatesBtn
                             text: {
                                 if (UpdateService.isChecking) return "Checking for updates..."
-                                if (UpdateService.updateAvailable) return "Update available: " + UpdateService.latestVersion
-                                if (UpdateService.lastCheckTime > 0) return "Check Updates (Up to date)"
+                                if (UpdateService.updateAvailable) {
+                                    const local = UpdateService.localCommit ? " (local: " + UpdateService.localCommit + ")" : ""
+                                    return "Update available: " + UpdateService.latestVersion + local
+                                }
+                                if (UpdateService.lastCheckTime > 0) {
+                                    const local = UpdateService.localCommit ? " (" + UpdateService.localCommit + ")" : ""
+                                    return "Check Updates (Up to date)" + local
+                                }
                                 return "Check Updates"
                             }
                             icon: UpdateService.isChecking ? Icons.circleNotch : (UpdateService.updateAvailable ? Icons.arrowFatLinesDown : Icons.arrowCounterClockwise)
