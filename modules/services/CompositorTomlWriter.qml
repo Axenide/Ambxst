@@ -154,13 +154,26 @@ Singleton {
         function pushKeybindEntry(modifiers, key, dispatcher, argument, flags) {
             if (!key || String(key).trim().length === 0)
                 return;
+            const normalized = normalizeKeybindDispatcher(dispatcher || "", argument || "");
             toml += "\n[[keybinds]]\n";
             toml += `modifiers = ${tomlStringArray(modifiers || [])}\n`;
             toml += `key = ${tomlString(String(key))}\n`;
-            toml += `dispatcher = ${tomlString(dispatcher || "")}\n`;
-            toml += `argument = ${tomlString(argument || "")}\n`;
+            toml += `dispatcher = ${tomlString(normalized.dispatcher)}\n`;
+            toml += `argument = ${tomlString(normalized.argument)}\n`;
             toml += `flags = ${tomlString(flags || "")}\n`;
             toml += "enabled = true\n";
+        }
+
+        function normalizeKeybindDispatcher(dispatcher, argument) {
+            if (dispatcher === "layoutmsg") {
+                if (argument.indexOf("focus ") === 0) {
+                    return { dispatcher: "movefocus", argument: argument.split(" ")[1] || "" };
+                }
+                if (argument.indexOf("movewindowto ") === 0) {
+                    return { dispatcher: "movewindow", argument: argument.split(" ")[1] || "" };
+                }
+            }
+            return { dispatcher: dispatcher, argument: argument };
         }
 
         function resolveBindAction(action, fallback) {

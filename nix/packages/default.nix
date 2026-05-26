@@ -1,5 +1,5 @@
 # Main Ambxst package
-{ pkgs, lib, self, system, axctl }:
+{ pkgs, lib, self, system, axctl, version }:
 
 let
   quickshellPkg = pkgs.quickshell;
@@ -42,7 +42,7 @@ let
   # Copy shell sources to the Nix store
   shellSrc = pkgs.stdenv.mkDerivation {
     pname = "ambxst-shell";
-    version = lib.removeSuffix "\n" (builtins.readFile ../../version);
+    inherit version;
     src = lib.cleanSource self;
     dontBuild = true;
     installPhase = ''
@@ -67,7 +67,7 @@ let
   '';
 
 in pkgs.buildEnv {
-  name = "Ambxst";
+  name = "Ambxst-${version}";
   paths = [ envAmbxst launcher ];
   meta.mainProgram = "ambxst";
 }

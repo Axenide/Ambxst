@@ -71,8 +71,9 @@ Examples:
 EOF
 }
 
-AMBXST_HYPR_SOURCE="source = ~/.local/share/ambxst/hyprland.conf"
-AMBXST_HYPR_BLOCK=$(
+AMBXST_HYPR_CONF_SOURCE="source = ~/.local/share/ambxst/hyprland.conf"
+AMBXST_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()'
+AMBXST_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
 # Ambxst
 source = ~/.local/share/ambxst/hyprland.conf
@@ -81,19 +82,30 @@ source = ~/.local/share/ambxst/hyprland.conf
 # Down here you can write or source anything that you want to override from Ambxst's settings.
 EOF
 )
+AMBXST_HYPR_LUA_BLOCK=$(
+	cat <<'EOF'
+-- Ambxst
+loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()
+
+-- OVERRIDES
+-- Down here you can write or source anything that you want to override from Ambxst's settings.
+EOF
+)
 
 append_ambxst_hyprland_block() {
 	local conf="$1"
+	local source="$2"
+	local block="$3"
 
-	if [ -f "$conf" ] && grep -qF "$AMBXST_HYPR_SOURCE" "$conf"; then
+	if [ -f "$conf" ] && grep -qF "$source" "$conf"; then
 		echo "Ambxst Hyprland block already present in $conf"
 		return 0
 	fi
 
 	if [ -f "$conf" ] && [ -s "$conf" ]; then
-		printf "\n%s\n" "$AMBXST_HYPR_BLOCK" >>"$conf"
+		printf "\n%s\n" "$block" >>"$conf"
 	else
-		printf "%s\n" "$AMBXST_HYPR_BLOCK" >"$conf"
+		printf "%s\n" "$block" >"$conf"
 	fi
 
 	echo "Added Ambxst Hyprland block to $conf"
@@ -101,18 +113,22 @@ append_ambxst_hyprland_block() {
 
 remove_ambxst_hyprland_block() {
 	local conf="$1"
+	local source="$2"
 
 	if [ ! -f "$conf" ]; then
 		echo "$conf does not exist"
 		return 0
 	fi
 
-	awk -v source="$AMBXST_HYPR_SOURCE" '
+	awk -v source="$source" '
 		function is_remove(line) {
 			return line == source \
 				|| line == "# Ambxst" \
+				|| line == "-- Ambxst" \
 				|| line == "# OVERRIDES" \
-				|| line == "# Down here you can write or source anything that you want to override from Ambxst'\''s settings."
+				|| line == "-- OVERRIDES" \
+				|| line == "# Down here you can write or source anything that you want to override from Ambxst'\''s settings." \
+				|| line == "-- Down here you can write or source anything that you want to override from Ambxst'\''s settings."
 		}
 		{
 			lines[NR] = $0
@@ -525,12 +541,18 @@ version | -v | --version)
 install)
 	TARGET="${2:-}"
 	if [ "$TARGET" = "hyprland" ]; then
-		HYPR_CONF="$HOME/.config/hypr/hyprland.conf"
+		HYPR_DIR="$HOME/.config/hypr"
+		HYPR_LUA="$HYPR_DIR/hyprland.lua"
+		HYPR_CONF="$HYPR_DIR/hyprland.conf"
 
 		# Create directory if needed
-		mkdir -p "$HOME/.config/hypr"
+		mkdir -p "$HYPR_DIR"
 
-		append_ambxst_hyprland_block "$HYPR_CONF"
+		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
+			append_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE" "$AMBXST_HYPR_LUA_BLOCK"
+		else
+			append_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
+		fi
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
@@ -539,9 +561,12 @@ install)
 remove)
 	TARGET="${2:-}"
 	if [ "$TARGET" = "hyprland" ]; then
-		HYPR_CONF="$HOME/.config/hypr/hyprland.conf"
+		HYPR_DIR="$HOME/.config/hypr"
+		HYPR_LUA="$HYPR_DIR/hyprland.lua"
+		HYPR_CONF="$HYPR_DIR/hyprland.conf"
 
-		remove_ambxst_hyprland_block "$HYPR_CONF"
+		remove_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE"
+		remove_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE"
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
@@ -603,6 +628,7 @@ help | --help | -h)
 
 	# Force Qt6CT
 	export QT_QPA_PLATFORMTHEME=qt6ct
+	unset HL_INITIAL_WORKSPACE_TOKEN
 
 	# Cache this script's PID before exec (for fast PID lookups in future CLI calls)
 	echo $$ >/tmp/ambxst.pid

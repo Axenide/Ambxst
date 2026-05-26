@@ -53,7 +53,17 @@ This will install Ambxst and its dependencies. You will have the `ambxst` comman
 
 1. Run the installation command above.
 
-2. Run `ambxst install hyprland` to add Ambxst's configuration to Hyprland. This will source a config file that applies Ambxst's settings. It will look like this:
+2. Run `ambxst install hyprland` to add Ambxst's configuration to Hyprland. This will source a config file that applies Ambxst's settings. If you use `hyprland.lua`, or if no Hyprland config exists yet, it will look like this:
+
+```lua
+-- Ambxst
+loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()
+
+-- OVERRIDES
+-- Down here you can write or source anything that you want to override from Ambxst's settings.
+```
+
+If you only have `hyprland.conf`, Ambxst will keep using the legacy import there for compatibility:
 
 ```bash
 # Ambxst
@@ -79,7 +89,7 @@ Ambxst is currently supported on **Arch**, **Fedora**, and **NixOS**. This means
 
 ## Will this change my config?
 
-Nope! Besides the source line in your `hyprland.conf`, Ambxst is designed to be non-intrusive. It won't modify any of your existing configurations.
+Nope! Besides the Ambxst import block in your `hyprland.conf` or `hyprland.lua`, Ambxst is designed to be non-intrusive. It won't modify any of your existing configurations.
 
 ---
 
