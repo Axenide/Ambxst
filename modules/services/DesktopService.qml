@@ -121,70 +121,19 @@ Singleton {
 
     function executeDesktopFile(filePath) {
         var escapedPath = filePath.replace(/'/g, "'\\''");
-        var processComponent = Qt.createQmlObject('
-            import Quickshell
-            import Quickshell.Io
-            Process {
-                running: true
-                command: ["bash", "-c", "cd ~ && setsid gio launch \'' + escapedPath + '\' < /dev/null > /dev/null 2>&1 &"]
-
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        if (text.length > 0) {
-                            console.log("Desktop file execution:", text);
-                        }
-                    }
-                }
-
-                stderr: StdioCollector {
-                    onStreamFinished: {
-                        if (text.length > 0) {
-                            console.warn("Desktop file execution error:", text);
-                        }
-                    }
-                }
-
-                onRunningChanged: {
-                    if (!running) {
-                        destroy();
-                    }
-                }
-            }
-        ', root);
+        runInActiveWorkspace("gio launch '" + escapedPath + "'");
     }
 
     function openFile(filePath) {
         var escapedPath = filePath.replace(/'/g, "'\\''");
-        var processComponent = Qt.createQmlObject('
-            import Quickshell
-            import Quickshell.Io
-            Process {
-                running: true
-                command: ["bash", "-c", "setsid xdg-open \'' + escapedPath + '\' < /dev/null > /dev/null 2>&1 &"]
+        runInActiveWorkspace("xdg-open '" + escapedPath + "'");
+    }
 
-                stdout: StdioCollector {
-                    onStreamFinished: {
-                        if (text.length > 0) {
-                            console.log("File opened:", text);
-                        }
-                    }
-                }
-
-                stderr: StdioCollector {
-                    onStreamFinished: {
-                        if (text.length > 0) {
-                            console.warn("Error opening file:", text);
-                        }
-                    }
-                }
-
-                onRunningChanged: {
-                    if (!running) {
-                        destroy();
-                    }
-                }
-            }
-        ', root);
+    function runInActiveWorkspace(command) {
+        var processComponent = Qt.createQmlObject('import Quickshell.Io; Process { }', root);
+        processComponent.command = ["bash", "-c", "cd ~ && env -u HL_INITIAL_WORKSPACE_TOKEN setsid " + command + " < /dev/null > /dev/null 2>&1 &"];
+        processComponent.onExited.connect(() => processComponent.destroy());
+        processComponent.running = true;
     }
 
     function trashFile(filePath) {

@@ -25,6 +25,9 @@ Singleton {
         property string summary: ""
         property double time
         property string urgency: "normal"
+        property int historyPriority: 0
+        property string replaceKey: ""
+        property var localActionHandlers: ({})
         property Timer timer
 
         // Propiedades para cache de imágenes
@@ -86,6 +89,8 @@ Singleton {
             "summary": notif.summary,
             "time": notif.time,
             "urgency": notif.urgency,
+            "historyPriority": notif.historyPriority,
+            "replaceKey": notif.replaceKey,
             "cachedAppIcon": notif.cachedAppIcon,
             "cachedImage": notif.cachedImage,
             "isCached": notif.isCached
@@ -171,6 +176,8 @@ Singleton {
             "summary": json.summary,
             "time": json.time,
             "urgency": json.urgency,
+            "historyPriority": json.historyPriority || 0,
+            "replaceKey": json.replaceKey || "",
             "cachedAppIcon": json.cachedAppIcon || "",
             "cachedImage": json.cachedImage || "",
             "isCached": json.isCached || true  // Default to true for loaded notifications
@@ -215,6 +222,8 @@ Singleton {
             root.list.forEach(notif => {
                 if (notif.id > maxId)
                     maxId = notif.id;
+                if (notif.id <= -1000000)
+                    root.internalIdCounter = Math.max(root.internalIdCounter, Math.abs(notif.id) - 999999);
             });
             root.idOffset = maxId + 1;
         } catch (e) {
@@ -241,7 +250,9 @@ Singleton {
 
     function appNameListForGroups(groups) {
         return Object.keys(groups).sort((a, b) => {
-            // Sort by time, descending
+            if (groups[b].historyPriority !== groups[a].historyPriority) {
+                return groups[b].historyPriority - groups[a].historyPriority;
+            }
             return groups[b].time - groups[a].time;
         });
     }
@@ -260,6 +271,7 @@ Singleton {
                     appIcon: notif.appIcon,
                     notifications: [],
                     time: 0,
+                    historyPriority: 0,
                     totalCount: 0  // Conteo independiente del almacenamiento
                 };
             }
@@ -267,6 +279,7 @@ Singleton {
             groups[notif.appName].totalCount++;
             // Always set to the latest time in the group
             groups[notif.appName].time = latestTimeForApp[notif.appName] || notif.time;
+            groups[notif.appName].historyPriority = Math.max(groups[notif.appName].historyPriority || 0, notif.historyPriority || 0);
         });
 
         return groups;
@@ -280,6 +293,7 @@ Singleton {
     // Quickshell's notification IDs starts at 1 on each run, while saved notifications
     // can already contain higher IDs. This is for avoiding id collisions
     property int idOffset
+    property int internalIdCounter: 1
     signal initDone
     signal notify(notification: var)
     signal discard(id: var)
@@ -327,6 +341,49 @@ Singleton {
 
             root.notify(newNotifObject);
         }
+    }
+
+    function notifyInternal(options) {
+        if (!options || (!options.summary && !options.body)) {
+            return null;
+        }
+
+        if (options.replaceKey) {
+            const existingIds = root.list.filter(notif => notif && notif.replaceKey === options.replaceKey).map(notif => notif.id);
+            if (existingIds.length > 0) {
+                root.discardNotifications(existingIds);
+            }
+        }
+
+        const notificationId = -1000000 - root.internalIdCounter++;
+        const newNotifObject = notifComponent.createObject(root, {
+            "id": notificationId,
+            "actions": options.actions || [],
+            "appIcon": options.appIcon || "",
+            "appName": options.appName || "Ambxst",
+            "body": options.body || "",
+            "image": options.image || "",
+            "summary": options.summary || "",
+            "time": options.time || Date.now(),
+            "urgency": options.urgency || NotificationUrgency.Normal,
+            "historyPriority": options.historyPriority || 0,
+            "replaceKey": options.replaceKey || "",
+            "localActionHandlers": options.actionHandlers || {},
+            "popup": !root.popupInhibited && options.popup !== false,
+            "isCached": false
+        });
+
+        if (newNotifObject.popup) {
+            newNotifObject.timer = notifTimerComponent.createObject(root, {
+                "id": newNotifObject.id,
+                "interval": options.expireTimeout || 5000
+            });
+        }
+
+        root.list = [...root.list, newNotifObject];
+        saveNotifications();
+        root.notify(newNotifObject);
+        return newNotifObject;
     }
 
     function discardNotification(id) {
@@ -412,12 +469,23 @@ Singleton {
     }
 
     function attemptInvokeAction(id, notifIdentifier, autoDiscard = true) {
+        const notifIndex = root.list.findIndex(notif => notif.id === id);
+        if (notifIndex !== -1) {
+            const localHandlers = root.list[notifIndex].localActionHandlers || {};
+            const localHandler = localHandlers[notifIdentifier];
+            if (typeof localHandler === "function") {
+                localHandler(id);
+            }
+        }
+
         const notifServerIndex = notifServer.trackedNotifications.values.findIndex(notif => notif.id + root.idOffset === id);
         if (notifServerIndex !== -1) {
             const notifServerNotif = notifServer.trackedNotifications.values[notifServerIndex];
             const action = notifServerNotif.actions.find(action => action.identifier === notifIdentifier);
-            action.invoke();
-        } else {}
+            if (action) {
+                action.invoke();
+            }
+        }
         if (autoDiscard) {
             root.discardNotification(id);
         }
