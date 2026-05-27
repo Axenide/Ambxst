@@ -40,7 +40,7 @@ Item {
     function updateWorkspaceOccupied() {
         if (Config.workspaces.dynamic) {
             // Get occupied workspace IDs using the precomputed occupation map, sorted and limited by 'shown'
-            const occupiedIds = AxctlService.workspaces.values.filter(ws => CompositorData.workspaceOccupationMap[ws.id]).map(ws => ws.id).sort((a, b) => a - b).slice(0, Config.workspaces.shown);
+            const occupiedIds = AxctlService.workspaces.values.filter(ws => CompositorData && CompositorData.workspaceOccupationMap ? !!CompositorData.workspaceOccupationMap[ws.id] : false).map(ws => ws.id).sort((a, b) => a - b).slice(0, Config.workspaces.shown);
 
             // Always include active workspace, even if empty
             const activeId = (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1;
@@ -55,13 +55,13 @@ Item {
             dynamicWorkspaceIds = occupiedIds;
             workspaceOccupied = Array.from({
                 length: dynamicWorkspaceIds.length
-            }, (_, i) => CompositorData.workspaceOccupationMap[dynamicWorkspaceIds[i]]);
+            }, (_, i) => (CompositorData && CompositorData.workspaceOccupationMap ? CompositorData.workspaceOccupationMap[dynamicWorkspaceIds[i]] : false));
         } else {
             workspaceOccupied = Array.from({
                 length: Config.workspaces.shown
             }, (_, i) => {
                 const wsId = workspaceGroup * Config.workspaces.shown + i + 1;
-                return CompositorData.workspaceOccupationMap[wsId];
+                return CompositorData && CompositorData.workspaceOccupationMap ? CompositorData.workspaceOccupationMap[wsId] : false;
             });
         }
         updateOccupiedRanges();
@@ -152,6 +152,11 @@ Item {
 
     readonly property bool effectiveContainBar: Config.bar.containBar && ((Config.bar.frameEnabled !== undefined ? Config.bar.frameEnabled : false))
 
+    // Process for workspace switching
+    property Process wsProcess: Process {
+        running: false
+    }
+
     StyledRect {
         id: bgRect
         variant: "bg"
@@ -166,17 +171,20 @@ Item {
 
     WheelHandler {
         onWheel: event => {
-            if (event.angleDelta.y < 0)
-                AxctlService.dispatch(`workspace r+1`);
-            else if (event.angleDelta.y > 0)
-                AxctlService.dispatch(`workspace r-1`);
+            if (event.angleDelta.y < 0) {
+                wsProcess.command = ["hyprctl", "dispatch", "workspace", "+1"];
+                wsProcess.running = true;
+            } else if (event.angleDelta.y > 0) {
+                wsProcess.command = ["hyprctl", "dispatch", "workspace", "-1"];
+                wsProcess.running = true;
+            }
         }
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
     }
 
     MouseArea {
         anchors.fill: parent
-        acceptedButtons: Qt.BackButton
+        acceptedButtons: Qt.NoButton
         onPressed: event => {
             if (event.button === Qt.BackButton) {
                 AxctlService.dispatch(`togglespecialworkspace`);
@@ -211,23 +219,23 @@ Item {
                 y: 0
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
+                        duration: Anim.standardNormal
                         easing.type: Easing.OutQuad
                     }
                 }
                 Behavior on x {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
+                        duration: Anim.standardNormal
                         easing.type: Easing.OutQuad
                     }
                 }
                 Behavior on width {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
+                        duration: Anim.standardNormal
                         easing.type: Easing.OutQuad
                     }
                 }
@@ -262,23 +270,23 @@ Item {
                 y: modelData.start * workspaceButtonWidth
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
+                        duration: Anim.standardNormal
                         easing.type: Easing.OutQuad
                     }
                 }
                 Behavior on y {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
+                        duration: Anim.standardNormal
                         easing.type: Easing.OutQuad
                     }
                 }
                 Behavior on height {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
+                        duration: Anim.standardNormal
                         easing.type: Easing.OutQuad
                     }
                 }
@@ -302,7 +310,7 @@ Item {
 
         radius: {
             const activeWorkspaceId = (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1;
-            const currentWorkspaceHasWindows = CompositorData.workspaceOccupationMap[activeWorkspaceId];
+            const occMap = CompositorData ? CompositorData.workspaceOccupationMap : null; const currentWorkspaceHasWindows = occMap ? occMap[activeWorkspaceId] : false;
             if (workspacesWidget.radius === 0)
                 return 0;
             return currentWorkspaceHasWindows ? workspacesWidget.radius > 0 ? Math.max(workspacesWidget.radius - parent.widgetPadding - activeWorkspaceMargin, 0) : 0 : implicitHeight / 2;
@@ -315,29 +323,31 @@ Item {
 
         Behavior on activeWorkspaceMargin {
 
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
 
             NumberAnimation {
-                duration: Config.animDuration / 2
+                duration: Anim.standardSmall
                 easing.type: Easing.OutQuad
             }
         }
         Behavior on idx1 {
 
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
 
             NumberAnimation {
-                duration: Config.animDuration / 3
-                easing.type: Easing.OutSine
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
             }
         }
         Behavior on idx2 {
 
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
 
             NumberAnimation {
-                duration: Config.animDuration
-                easing.type: Easing.OutSine
+                duration: Anim.standardNormal
+                easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
             }
         }
     }
@@ -358,7 +368,7 @@ Item {
 
         radius: {
             const activeWorkspaceId = (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1;
-            const currentWorkspaceHasWindows = CompositorData.workspaceOccupationMap[activeWorkspaceId];
+            const occMap = CompositorData ? CompositorData.workspaceOccupationMap : null; const currentWorkspaceHasWindows = occMap ? occMap[activeWorkspaceId] : false;
             if (workspacesWidget.radius === 0)
                 return 0;
             return currentWorkspaceHasWindows ? workspacesWidget.radius > 0 ? Math.max(workspacesWidget.radius - parent.widgetPadding - activeWorkspaceMargin, 0) : 0 : implicitWidth / 2;
@@ -371,29 +381,31 @@ Item {
 
         Behavior on activeWorkspaceMargin {
 
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
 
             NumberAnimation {
-                duration: Config.animDuration / 2
+                duration: Anim.standardSmall
                 easing.type: Easing.OutQuad
             }
         }
         Behavior on idx1 {
 
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
 
             NumberAnimation {
-                duration: Config.animDuration / 3
-                easing.type: Easing.OutSine
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
             }
         }
         Behavior on idx2 {
 
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
 
             NumberAnimation {
-                duration: Config.animDuration
-                easing.type: Easing.OutSine
+                duration: Anim.standardNormal
+                easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
             }
         }
     }
@@ -411,19 +423,33 @@ Item {
         Repeater {
             model: effectiveWorkspaceCount
 
-            Button {
+            Item {
                 id: button
                 property int workspaceValue: getWorkspaceId(index)
+                property bool hovered: btnMouse.containsMouse
                 Layout.fillHeight: true
-                onPressed: AxctlService.dispatch(`workspace ${workspaceValue}`)
                 width: workspaceButtonWidth
+                implicitWidth: workspaceButtonWidth
 
-                background: Item {
+                MouseArea {
+                    id: btnMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        console.log("Workspace click:", button.workspaceValue);
+                        wsProcess.command = ["hyprctl", "dispatch", "workspace", String(button.workspaceValue)];
+                        wsProcess.running = true;
+                    }
+                }
+
+
+                Item {
                     id: workspaceButtonBackground
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
                     property var focusedWindow: {
-                        const windowsInThisWorkspace = CompositorData.workspaceWindowsMap[button.workspaceValue] || [];
+                        const wsMap = CompositorData ? CompositorData.workspaceWindowsMap : null; const windowsInThisWorkspace = wsMap ? (wsMap[button.workspaceValue] || []) : [];
                         if (windowsInThisWorkspace.length === 0)
                             return null;
                         // Get the window with the lowest focusHistoryID (most recently focused)
@@ -452,12 +478,12 @@ Item {
                         font.pixelSize: workspaceLabelFontSize(text)
                         text: `${button.workspaceValue}`
                         elide: Text.ElideRight
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
+                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : button.hovered ? Colors.overBackground : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
 
                         Behavior on opacity {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             NumberAnimation {
-                                duration: 150
+                                duration: Anim.spatialFast
                                 easing.type: Easing.OutQuad
                             }
                         }
@@ -469,12 +495,12 @@ Item {
                         width: workspaceButtonWidth * 0.2
                         height: width
                         radius: width / 2
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : Colors.overBackground
+                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : button.hovered ? Styling.srItem("primary") : Colors.overBackground
 
                         Behavior on opacity {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             NumberAnimation {
-                                duration: 150
+                                duration: Anim.spatialFast
                                 easing.type: Easing.OutQuad
                             }
                         }
@@ -496,30 +522,30 @@ Item {
                             implicitSize: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? workspaceIconSize : workspaceIconSizeShrinked
 
                             Behavior on opacity {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }
                             Behavior on anchors.bottomMargin {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }
                             Behavior on anchors.rightMargin {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }
                             Behavior on implicitSize {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }
@@ -548,19 +574,32 @@ Item {
         Repeater {
             model: effectiveWorkspaceCount
 
-            Button {
+            Item {
                 id: buttonVert
                 property int workspaceValue: getWorkspaceId(index)
+                property bool hovered: btnVertMouse.containsMouse
                 Layout.fillWidth: true
-                onPressed: AxctlService.dispatch(`workspace ${workspaceValue}`)
                 height: workspaceButtonWidth
+                implicitHeight: workspaceButtonWidth
 
-                background: Item {
+                MouseArea {
+                    id: btnVertMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        console.log("Workspace click:", workspaceValue);
+                        wsProcess.command = ["hyprctl", "dispatch", "workspace", String(workspaceValue)];
+                        wsProcess.running = true;
+                    }
+                }
+
+                Item {
                     id: workspaceButtonBackgroundVert
                     implicitWidth: workspaceButtonWidth
                     implicitHeight: workspaceButtonWidth
                     property var focusedWindow: {
-                        const windowsInThisWorkspace = CompositorData.workspaceWindowsMap[buttonVert.workspaceValue] || [];
+                        const wsMap = CompositorData ? CompositorData.workspaceWindowsMap : null; const windowsInThisWorkspace = wsMap ? (wsMap[buttonVert.workspaceValue] || []) : [];
                         if (windowsInThisWorkspace.length === 0)
                             return null;
                         // Get the window with the lowest focusHistoryID (most recently focused)
@@ -589,12 +628,12 @@ Item {
                         font.pixelSize: workspaceLabelFontSize(text)
                         text: `${buttonVert.workspaceValue}`
                         elide: Text.ElideRight
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) ? Styling.srItem("primary") : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
+                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) ? Styling.srItem("primary") : buttonVert.hovered ? Colors.overBackground : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
 
                         Behavior on opacity {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             NumberAnimation {
-                                duration: 150
+                                duration: Anim.spatialFast
                                 easing.type: Easing.OutQuad
                             }
                         }
@@ -609,9 +648,9 @@ Item {
                         color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) ? Styling.srItem("primary") : Colors.overBackground
 
                         Behavior on opacity {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             NumberAnimation {
-                                duration: 150
+                                duration: Anim.spatialFast
                                 easing.type: Easing.OutQuad
                             }
                         }
@@ -633,30 +672,30 @@ Item {
                             implicitSize: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? workspaceIconSize : workspaceIconSizeShrinked
 
                             Behavior on opacity {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }
                             Behavior on anchors.bottomMargin {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }
                             Behavior on anchors.rightMargin {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }
                             Behavior on implicitSize {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: 150
+                                    duration: Anim.spatialFast
                                     easing.type: Easing.OutQuad
                                 }
                             }

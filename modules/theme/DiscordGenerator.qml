@@ -46,10 +46,10 @@ QtObject {
  * @author Axenide
  * @version 1.0.0
  * @invite gHG9WHyNvH
- * @website https://axeni.de/ambxst
+ * @website https://github.com/Axenide/Ambxst
  * @source https://github.com/Axenide/Ambxst
  * @authorId 294856304969908224
- * @authorLink https://axeni.de
+ * @authorLink https://github.com/Axenide
 */ 
 
 @import url('https://mwittrien.github.io/BetterDiscordAddons/Themes/DiscordRecolor/DiscordRecolor.css');

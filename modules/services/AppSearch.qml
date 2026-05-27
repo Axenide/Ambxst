@@ -55,6 +55,12 @@ Singleton {
 
         for (let i = 0; i < list.length; i++) {
             const app = list[i];
+            // Match StartupWMClass — the .desktop field designed exactly for this
+            // (e.g. brave-browser.desktop has StartupWMClass=brave-browser but
+            // Exec=brave and Name=Brave, so the other matches below miss it).
+            if (app.startupClass && app.startupClass.toLowerCase() === normalizedClassName) {
+                return app.icon || "application-x-executable";
+            }
             if (app.command && app.command.length > 0) {
                 const executableLower = app.command[0].toLowerCase();
                 if (executableLower === normalizedClassName) {
@@ -195,7 +201,16 @@ Singleton {
             }
 
             if (safeArgs.length > 0) {
-                runInActiveWorkspace(safeArgs.join(" "));
+                const cmdString = safeArgs.join(" ");
+                // Wrap Terminal=true entries via xdg-terminal-exec (freedesktop default-terminal-spec).
+                // Users must have xdg-terminal-exec installed and ~/.config/xdg-terminals.list configured.
+                const wrapped = app.runInTerminal
+                    ? "xdg-terminal-exec " + cmdString
+                    : cmdString;
+                const p = Qt.createQmlObject('import Quickshell.Io; Process { }', root);
+                // Run in background, detached, from HOME
+                p.command = ["bash", "-c", "cd ~ && setsid " + wrapped + " > /dev/null 2>&1 &"];
+                p.running = true;
                 return;
             }
         }

@@ -68,9 +68,9 @@ Item {
             radius: parent.radius ?? 0
 
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
         }
@@ -143,10 +143,11 @@ Item {
             }
 
             Behavior on angle {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
                     duration: 400
-                    easing.type: Easing.OutCubic
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
@@ -158,12 +159,12 @@ Item {
             text: Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfile.getProfileIcon(PowerProfile.currentProfile)
             font.family: Icons.font
             font.pixelSize: Battery.available ? 14 : 18
-            color: root.popupOpen ? buttonBg.item : Colors.overBackground
+            color: root.popupOpen ? buttonBg.item : Styling.srItem("overprimary")
 
             Behavior on color {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 ColorAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
 

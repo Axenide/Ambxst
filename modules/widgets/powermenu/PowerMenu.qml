@@ -27,7 +27,7 @@ ActionGrid {
         {
             icon: Icons.lock,
             tooltip: "Lock Session",
-            command: "loginctl lock-session"
+            command: "ambxst lock"
         },
         {
             icon: Icons.suspend,

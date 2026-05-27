@@ -29,26 +29,29 @@ StyledRect {
     visible: opacity > 0
 
     Behavior on opacity {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
     Behavior on Layout.preferredWidth {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
     Behavior on Layout.preferredHeight {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -87,18 +90,20 @@ StyledRect {
             y: orientation === "vertical" ? currentIndex * (buttonSize + spacing) : 0
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
 
             Behavior on y {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
@@ -146,10 +151,11 @@ StyledRect {
                         verticalAlignment: Text.AlignVCenter
 
                         Behavior on color {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             ColorAnimation {
-                                duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                             }
                         }
                     }
@@ -200,10 +206,11 @@ StyledRect {
                         verticalAlignment: Text.AlignVCenter
 
                         Behavior on color {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             ColorAnimation {
-                                duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                             }
                         }
                     }

@@ -7,7 +7,7 @@ Lock screen UI with PAM authentication via WlSessionLockSurface.
 ```
 modules/lockscreen/
 ├── LockScreen.qml       # Main component (750 lines)
-├── ambxst-auth          # Helper script (if any)
+├── Ambxst-auth          # Helper script (if any)
 └── config/pam/          # PAM configuration
     └── password.conf    # Custom PAM rules for lockscreen
 ```

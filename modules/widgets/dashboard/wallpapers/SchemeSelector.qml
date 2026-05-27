@@ -150,10 +150,11 @@ Item {
     implicitHeight: schemeListExpanded ? 40 + 4 + (40 * 3) + 8 : 48
 
     Behavior on implicitHeight {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -323,10 +324,11 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
 
                             Behavior on x {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
                                     duration: 200
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
                         }
@@ -401,10 +403,11 @@ Item {
                                 leftPadding: 8
 
                                 Behavior on color {
-                                    enabled: Config.animDuration > 0
+                                    enabled: Anim.animationsEnabled
                                     ColorAnimation {
-                                        duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        duration: Anim.standardSmall
+                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                     }
                                 }
                             }
@@ -440,34 +443,37 @@ Item {
                             z: -1
                         }
 
-                        highlightMoveDuration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
+                        highlightMoveDuration: Anim.animationsEnabled ? Anim.standardSmall : 0
                         highlightMoveVelocity: -1
-                        highlightResizeDuration: Config.animDuration / 2
+                        highlightResizeDuration: Anim.standardSmall
                         highlightResizeVelocity: -1
                     }
 
                     // Animate topMargin for ClippingRectangle
                     Behavior on Layout.topMargin {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 
                     Behavior on Layout.preferredHeight {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 
                     Behavior on opacity {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
                 }

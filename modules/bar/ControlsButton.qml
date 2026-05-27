@@ -56,9 +56,9 @@ Item {
             radius: parent.radius ?? 0
 
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
         }
@@ -125,9 +125,9 @@ Item {
                 }
                 sliderValue: Audio.sink?.audio?.volume ?? 0
                 progressColor: Audio.sink?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
-                wavy: true
-                wavyAmplitude: Audio.sink?.audio?.muted ? 0.5 : 1.5 * sliderValue
-                wavyFrequency: Audio.sink?.audio?.muted ? 1.0 : 8.0 * sliderValue
+                wavy: false
+                wavyAmplitude: 0
+                wavyFrequency: 0
 
                 onValueChanged: newValue => {
                     if (Audio.sink?.audio) {
@@ -141,8 +141,10 @@ Item {
                     }
                 }
 
+                // FIX: Guard enabled to prevent segfault when PipeWire node is destroyed mid-incubation
                 Connections {
                     target: Audio.sink?.audio ?? null
+                    enabled: Audio.sink?.audio !== null
                     ignoreUnknownSignals: true
                     function onVolumeChanged() {
                         if (Audio.sink?.audio) {
@@ -162,9 +164,9 @@ Item {
                 icon: Audio.source?.audio?.muted ? Icons.micSlash : Icons.mic
                 sliderValue: Audio.source?.audio?.volume ?? 0
                 progressColor: Audio.source?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
-                wavy: true
-                wavyAmplitude: Audio.source?.audio?.muted ? 0.5 : 1.5 * sliderValue
-                wavyFrequency: Audio.source?.audio?.muted ? 1.0 : 8.0 * sliderValue
+                wavy: false
+                wavyAmplitude: 0
+                wavyFrequency: 0
 
                 onValueChanged: newValue => {
                     if (Audio.source?.audio) {
@@ -178,8 +180,10 @@ Item {
                     }
                 }
 
+                // FIX: Guard enabled to prevent segfault when PipeWire node is destroyed mid-incubation
                 Connections {
                     target: Audio.source?.audio ?? null
+                    enabled: Audio.source?.audio !== null
                     ignoreUnknownSignals: true
                     function onVolumeChanged() {
                         if (Audio.source?.audio) {
@@ -201,9 +205,9 @@ Item {
                 icon: Icons.sun
                 sliderValue: currentMonitor?.brightness ?? 0.5
                 progressColor: Styling.srItem("overprimary")
-                wavy: true
-                wavyAmplitude: 1.5 * sliderValue
-                wavyFrequency: 8.0 * sliderValue
+                wavy: false
+                wavyAmplitude: 0
+                wavyFrequency: 0
                 iconRotation: (sliderValue / 1.0) * 180
                 iconScale: 0.8 + (sliderValue / 1.0) * 0.2
 
@@ -222,8 +226,10 @@ Item {
 
                 onIconClicked: {}
 
+                // FIX: Guard enabled to prevent segfault when monitor is destroyed mid-incubation
                 Connections {
                     target: brightnessRow.currentMonitor ?? null
+                    enabled: brightnessRow.currentMonitor !== null
                     ignoreUnknownSignals: true
                     function onBrightnessChanged() {
                         if (brightnessRow.currentMonitor) {

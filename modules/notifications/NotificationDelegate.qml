@@ -83,10 +83,11 @@ Item {
             visible: root.isValid
 
             Behavior on height {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutCubic
+                    duration: Anim.standardNormal
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
 
@@ -432,9 +433,9 @@ Item {
                                 radius: Styling.radius(4)
 
                                 Behavior on color {
-                                    enabled: Config.animDuration > 0
+                                    enabled: Anim.animationsEnabled
                                     ColorAnimation {
-                                        duration: Config.animDuration
+                                        duration: Anim.standardNormal
                                     }
                                 }
                             }

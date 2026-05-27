@@ -1,0 +1,28 @@
+{
+  "position": "top",
+  "launcherIcon": "/home/leo/Im\u00e1genes/Iconos/Nothing.png",
+  "launcherIconTint": true,
+  "launcherIconFullTint": true,
+  "launcherIconSize": 22,
+  "pillStyle": "default",
+  "screenList": [],
+  "enableFirefoxPlayer": true,
+  "barColor": [
+    [
+      "surfaceContainer",
+      0
+    ]
+  ],
+  "frameEnabled": false,
+  "frameThickness": 8,
+  "pinnedOnStartup": true,
+  "hoverToReveal": true,
+  "hoverRegionHeight": 4,
+  "showPinButton": false,
+  "availableOnFullscreen": true,
+  "use12hFormat": true,
+  "containBar": false,
+  "keepBarShadow": false,
+  "keepBarBorder": false,
+  "barMode": "extended"
+}

@@ -6,7 +6,9 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.theme
 import qs.modules.components
+import Quickshell.Services.SystemTray
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -194,9 +196,9 @@ Item {
                 border.color: toggleSwitch.checked ? Styling.srItem("overprimary") : Colors.outline
 
                 Behavior on color {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     ColorAnimation {
-                        duration: Config.animDuration / 2
+                        duration: Anim.standardSmall
                     }
                 }
 
@@ -209,10 +211,11 @@ Item {
                     color: toggleSwitch.checked ? Colors.background : Colors.overSurfaceVariant
 
                     Behavior on x {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            duration: Anim.standardSmall
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
                 }
@@ -538,19 +541,21 @@ Item {
             x: root.colorPickerActive ? -30 : 0
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -645,6 +650,10 @@ Item {
                             sectionId: "notch"
                         }
                         SectionButton {
+                            text: "Island"
+                            sectionId: "island"
+                        }
+                        SectionButton {
                             text: "Workspaces"
                             sectionId: "workspaces"
                         }
@@ -718,6 +727,46 @@ Item {
                                     Config.bar.position = newValue;
                                 }
                             }
+                        }
+
+                        Separator {
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: "Bar Mode"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        SelectorRow {
+                            label: ""
+                            options: [
+                                {
+                                    label: "Extended",
+                                    value: "extended",
+                                    icon: Icons.alignJustify
+                                },
+                                {
+                                    label: "Dynamic",
+                                    value: "dynamic",
+                                    icon: Icons.alignCenter
+                                }
+                            ]
+                            value: Config.bar.barMode ?? "extended"
+                            onValueSelected: newValue => {
+                                if (newValue !== Config.bar.barMode) {
+                                    GlobalStates.markShellChanged();
+                                    Config.bar.barMode = newValue;
+                                }
+                            }
+                        }
+
+                        Separator {
+                            Layout.fillWidth: true
                         }
 
                         TextInputRow {
@@ -810,7 +859,16 @@ Item {
                                 }
                             }
                         }
-
+                        ToggleRow {
+                            label: "Enable Chromium Player"
+                            checked: Config.bar.enableChromiumPlayer ?? false
+                            onToggled: value => {
+                                if (value !== Config.bar.enableChromiumPlayer) {
+                                    GlobalStates.markShellChanged();
+                                    Config.bar.enableChromiumPlayer = value;
+                                }
+                            }
+                        }
                         Separator {
                             Layout.fillWidth: true
                         }
@@ -848,7 +906,7 @@ Item {
 
                         NumberInputRow {
                             label: "Hover Region Height"
-                            value: Config.bar.hoverRegionHeight ?? 8
+                            value: Config.bar.hoverRegionHeight ?? 2
                             minValue: 0
                             maxValue: 32
                             suffix: "px"
@@ -973,7 +1031,56 @@ Item {
                     Separator {
                         Layout.fillWidth: true
                         visible: false
-                    }
+                    
+                        // Task Tray toggle
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: Icons.terminalWindow + "   Task Tray"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: Colors.overBackground
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            Switch {
+                                id: taskTraySwitch
+                                checked: Config.bar.taskTrayEnabled ?? true
+                                onCheckedChanged: {
+                                    if (checked !== (Config.bar.taskTrayEnabled ?? true)) {
+                                        Config.bar.taskTrayEnabled = checked;
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                Layout.fillWidth: true
+                                text: Icons.dotsThree + "   Show Toggle Button"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: Colors.overBackground
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            Switch {
+                                id: showToggleSwitch
+                                checked: Config.bar.taskTrayShowToggle ?? true
+                                onCheckedChanged: {
+                                    if (checked !== (Config.bar.taskTrayShowToggle ?? true)) {
+                                        Config.bar.taskTrayShowToggle = checked;
+                                    }
+                                }
+                            }
+                        }
+}
 
                     // ═══════════════════════════════════════════════════════════════
                     // NOTCH SECTION
@@ -1038,7 +1145,7 @@ Item {
 
                         NumberInputRow {
                             label: "Hover Region Height"
-                            value: Config.notch.hoverRegionHeight ?? 8
+                            value: Config.notch.hoverRegionHeight ?? 2
                             minValue: 0
                             maxValue: 32
                             suffix: "px"
@@ -1122,6 +1229,90 @@ Item {
                                 if (newValue !== Config.notch.customText) {
                                     GlobalStates.markShellChanged();
                                     Config.notch.customText = newValue;
+                                }
+                            }
+                        }
+                    }
+
+                    Separator {
+                        Layout.fillWidth: true
+                        visible: false
+                    }
+
+                    // ═══════════════════════════════════════════════════════════════
+                    // ISLAND SECTION
+                    // ═══════════════════════════════════════════════════════════════
+                    ColumnLayout {
+                        visible: root.currentSection === "island"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Dynamic Island"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        ToggleRow {
+                            label: "Pinned"
+                            checked: (Config.notch && Config.notch.pinnedOnStartup !== undefined) ? Config.notch.pinnedOnStartup : true
+                            onToggled: value => {
+                                if (value !== (Config.notch?.pinnedOnStartup ?? true)) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.pinnedOnStartup = value;
+                                }
+                            }
+                        }
+
+                        ToggleRow {
+                            label: "Show Dock Apps"
+                            checked: Config.notch?.showDockInIsland ?? true
+                            onToggled: value => {
+                                if (value !== (Config.notch?.showDockInIsland ?? true)) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.showDockInIsland = value;
+                                }
+                            }
+                        }
+
+                        NumberInputRow {
+                            label: "Button Size"
+                            value: Config.notch?.islandButtonSize ?? 36
+                            minValue: 28
+                            maxValue: 52
+                            suffix: "px"
+                            onValueEdited: newValue => {
+                                if (newValue !== (Config.notch?.islandButtonSize ?? 36)) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.islandButtonSize = newValue;
+                                }
+                            }
+                        }
+
+                        NumberInputRow {
+                            label: "Hover Region"
+                            value: Config.notch?.hoverRegionHeight ?? 2
+                            minValue: 0
+                            maxValue: 16
+                            suffix: "px"
+                            onValueEdited: newValue => {
+                                if (newValue !== (Config.notch?.hoverRegionHeight ?? 2)) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.hoverRegionHeight = newValue;
+                                }
+                            }
+                        }
+
+                        ToggleRow {
+                            label: "Available on Fullscreen"
+                            checked: Config.bar?.availableOnFullscreen ?? false
+                            onToggled: value => {
+                                if (value !== (Config.bar?.availableOnFullscreen ?? false)) {
+                                    GlobalStates.markShellChanged();
+                                    Config.bar.availableOnFullscreen = value;
                                 }
                             }
                         }
@@ -1487,7 +1678,7 @@ Item {
                         NumberInputRow {
                             label: "Hover Region"
                             visible: (Config.dock.theme ?? "default") !== "integrated"
-                            value: Config.dock.hoverRegionHeight ?? 8
+                            value: Config.dock.hoverRegionHeight ?? 2
                             minValue: 0
                             maxValue: 32
                             suffix: "px"
@@ -1759,14 +1950,9 @@ Item {
                         ActionButton {
                             text: "About Ambxst " + Config.version
                             icon: Icons.info
-                            onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/ambxst"])
+                            onClicked: Quickshell.execDetached(["xdg-open", "https://github.com/Axenide/Ambxst"])
                         }
 
-                        ActionButton {
-                            text: "Donate ❤️"
-                            icon: Icons.heart
-                            onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/donate"])
-                        }
 
                         Text {
                             text: "OCR Languages"
@@ -1937,19 +2123,21 @@ Item {
             x: root.colorPickerActive ? 0 : 30
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 

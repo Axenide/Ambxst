@@ -55,20 +55,23 @@ Item {
     
     property real _barAnimProgress: barReveal ? 1.0 : 0.0
     Behavior on _barAnimProgress {
-        enabled: Config.animDuration > 0
-        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+        enabled: Anim.animationsEnabled
+        NumberAnimation { duration: Anim.standardSmall; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve }
     }
 
     property real _dockAnimProgress: dockReveal ? 1.0 : 0.0
     Behavior on _dockAnimProgress {
-        enabled: Config.animDuration > 0
-        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+        enabled: Anim.animationsEnabled
+        NumberAnimation { duration: Anim.standardSmall; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve }
     }
 
     property real _notchAnimProgress: notchReveal ? 1.0 : 0.0
     Behavior on _notchAnimProgress {
-        enabled: Config.animDuration > 0
-        NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+        enabled: Anim.animationsEnabled
+        NumberAnimation { duration: Anim.standardSmall; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve }
     }
 
     // Bar expansion logic (synchronized with bar reveal)
@@ -77,8 +80,9 @@ Item {
 
     property real _sidebarAnimProgress: sidebarActive ? 1.0 : 0.0
     Behavior on _sidebarAnimProgress {
-        enabled: Config.animDuration > 0
-        NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutCubic }
+        enabled: Anim.animationsEnabled
+        NumberAnimation { duration: Anim.standardNormal; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve }
     }
 
     // Sidebar expansion logic (synchronized with sidebar active and pinned)

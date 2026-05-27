@@ -141,6 +141,14 @@ Item {
                         SectionButton {
                             text: "Idle"
                             sectionId: "idle"
+                        SectionButton {
+                            text: "Battery"
+                            sectionId: "battery"
+                        }
+                        }
+                        SectionButton {
+                            text: "Battery"
+                            sectionId: "battery"
                         }
                     }
 
@@ -409,17 +417,6 @@ Item {
                             }
                         }
 
-                        // Wavy Line toggle
-                        ToggleRow {
-                            Layout.fillWidth: true
-                            label: "Wavy Line"
-                            description: "Animated wavy line effect"
-                            checked: Config.performance.wavyLine
-                            onToggled: checked => {
-                                Config.performance.wavyLine = checked;
-                            }
-                        }
-
                         // Rotate Cover Art toggle
                         ToggleRow {
                             Layout.fillWidth: true
@@ -589,6 +586,117 @@ Item {
                                         Config.system.disks = newDisks;
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // =====================
+                    // BATTERY SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "battery"
+                        property string settingsSection: "battery"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Battery"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        ToggleRow {
+                            label: "Low battery alerts"
+                            checked: Config.system.batteryNotifications.enabled
+                            onToggled: value => {
+                                if (value !== Config.system.batteryNotifications.enabled) {
+                                    Config.system.batteryNotifications.enabled = value;
+                                }
+                            }
+                        }
+
+                        NumberInputRow {
+                            label: "Low threshold (%)"
+                            value: Config.system.batteryNotifications.lowThreshold
+                            minValue: 5
+                            maxValue: 50
+                            onValueEdited: newValue => {
+                                Config.system.batteryNotifications.lowThreshold = newValue;
+                            }
+                        }
+
+                        NumberInputRow {
+                            label: "Critical threshold (%)"
+                            value: Config.system.batteryNotifications.criticalThreshold
+                            minValue: 3
+                            maxValue: 20
+                            onValueEdited: newValue => {
+                                Config.system.batteryNotifications.criticalThreshold = newValue;
+                            }
+                        }
+
+                        Separator { Layout.fillWidth: true }
+
+                        Text {
+                            text: "Power Save"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        ToggleRow {
+                            label: "Auto power-save on low battery"
+                            checked: Config.system.batteryNotifications.autoPowerSave
+                            onToggled: value => {
+                                if (value !== Config.system.batteryNotifications.autoPowerSave) {
+                                    Config.system.batteryNotifications.autoPowerSave = value;
+                                }
+                            }
+                        }
+
+                        NumberInputRow {
+                            label: "Power-save threshold (%)"
+                            value: Config.system.batteryNotifications.powerSaveThreshold
+                            minValue: 5
+                            maxValue: 40
+                            onValueEdited: newValue => {
+                                Config.system.batteryNotifications.powerSaveThreshold = newValue;
+                            }
+                        }
+
+                        Separator { Layout.fillWidth: true }
+
+                        Text {
+                            text: "Charge Limit"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        ToggleRow {
+                            label: "Charge limit notification"
+                            checked: Config.system.batteryNotifications.chargeLimitEnabled
+                            onToggled: value => {
+                                if (value !== Config.system.batteryNotifications.chargeLimitEnabled) {
+                                    Config.system.batteryNotifications.chargeLimitEnabled = value;
+                                }
+                            }
+                        }
+
+                        NumberInputRow {
+                            label: "Charge limit (%)"
+                            value: Config.system.batteryNotifications.chargeLimit
+                            minValue: 50
+                            maxValue: 100
+                            onValueEdited: newValue => {
+                                Config.system.batteryNotifications.chargeLimit = newValue;
                             }
                         }
                     }
@@ -1043,10 +1151,11 @@ Item {
                 opacity: checked ? 1.0 : 0.0
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutQuart
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
 
@@ -1059,11 +1168,11 @@ Item {
                     scale: checked ? 1.0 : 0.0
 
                     Behavior on scale {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration / 2
-                            easing.type: Easing.OutBack
-                            easing.overshoot: 1.5
+                            duration: Anim.standardSmall
+                            easing.type: Anim.easing("emphasized").type
+                        easing.bezierCurve: Anim.easing("emphasized").bezierCurve
                         }
                     }
                 }

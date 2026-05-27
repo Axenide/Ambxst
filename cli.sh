@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Ambxst CLI - It was needed, so here it is. lol
+# Ambxst CLI - Minimal Ambxst fork - It was needed, so here it is. lol
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 # Use environment variables if set by flake, otherwise fall back to PATH
 QS_BIN="${AMBXST_QS:-qs}"
@@ -48,15 +48,33 @@ Commands:
     update                            Update Ambxst
     refresh                           Refresh local/dev profile (for developers)
     lock                              Activate lockscreen
+    reload                            Restart Ambxst
+    quit                              Stop Ambxst
+    screen [on|off]                   Turn screen on/off
+    suspend                           Suspend the system
+
     brightness <percent> [monitor]    Set brightness (0-100)
     brightness +/-<delta> [monitor]   Adjust brightness relatively
     brightness -s [monitor]           Save current brightness
     brightness -r [monitor]           Restore saved brightness
     brightness -l                     List monitors and their brightness
+
+    volume-up                         Increase volume
+    volume-down                       Decrease volume
+    volume-mute                       Toggle volume mute
+    mic-mute                          Toggle microphone mute
+    caffeine                          Toggle caffeine (idle inhibition)
+    gamemode                          Toggle game mode
+    nightlight                        Toggle night light
+
+    run <command>                     Run any IPC command (launcher, dashboard, overview, etc.)
+
     help                              Show this help message
     version, -v, --version            Show Ambxst version
     goodbye                           Uninstall Ambxst :(
     install <target>                    Install compositor config (hyprland)
+    install hyprland --lua            Install with Lua config (Hyprland >= 0.48)
+    install hyprland --conf           Install with config file (default, safe)
     remove <target>                    Remove compositor config (hyprland)
 
 Examples:
@@ -128,7 +146,9 @@ remove_ambxst_hyprland_block() {
 				|| line == "# OVERRIDES" \
 				|| line == "-- OVERRIDES" \
 				|| line == "# Down here you can write or source anything that you want to override from Ambxst'\''s settings." \
-				|| line == "-- Down here you can write or source anything that you want to override from Ambxst'\''s settings."
+				|| line == "-- Down here you can write or source anything that you want to override from Ambxst'\''s settings." \
+				|| line == "exec-once = ambxst" \
+				|| line == "exec-once = axctl -c ~/.local/share/ambxst/axctl.toml daemon"
 		}
 		{
 			lines[NR] = $0
@@ -225,7 +245,7 @@ restart_ambxst() {
 case "${1:-}" in
 update)
 	echo "Updating Ambxst..."
-	curl -fsSL get.axeni.de/ambxst | sh
+	curl -fsSL github.com/Axenide/Ambxst/ambxst | sh
 	restart_ambxst
 	;;
 refresh)
@@ -239,6 +259,42 @@ run)
 	if [ -z "$CMD" ]; then
 		echo "Error: No command specified for run"
 		exit 1
+	fi
+
+	# toggle-metrics: write directly to notch.json (no IPC needed)
+	if [ "$CMD" = "toggle-metrics" ]; then
+		# Debounce: prevent double-fire from Hyprland key repeat
+		LOCK_FILE="/tmp/ambxst_toggle_metrics.lock"
+		if [ -f "$LOCK_FILE" ]; then
+			last_run=$(cat "$LOCK_FILE")
+			now=$(date +%s%N)
+			elapsed=$(( (now - last_run) / 1000000 ))
+			if [ "$elapsed" -lt 500 ]; then
+				exit 0
+			fi
+		fi
+		date +%s%N > "$LOCK_FILE"
+
+		NOTCH_JSON="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst/config/notch.json"
+		if [ -f "$NOTCH_JSON" ]; then
+			# Toggle showMetrics in the JSON
+			python3 -c "
+import json
+with open('$NOTCH_JSON') as f:
+    cfg = json.load(f)
+cfg['showMetrics'] = not cfg.get('showMetrics', False)
+with open('$NOTCH_JSON', 'w') as f:
+    json.dump(cfg, f, indent=2)
+print('Metrics toggled to', cfg['showMetrics'])
+" 2>&1 || {
+				echo "Error: Failed to toggle metrics"
+				exit 1
+			}
+			exit 0
+		else
+			echo "Error: notch.json not found at $NOTCH_JSON"
+			exit 1
+		fi
 	fi
 
 	# Fast path: Write directly to pipe if it exists (Zero latency)
@@ -314,6 +370,17 @@ suspend)
 		# Fallback to D-Bus
 		dbus-send --system --print-reply --dest=org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager.Suspend boolean:true
 	fi
+	;;
+volume-up|volume-down|volume-mute|mic-mute|caffeine|gamemode|nightlight)
+	PID=$(find_ambxst_pid_cached)
+	if [ -z "$PID" ]; then
+		echo "Error: Ambxst is not running"
+		exit 1
+	fi
+	qs ipc --pid "$PID" call ambxst run "$1" 2>/dev/null || {
+		echo "Error: Could not run command '$1'"
+		exit 1
+	}
 	;;
 brightness)
 	PID=$(find_ambxst_pid_cached)
@@ -540,22 +607,100 @@ version | -v | --version)
 	;;
 install)
 	TARGET="${2:-}"
+	MODE="auto"
+
+	# Parse optional flags
 	if [ "$TARGET" = "hyprland" ]; then
-		HYPR_DIR="$HOME/.config/hypr"
-		HYPR_LUA="$HYPR_DIR/hyprland.lua"
-		HYPR_CONF="$HYPR_DIR/hyprland.conf"
-
-		# Create directory if needed
-		mkdir -p "$HYPR_DIR"
-
-		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
-			append_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE" "$AMBXST_HYPR_LUA_BLOCK"
-		else
-			append_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
-		fi
-	else
+		shift 2 2>/dev/null || true
+		for arg in "$@"; do
+			case "$arg" in
+				--lua) MODE="lua" ;;
+				--conf) MODE="conf" ;;
+				*) echo "Warning: Unknown option '$arg'. Use --lua or --conf." ;;
+			esac
+		done
+	elif [ "$TARGET" != "hyprland" ]; then
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
+	fi
+
+	HYPR_DIR="$HOME/.config/hypr"
+	HYPR_LUA="$HYPR_DIR/hyprland.lua"
+	HYPR_CONF="$HYPR_DIR/hyprland.conf"
+	SHARE_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/ambxst"
+
+	# Create directories if needed
+	mkdir -p "$HYPR_DIR"
+	mkdir -p "$SHARE_DIR"
+
+	# ---- Base config content - always valid conf syntax ----
+	BASE_CONF=$(cat <<-'ENDCONF'
+exec-once = sh -c '[ -f /tmp/.nl_booted ] || { touch /tmp/.nl_booted && ambxst; }'
+
+# Core binds — baseline for Hyprland reload recovery
+bind = SUPER, Super_L, exec, ambxst run launcher
+bind = SUPER, D, exec, ambxst run dashboard
+bind = SUPER, A, exec, ambxst run assistant
+bind = SUPER, V, exec, ambxst run clipboard
+bind = SUPER, PERIOD, exec, ambxst run emoji
+bind = SUPER, N, exec, ambxst run notes
+bind = SUPER, T, exec, ambxst run tmux
+bind = SUPER, COMMA, exec, ambxst run wallpapers
+bind = SUPER, L, exec, ambxst lock
+bind = SUPER, TAB, exec, ambxst run overview
+bind = SUPER, ESCAPE, exec, ambxst run powermenu
+bind = SUPER, S, exec, ambxst run tools
+bind = SUPER SHIFT, C, exec, ambxst run config
+bind = SUPER SHIFT, S, exec, ambxst run screenshot
+bind = SUPER SHIFT, R, exec, ambxst run screenrecord
+bind = SUPER SHIFT, A, exec, ambxst run lens
+bind = SUPER SHIFT, BACKSPACE, exec, ambxst run toggle-metrics
+ENDCONF
+	)
+
+	# ---- Detect mode if auto ----
+	if [ "$MODE" = "auto" ]; then
+		if [ -f "$HYPR_LUA" ]; then
+			# User already has hyprland.lua → stick with lua mode
+			MODE="lua"
+		elif [ -f "$HYPR_CONF" ]; then
+			# User has hyprland.conf → use conf mode
+			MODE="conf"
+		else
+			# No config exists yet → default to conf (safe)
+			MODE="conf"
+		fi
+	fi
+
+	# ---- Generate config files ----
+	if [ "$MODE" = "lua" ]; then
+		# Write sourced file as valid Lua: returns the config as a string
+		# Hyprland's Lua mode (>= 0.48) expects valid Lua; returning a string
+		# is the simplest way to embed conf syntax inside Lua.
+		{
+			printf "return [[\n"
+			printf "%s\n" "$BASE_CONF"
+			printf "]]\n"
+		} > "$SHARE_DIR/hyprland.lua"
+
+		echo "Created compositor Lua config at $SHARE_DIR/hyprland.lua"
+
+		# Main Hyprland config: inject Ambxst block into hyprland.lua
+		append_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE" "$AMBXST_HYPR_LUA_BLOCK"
+
+		# Clean up stale .conf if switching from conf to lua
+		rm -f "$HYPR_CONF" 2>/dev/null || true
+	else
+		# Write the plain conf version
+		printf "%s\n" "$BASE_CONF" > "$SHARE_DIR/hyprland.conf"
+
+		echo "Created compositor config at $SHARE_DIR/hyprland.conf"
+
+		# Main Hyprland config: inject Ambxst block into hyprland.conf
+		append_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
+
+		# Clean up stale .lua if switching from lua to conf
+		rm -f "$HYPR_LUA" 2>/dev/null || true
 	fi
 	;;
 remove)
@@ -567,6 +712,11 @@ remove)
 
 		remove_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE"
 		remove_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE"
+
+		# Clean up stale .lua if user switched from lua to conf mode
+		if [ ! -f "$HYPR_CONF" ] && [ -f "$HYPR_LUA" ] && [ ! -s "$HYPR_LUA" ] || grep -q "Ambxst" "$HYPR_LUA" 2>/dev/null; then
+			rm -f "$HYPR_LUA" 2>/dev/null || true
+		fi
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
@@ -616,6 +766,15 @@ help | --help | -h)
 	show_help
 	;;
 "")
+	# Prevent duplicate instances: if Ambxst is already running, exit.
+	# This handles Hyprland config reloads where exec-once is re-executed
+	# and the daemon tries to start a second Ambxst.
+	EXISTING_PID=$(find_ambxst_pid_cached)
+	if [ -n "$EXISTING_PID" ]; then
+		echo "Ambxst is already running (PID $EXISTING_PID), not starting duplicate."
+		exit 0
+	fi
+
 	# Run daemon priority script (backgrounded to not block startup)
 	bash "${SCRIPT_DIR}/scripts/daemon_priority.sh" &
 
@@ -629,6 +788,21 @@ help | --help | -h)
 	# Force Qt6CT
 	export QT_QPA_PLATFORMTHEME=qt6ct
 	unset HL_INITIAL_WORKSPACE_TOKEN
+
+	# Set Qt rendering backend from compositor config (opengl or vulkan)
+	COMPOSITOR_CFG="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst/config/compositor.json"
+	if [ -f "$COMPOSITOR_CFG" ]; then
+		RHI_BACKEND=$(python3 -c "import json; print(json.load(open('$COMPOSITOR_CFG')).get('renderBackend','opengl'))" 2>/dev/null || echo "opengl")
+	else
+		RHI_BACKEND="opengl"
+	fi
+	# Let Qt auto-detect the RHI backend (don't force opengl if unavailable)
+	# Only set if a working backend was explicitly configured
+	if [ "$RHI_BACKEND" = "vulkan" ] || [ "$RHI_BACKEND" = "opengl" ]; then
+		export QSG_RHI_BACKEND="$RHI_BACKEND"
+	fi
+	export QSG_RENDER_LOOP="threaded"
+	export QML_XHR_ALLOW_FILE_READ=1
 
 	# Cache this script's PID before exec (for fast PID lookups in future CLI calls)
 	echo $$ >/tmp/ambxst.pid

@@ -5,6 +5,7 @@
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import qs.modules.bar
 import qs.modules.bar.workspaces
@@ -87,20 +88,33 @@ ShellRoot {
             ReservationWindows {
                 screen: screenShellContainer.modelData
 
+                // Island mode detection
+                readonly property bool _islandActive: (Config.bar && Config.bar.barMode === "dynamic") && (Config.notchTheme || "default") === "island" && unifiedPanel.barPosition === (Config.notchPosition || "top")
+
                 // Bar status for reservations
                 barEnabled: {
                     const list = (Config.bar && Config.bar.screenList !== undefined ? Config.bar.screenList : []);
-                    return (!list || list.length === 0 || list.indexOf(screen.name) !== -1);
+                    const isOnList = !list || list.length === 0 || list.indexOf(screen.name) !== -1;
+                    // In island mode: only reserve if island is pinned
+                    if (_islandActive) return isOnList && unifiedPanel.notchPinned;
+                    return isOnList;
                 }
                 barPosition: unifiedPanel.barPosition
-                barPinned: unifiedPanel.pinned
-                barSize: (unifiedPanel.barPosition === "left" || unifiedPanel.barPosition === "right") ? unifiedPanel.barTargetWidth : unifiedPanel.barTargetHeight
-                barOuterMargin: unifiedPanel.barOuterMargin
+                barPinned: _islandActive ? unifiedPanel.notchPinned : unifiedPanel.pinned
+                barSize: _islandActive ? 44 : (unifiedPanel.barPosition === "left" || unifiedPanel.barPosition === "right") ? unifiedPanel.barTargetWidth : unifiedPanel.barTargetHeight
+                barOuterMargin: _islandActive ? 0 : unifiedPanel.barOuterMargin
 
                 // Dock status for reservations
                 dockEnabled: {
                     if (!((Config.dock && Config.dock.enabled !== undefined ? Config.dock.enabled : false)) || (Config.dock && Config.dock.theme !== undefined ? Config.dock.theme : "default") === "integrated")
                         return false;
+
+                    // In island mode: only reserve dock space if island is pinned
+                    if (_islandActive) {
+                        if (!unifiedPanel.notchPinned) return false;
+                        const dp = (Config.dock && Config.dock.position) || "center";
+                        if (dp === "center" || dp === unifiedPanel.barPosition) return false;
+                    }
 
                     const list = (Config.dock && Config.dock.screenList !== undefined ? Config.dock.screenList : []);
                     if (!list || list.length === 0)
@@ -175,6 +189,10 @@ ShellRoot {
 
     CompositorConfig {
         id: compositorConfig
+    }
+
+    CompositorKeybinds {
+        id: compositorKeybinds
     }
 
     // Screenshot tool
@@ -287,6 +305,7 @@ ShellRoot {
                 let _ = CaffeineService.inhibit;
                 _ = IdleService.lockCmd; // Force init
                 _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
+                _ = BatteryAlertService.enabled; // Force init (battery notifications)
             });
         }
     }
@@ -300,4 +319,72 @@ ShellRoot {
             _ = GameModeService.toggled;
         }
     }
+
+    // --- Boot Splash (NOTHING animation with chroma key) ---
+    Loader {
+        id: bootSplash
+        active: true
+        sourceComponent: Component {
+            Variants {
+                model: Quickshell.screens
+                PanelWindow {
+                    required property var modelData
+                    screen: modelData
+                    anchors { top: true; left: true; right: true; bottom: true }
+                    color: "#000000"
+                    WlrLayershell.layer: WlrLayer.Overlay
+                    WlrLayershell.namespace: "ambxst:splash-overlay"
+                    exclusionMode: ExclusionMode.Ignore
+
+                    Rectangle {
+                        id: splashBg
+                        anchors.fill: parent
+                        color: "#000000"
+
+                        Image {
+                            id: splashLogo
+                            anchors.centerIn: parent
+                            width: Math.min(parent.width, parent.height) * 0.4
+                            height: width
+                            source: "assets/ambxst/ambxst-logo-color.svg"
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                        }
+
+                        // Fade in, hold, fade out
+                        opacity: splashVisible ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: 500 } }
+
+                        property bool splashVisible: false
+
+                        Timer {
+                            interval: 300
+                            running: true
+                            onTriggered: {
+                                splashBg.splashVisible = true
+                            }
+                        }
+
+                        Timer {
+                            interval: 2500
+                            running: true
+                            onTriggered: {
+                                splashBg.splashVisible = false
+                            }
+                        }
+
+                        Timer {
+                            interval: 3200
+                            running: true
+                            onTriggered: {
+                                bootSplash.active = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // toggle-metrics bind is in the sourced config (cli.sh) and managed by the config system
 }

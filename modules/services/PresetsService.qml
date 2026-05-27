@@ -117,20 +117,6 @@ Singleton {
             const jsonFile = configFile.replace('.js', '.json')
             if (root.excludedFiles.includes(jsonFile)) continue;
 
-            // The source is configDir (~/.config/Ambxst), NOT configDir/config
-            // But wait, the configDir property is defined as ~/.config/Ambxst below?
-            // Let's check the property definition.
-            // property string configDir: ... + "/Ambxst"
-            // But Config.qml says configDir is ... + "/Ambxst/config"
-            // We need to match Config.qml's path.
-            
-            // In Config.qml: property string configDir: ... + "/Ambxst/config"
-            // Here: readonly property string configDir: ... + "/Ambxst"
-            // This is a mismatch!
-            
-            // We should use the same path as Config.qml for reading/writing config files.
-            // Let's assume the files are in .../Ambxst/config based on Config.qml and ls output.
-            
             const srcPath = configDir + "/config/" + jsonFile 
             const dstPath = presetPath + "/" + jsonFile
             copyCmd += `cp "${srcPath}" "${dstPath}" && `

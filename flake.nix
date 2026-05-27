@@ -1,11 +1,11 @@
 {
-  description = "Ambxst - An Axtremely customizable shell by Axenide";
+  description = "Ambxst - An Axtremely customizable shell by Leriart";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     axctl = {
-      url = "github:Axenide/axctl";
+      url = "github:Leriart/axctl";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

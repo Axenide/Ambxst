@@ -29,31 +29,35 @@ Item {
 
     // Animate wavy properties
     Behavior on _animatedWavyAmplitude {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
     Behavior on _animatedWavyFrequency {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
     Behavior on _animatedIconRotation {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
     Behavior on _animatedIconScale {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -87,9 +91,9 @@ Item {
                 scale: root._animatedIconScale
 
                 Behavior on color {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     ColorAnimation {
-                        duration: Config.animDuration / 2
+                        duration: Anim.standardSmall
                     }
                 }
             }
@@ -114,10 +118,11 @@ Item {
             property real animatedProgress: root.sliderValue
 
             Behavior on animatedProgress {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardNormal
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
 
@@ -127,14 +132,14 @@ Item {
                 anchors.leftMargin: 4
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                height: 4
+                height: 6
                 radius: Styling.radius(0) / 4
-                color: Colors.surfaceBright
+                color: Colors.overSecondaryFixedVariant
             }
 
             // Progress fill (wavy or solid)
             Loader {
-                active: root.wavy
+                active: false
                 anchors.left: parent.left
                 anchors.right: dragHandle.left
                 anchors.rightMargin: 4
@@ -157,10 +162,10 @@ Item {
                 anchors.right: dragHandle.left
                 anchors.rightMargin: 4
                 anchors.verticalCenter: parent.verticalCenter
-                height: 4
+                height: 6
                 radius: Styling.radius(0) / 4
                 color: root.progressColor
-                visible: !root.wavy
+                visible: true
                 z: 1
             }
 
@@ -176,17 +181,19 @@ Item {
                 z: 2
 
                 Behavior on width {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
                 Behavior on height {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
             }

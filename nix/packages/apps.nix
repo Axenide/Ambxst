@@ -19,4 +19,9 @@ with pkgs; [
   # Icons
   kdePackages.breeze-icons
   hicolor-icon-theme
+
+  # Utilities
+  translate-shell
+  libqalculate
+  songrec
 ]

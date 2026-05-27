@@ -64,6 +64,8 @@ Item {
                         anchors.fill: parent
                         source: `file://${Quickshell.env("HOME")}/.face.icon`
                         fillMode: Image.PreserveAspectCrop
+                        sourceSize.width: 24
+                        sourceSize.height: 24
                     }
                 }
             }
@@ -81,9 +83,9 @@ Item {
                 visible: false
 
                 Behavior on color {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     ColorAnimation {
-                        duration: Config.animDuration / 2
+                        duration: Anim.standardSmall
                     }
                 }
             }

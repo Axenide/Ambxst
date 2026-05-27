@@ -49,8 +49,11 @@ Singleton {
     }
 
     // Volume signals for OSD
+    // FIX: Guard enabled to prevent segfault in Qt 6.11 when PipeWire nodes
+    // get destroyed/recreated while QML is finalizing Connections during incubation
     Connections {
         target: root.sink?.audio ?? null
+        enabled: root.sink?.audio !== null
         ignoreUnknownSignals: true
         function onVolumeChanged() {
             if (root.sink?.ready) {
@@ -64,8 +67,11 @@ Singleton {
         }
     }
 
+    // FIX: Guard enabled to prevent segfault in Qt 6.11 when PipeWire nodes
+    // get destroyed/recreated while QML is finalizing Connections during incubation
     Connections {
         target: root.source?.audio ?? null
+        enabled: root.source?.audio !== null
         ignoreUnknownSignals: true
         function onVolumeChanged() {
             if (root.source?.ready) {

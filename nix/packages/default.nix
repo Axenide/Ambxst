@@ -1,10 +1,23 @@
 # Main Ambxst package
-{ pkgs, lib, self, system, axctl, version }:
+{
+  pkgs,
+  lib,
+  self,
+  system,
+  axctl,
+  version,
+}:
 
 let
-  quickshellPkg = pkgs.quickshell;
   axctlPkg = axctl.packages.${system}.default;
-
+  quickshellPkg = pkgs.quickshell.overrideAttrs (old: {
+    buildInputs = (old.buildInputs or [ ]) ++ [
+      pkgs.kdePackages.kirigami
+      pkgs.kdePackages.kirigami-addons
+      pkgs.kdePackages.qqc2-desktop-style
+      pkgs.kdePackages.syntax-highlighting
+    ];
+  });
   # Import sub-packages
   ttf-phosphor-icons = import ./phosphor-icons.nix { inherit pkgs; };
 
@@ -17,13 +30,8 @@ let
   tesseractPkgs = import ./tesseract.nix { inherit pkgs; };
 
   # Combine all packages (NixOS-specific deps handled by the module)
-  baseEnv = corePkgs
-    ++ [ axctlPkg ]
-    ++ toolsPkgs
-    ++ mediaPkgs
-    ++ appsPkgs
-    ++ fontsPkgs
-    ++ tesseractPkgs;
+  baseEnv =
+    corePkgs ++ [ axctlPkg ] ++ toolsPkgs ++ mediaPkgs ++ appsPkgs ++ fontsPkgs ++ tesseractPkgs;
 
   envAmbxst = pkgs.buildEnv {
     name = "Ambxst-env";
@@ -52,7 +60,7 @@ let
   };
 
   launcher = pkgs.writeShellScriptBin "ambxst" ''
-    export AMBXST_QS="${quickshellPkg}/bin/qs"
+    export NOTHINGLESS_QS="${quickshellPkg}/bin/qs"
     export PATH="${envAmbxst}/bin:$PATH"
 
     # Set QML2_IMPORT_PATH to include modules from envAmbxst (like syntax-highlighting)
@@ -66,8 +74,12 @@ let
     exec ${shellSrc}/cli.sh "$@"
   '';
 
-in pkgs.buildEnv {
+in
+pkgs.buildEnv {
   name = "Ambxst-${version}";
-  paths = [ envAmbxst launcher ];
+  paths = [
+    envAmbxst
+    launcher
+  ];
   meta.mainProgram = "ambxst";
 }

@@ -51,8 +51,9 @@ Item {
     transitions: Transition {
         NumberAnimation {
             properties: "implicitWidth,implicitHeight,Layout.preferredWidth,Layout.preferredHeight"
-            duration: Config.animDuration
-            easing.type: Easing.OutCubic
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
     Layout.fillWidth: root.vertical
@@ -72,9 +73,9 @@ Item {
             radius: parent.radius ?? 0
 
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
         }
@@ -107,12 +108,12 @@ Item {
             smoothDrag: true
             value: 0
             resizeParent: false
-            wavy: true
+            wavy: false
             scroll: root.isExpanded
             iconClickable: root.isExpanded
             sliderVisible: root.isExpanded || volumeSlider.isDragging || root.externalVolumeChange
-            wavyAmplitude: (root.isExpanded || volumeSlider.isDragging || root.externalVolumeChange) ? (Audio.sink?.audio?.muted ? 0.5 : 1.5 * value) : 0
-            wavyFrequency: (root.isExpanded || volumeSlider.isDragging || root.externalVolumeChange) ? (Audio.sink?.audio?.muted ? 1.0 : 8.0 * value) : 0
+            wavyAmplitude: 0
+            wavyFrequency: 0
             iconPos: root.vertical ? "end" : "start"
             icon: {
                 if (Audio.sink?.audio?.muted)
@@ -140,8 +141,10 @@ Item {
                 }
             }
 
+            // FIX: Guard enabled to prevent segfault when PipeWire node is destroyed mid-incubation
             Connections {
                 target: Audio.sink?.audio ?? null
+                enabled: Audio.sink?.audio !== null
                 ignoreUnknownSignals: true
                 function onVolumeChanged() {
                     if (Audio.sink?.audio) {

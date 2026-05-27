@@ -25,9 +25,9 @@ Button {
             radius: Styling.radius(4)
 
             Behavior on color {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 ColorAnimation {
-                    duration: Config.animDuration
+                    duration: Anim.standardNormal
                 }
             }
         }

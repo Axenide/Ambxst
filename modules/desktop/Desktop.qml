@@ -5,6 +5,7 @@ import Quickshell.Wayland
 import qs.modules.desktop
 import qs.modules.services
 import qs.modules.theme
+import qs.modules.components
 import qs.config
 
 PanelWindow {
@@ -72,18 +73,20 @@ PanelWindow {
                 visible: !isPlaceholder
 
                 Behavior on x {
-                    enabled: !dragHandler.active && Config.animDuration > 0
+                    enabled: !dragHandler.active && Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
 
                 Behavior on y {
-                    enabled: !dragHandler.active && Config.animDuration > 0
+                    enabled: !dragHandler.active && Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
 
@@ -136,10 +139,11 @@ PanelWindow {
                     opacity: dragHandler.active ? 0.3 : 1.0
 
                     Behavior on opacity {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            duration: Anim.standardSmall
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 
@@ -243,6 +247,11 @@ PanelWindow {
             color: "white"
             font.family: Config.defaultFont
             font.pixelSize: Styling.fontSize(0)
+        }
+
+        // Desktop overlay widgets (clock, greeting)
+        DesktopWidgets {
+            anchors.fill: parent
         }
     }
 }

@@ -9,7 +9,7 @@ QtObject {
 
     property Process compositorProcess: Process {}
 
-    property var previousAmbxstBinds: ({})
+    property var previousNothinglessBinds: ({})
     property var previousCustomBinds: []
     property bool hasPreviousBinds: false
 
@@ -48,7 +48,7 @@ QtObject {
         const ambxst = Config.keybindsLoader.adapter.ambxst;
 
         // Store ambxst core keybinds
-        previousAmbxstBinds = {
+        previousNothinglessBinds = {
             ambxst: {
                 launcher: cloneKeybind(ambxst.launcher),
                 dashboard: cloneKeybind(ambxst.dashboard),
@@ -163,29 +163,29 @@ QtObject {
         // First, unbind previous keybinds if we have them stored
         if (hasPreviousBinds) {
             // Unbind previous ambxst core keybinds
-            if (previousAmbxstBinds.ambxst) {
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.launcher));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.dashboard));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.assistant));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.clipboard));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.emoji));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.notes));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.tmux));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.ambxst.wallpapers));
+            if (previousNothinglessBinds.ambxst) {
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.launcher));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.dashboard));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.assistant));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.clipboard));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.emoji));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.notes));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.tmux));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.ambxst.wallpapers));
             }
 
             // Unbind previous ambxst system keybinds
-            if (previousAmbxstBinds.system) {
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.overview));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.powermenu));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.config));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.lockscreen));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.tools));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.screenshot));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.screenrecord));
-                payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.lens));
-                if (previousAmbxstBinds.system.reload) payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.reload));
-                if (previousAmbxstBinds.system.quit) payload.unbinds.push(makeUnbindTarget(previousAmbxstBinds.system.quit));
+            if (previousNothinglessBinds.system) {
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.overview));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.powermenu));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.config));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.lockscreen));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.tools));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.screenshot));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.screenrecord));
+                payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.lens));
+                if (previousNothinglessBinds.system.reload) payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.reload));
+                if (previousNothinglessBinds.system.quit) payload.unbinds.push(makeUnbindTarget(previousNothinglessBinds.system.quit));
             }
 
             // Unbind previous custom keybinds
@@ -234,9 +234,10 @@ QtObject {
         payload.unbinds.push(makeUnbindTarget(system.lens));
         if (system.reload) payload.unbinds.push(makeUnbindTarget(system.reload));
         if (system.quit) payload.unbinds.push(makeUnbindTarget(system.quit));
+        if (system["toggle-metrics"]) payload.unbinds.push(makeUnbindTarget(system["toggle-metrics"]));
 
         // Bind current system keybinds
-        [system.overview, system.powermenu, system.config, system.lockscreen, system.tools, system.screenshot, system.screenrecord, system.lens, system.reload, system.quit].forEach(bind => {
+        [system.overview, system.powermenu, system.config, system.lockscreen, system.tools, system.screenshot, system.screenrecord, system.lens, system.reload, system.quit, system["toggle-metrics"]].forEach(bind => {
             if (!bind) return;
             const resolved = makeBindFromCore(bind);
             if (resolved) payload.binds.push(resolved);
@@ -315,15 +316,34 @@ QtObject {
         }
     }
 
-    // property Connections compositorConnections: Connections {
-    //     target: AxctlService
-    //     function onRawEvent(event) {
-    //         if (event.name === "configreloaded") {
-    //             console.log("CompositorKeybinds: Detectado configreloaded, reaplicando keybindings...");
-    //             applyKeybinds();
-    //         }
-    //     }
-    // }
+    // Handle config reloads — from AxctlService rawEvent or dedicated signal
+    property Connections compositorConnections: Connections {
+        target: AxctlService
+        function onRawEvent(event) {
+            if (event && event.name === "configreloaded") {
+                console.log("CompositorKeybinds: Hyprland config reloaded, reapplying keybinds...");
+                applyKeybindsInternal();  // Direct — no 100ms timer delay
+            }
+        }
+    }
+
+    // Also react to dedicated configReloaded signal (fired by AxctlService on subscribe re-connect too)
+    property Connections axctlConnections: Connections {
+        target: AxctlService
+        function onConfigReloaded() {
+            console.log("CompositorKeybinds: Config reloaded signal, reapplying keybinds...");
+            applyKeybinds();
+        }
+    }
+
+    // When subscribe reconnects after a failure, re-apply everything
+    property Connections subscribeConnections: Connections {
+        target: AxctlService
+        function onSubscribeReady() {
+            console.log("CompositorKeybinds: Subscribe reconnected, reapplying keybinds...");
+            applyKeybinds();
+        }
+    }
 
     Component.onCompleted: {
         // Apply immediately if loader is ready.

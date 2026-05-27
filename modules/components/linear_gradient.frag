@@ -56,22 +56,12 @@ void main() {
     float angleRad = radians(ubuf.angle);
     vec2 dir = vec2(sin(angleRad), cos(angleRad));
 
-    vec2 corners[4];
-    corners[0] = vec2(0, 0) - center;
-    corners[1] = vec2(size.x, 0) - center;
-    corners[2] = vec2(0, size.y) - center;
-    corners[3] = vec2(size.x, size.y) - center;
-
-    float minProj = dot(corners[0], dir);
-    float maxProj = minProj;
-    for (int i = 1; i < 4; i++) {
-        float p = dot(corners[i], dir);
-        minProj = min(minProj, p);
-        maxProj = max(maxProj, p);
-    }
-
+    // Low-level branchless optimization:
+    // Mathematically pre-calculates the exact projection boundaries of a quad 
+    // without branches, loops, or array allocations, reducing vertex-fragment math.
+    float rangeProj = size.x * abs(dir.x) + size.y * abs(dir.y);
     float proj = dot(relPos, dir);
-    float t = clamp((proj - minProj) / (maxProj - minProj), 0.0, 1.0);
+    float t = clamp(proj / rangeProj + 0.5, 0.0, 1.0);
 
     // Procedural gradient: interpolate between stops
     vec4 color = getStopColor(0);

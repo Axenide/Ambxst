@@ -208,17 +208,19 @@ NotchAnimationBehavior {
                 height: Math.abs(animatedY2 - animatedY1) + width
 
                 Behavior on animatedY1 {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration / 3
-                        easing.type: Easing.OutSine
+                        duration: Anim.spatialFast
+                        easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                     }
                 }
                 Behavior on animatedY2 {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutSine
+                        duration: Anim.spatialDefault
+                        easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                     }
                 }
 
@@ -264,10 +266,11 @@ NotchAnimationBehavior {
                             verticalAlignment: Text.AlignVCenter
 
                             Behavior on color {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 ColorAnimation {
-                                    duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    duration: Anim.standardNormal
+                                    easing.type: Anim.easing("standard").type
+                                    easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
                         }
@@ -291,10 +294,11 @@ NotchAnimationBehavior {
                 opacity: GlobalStates.settingsWindowVisible ? 0 : 1
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
             }
@@ -323,10 +327,11 @@ NotchAnimationBehavior {
                     verticalAlignment: Text.AlignVCenter
 
                     Behavior on color {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         ColorAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                            easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
                 }
@@ -391,6 +396,7 @@ NotchAnimationBehavior {
                 // Generic Tab Loader Component
                 component TabLoader : Loader {
                     anchors.fill: parent
+                    asynchronous: true
                     // Load based on LRU strategy or if currently active
                     active: root.shouldTabBeLoaded(index) || root.state.currentTab === index
                     
@@ -402,14 +408,22 @@ NotchAnimationBehavior {
                     transform: Translate {
                         y: visible ? 0 : (root.state.currentTab > index ? -20 : 20)
                         Behavior on y {
-                             enabled: Config.animDuration > 0
-                             NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart } 
+                             enabled: Anim.animationsEnabled
+                             NumberAnimation {
+                                 duration: Anim.standardNormal
+                                 easing.type: Anim.easing("standard").type
+                                 easing.bezierCurve: Anim.easing("standard").bezierCurve
+                             }
                         }
                     }
 
                     Behavior on opacity {
-                        enabled: Config.animDuration > 0
-                        NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart }
+                        enabled: Anim.animationsEnabled
+                        NumberAnimation {
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                            easing.bezierCurve: Anim.easing("standard").bezierCurve
+                        }
                     }
 
                     // Forward focus
@@ -545,20 +559,20 @@ NotchAnimationBehavior {
     onImplicitHeightChanged: animatedHeight = implicitHeight
 
     Behavior on animatedWidth {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.1
+            duration: Anim.emphasizedNormal
+            easing.type: Anim.easing("emphasized").type
+            easing.bezierCurve: Anim.easing("emphasized").bezierCurve
         }
     }
 
     Behavior on animatedHeight {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.1
+            duration: Anim.emphasizedNormal
+            easing.type: Anim.easing("emphasized").type
+            easing.bezierCurve: Anim.easing("emphasized").bezierCurve
         }
     }
 

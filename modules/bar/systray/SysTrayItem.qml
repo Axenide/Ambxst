@@ -5,7 +5,6 @@ import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import qs.modules.theme
-import qs.modules.services
 import qs.modules.components
 import qs.config
 
@@ -23,132 +22,54 @@ MouseArea {
     implicitWidth: trayItemSize
     implicitHeight: trayItemSize
 
+    // Popup de prueba para verificar clicks
+    Popup {
+        id: testPopup
+        x: popupX; y: popupY
+        width: 200; height: 150
+
+        background: Rectangle {
+            color: Colors.background
+            border.color: Colors.surfaceBright
+            border.width: 2
+            radius: 8
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing: 10
+            Text { text: "RIGHT CLICK WORKS!"; color: Colors.overPrimary; font.bold: true }
+            Button {
+                text: "Cerrar"
+                onClicked: testPopup.close()
+            }
+        }
+    }
+
+    property real popupX: 0
+    property real popupY: 0
+
     onClicked: event => {
         switch (event.button) {
         case Qt.LeftButton:
             item.activate();
             break;
         case Qt.RightButton:
-            if (item.hasMenu) {
-                systrayPopup.toggle();
-            }
+            popupX = event.x;
+            popupY = event.y;
+            testPopup.open();
             break;
         }
         event.accepted = true;
     }
 
-    BarPopup {
-        id: systrayPopup
-        anchorItem: root
-        bar: root.bar
-
-        // Use a reasonable width for the menu
-        contentWidth: 220
-        // Height adapts to content, with a max limit if needed.
-        // Must include vertical padding (8 top + 8 bottom = 16)
-        contentHeight: Math.min(itemsColumn.implicitHeight + 16, 400)
-
-        popupPadding: 8
-        // 8px standard margin + 8px SysTray container padding to ensure correct offset from the main bar
-        visualMargin: 16
-
-        // Using QsMenuOpener to access menu items
-        QsMenuOpener {
-            id: menuOpener
-            menu: root.item.menu
-        }
-
-        ScrollView {
-            anchors.fill: parent
-            contentWidth: availableWidth
-            clip: true
-
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-
-            ColumnLayout {
-                id: itemsColumn
-                width: parent.width
-                spacing: 2
-
-                Repeater {
-                    model: menuOpener.children ? menuOpener.children.values : []
-
-                    delegate: ColumnLayout {
-                        required property var modelData
-
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        property bool submenuExpanded: false
-
-                        SystrayMenuItem {
-                            Layout.fillWidth: true
-
-                            textStr: modelData.text || ""
-                            iconSource: modelData.icon || ""
-                            isImageIcon: iconSource.indexOf("/") !== -1 || iconSource.indexOf(".") !== -1
-                            isSeparator: modelData.isSeparator || false
-                            hasSubmenu: modelData.hasChildren || false
-                            expanded: parent.submenuExpanded
-                            buttonType: modelData.buttonType || 0
-                            checkState: modelData.checkState || 0
-
-                            onClicked: {
-                                if (modelData.hasChildren) {
-                                    parent.submenuExpanded = !parent.submenuExpanded;
-                                } else {
-                                    if (modelData.triggered) {
-                                        modelData.triggered();
-                                    } else if (modelData.activate) {
-                                        modelData.activate();
-                                    }
-                                    systrayPopup.close();
-                                }
-                            }
-                        }
-
-                        // Submenu children — uses its own QsMenuOpener to trigger lazy loading
-                        ColumnLayout {
-                            visible: submenuExpanded && modelData.hasChildren
-                            Layout.fillWidth: true
-                            spacing: 2
-
-                            QsMenuOpener {
-                                id: subMenuOpener
-                                menu: modelData.hasChildren ? modelData : null
-                            }
-
-                            Repeater {
-                                model: subMenuOpener.children ? subMenuOpener.children.values : []
-
-                                delegate: SystrayMenuItem {
-                                    required property var modelData
-
-                                    Layout.fillWidth: true
-                                    depth: 1
-
-                                    textStr: modelData.text || ""
-                                    iconSource: modelData.icon || ""
-                                    isImageIcon: iconSource.indexOf("/") !== -1 || iconSource.indexOf(".") !== -1
-                                    isSeparator: modelData.isSeparator || false
-                                    buttonType: modelData.buttonType || 0
-                                    checkState: modelData.checkState || 0
-
-                                    onClicked: {
-                                        if (modelData.triggered) {
-                                            modelData.triggered();
-                                        } else if (modelData.activate) {
-                                            modelData.activate();
-                                        }
-                                        systrayPopup.close();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    // DEBUG: borde rojo para confirmar que este código está cargado
+    Rectangle {
+        anchors.fill: parent
+        color: "transparent"
+        border.color: "red"
+        border.width: 2
+        radius: 4
     }
 
     IconImage {

@@ -282,9 +282,9 @@ Item {
                             }
 
                             Behavior on border.width {
-                                enabled: (Config.animDuration ?? 0) > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: (Config.animDuration ?? 0) / 3
+                                    duration: Anim.standardSmall
                                 }
                             }
                         }
