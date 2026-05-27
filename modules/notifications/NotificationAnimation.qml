@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import qs.modules.theme
 
 Item {
     id: root
@@ -22,9 +23,9 @@ Item {
             target: root.targetItem?.anchors
             property: "leftMargin"
             to: root.parentWidth / 8 + root.dismissOvershoot
-            duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.1
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("emphasized").type
+                        easing.bezierCurve: Anim.easing("emphasized").bezierCurve
         }
 
         NumberAnimation {
@@ -32,8 +33,9 @@ Item {
             property: "scale"
             from: 1.0
             to: 0.8
-            duration: Config.animDuration
-            easing.type: Easing.OutQuad
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("emphasized", "exit").type
+            easing.bezierCurve: Anim.easing("emphasized", "exit").bezierCurve
         }
 
         NumberAnimation {
@@ -41,8 +43,9 @@ Item {
             property: "opacity"
             from: 1.0
             to: 0.0
-            duration: Config.animDuration
-            easing.type: Easing.OutQuad
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("emphasized", "exit").type
+            easing.bezierCurve: Anim.easing("emphasized", "exit").bezierCurve
         }
 
         onFinished: {

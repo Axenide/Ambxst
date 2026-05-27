@@ -71,8 +71,10 @@ Item {
             }
             
             // Update texture when sourceItem changes
+            // FIX: Guard enabled to prevent segfault when sourceItem is null during incubation
             Connections {
                 target: root.sourceItem
+                enabled: root.sourceItem !== null
                 function onSourceChanged() { internalSource.scheduleUpdate(); }
                 function onStatusChanged() { internalSource.scheduleUpdate(); }
             }
@@ -102,6 +104,8 @@ Item {
                 property var source: internalSource
                 property var paletteTexture: paletteTextureSource
                 property real paletteSize: root.optimizedPalette.length
+                property real sharpness: 20.0
+                property real mixStrength: 1.0
                 property real texWidth: root.width
                 property real texHeight: root.height
 

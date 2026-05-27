@@ -30,34 +30,18 @@ vec2 polarToCartesian(float r, float theta) {
     return vec2(r * cos(theta), r * sin(theta));
 }
 
-// Robust Distance Field search in Polar Coordinates
+// SDF de primer orden en coordenadas polares — evita completamente el bucle de 24 pasos
+// usando la derivada analítica del radio y la inversesqrt acelerada por hardware.
 float distanceToWave(float r, float theta) {
-    // 1. Define search window in Angular space
-    // 0.1 radians is usually enough for high frequency waves at typical radii.
-    float searchWindow = 0.15; 
+    float relAngle = theta - ubuf.startAngle;
+    float f_theta = ubuf.radius + ubuf.amplitude * sin(ubuf.frequency * relAngle + ubuf.phase);
+    float df_theta = ubuf.amplitude * ubuf.frequency * cos(ubuf.frequency * relAngle + ubuf.phase);
     
-    float minStart = theta - searchWindow;
-    float minEnd = theta + searchWindow;
-    
-    const int numSteps = 24; 
-    
-    float minDistanceSq = 1.0e+20;
-    
-    for (int i = 0; i <= numSteps; ++i) {
-        float t = float(i) / float(numSteps);
-        float sampleTheta = mix(minStart, minEnd, t);
-        
-        float sampleR = targetRadiusAt(sampleTheta);
-        
-        // Calculate Cartesian distance squared
-        float dX = r * cos(theta) - sampleR * cos(sampleTheta);
-        float dY = r * sin(theta) - sampleR * sin(sampleTheta);
-        float distSq = dX*dX + dY*dY;
-        
-        minDistanceSq = min(minDistanceSq, distSq);
-    }
-    
-    return sqrt(minDistanceSq);
+    // First-order SDF for polar curve: |r - f(θ)| / sqrt(1 + (f'(θ)/r)²)
+    // inversesqrt es la raíz cuadrada inversa acelerada por hardware de la GPU
+    float diff = r - f_theta;
+    float invDenom = inversesqrt(1.0 + (df_theta * df_theta) / (r * r));
+    return abs(diff) * invDenom;
 }
 
 void main() {

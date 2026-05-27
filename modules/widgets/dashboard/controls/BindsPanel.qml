@@ -55,7 +55,7 @@ Item {
     property bool editMode: false
     property int editingIndex: -1
     property var editingBind: null
-    property bool isEditingAmbxst: false
+    property bool isEditingNothingless: false
     property bool isCreatingNew: false
 
     // Edit form state - new format with keys[] and actions[]
@@ -237,13 +237,13 @@ Item {
         }
     }
 
-    function openEditDialog(bind, index, isAmbxst) {
+    function openEditDialog(bind, index, isNothingless) {
         root.editingIndex = index;
         root.editingBind = bind;
-        root.isEditingAmbxst = isAmbxst;
+        root.isEditingNothingless = isNothingless;
 
         // Initialize edit form state
-        if (isAmbxst) {
+        if (isNothingless) {
             // Ambxst binds still use old format (single key)
             const bindData = bind.bind;
             root.editName = "";
@@ -327,7 +327,7 @@ Item {
     }
 
     function saveEdit() {
-        if (root.isEditingAmbxst) {
+        if (root.isEditingNothingless) {
             // Save ambxst bind (still uses old format internally)
             const path = root.editingBind.path.split(".");
             // path = ["ambxst", "section"?, "bindName"]
@@ -432,7 +432,7 @@ Item {
     }
 
     // Get ambxst binds as a flat list
-    function getAmbxstBinds() {
+    function getNothinglessBinds() {
         const adapter = Config.keybindsLoader.adapter;
         if (!adapter || !adapter.ambxst)
             return [];
@@ -455,14 +455,19 @@ Item {
 
         // System binds
         if (ambxst.system) {
-            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
+            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit", "toggle-metrics"];
             for (const key of systemKeys) {
-                if (ambxst.system[key]) {
+                let bindObj = ambxst.system[key];
+                // Fallback for keys not exposed by JsonAdapter (e.g., hyphenated names)
+                if (!bindObj && adapter.defaultNothinglessBinds && adapter.defaultNothinglessBinds.system) {
+                    bindObj = adapter.defaultNothinglessBinds.system[key];
+                }
+                if (bindObj) {
                     binds.push({
                         category: "System",
                         name: key.charAt(0).toUpperCase() + key.slice(1),
                         path: "ambxst.system." + key,
-                        bind: ambxst.system[key]
+                        bind: bindObj
                     });
                 }
             }
@@ -553,19 +558,21 @@ Item {
             x: root.editMode ? -30 : 0
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -684,19 +691,21 @@ Item {
             x: root.editMode ? -30 : 0
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -710,7 +719,7 @@ Item {
             // Ambxst binds view
             Repeater {
                 id: ambxstRepeater
-                model: root.currentCategory === "ambxst" ? root.getAmbxstBinds() : []
+                model: root.currentCategory === "ambxst" ? root.getNothinglessBinds() : []
 
                 delegate: BindItem {
                     required property var modelData
@@ -721,7 +730,7 @@ Item {
                     keybindText: root.formatKeybind(modelData.bind)
                     dispatcher: KeybindActions.describeAction(modelData.bind.action || modelData.bind)
                     argument: ""
-                    isAmbxst: true
+                    isNothingless: true
 
                     onEditRequested: {
                         root.openEditDialog(modelData, index, true);
@@ -768,7 +777,7 @@ Item {
                     dispatcher: firstDispatcher
                     argument: firstArgument
                     isEnabled: modelData.enabled !== false
-                    isAmbxst: false
+                    isNothingless: false
                     layouts: getUniqueLayouts()
 
                     onToggleEnabled: {
@@ -821,19 +830,21 @@ Item {
             x: root.editMode ? 0 : 30
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -911,7 +922,7 @@ Item {
                         // Delete button (only for existing custom binds)
                         StyledRect {
                             id: deleteButton
-                            visible: !root.isEditingAmbxst && !root.isCreatingNew
+                            visible: !root.isEditingNothingless && !root.isCreatingNew
                             variant: deleteButtonArea.containsMouse ? "focus" : "common"
                             Layout.preferredWidth: 36
                             Layout.preferredHeight: 36
@@ -942,7 +953,7 @@ Item {
                         // Reset button (only for Ambxst binds)
                         StyledRect {
                             id: resetButton
-                            visible: root.isEditingAmbxst
+                            visible: root.isEditingNothingless
                             variant: resetButtonArea.pressed ? "primary" : (resetButtonArea.containsMouse ? "focus" : "common")
                             Layout.preferredWidth: resetButtonContent.width + 24
                             Layout.preferredHeight: 36
@@ -977,14 +988,14 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    if (root.isEditingAmbxst && root.editingBind) {
+                                    if (root.isEditingNothingless && root.editingBind) {
                                         const path = root.editingBind.path.split(".");
                                         // path = ["ambxst", "dashboard"|"system", "bindName"]
                                         const section = path[1];
                                         const bindName = path[2];
                                         
                                         // Use the new helper in Config.qml to get the default values
-                                        const defaultBind = Config.keybindsLoader.adapter.getAmbxstDefault(section, bindName);
+                                        const defaultBind = Config.keybindsLoader.adapter.getNothinglessDefault(section, bindName);
                                         
                                         if (defaultBind) {
                                             root.editKeys = [{
@@ -1062,7 +1073,7 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            visible: !root.isEditingAmbxst
+                            visible: !root.isEditingNothingless
 
                             Text {
                                 text: "Name (optional)"
@@ -1107,7 +1118,7 @@ Item {
 
                         // Bind name/info (for ambxst binds only)
                         Text {
-                            visible: root.isEditingAmbxst && root.editingBind !== null
+                            visible: root.isEditingNothingless && root.editingBind !== null
                             text: root.editingBind ? (root.editingBind.name || "") : ""
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(1)
@@ -1179,7 +1190,7 @@ Item {
                                 // Remove key button
                                 StyledRect {
                                     id: removeKeyBtn
-                                    visible: root.editKeys.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editKeys.length > 1 && !root.isEditingNothingless
                                     variant: removeKeyBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1272,7 +1283,7 @@ Item {
                                 // Add key button
                                 StyledRect {
                                     id: addKeyBtn
-                                    visible: !root.isEditingAmbxst
+                                    visible: !root.isEditingNothingless
                                     variant: addKeyBtnArea.containsMouse ? "primaryfocus" : "primary"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1388,7 +1399,7 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            // visible: !root.isEditingAmbxst - Removed to allow editing flags for Ambxst binds
+                            // visible: !root.isEditingNothingless - Removed to allow editing flags for Ambxst binds
 
                             // Actions section header with pager controls
                             RowLayout {
@@ -1406,7 +1417,7 @@ Item {
 
                                 // Page indicator
                                 Text {
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     text: (root.currentActionPage + 1) + " / " + root.editActions.length
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
@@ -1416,7 +1427,7 @@ Item {
                                 // Remove action button
                                 StyledRect {
                                     id: removeActionBtn
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     variant: removeActionBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1447,7 +1458,7 @@ Item {
                                 // Previous action button
                                 StyledRect {
                                     id: prevActionBtn
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     variant: prevActionBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1478,7 +1489,7 @@ Item {
                                 // Next action button
                                 StyledRect {
                                     id: nextActionBtn
-                                    visible: root.editActions.length > 1 && !root.isEditingAmbxst
+                                    visible: root.editActions.length > 1 && !root.isEditingNothingless
                                     variant: nextActionBtnArea.containsMouse ? "focus" : "common"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1509,7 +1520,7 @@ Item {
                                 // Add action button
                                 StyledRect {
                                     id: addActionBtn
-                                    visible: !root.isEditingAmbxst
+                                    visible: !root.isEditingNothingless
                                     variant: addActionBtnArea.containsMouse ? "primaryfocus" : "primary"
                                     Layout.preferredWidth: 28
                                     Layout.preferredHeight: 28
@@ -1727,10 +1738,11 @@ Item {
                                         radius: Styling.radius(-2)
 
                                         Behavior on width {
-                                            enabled: (Config.animDuration ?? 0) > 0
+                                            enabled: Anim.animationsEnabled
                                             NumberAnimation {
-                                                duration: (Config.animDuration ?? 0) / 3
-                                                easing.type: Easing.OutCubic
+                                                duration: Anim.standardSmall
+                                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                             }
                                         }
 
@@ -1753,19 +1765,21 @@ Item {
                                                     opacity: layoutTag.isSelected ? 1 : 0
 
                                                     Behavior on opacity {
-                                                        enabled: (Config.animDuration ?? 0) > 0
+                                                        enabled: Anim.animationsEnabled
                                                         NumberAnimation {
-                                                            duration: (Config.animDuration ?? 0) / 3
-                                                            easing.type: Easing.OutCubic
+                                                            duration: Anim.standardSmall
+                                                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                         }
                                                     }
                                                 }
 
                                                 Behavior on width {
-                                                    enabled: (Config.animDuration ?? 0) > 0
+                                                    enabled: Anim.animationsEnabled
                                                     NumberAnimation {
-                                                        duration: (Config.animDuration ?? 0) / 3
-                                                        easing.type: Easing.OutCubic
+                                                        duration: Anim.standardSmall
+                                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                     }
                                                 }
                                             }
@@ -1855,7 +1869,7 @@ Item {
         property string dispatcher: ""
         property string argument: ""
         property bool isEnabled: true
-        property bool isAmbxst: true
+        property bool isNothingless: true
         property bool isHovered: false
         property var layouts: []  // Layouts this bind is restricted to (empty = all layouts)
 
@@ -1890,7 +1904,7 @@ Item {
             // Checkbox for custom binds (styled like OLED Mode)
             Item {
                 id: checkboxItem
-                visible: !bindItem.isAmbxst
+                visible: !bindItem.isNothingless
                 Layout.preferredWidth: 32
                 Layout.preferredHeight: 32
 
@@ -1912,10 +1926,11 @@ Item {
                         opacity: bindItem.isEnabled ? 1.0 : 0.0
 
                         Behavior on opacity {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             NumberAnimation {
-                                duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                             }
                         }
 
@@ -1928,11 +1943,11 @@ Item {
                             scale: bindItem.isEnabled ? 1.0 : 0.0
 
                             Behavior on scale {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: Config.animDuration / 2
-                                    easing.type: Easing.OutBack
-                                    easing.overshoot: 1.5
+                                    duration: Anim.standardSmall
+                                    easing.type: Anim.easing("emphasized").type
+                        easing.bezierCurve: Anim.easing("emphasized").bezierCurve
                                 }
                             }
                         }
@@ -1971,7 +1986,7 @@ Item {
 
                     // Layout indicator
                     Row {
-                        visible: !bindItem.isAmbxst
+                        visible: !bindItem.isNothingless
                         spacing: 4
                         Layout.alignment: Qt.AlignVCenter
 
@@ -2048,7 +2063,7 @@ Item {
         // Checkbox MouseArea needs to be on top
         MouseArea {
             id: checkboxClickArea
-            visible: !bindItem.isAmbxst
+            visible: !bindItem.isNothingless
             x: 12
             y: (parent.height - 32) / 2
             width: 32

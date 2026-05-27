@@ -57,16 +57,104 @@ Item {
     property real mainRowMargin: 16
 
     Behavior on mainRowMargin {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
+            duration: Anim.standardNormal
+            easing.type: Anim.springSnappy().type
+            easing.bezierCurve: Anim.springSnappy().bezierCurve
         }
     }
 
+    // Metrics mode
+    readonly property bool metricsActive: Config.notch && Config.notch.showMetrics === true
+
+    // Dynamic notch metrics model (ordered by notchMetricsOrder from StateService)
+    property ListModel notchMetrics: ListModel {}
+    property var notchOrder: []
+
+    function rebuildNotchMetrics() {
+        notchMetrics.clear()
+        var order = StateService.get("notchMetricsOrder", ["cpu","gpu","fps","ram","disk"])
+        notchOrder = order
+        var items = {}
+
+        // Unified CPU: temp + usage % + power
+        items.cpu = {
+            id: "cpu", label: "CPU",
+            visible: SystemResources.cpuUsageEnabled || SystemResources.cpuTempEnabled || SystemResources.cpuPowerEnabled,
+            labelColor: SystemResources.metricColorCpu,
+            valueText: (SystemResources.metricsAvailable && SystemResources.cpuTempEnabled && SystemResources.cpuTemp > 0) ? SystemResources.cpuTemp.toString() : (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled) ? Math.round(SystemResources.cpuUsage).toString() : "--",
+            valueUnit: (SystemResources.metricsAvailable && SystemResources.cpuTempEnabled && SystemResources.cpuTemp > 0) ? "°C" : (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled) ? "%" : "",
+            subValue: (SystemResources.metricsAvailable && SystemResources.cpuPowerEnabled && SystemResources.cpuPower > 0) ? SystemResources.cpuPower.toFixed(0) : "",
+            subUnit: (SystemResources.metricsAvailable && SystemResources.cpuPowerEnabled && SystemResources.cpuPower > 0) ? "W" : ""
+        }
+        // Unified GPU: temp + usage % + power
+        items.gpu = {
+            id: "gpu", label: "GPU",
+            visible: SystemResources.gpuUsageEnabled || SystemResources.gpuTempEnabled || SystemResources.gpuPowerEnabled,
+            labelColor: SystemResources.metricColorGpu,
+            valueText: (SystemResources.metricsAvailable && SystemResources.gpuTempEnabled && SystemResources.gpuTemp > 0) ? SystemResources.gpuTemp.toString() : (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled && SystemResources.gpuUsages.length > 0) ? Math.round(SystemResources.gpuUsages[0]).toString() : "--",
+            valueUnit: (SystemResources.metricsAvailable && SystemResources.gpuTempEnabled && SystemResources.gpuTemp > 0) ? "°C" : (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled) ? "%" : "",
+            subValue: (SystemResources.metricsAvailable && SystemResources.gpuPowerEnabled && SystemResources.gpuPower > 0) ? SystemResources.gpuPower.toFixed(0) : "",
+            subUnit: (SystemResources.metricsAvailable && SystemResources.gpuPowerEnabled && SystemResources.gpuPower > 0) ? "W" : ""
+        }
+        // FPS
+        items.fps = {
+            id: "fps", label: "FPS", visible: SystemResources.fpsEnabled,
+            labelColor: SystemResources.metricColorFps,
+            valueText: (SystemResources.metricsAvailable && SystemResources.fpsEnabled && SystemResources.fps > 0) ? Math.round(SystemResources.fps).toString() : "--",
+            valueUnit: "", subValue: "", subUnit: ""
+        }
+        // RAM
+        items.ram = {
+            id: "ram", label: "RAM", visible: SystemResources.ramEnabled,
+            labelColor: SystemResources.metricColorRam,
+            valueText: (SystemResources.metricsAvailable && SystemResources.ramEnabled && SystemResources.ramUsage > 0) ? Math.round(SystemResources.ramUsage).toString() : "--",
+            valueUnit: (SystemResources.metricsAvailable && SystemResources.ramEnabled && SystemResources.ramUsage > 0) ? "%" : "",
+            subValue: "", subUnit: ""
+        }
+        // Disk
+        items.disk = {
+            id: "disk", label: "DSK", visible: SystemResources.diskEnabled,
+            labelColor: SystemResources.metricColorDisk,
+            valueText: (SystemResources.metricsAvailable && SystemResources.diskEnabled && SystemResources.validDisks.length > 0 && SystemResources.diskUsage[SystemResources.validDisks[0]]) ? Math.round(SystemResources.diskUsage[SystemResources.validDisks[0]]).toString() : "--",
+            valueUnit: (SystemResources.metricsAvailable && SystemResources.diskEnabled && SystemResources.validDisks.length > 0) ? "%" : "",
+            subValue: "", subUnit: ""
+        }
+
+        for (var i = 0; i < order.length; i++) {
+            var it = items[order[i]]
+            if (it) notchMetrics.append(it)
+        }
+    }
+
+    // Rebuild when any toggle or color changes
+    Connections {
+        target: SystemResources
+        function onCpuUsageEnabledChanged() { rebuildNotchMetrics() }
+        function onCpuTempEnabledChanged() { rebuildNotchMetrics() }
+        function onCpuPowerEnabledChanged() { rebuildNotchMetrics() }
+        function onRamEnabledChanged() { rebuildNotchMetrics() }
+        function onGpuUsageEnabledChanged() { rebuildNotchMetrics() }
+        function onGpuTempEnabledChanged() { rebuildNotchMetrics() }
+        function onGpuPowerEnabledChanged() { rebuildNotchMetrics() }
+        function onFpsEnabledChanged() { rebuildNotchMetrics() }
+        function onDiskEnabledChanged() { rebuildNotchMetrics() }
+        function onMetricColorCpuChanged() { rebuildNotchMetrics() }
+        function onMetricColorGpuChanged() { rebuildNotchMetrics() }
+        function onMetricColorFpsChanged() { rebuildNotchMetrics() }
+        function onMetricColorRamChanged() { rebuildNotchMetrics() }
+        function onMetricColorDiskChanged() { rebuildNotchMetrics() }
+        function onNotchVersionChanged() { rebuildNotchMetrics() }
+    }
+
+    Component.onCompleted: rebuildNotchMetrics()
+    readonly property real metricsRowWidth: (metricsActive && metricsModeRow.visible) ? metricsModeRow.implicitWidth : 0
+
     // Computed dimensions
-    readonly property real mainRowContentWidth: 200 + userInfo.width + separator1.width + separator2.width + notifIndicator.width + (mainRow.spacing * 4) + mainRowMargin
+    readonly property real mainRowContentWidth: metricsActive
+        ? Math.max(metricsRowWidth + mainRowMargin, 200)
+        : (200 + userInfo.width + separator1.width + separator2.width + notifIndicator.width + (mainRow.spacing * 4) + mainRowMargin)
     readonly property real mainRowHeight: Config.showBackground ? (Config.notchTheme === "island" ? 36 : 44) : (Config.notchTheme === "island" ? 36 : 40)
     readonly property real notificationMinWidth: expandedState ? 420 : 320
     readonly property real notificationContainerHeight: notificationView.implicitHeight + notificationPaddingTop + notificationPaddingBottom
@@ -76,11 +164,11 @@ Item {
     implicitHeight: hasActiveNotifications ? mainRowHeight + notificationContainerHeight : mainRowHeight
 
     Behavior on implicitWidth {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
+            duration: Anim.standardNormal
+            easing.type: Anim.springSnappy().type
+            easing.bezierCurve: Anim.springSnappy().bezierCurve
         }
     }
 
@@ -128,10 +216,78 @@ Item {
 
     Item {
         anchors.fill: parent
+        clip: true
 
-        // mainRow container
+        // Metrics mode content (replaces mainRow when showMetrics is active)
+        Row {
+            id: metricsModeRow
+            visible: metricsActive
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            height: mainRowHeight
+            spacing: 14
+            leftPadding: 6
+            rightPadding: 6
+            z: 3
+
+            MetricsGroup {
+                visible: SystemResources.cpuUsageEnabled || SystemResources.cpuTempEnabled || SystemResources.cpuPowerEnabled
+                label: "CPU"
+                labelColor: SystemResources.metricColorCpu
+                valueText: (SystemResources.metricsAvailable && SystemResources.cpuTempEnabled && SystemResources.cpuTemp > 0) ? (SystemResources.cpuTemp.toString() + (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled ? "° " + Math.round(SystemResources.cpuUsage).toString() + "%" : "°C")) : (SystemResources.metricsAvailable && SystemResources.cpuUsageEnabled) ? Math.round(SystemResources.cpuUsage).toString() + "%" : "--"
+                valueUnit: ""
+                subValue: (SystemResources.metricsAvailable && SystemResources.cpuPowerEnabled && SystemResources.cpuPower > 0) ? SystemResources.cpuPower.toFixed(0) : ""
+                subUnit: (SystemResources.metricsAvailable && SystemResources.cpuPowerEnabled && SystemResources.cpuPower > 0) ? "W" : ""
+            }
+
+            MetricsGroup {
+                visible: SystemResources.gpuUsageEnabled || SystemResources.gpuTempEnabled || SystemResources.gpuPowerEnabled
+                label: "GPU"
+                labelColor: SystemResources.metricColorGpu
+                valueText: (SystemResources.metricsAvailable && SystemResources.gpuTempEnabled && SystemResources.gpuTemp > 0) ? (SystemResources.gpuTemp.toString() + (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled && SystemResources.gpuUsages.length > 0 ? "° " + Math.round(SystemResources.gpuUsages[0]).toString() + "%" : "°C")) : (SystemResources.metricsAvailable && SystemResources.gpuUsageEnabled && SystemResources.gpuUsages.length > 0) ? Math.round(SystemResources.gpuUsages[0]).toString() + "%" : "--"
+                valueUnit: ""
+                subValue: (SystemResources.metricsAvailable && SystemResources.gpuPowerEnabled && SystemResources.gpuPower > 0) ? SystemResources.gpuPower.toFixed(0) : ""
+                subUnit: (SystemResources.metricsAvailable && SystemResources.gpuPowerEnabled && SystemResources.gpuPower > 0) ? "W" : ""
+            }
+
+
+
+            MetricsGroup {
+                visible: SystemResources.ramEnabled
+                label: "RAM"
+                labelColor: SystemResources.metricColorRam
+                valueText: (SystemResources.metricsAvailable && SystemResources.ramEnabled && SystemResources.ramUsage > 0) ? Math.round(SystemResources.ramUsage).toString() + "%" : "--"
+                valueUnit: ""
+                subValue: ""
+                subUnit: ""
+            }
+
+            MetricsGroup {
+                visible: SystemResources.diskEnabled
+                label: "DSK"
+                labelColor: SystemResources.metricColorDisk
+                valueText: (SystemResources.metricsAvailable && SystemResources.diskEnabled && SystemResources.validDisks.length > 0 && SystemResources.diskUsage[SystemResources.validDisks[0]]) ? Math.round(SystemResources.diskUsage[SystemResources.validDisks[0]]).toString() + "%" : "--"
+                valueUnit: ""
+                subValue: ""
+                subUnit: ""
+            }
+
+            MetricsGroup {
+                visible: SystemResources.fpsEnabled
+                label: "FPS"
+                labelColor: SystemResources.metricColorFps
+                valueText: (SystemResources.metricsAvailable && SystemResources.fpsEnabled && SystemResources.fps > 0) ? Math.round(SystemResources.fps).toString() : "--"
+                valueUnit: ""
+                subValue: ""
+                subUnit: ""
+            }
+        }
+
+        // mainRow container (hidden when metrics mode is active)
         Row {
             id: mainRow
+            visible: !metricsActive
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: isBottom ? undefined : parent.top
             anchors.bottom: isBottom ? parent.bottom : undefined
@@ -198,10 +354,11 @@ Item {
                 onIsNavigatingChanged: root.isNavigating = isNavigating
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
             }

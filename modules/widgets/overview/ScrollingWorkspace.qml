@@ -152,10 +152,11 @@ Item {
     }
 
     Behavior on horizontalScrollOffset {
-        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && !root.isScrollDragging && !root.isWheelScrolling
+        enabled: Anim.animationsEnabled && !root.isScrollDragging && !root.isWheelScrolling
         NumberAnimation {
-            duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-            easing.type: Easing.OutQuart
+            duration: Anim.spatialFast
+            easing.type: Anim.easing("spatial").type
+            easing.bezierCurve: Anim.easing("spatial").bezierCurve
         }
     }
 
@@ -465,19 +466,22 @@ Item {
                     scale: _closing ? 0.3 : (_entered ? hoverScale : 0.85)
 
                     Behavior on scale {
-                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: _closing ? (Config.animDuration !== undefined ? Config.animDuration : 200) * 0.4 : (Config.animDuration !== undefined ? Config.animDuration : 200) * 0.6
-                            easing.type: _closing ? Easing.InBack : Easing.OutBack
+                            property var _ease: _closing ? Anim.easing("emphasized", "exit") : Anim.easing("emphasized")
+                            duration: _closing ? Anim.standardSmall : Anim.standardNormal
+                            easing.type: _ease.type
+                            easing.bezierCurve: _ease.bezierCurve
                         }
                     }
 
                     opacity: _closing ? 0.0 : (_entered ? 1.0 : 0.0)
                     Behavior on opacity {
-                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: _closing ? (Config.animDuration !== undefined ? Config.animDuration : 200) * 0.3 : (Config.animDuration !== undefined ? Config.animDuration : 200) * 0.4
-                            easing.type: Easing.OutQuart
+                            duration: _closing ? Anim.standardSmall : Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                            easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 
@@ -540,8 +544,8 @@ Item {
                             : Qt.rgba(Colors.onSurface.r, Colors.onSurface.g, Colors.onSurface.b, 0.10)
                         border.width: windowDelegate.isSelected ? 2 : windowDelegate.isMatched ? 2 : 1
                         Behavior on border.color {
-                            enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                            ColorAnimation { duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2 }
+                            enabled: Anim.animationsEnabled
+                            ColorAnimation { duration: Anim.standardSmall }
                         }
                     }
 
@@ -574,12 +578,16 @@ Item {
                         border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
                         z: 3
                         Behavior on border.color {
-                            enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                            ColorAnimation { duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2 }
+                            enabled: Anim.animationsEnabled
+                            ColorAnimation { duration: Anim.standardSmall }
                         }
                         Behavior on border.width {
-                            enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                            NumberAnimation { duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2 }
+                            enabled: Anim.animationsEnabled
+                            NumberAnimation {
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                                easing.bezierCurve: Anim.easing("standard").bezierCurve
+                            }
                         }
                     }
 
@@ -590,8 +598,8 @@ Item {
                         color: windowDelegate.dragging ? Qt.rgba(1, 1, 1, 0.10) : windowDelegate.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
                         z: 1
                         Behavior on color {
-                            enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                            ColorAnimation { duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2 }
+                            enabled: Anim.animationsEnabled
+                            ColorAnimation { duration: Anim.standardSmall }
                         }
                     }
 

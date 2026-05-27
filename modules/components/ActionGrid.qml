@@ -117,31 +117,35 @@ FocusScope {
             property real t1h: th
 
             Behavior on t1x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 3
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
             Behavior on t1y {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 3
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
             Behavior on t1w {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 3
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
             Behavior on t1h {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 3
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
 
@@ -152,31 +156,35 @@ FocusScope {
             property real t2h: th
 
             Behavior on t2x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardNormal
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
             Behavior on t2y {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardNormal
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
             Behavior on t2w {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardNormal
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
             Behavior on t2h {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutSine
+                    duration: Anim.standardNormal
+                    easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                 }
             }
 
@@ -271,10 +279,11 @@ FocusScope {
                                 verticalAlignment: Text.AlignVCenter
 
                                 Behavior on color {
-                                    enabled: Config.animDuration > 0
+                                    enabled: Anim.animationsEnabled
                                     ColorAnimation {
-                                        duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        duration: Anim.standardSmall
+                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                     }
                                 }
                             }
@@ -294,10 +303,11 @@ FocusScope {
                                 verticalAlignment: Text.AlignVCenter
 
                                 Behavior on color {
-                                    enabled: Config.animDuration > 0
+                                    enabled: Anim.animationsEnabled
                                     ColorAnimation {
-                                        duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        duration: Anim.standardSmall
+                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                     }
                                 }
                             }

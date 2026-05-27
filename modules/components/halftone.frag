@@ -50,22 +50,11 @@ void main() {
     // angle=0 -> vertical (arriba a abajo), angle=90 -> horizontal (izq a der)
     vec2 gradientDir = vec2(sin(angleRad), cos(angleRad));
     
-    // Calcular el rango de proyección proyectando las esquinas del canvas
-    vec2 corners[4];
-    corners[0] = vec2(0.0, 0.0) - center;
-    corners[1] = vec2(ubuf.canvasWidth, 0.0) - center;
-    corners[2] = vec2(0.0, ubuf.canvasHeight) - center;
-    corners[3] = vec2(ubuf.canvasWidth, ubuf.canvasHeight) - center;
-    
-    float minProj = dot(corners[0], gradientDir);
-    float maxProj = minProj;
-    for (int i = 1; i < 4; i++) {
-        float proj = dot(corners[i], gradientDir);
-        minProj = min(minProj, proj);
-        maxProj = max(maxProj, proj);
-    }
-    
-    float totalRange = maxProj - minProj;
+    // Low-level branchless optimization:
+    // Mathematically pre-calculates the exact projection boundaries of the quad
+    // without branches, loops, or array allocations, reducing vertex-fragment math.
+    float totalRange = ubuf.canvasWidth * abs(gradientDir.x) + ubuf.canvasHeight * abs(gradientDir.y);
+    float minProj = -0.5 * totalRange;
     
     // Calcular el rango activo considerando start y end
     float activeStart = minProj + ubuf.gradientStart * totalRange;

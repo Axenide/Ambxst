@@ -47,9 +47,9 @@ WlSessionLockSurface {
         visible: true
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutQuint
             }
         }
@@ -72,9 +72,9 @@ WlSessionLockSurface {
         }
 
         Behavior on zoomScale {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutExpo
             }
         }
@@ -100,9 +100,9 @@ WlSessionLockSurface {
         }
 
         Behavior on zoomScale {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutExpo
             }
         }
@@ -126,17 +126,17 @@ WlSessionLockSurface {
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutQuint
             }
         }
 
         Behavior on zoomScale {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutExpo
             }
         }
@@ -176,17 +176,17 @@ WlSessionLockSurface {
                 layer.effect: BgShadow {}
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration * 2
+                        duration: Anim.standardNormal * 2
                         easing.type: Easing.OutExpo
                     }
                 }
 
                 Behavior on slideOffset {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration * 2
+                        duration: Anim.standardNormal * 2
                         easing.type: Easing.OutExpo
                     }
                 }
@@ -214,17 +214,17 @@ WlSessionLockSurface {
                 layer.effect: BgShadow {}
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration * 2
+                        duration: Anim.standardNormal * 2
                         easing.type: Easing.OutExpo
                     }
                 }
 
                 Behavior on slideOffset {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration * 2
+                        duration: Anim.standardNormal * 2
                         easing.type: Easing.OutExpo
                     }
                 }
@@ -252,17 +252,17 @@ WlSessionLockSurface {
                 layer.effect: BgShadow {}
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration * 2
+                        duration: Anim.standardNormal * 2
                         easing.type: Easing.OutExpo
                     }
                 }
 
                 Behavior on slideOffset {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration * 2
+                        duration: Anim.standardNormal * 2
                         easing.type: Easing.OutExpo
                     }
                 }
@@ -298,17 +298,17 @@ WlSessionLockSurface {
         opacity: startAnim ? 1 : 0
 
         Behavior on anchors.leftMargin {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutExpo
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutQuad
             }
         }
@@ -340,35 +340,35 @@ WlSessionLockSurface {
         scale: startAnim ? 1 : 0.92
 
         Behavior on anchors.topMargin {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutExpo
             }
         }
 
         Behavior on anchors.bottomMargin {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutExpo
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
+                duration: Anim.standardNormal * 2
                 easing.type: Easing.OutQuad
             }
         }
 
         Behavior on scale {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration * 2
-                easing.type: Easing.OutBack
-                easing.overshoot: 1.2
+                duration: Anim.standardNormal * 2
+                easing.type: Anim.easing("emphasized").type
+                        easing.bezierCurve: Anim.easing("emphasized").bezierCurve
             }
         }
 
@@ -411,6 +411,8 @@ WlSessionLockSurface {
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
                         asynchronous: true
+                        sourceSize.width: 64
+                        sourceSize.height: 64
                         visible: status === Image.Ready
 
                         layer.enabled: true
@@ -466,10 +468,11 @@ WlSessionLockSurface {
                             rotation: 0
 
                             Behavior on color {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 ColorAnimation {
-                                    duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    duration: Anim.standardNormal
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
 
@@ -506,17 +509,18 @@ WlSessionLockSurface {
                             enabled: !authenticating
 
                             Behavior on color {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 ColorAnimation {
-                                    duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    duration: Anim.standardNormal
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
 
                             Behavior on placeholderTextColor {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 ColorAnimation {
-                                    duration: Config.animDuration
+                                    duration: Anim.standardNormal
                                     easing.type: Easing.OutQuad
                                 }
                             }

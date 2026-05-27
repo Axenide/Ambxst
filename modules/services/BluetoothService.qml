@@ -146,11 +146,14 @@ Singleton {
         });
     }
 
+    // Helper script path — uses project's scripts directory
+    readonly property string helperPath: Quickshell.shellDir + "/scripts/bluetooth_helper.py"
+
     // Control functions
     function setEnabled(value: bool): void {
         if (SuspendManager.isSuspending) return;
         isUpdating = true;
-        runAsync(["bluetoothctl", "power", value ? "on" : "off"]).then(() => {
+        runAsync(["python3", root.helperPath, "power", value ? "on" : "off"]).then(() => {
             updateStatus();
             if (value) updateDevices();
             isUpdating = false;
@@ -166,24 +169,73 @@ Singleton {
     function startDiscovery(): void {
         if (enabled && !SuspendManager.isSuspending) {
             discovering = true;
-            runAsync(["bluetoothctl", "scan", "on"]).then(() => {
-                scanTimer.restart();
-            }).catch(e => {
-                discovering = false;
-            });
+            // Use interactive scan that captures [NEW] Device events
+            scanProcess.running = true;
+            scanTimer.restart();
         }
     }
 
     function stopDiscovery(): void {
         discovering = false;
-        runAsync(["bluetoothctl", "scan", "off"]).then(() => {
-            scanTimer.stop();
+        if (scanProcess.running) {
+            scanProcess.running = false;
+        }
+        scanTimer.stop();
+        runAsync(["python3", root.helperPath, "scan", "off"]).then(() => {
+            Qt.callLater(() => root.updateDevices());
         }).catch(e => {});
+    }
+
+    // Dedicated scan process with interactive bluetoothctl
+    property Process scanProcess: Process {
+        command: ["python3", root.helperPath, "scan", "find", "12"]
+        running: false
+        property string buffer: ""
+        stdout: SplitParser {
+            onRead: data => { scanProcess.buffer += data; }
+        }
+        onExited: exitCode => {
+            root.discovering = false;
+            var text = scanProcess.buffer.trim();
+            scanProcess.buffer = "";
+            if (exitCode === 0 && text) {
+                // Parse discovered devices from scan
+                try {
+                    var devices = JSON.parse(text);
+                    if (Array.isArray(devices) && devices.length > 0) {
+                        // Merge into existing device list
+                        const rDevices = root.devices;
+                        for (var i = 0; i < devices.length; i++) {
+                            var d = devices[i];
+                            var existingArr = Array.from(rDevices);
+                            var existing = existingArr.find(function(ex) { return ex.address === d.address; });
+                            if (existing) {
+                                existing.name = d.name || existing.name;
+                                existing.connected = d.connected || false;
+                            } else {
+                                var newDev = deviceComp.createObject(root, {
+                                    address: d.address,
+                                    name: d.name || d.alias || "Unknown",
+                                    paired: d.paired || false,
+                                    connected: d.connected || false,
+                                    trusted: d.trusted || false,
+                                    icon: d.icon || "bluetooth"
+                                });
+                                rDevices.push(newDev);
+                            }
+                        }
+                        root.updateFriendlyList();
+                    }
+                } catch (e) {
+                    console.warn("BluetoothService: scan parse failed:", e);
+                }
+            }
+        }
     }
 
     function connectDevice(address: string): void {
         isUpdating = true;
-        runAsync(["bluetoothctl", "connect", address]).then(() => {
+        runAsync(["python3", root.helperPath, "connect", address]).then(() => {
             updateDevices();
             isUpdating = false;
         }).catch(e => {
@@ -193,7 +245,7 @@ Singleton {
 
     function disconnectDevice(address: string): void {
         isUpdating = true;
-        runAsync(["bluetoothctl", "disconnect", address]).then(() => {
+        runAsync(["python3", root.helperPath, "disconnect", address]).then(() => {
             updateDevices();
             isUpdating = false;
         }).catch(e => {
@@ -203,7 +255,7 @@ Singleton {
 
     function pairDevice(address: string): void {
         isUpdating = true;
-        runAsync(["bluetoothctl", "pair", address]).then(() => {
+        runAsync(["python3", root.helperPath, "pair", address]).then(() => {
             updateDevices();
             isUpdating = false;
         }).catch(e => {
@@ -212,12 +264,12 @@ Singleton {
     }
 
     function trustDevice(address: string): void {
-        runAsync(["bluetoothctl", "trust", address]).catch(e => {});
+        runAsync(["python3", root.helperPath, "trust", address]).catch(e => {});
     }
 
     function removeDevice(address: string): void {
         isUpdating = true;
-        runAsync(["bluetoothctl", "remove", address]).then(() => {
+        runAsync(["python3", root.helperPath, "remove", address]).then(() => {
             updateDevices();
             isUpdating = false;
         }).catch(e => {
@@ -263,35 +315,60 @@ Singleton {
     // Processes
     Process {
         id: checkPowerProcess
-        command: ["bash", "-c", "bluetoothctl show | grep 'Powered:' | awk '{print $2}'"]
+        command: ["python3", root.helperPath, "power", "status"]
         running: false
+        property string buffer: ""
         stdout: SplitParser {
-            onRead: (data) => {
-                const output = data ? data.trim() : "";
-                root.enabled = output === "yes";
-                
-                if (root.enabled) {
-                    checkConnectedProcess.running = true;
-                } else {
-                    root.connected = false;
-                    root.connectedDevices = 0;
-                    root.discovering = false;
-                    root.isUpdating = false;
+            onRead: data => { checkPowerProcess.buffer += data; }
+        }
+        onExited: exitCode => {
+            var text = checkPowerProcess.buffer.trim();
+            checkPowerProcess.buffer = "";
+            if (exitCode === 0 && text) {
+                try {
+                    var result = JSON.parse(text);
+                    root.enabled = result.powered === true;
+                } catch (e) {
+                    console.warn("BluetoothService: power parse failed:", e);
+                    root.enabled = false;
                 }
+            } else {
+                root.enabled = false;
+            }
+            if (root.enabled) {
+                checkConnectedProcess.running = true;
+            } else {
+                root.connected = false;
+                root.connectedDevices = 0;
+                root.discovering = false;
+                root.isUpdating = false;
             }
         }
     }
 
     Process {
         id: checkConnectedProcess
-        command: ["bash", "-c", "bluetoothctl devices Connected | wc -l"]
+        command: ["python3", root.helperPath, "devices"]
         running: false
+        property string buffer: ""
         stdout: SplitParser {
-            onRead: (data) => {
-                const output = data ? data.trim() : "0";
-                root.connectedDevices = parseInt(output) || 0;
-                root.connected = root.connectedDevices > 0;
-                root.isUpdating = false;
+            onRead: data => { checkConnectedProcess.buffer += data; }
+        }
+        onExited: exitCode => {
+            root.isUpdating = false;
+            var text = checkConnectedProcess.buffer.trim();
+            checkConnectedProcess.buffer = "";
+            if (exitCode !== 0 || !text) return;
+            try {
+                var devices = JSON.parse(text);
+                var connected = 0;
+                for (var i = 0; i < devices.length; i++) {
+                    if (devices[i].connected) connected++;
+                }
+                root.connectedDevices = connected;
+                root.connected = connected > 0;
+            } catch (e) {
+                console.warn("BluetoothService: connected parse failed:", e);
             }
         }
     }
@@ -302,68 +379,68 @@ Singleton {
 
     Process {
         id: getDevicesProcess
-        command: ["bash", "-c", "bluetoothctl devices"]
+        command: ["python3", root.helperPath, "devices"]
         running: false
         property string buffer: ""
-        environment: ({
-            LANG: "C.UTF-8",
-            LC_ALL: "C.UTF-8"
-        })
         stdout: SplitParser {
-            onRead: data => {
-                getDevicesProcess.buffer += data + "\n";
-            }
+            onRead: data => { getDevicesProcess.buffer += data; }
         }
         onExited: (exitCode, exitStatus) => {
-            const text = getDevicesProcess.buffer;
-            getDevicesProcess.buffer = "";
-            
+            if (exitCode !== 0) {
+                root.updateFriendlyList();
+                return;
+            }
             Qt.callLater(() => {
-                const deviceLines = text.trim().split("\n").filter(l => l.startsWith("Device "));
-                const deviceDataList = [];
-                for (let i = 0; i < deviceLines.length; i++) {
-                    const line = deviceLines[i];
-                    const parts = line.split(" ");
-                    if (parts.length < 2) continue;
-                    deviceDataList.push({
-                        address: parts[1],
-                        name: parts.slice(2).join(" ") || "Unknown"
-                    });
+                var deviceDataList = [];
+                try {
+                    var jsonText = getDevicesProcess.buffer.trim();
+                    getDevicesProcess.buffer = "";
+                    if (jsonText) {
+                        deviceDataList = JSON.parse(jsonText);
+                        if (!Array.isArray(deviceDataList)) deviceDataList = [];
+                    }
+                } catch (e) {
+                    console.warn("BluetoothService: devices parse failed:", e);
+                    getDevicesProcess.buffer = "";
                 }
 
                 const rDevices = root.devices;
                 
-                // 1. Remove gone devices
+                // Remove gone devices
                 for (let i = rDevices.length - 1; i >= 0; i--) {
                     const rd = rDevices[i];
-                    if (!deviceDataList.find(d => d.address === rd.address)) {
+                    if (!deviceDataList.some(function(d) { return d.address === rd.address; })) {
                         rDevices.splice(i, 1);
                         rd.destroy();
                     }
                 }
                 
-                // 2. Add or update devices
+                // Add or update devices (with full info from JSON)
                 for (let i = 0; i < deviceDataList.length; i++) {
                     const data = deviceDataList[i];
-                    const existing = rDevices.find(d => d.address === data.address);
+                    const existingArr = Array.from(rDevices);
+                    const existing = existingArr.find(function(d) { return d.address === data.address; });
                     if (existing) {
-                        if (existing.name !== data.name) {
-                            existing.name = data.name;
-                        }
-                        root.queueInfoUpdate(existing);
+                        existing.name = data.name || data.alias || existing.name;
+                        existing.paired = data.paired || false;
+                        existing.connected = data.connected || false;
+                        existing.trusted = data.trusted || false;
+                        existing.battery = data.battery || -1;
                     } else {
                         const newDevice = deviceComp.createObject(root, {
                             address: data.address,
-                            name: data.name
+                            name: data.name || data.alias || "Unknown",
+                            paired: data.paired || false,
+                            connected: data.connected || false,
+                            trusted: data.trusted || false,
+                            icon: data.icon || "bluetooth",
+                            battery: data.battery || -1
                         });
                         rDevices.push(newDevice);
-                        root.queueInfoUpdate(newDevice);
                     }
                 }
                 
-                if (deviceDataList.length === 0) {
-                    root.updateFriendlyList();
-                }
+                root.updateFriendlyList();
             });
         }
     }

@@ -49,8 +49,9 @@ Item {
     transitions: Transition {
         NumberAnimation {
             properties: "Layout.preferredWidth,Layout.preferredHeight"
-            duration: Config.animDuration
-            easing.type: Easing.OutCubic
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
     Layout.fillWidth: root.vertical
@@ -70,9 +71,9 @@ Item {
             radius: parent.radius ?? 0
 
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
         }
@@ -105,12 +106,12 @@ Item {
             smoothDrag: true
             value: 0
             resizeParent: false
-            wavy: true
+            wavy: false
             scroll: root.isExpanded
             iconClickable: root.isExpanded
             sliderVisible: root.isExpanded || micSlider.isDragging || root.externalVolumeChange
-            wavyAmplitude: (root.isExpanded || micSlider.isDragging || root.externalVolumeChange) ? (Audio.source?.audio?.muted ? 0.5 : 1.5 * value) : 0
-            wavyFrequency: (root.isExpanded || micSlider.isDragging || root.externalVolumeChange) ? (Audio.source?.audio?.muted ? 1.0 : 8.0 * value) : 0
+            wavyAmplitude: 0
+            wavyFrequency: 0
             iconPos: root.vertical ? "end" : "start"
             icon: Audio.source?.audio?.muted ? Icons.micSlash : Icons.mic
             progressColor: Audio.source?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
@@ -127,8 +128,10 @@ Item {
                 }
             }
 
+            // FIX: Guard enabled to prevent segfault when PipeWire node is destroyed mid-incubation
             Connections {
                 target: Audio.source?.audio ?? null
+                enabled: Audio.source?.audio !== null
                 ignoreUnknownSignals: true
                 function onVolumeChanged() {
                     if (Audio.source?.audio) {

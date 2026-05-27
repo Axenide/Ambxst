@@ -147,10 +147,11 @@ Item {
         anchors.leftMargin: root.xOffset
 
         Behavior on anchors.leftMargin {
-            enabled: !dragManager.dragging && Config.animDuration > 0
+            enabled: !dragManager.dragging && Anim.animationsEnabled
             NumberAnimation {
                 duration: 300
-                easing.type: Easing.OutCubic
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -158,10 +159,11 @@ Item {
         implicitHeight: expanded ? row.implicitHeight + padding * 2 : Math.max(56 + padding * 2, row.implicitHeight + padding * 2)
 
         Behavior on implicitHeight {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration
-                easing.type: Easing.OutBack
+                duration: Anim.standardNormal
+                easing.type: Anim.easing("emphasized").type
+                        easing.bezierCurve: Anim.easing("emphasized").bezierCurve
             }
         }
 
@@ -178,10 +180,11 @@ Item {
                 spacing: root.notificationCount === 1 ? 0 : (root.expanded ? 8 : 4)
 
                 Behavior on spacing {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
 
@@ -266,10 +269,11 @@ Item {
                     reuseItems: true
 
                     Behavior on spacing {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 

@@ -29,9 +29,9 @@ Item {
     readonly property bool isDefault: theme === "default"
 
     // Position configuration with fallback logic to avoid bar collision
-    readonly property string userPosition: Config.dock?.position ?? "bottom"
-    readonly property string barPosition: Config.bar?.position ?? "top"
-    readonly property string notchPosition: Config.notchPosition ?? "top"
+    readonly property string userPosition: PerMonitorConfig.resolve(screen?.name, "dock", "position", Config.dock?.position ?? "bottom")
+    readonly property string barPosition: PerMonitorConfig.resolve(screen?.name, "bar", "position", Config.bar?.position ?? "top")
+    readonly property string notchPosition: PerMonitorConfig.resolve(screen?.name, "notch", "position", Config.notchPosition ?? "top")
 
     // Effective position
     readonly property string position: {
@@ -99,20 +99,22 @@ Item {
         return false;
     }
 
+    // Hover state (tracked from MouseArea to avoid forward reference issues)
+    property bool _mouseHovered: false
+
     // Reveal logic
     property bool reveal: {
         // Priority: Fullscreen check
         if (activeWindowFullscreen) {
-            return (Config.dock?.availableOnFullscreen ?? false) && (Config.dock?.hoverToReveal && dockMouseArea.containsMouse);
+            return (Config.dock?.availableOnFullscreen ?? false) && (Config.dock?.hoverToReveal && root._mouseHovered);
         }
 
         // If keepHidden is true, ONLY show on hover
-        // IMPORTANT: keepHidden overrides pinned and desktop mode
         if (keepHidden) {
-            return (Config.dock?.hoverToReveal && dockMouseArea.containsMouse);
+            return (Config.dock?.hoverToReveal && root._mouseHovered);
         }
 
-        return root.pinned || (Config.dock?.hoverToReveal && dockMouseArea.containsMouse) || !hasWindows
+        return root.pinned || (Config.dock?.hoverToReveal && root._mouseHovered) || !hasWindows
     }
 
     readonly property int totalMargin: root.windowSideMargin + root.edgeSideMargin
@@ -123,6 +125,31 @@ Item {
     implicitHeight: root.isVertical ? dockContent.implicitHeight + shadowSpace * 2 : dockSize + totalMargin + shadowSpace * 2
 
     readonly property int frameOffset: Config.bar?.frameEnabled ? (Config.bar?.frameThickness ?? 6) : 0
+
+    // Check if there's an adjacent monitor on the dock's edge side
+    readonly property bool _hasAdjacentMonitor: {
+        const mon = root.compositorMonitor;
+        if (!mon || !AxctlService.monitors || !AxctlService.monitors.values) return false;
+        const edgeX = root.position === "left" ? mon.x : (root.position === "right" ? mon.x + mon.width : 0);
+        const edgeY = root.position === "top" ? mon.y : (root.position === "bottom" ? mon.y + mon.height : 0);
+        const others = AxctlService.monitors.values.filter(m => m.name !== mon.name);
+        for (let i = 0; i < others.length; i++) {
+            const o = others[i];
+            if (root.position === "left" || root.position === "right") {
+                if (o.y + o.height > mon.y && o.y < mon.y + mon.height) {
+                    if (root.position === "left" && o.x + o.width === edgeX) return true;
+                    if (root.position === "right" && o.x === edgeX) return true;
+                }
+            } else {
+                if (o.x + o.width > mon.x && o.x < mon.x + mon.width) {
+                    if (root.position === "top" && o.y + o.height === edgeY) return true;
+                    if (root.position === "bottom" && o.y === edgeY) return true;
+                }
+            }
+        }
+        return false;
+    }
+    readonly property int _effectiveHoverRegion: root._hasAdjacentMonitor ? 8 : (Config.dock?.hoverRegionHeight ?? 2)
 
     // The hitbox for the mask
     readonly property Item dockHitbox: dockMouseArea
@@ -137,10 +164,12 @@ Item {
     MouseArea {
         id: dockMouseArea
         hoverEnabled: true
+        onEntered: root._mouseHovered = true
+        onExited: root._mouseHovered = false
 
         // Size
-        width: root.isVertical ? (root.reveal ? root.dockSize + root.totalMargin + root.shadowSpace : (Config.dock?.hoverRegionHeight ?? 4) + root.frameOffset) : dockContent.implicitWidth + 20
-        height: root.isVertical ? dockContent.implicitHeight + 20 : (root.reveal ? root.dockSize + root.totalMargin + root.shadowSpace : (Config.dock?.hoverRegionHeight ?? 4) + root.frameOffset)
+        width: root.isVertical ? (root.reveal ? root.dockSize + root.totalMargin + root.shadowSpace : Math.max(root._effectiveHoverRegion, 2) + root.frameOffset) : dockContent.implicitWidth + 20
+        height: root.isVertical ? dockContent.implicitHeight + 20 : (root.reveal ? root.dockSize + root.totalMargin + root.shadowSpace : Math.max(root._effectiveHoverRegion, 2) + root.frameOffset)
 
         // Position using x/y
         x: {
@@ -158,33 +187,37 @@ Item {
         }
 
         Behavior on x {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
         Behavior on y {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
         Behavior on width {
-            enabled: Config.animDuration > 0 && root.isVertical
+            enabled: Anim.animationsEnabled && root.isVertical
             NumberAnimation {
-                duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
         Behavior on height {
-            enabled: Config.animDuration > 0 && !root.isVertical
+            enabled: Anim.animationsEnabled && !root.isVertical
             NumberAnimation {
-                duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -225,27 +258,30 @@ Item {
             }
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 4
-                    easing.type: Easing.OutCubic
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
             Behavior on y {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 4
-                    easing.type: Easing.OutCubic
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
 
             // Animation for dock reveal
             opacity: root.reveal ? 1 : 0
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
 
@@ -254,17 +290,19 @@ Item {
                 x: root.isVertical ? (root.reveal ? 0 : (root.isLeft ? -(dockContainer.width + root.edgeSideMargin) : (dockContainer.width + root.edgeSideMargin))) : 0
                 y: root.isBottom ? (root.reveal ? 0 : (dockContainer.height + root.edgeSideMargin)) : 0
                 Behavior on x {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
                 Behavior on y {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
             }
@@ -435,16 +473,16 @@ Item {
 
                             rotation: root.pinned ? 0 : 45
                             Behavior on rotation {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: Config.animDuration / 2
+                                    duration: Anim.standardSmall
                                 }
                             }
 
                             Behavior on color {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 ColorAnimation {
-                                    duration: Config.animDuration / 2
+                                    duration: Anim.standardSmall
                                 }
                             }
                         }
@@ -571,16 +609,16 @@ Item {
 
                             rotation: root.pinned ? 0 : 45
                             Behavior on rotation {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
-                                    duration: Config.animDuration / 2
+                                    duration: Anim.standardSmall
                                 }
                             }
 
                             Behavior on color {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 ColorAnimation {
-                                    duration: Config.animDuration / 2
+                                    duration: Anim.standardSmall
                                 }
                             }
                         }

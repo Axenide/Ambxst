@@ -128,9 +128,9 @@ RowLayout {
             border.color: toggleSwitch.checked ? Styling.srItem("overprimary") : Colors.outline
 
             Behavior on color {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 ColorAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
 
@@ -143,10 +143,11 @@ RowLayout {
                 color: toggleSwitch.checked ? Colors.background : Colors.overSurfaceVariant
 
                 Behavior on x {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
             }

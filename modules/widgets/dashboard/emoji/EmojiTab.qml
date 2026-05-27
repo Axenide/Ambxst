@@ -322,10 +322,11 @@ Rectangle {
     color: "transparent"
 
     Behavior on height {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -481,8 +482,9 @@ Rectangle {
 
                 Behavior on width {
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
 
@@ -533,8 +535,9 @@ Rectangle {
                         verticalAlignment: Text.AlignVCenter
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                             }
                         }
                     }
@@ -575,10 +578,11 @@ Rectangle {
             property bool enableScrollAnimation: true
 
             Behavior on contentY {
-                enabled: Config.animDuration > 0 && emojiList.enableScrollAnimation && !emojiList.moving
+                enabled: Anim.animationsEnabled && emojiList.enableScrollAnimation && !emojiList.moving
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
 
@@ -652,10 +656,11 @@ Rectangle {
                             property bool enableScrollAnimation: true
 
                             Behavior on contentX {
-                                enabled: Config.animDuration > 0 && horizontalRecent.enableScrollAnimation && !horizontalRecent.moving
+                                enabled: Anim.animationsEnabled && horizontalRecent.enableScrollAnimation && !horizontalRecent.moving
                                 NumberAnimation {
-                                    duration: Config.animDuration / 2
-                                    easing.type: Easing.OutCubic
+                                    duration: Anim.standardSmall
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
 
@@ -795,8 +800,9 @@ Rectangle {
                             opacity: visible ? 1 : 0
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    duration: Anim.standardNormal
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
 
@@ -884,28 +890,32 @@ Rectangle {
                 }
 
                 Behavior on x {
-                    enabled: Config.animDuration > 0 && !emojiList.moving
+                    enabled: Anim.animationsEnabled && !emojiList.moving
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
                 Behavior on y {
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
                 Behavior on width {
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
                 Behavior on height {
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        duration: Anim.standardNormal
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
 

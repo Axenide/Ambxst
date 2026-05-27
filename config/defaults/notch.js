@@ -3,9 +3,13 @@
 var data = {
     "theme": "default",
     "position": "top",
-    "hoverRegionHeight": 8,
+    "hoverRegionHeight": 2,
     "keepHidden": false,
     "noMediaDisplay": "userHost",
     "customText": "Ambxst",
-    "disableHoverExpansion": true
+    "disableHoverExpansion": true,
+    "showMetrics": false,
+    "showDockInIsland": true,
+    "islandButtonSize": 36,
+    "pinnedOnStartup": true
 }

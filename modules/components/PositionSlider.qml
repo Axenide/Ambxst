@@ -39,7 +39,7 @@ Item {
         value: root.length > 0 ? Math.min(1.0, root.position / root.length) : 0
         progressColor: root.useCustomColors ? root.customProgressColor : Styling.srItem("overprimary")
         backgroundColor: root.useCustomColors ? root.customBackgroundColor : Colors.shadow
-        wavy: true // Always use CarouselProgress logic
+        wavy: false // Always use CarouselProgress logic
         playing: root.isPlaying // Control animation state via playing property
         wavyAmplitude: root.isPlaying ? 1 : 0.0
         wavyFrequency: root.isPlaying ? 8 : 0

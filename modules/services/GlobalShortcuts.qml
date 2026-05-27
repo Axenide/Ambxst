@@ -2,17 +2,22 @@ pragma Singleton
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
+import Quickshell.Io
 import qs.modules.globals
 import qs.modules.services
 import qs.config
-
-import Quickshell.Io
 
 QtObject {
     id: root
 
     readonly property string appId: "ambxst"
     readonly property string ipcPipe: "/tmp/ambxst_ipc.pipe"
+
+    property Process toggleMetricProcess: Process {
+        command: ["sh", "-c", Quickshell.shellDir + "/scripts/toggle-metrics.sh"]
+        running: false
+    }
 
     // High-performance Pipe Listener (Daemon mode)
     property Process pipeListener: Process {
@@ -26,6 +31,15 @@ QtObject {
                     root.run(cmd);
                 }
             }
+        }
+    }
+
+
+    function toggleMetrics() {
+        // Toggle the notch metrics overlay
+        if (Config.notch) {
+            Config.notch.showMetrics = !Config.notch.showMetrics;
+            console.log("Metrics overlay toggled:", Config.notch.showMetrics);
         }
     }
 
@@ -53,6 +67,10 @@ QtObject {
             case "overview": toggleSimpleModule("overview"); break;
             case "powermenu": toggleSimpleModule("powermenu"); break;
             case "tools": toggleSimpleModule("tools"); break;
+            case "toggle-metrics":
+                root.toggleMetrics();
+                console.log("Metrics toggled");
+                break;
             case "config": toggleSettings(); break;
             case "screenshot": Screenshot.initialize(); GlobalStates.screenshotToolVisible = true; break;
             case "screenrecord": ScreenRecorder.initialize(); GlobalStates.screenRecordToolVisible = true; break;
@@ -72,6 +90,17 @@ QtObject {
             case "media-next": MprisController.next(); break;
             case "media-prev": MprisController.previous(); break;
                 
+            // System toggles
+            case "caffeine": CaffeineService.toggleInhibit(); break;
+            case "gamemode": GameModeService.toggle(); break;
+            case "nightlight": NightLightService.toggle(); break;
+
+            // Audio
+            case "volume-up": Audio.incrementVolume(); break;
+            case "volume-down": Audio.decrementVolume(); break;
+            case "volume-mute": Audio.toggleMute(); break;
+            case "mic-mute": Audio.toggleMicMute(); break;
+
             default: console.warn("Unknown IPC command:", command);
         }
     }

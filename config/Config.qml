@@ -36,7 +36,7 @@ Singleton {
 
     property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/config"
     property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/binds.json"
-    property string presetDir: Qt.resolvedUrl("../assets/presets/Ambxst Default").toString().replace("file://", "")
+    property string presetDir: Qt.resolvedUrl("../assets/presets/Nothing").toString().replace("file://", "")
 
     property bool pauseAutoSave: false
 
@@ -99,6 +99,17 @@ Singleton {
     // ============================================
     // THEME MODULE
     // ============================================
+    Timer {
+        id: themeSaveDebounce
+        interval: 300
+        repeat: false
+        onTriggered: {
+            if (root.themeReady && !root.pauseAutoSave) {
+                themeLoader.writeAdapter();
+            }
+        }
+    }
+
     FileView {
         id: themeLoader
         path: root.configDir + "/theme.json"
@@ -111,8 +122,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.themeReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.themeReady) {
                 handleMissingConfig("theme", themeLoader, ThemeDefaults.data, () => {
                     root.themeReady = true;
                 });
@@ -126,7 +136,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.themeReady && !root.pauseAutoSave) {
-                themeLoader.writeAdapter();
+                themeSaveDebounce.restart();
             }
         }
 
@@ -140,7 +150,10 @@ Singleton {
             property int monoFontSize: 14
             property bool tintIcons: false
             property bool enableCorners: true
+            property bool dynamicColor: false
             property int animDuration: 300
+            property real animScale: 1.0
+            property string animStyle: "m3"
             property real shadowOpacity: 0.5
             property string shadowColor: "shadow"
             property int shadowXOffset: 0
@@ -506,8 +519,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.barReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.barReady) {
                 handleMissingConfig("bar", barLoader, BarDefaults.data, () => {
                     root.barReady = true;
                 });
@@ -527,6 +539,7 @@ Singleton {
 
         adapter: JsonAdapter {
             property string position: "top"
+            property string barMode: "extended"
             property string launcherIcon: ""
             property bool launcherIconTint: true
             property bool launcherIconFullTint: true
@@ -534,6 +547,7 @@ Singleton {
             property string pillStyle: "default"
             property list<string> screenList: []
             property bool enableFirefoxPlayer: false
+            property bool enableChromiumPlayer: false
             property list<var> barColor: [["surface", 0.0]]
             property bool frameEnabled: false
             property int frameThickness: 6
@@ -547,6 +561,7 @@ Singleton {
             property bool containBar: false
             property bool keepBarShadow: false
             property bool keepBarBorder: false
+            property var hiddenIcons: []
         }
     }
 
@@ -565,8 +580,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.workspacesReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.workspacesReady) {
                 handleMissingConfig("workspaces", workspacesLoader, WorkspacesDefaults.data, () => {
                     root.workspacesReady = true;
                 });
@@ -608,8 +622,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.overviewReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.overviewReady) {
                 handleMissingConfig("overview", overviewLoader, OverviewDefaults.data, () => {
                     root.overviewReady = true;
                 });
@@ -650,8 +663,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.notchReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.notchReady) {
                 handleMissingConfig("notch", notchLoader, NotchDefaults.data, () => {
                     root.notchReady = true;
                 });
@@ -677,6 +689,10 @@ Singleton {
             property string noMediaDisplay: "userHost"
             property string customText: "Ambxst"
             property bool disableHoverExpansion: true
+            property bool showMetrics: false
+            property bool showDockInIsland: true
+            property int islandButtonSize: 36
+            property bool pinnedOnStartup: true
         }
     }
 
@@ -695,8 +711,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.compositorReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.compositorReady) {
                 handleMissingConfig("compositor", compositorLoader, CompositorDefaults.data, () => {
                     root.compositorReady = true;
                 });
@@ -709,26 +724,56 @@ Singleton {
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.compositorReady && !root.pauseAutoSave) {
-                compositorLoader.writeAdapter();
+            if (root.compositorReady) {
+                if (!root.pauseAutoSave) {
+                    compositorLoader.writeAdapter();
+                }
+                GlobalStates.compositorConfigChanged();
             }
         }
 
         adapter: JsonAdapter {
+            // Borders & Rounding
+            property bool showBorder: true
             property var activeBorderColor: ["primary"]
             property int borderAngle: 45
             property var inactiveBorderColor: ["surface"]
             property int inactiveBorderAngle: 45
             property int borderSize: 2
             property int rounding: 16
+            property real roundingPower: 2.0
             property bool syncRoundness: true
             property bool syncBorderWidth: false
             property bool syncBorderColor: false
             property bool syncShadowOpacity: false
             property bool syncShadowColor: false
+            property bool resizeOnBorder: false
+            property int extendBorderGrabArea: 15
+            property bool hoverIconOnBorder: true
+
+            // Gaps & Layout
             property int gapsIn: 2
             property int gapsOut: 4
             property string layout: "dwindle"
+            property bool allowTearing: false
+
+            // Snap
+            property bool snapEnabled: true
+            property int snapWindowGap: 10
+            property int snapMonitorGap: 10
+            property bool snapBorderOverlap: false
+            property bool snapRespectGaps: false
+
+            // Opacity & Dim
+            property real activeOpacity: 1.0
+            property real inactiveOpacity: 1.0
+            property real fullscreenOpacity: 1.0
+            property bool dimInactive: false
+            property real dimStrength: 0.5
+            property real dimAround: 0.4
+            property real dimSpecial: 0.2
+
+            // Shadow
             property bool shadowEnabled: true
             property int shadowRange: 8
             property int shadowRenderPower: 3
@@ -739,6 +784,8 @@ Singleton {
             property real shadowOpacity: 0.5
             property string shadowOffset: "0 0"
             property real shadowScale: 1.0
+
+            // Blur
             property bool blurEnabled: true
             property int blurSize: 4
             property int blurPasses: 2
@@ -757,6 +804,127 @@ Singleton {
             property real blurPopupsIgnorealpha: 0.2
             property bool blurInputMethods: false
             property real blurInputMethodsIgnorealpha: 0.2
+
+            // Animations
+            property bool animationsEnabled: true
+
+            // Input: Keyboard
+            property string kbLayout: "us"
+            property string kbVariant: ""
+            property string kbOptions: ""
+            property bool numlockByDefault: false
+            property int repeatRate: 25
+            property int repeatDelay: 600
+
+            // Input: Mouse
+            property real mouseSensitivity: 0.0
+            property string mouseAccelProfile: ""
+            property int followMouse: 1
+            property bool mouseNaturalScroll: false
+            property real mouseScrollFactor: 1.0
+            property bool mouseLeftHanded: false
+            property bool mouseRefocus: false
+            property int floatSwitchOverrideFocus: 0
+
+            // Input: Touchpad
+            property bool touchpadDisableWhileTyping: true
+            property bool touchpadNaturalScroll: true
+            property bool touchpadTapToClick: true
+            property bool touchpadClickfingerBehavior: false
+            property string touchpadTapButtonMap: ""
+            property bool touchpadMiddleButtonEmulation: false
+            property int touchpadDragLock: 0
+            property real touchpadScrollFactor: 1.0
+
+            // Cursor
+            property bool noHardwareCursors: false
+            property bool enableHyprcursor: true
+            property bool noWarps: false
+            property bool persistentWarps: false
+            property bool warpOnChangeWorkspace: false
+            property real cursorZoomFactor: 1.0
+            property int cursorInactiveTimeout: 0
+            property bool cursorHideOnKeyPress: false
+            property bool cursorHideOnTouch: false
+            property bool cursorHideOnTablet: false
+
+            // Gestures
+            property bool workspaceSwipeCreateNew: true
+            property bool workspaceSwipeForever: false
+            property real workspaceSwipeCancelRatio: 0.5
+            property int workspaceSwipeMinSpeedToForce: 30
+            property bool workspaceSwipeDirectionLock: true
+            property bool workspaceSwipeUseR: false
+            property int workspaceSwipeDistance: 300
+            property bool workspaceSwipeInvert: true
+            property bool workspaceSwipeTouch: false
+            property bool workspaceSwipeTouchInvert: false
+
+            // Dwindle Layout
+            property bool dwindlePreserveSplit: true
+            property bool dwindlePseudotile: false
+            property int dwindleForceSplit: 0
+            property bool dwindleSmartSplit: true
+            property real dwindleDefaultSplitRatio: 1.0
+            property real dwindleSplitWidthMultiplier: 1.0
+            property bool dwindlePermanentDirectionOverride: false
+            property bool dwindleUseActiveForSplits: true
+            property bool dwindleSmartResizing: true
+            property real dwindleSpecialScaleFactor: 0.8
+
+            // Master Layout
+            property string masterOrientation: "left"
+            property real masterMfact: 0.55
+            property string masterNewStatus: "slave"
+            property bool masterNewOnTop: false
+            property string masterNewOnActive: "none"
+            property bool masterSmartResizing: true
+            property real masterSpecialScaleFactor: 0.8
+            property bool masterAllowSmallSplit: false
+
+            // Scrolling Layout
+            property real scrollingColumnWidth: 0.3
+            property string scrollingExplicitColumnWidths: ""
+            property string scrollingDirection: "right"
+            property bool scrollingFullscreenOnOneColumn: true
+            property string scrollingFocusFitMethod: "center"
+            property bool scrollingFollowFocus: true
+            property real scrollingFollowMinVisible: 0.1
+
+            // Free Layout
+            property int freeGridSize: 20
+            property int freeSnapSensitivity: 10
+            property bool freeSnapEdges: true
+            property bool freeSnapCenter: true
+            property int freeSnapGaps: 4
+            property bool freeTileByDefault: false
+            property bool freeMaximizedByDefault: false
+            property bool smartResizeAnchors: true
+
+            // XWayland
+            property bool xwaylandEnabled: true
+            property bool xwaylandForceZeroScaling: false
+            property bool xwaylandUseNearestNeighbor: true
+
+            // Monitor Globals
+            property int vrr: 0
+            property bool vfr: true
+            property bool mouseMoveEnablesDpms: false
+            property bool keyPressEnablesDpms: false
+
+            // Misc
+            property string renderBackend: "opengl"
+            property bool disableAutoreload: false
+            property bool focusOnActivate: false
+            property bool animateManualResizes: false
+            property bool animateMouseWindowdragging: true
+            property bool disableHyprlandLogo: true
+            property bool disableSplashRendering: false
+            property int forceDefaultWallpaper: -1
+
+            // Ecosystem
+            property bool noUpdateNews: true
+            property bool enforcePermissions: false
         }
     }
 
@@ -775,8 +943,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.performanceReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.performanceReady) {
                 handleMissingConfig("performance", performanceLoader, PerformanceDefaults.data, () => {
                     root.performanceReady = true;
                 });
@@ -819,8 +986,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.weatherReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.weatherReady) {
                 handleMissingConfig("weather", weatherLoader, WeatherDefaults.data, () => {
                     root.weatherReady = true;
                 });
@@ -859,8 +1025,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.desktopReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.desktopReady) {
                 handleMissingConfig("desktop", desktopLoader, DesktopDefaults.data, () => {
                     root.desktopReady = true;
                 });
@@ -901,8 +1066,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.lockscreenReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.lockscreenReady) {
                 handleMissingConfig("lockscreen", lockscreenLoader, LockscreenDefaults.data, () => {
                     root.lockscreenReady = true;
                 });
@@ -940,8 +1104,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.prefixReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.prefixReady) {
                 handleMissingConfig("prefix", prefixLoader, PrefixDefaults.data, () => {
                     root.prefixReady = true;
                 });
@@ -983,8 +1146,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.systemReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.systemReady) {
                 handleMissingConfig("system", systemLoader, SystemDefaults.data, () => {
                     root.systemReady = true;
                 });
@@ -1005,6 +1167,15 @@ Singleton {
         adapter: JsonAdapter {
             property list<string> disks: ["/"]
             property bool updateServiceEnabled: true
+            property JsonObject batteryNotifications: JsonObject {
+                property bool enabled: true
+                property int lowThreshold: 20
+                property int criticalThreshold: 10
+                property bool autoPowerSave: false
+                property int powerSaveThreshold: 15
+                property bool chargeLimitEnabled: false
+                property int chargeLimit: 80
+            }
             property JsonObject idle: JsonObject {
                 property JsonObject general: JsonObject {
                     property string lock_cmd: "ambxst lock"
@@ -1065,8 +1236,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.dockReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.dockReady) {
                 handleMissingConfig("dock", dockLoader, DockDefaults.data, () => {
                     root.dockReady = true;
                 });
@@ -1155,8 +1325,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
-            if (error.toString().includes("FileNotFound") && !root.aiReady) {
+        onLoadFailed: function(error) { if (error.toString().includes("FileNotFound") && !root.aiReady) {
                 handleMissingConfig("ai", aiLoader, AiDefaults.data, () => {
                     root.aiReady = true;
                 });
@@ -1319,12 +1488,21 @@ Singleton {
                 }
             }
 
+            // Get default binds from adapter.defaultNothinglessBinds (fallback for keys not yet in user's ambxst)
+            const defaultBinds = adapter.defaultNothinglessBinds || {};
+            
             // Check system binds
-            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"];
+            const systemKeys = ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit", "toggle-metrics"];
             for (const key of systemKeys) {
-                if (!current.ambxst.system[key] && adapter.ambxst.system && adapter.ambxst.system[key]) {
+                let defaultBind = null;
+                if (adapter.ambxst.system && adapter.ambxst.system[key]) {
+                    defaultBind = adapter.ambxst.system[key];
+                } else if (defaultBinds.system && defaultBinds.system[key]) {
+                    defaultBind = defaultBinds.system[key];
+                }
+                if (!current.ambxst.system[key] && defaultBind) {
                     console.log("Adding missing system bind:", key);
-                    current.ambxst.system[key] = createCleanBind(adapter.ambxst.system[key]);
+                    current.ambxst.system[key] = createCleanBind(defaultBind);
                     needsUpdate = true;
                 } else if (current.ambxst.system[key] && !current.ambxst.system[key].action) {
                     current.ambxst.system[key].action = createAction(current.ambxst.system[key]);
@@ -1500,7 +1678,7 @@ Singleton {
             }
             }
             // Default getters
-            readonly property var defaultAmbxstBinds: {
+            readonly property var defaultNothinglessBinds: {
                 "ambxst": {
                     "launcher": { "modifiers": ["SUPER"], "key": "Super_L", "action": { "id": "ambxst.launcher", "args": {} } },
                     "dashboard": { "modifiers": ["SUPER"], "key": "D", "action": { "id": "ambxst.dashboard", "args": {} } },
@@ -1513,7 +1691,7 @@ Singleton {
                 },
                 "system": {
                     "config": { "modifiers": ["SUPER", "SHIFT"], "key": "C", "action": { "id": "ambxst.config", "args": {} } },
-                    "lockscreen": { "modifiers": ["SUPER"], "key": "L", "action": { "id": "system.lock", "args": {} } },
+                    "lockscreen": { "modifiers": ["SUPER"], "key": "L", "action": { "id": "ambxst.lock", "args": {} } },
                     "overview": { "modifiers": ["SUPER"], "key": "TAB", "action": { "id": "ambxst.overview", "args": {} } },
                     "powermenu": { "modifiers": ["SUPER"], "key": "ESCAPE", "action": { "id": "ambxst.powermenu", "args": {} } },
                     "tools": { "modifiers": ["SUPER"], "key": "S", "action": { "id": "ambxst.tools", "args": {} } },
@@ -1521,13 +1699,14 @@ Singleton {
                     "screenrecord": { "modifiers": ["SUPER", "SHIFT"], "key": "R", "action": { "id": "ambxst.screenrecord", "args": {} } },
                     "lens": { "modifiers": ["SUPER", "SHIFT"], "key": "A", "action": { "id": "ambxst.lens", "args": {} } },
                     "reload": { "modifiers": ["SUPER", "ALT"], "key": "B", "action": { "id": "ambxst.reload", "args": {} } },
-                    "quit": { "modifiers": ["SUPER", "CTRL", "ALT"], "key": "B", "action": { "id": "ambxst.quit", "args": {} } }
+                    "toggle-metrics": { "modifiers": ["SUPER", "SHIFT"], "key": "BACKSPACE", "action": { "id": "ambxst.toggle-metrics", "args": {} } },
+            "quit": { "modifiers": ["SUPER", "CTRL", "ALT"], "key": "B", "action": { "id": "ambxst.quit", "args": {} } }
                 }
             }
 
-            function getAmbxstDefault(section, key) {
-                if (defaultAmbxstBinds[section] && defaultAmbxstBinds[section][key]) {
-                    const bind = defaultAmbxstBinds[section][key];
+            function getNothinglessDefault(section, key) {
+                if (defaultNothinglessBinds[section] && defaultNothinglessBinds[section][key]) {
+                    const bind = defaultNothinglessBinds[section][key];
                     return {
                         "modifiers": bind.modifiers || [],
                         "key": bind.key || "",

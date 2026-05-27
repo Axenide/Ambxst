@@ -11,7 +11,7 @@ QtObject {
     // it will try to guess what users would want to search, not the feature name only
 
     // Main Sections:
-    // 0: Network, 1: Bluetooth, 2: Mixer, 3: Effects, 4: Theme, 5: Binds, 6: System, 7: Compositor, 8: Ambxst
+    // 0: Network, 1: Bluetooth, 2: Mixer, 3: Effects, 4: Theme, 5: Binds, 6: System, 7: Compositor, 8: Shell
     
     property var dynamicItems: []
 
@@ -99,7 +99,7 @@ QtObject {
         // System > Performance
         { label: "Blur Transition", keywords: "animation speed performance effect", section: 6, subSection: "performance", subLabel: "System > Performance", icon: Icons.lightning, isIcon: true },
         { label: "Window Preview", keywords: "thumbnail overview alt-tab", section: 6, subSection: "performance", subLabel: "System > Performance", icon: Icons.windowsLogo, isIcon: true },
-        { label: "Wavy Line", keywords: "animated wave effect performance", section: 6, subSection: "performance", subLabel: "System > Performance", icon: Icons.lightning, isIcon: true },
+        
         
         // System > Resources
         { label: "System Resources", keywords: "cpu ram memory usage monitor", section: 6, subSection: "resources", subLabel: "System > Resources", icon: Icons.circuitry, isIcon: true },

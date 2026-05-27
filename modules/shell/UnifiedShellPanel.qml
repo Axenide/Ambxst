@@ -76,9 +76,16 @@ PanelWindow {
     readonly property alias dockFullscreen: dockContent.activeWindowFullscreen
     readonly property int dockHeight: dockContent.dockSize + dockContent.totalMargin
 
+    // Hide dock when island mode is active and dock shares the same position
+    readonly property bool _islandActive: (Config.bar && Config.bar.barMode === "dynamic") && (Config.notchTheme || "default") === "island" && barContent.barPosition === (Config.notchPosition || "top")
+    readonly property bool _dockHiddenByIsland: _islandActive && (dockContent.position === barContent.barPosition || (dockContent.position === "center" && (barContent.barPosition === "top" || barContent.barPosition === "bottom")))
+    // Dock standalone is always hidden in island mode (apps shown in island buttons)
+    readonly property bool dockActuallyVisible: dockEnabled && !root._dockHiddenByIsland
+
     readonly property alias notchHoverActive: notchContent.hoverActive
     readonly property alias notchOpen: notchContent.screenNotchOpen
     readonly property alias notchReveal: notchContent.reveal
+    readonly property alias notchPinned: notchContent.notchPinned
 
     // Generic names for external compatibility (Visibilities expects these on the panel object)
     readonly property alias pinned: barContent.pinned
@@ -103,7 +110,7 @@ PanelWindow {
         }
 
         // Check all windows on this monitor (robust path)
-        const wins = CompositorData.windowList;
+        const wins = CompositorData && CompositorData.windowList ? CompositorData.windowList : [];
         for (let i = 0; i < wins.length; i++) {
             if (wins[i].monitor === monId && wins[i].fullscreen && wins[i].workspace.id === activeWorkspaceId) {
                 return true;
@@ -152,14 +159,20 @@ PanelWindow {
         item: unifiedPanel.needsFullScreenInput ? fullScreenMask : null
         regions: [
             Region {
-                item: barContent.visible ? barContent.barHitbox : null
+                // In island mode, exclude bar hitbox so clicks reach the notch
+                item: !unifiedPanel._islandActive && barContent.visible ? barContent.barHitbox : null
             },
             Region {
-                item: notchContent.notchHitbox
+                // Always include hover region for edge detection
+                item: notchContent.notchHoverRegionRef
+            },
+            Region {
+                // Full notch area only when active (module open or revealed)
+                item: (unifiedPanel.needsFullScreenInput || unifiedPanel.notchReveal || unifiedPanel.notchOpen) ? notchContent.notchActiveRegion : null
             },
             Region {
                 // Only include the dock hitbox if the dock is actually enabled and visible on this screen.
-                item: dockContent.visible ? dockContent.dockHitbox : null
+                item: unifiedPanel.dockActuallyVisible ? dockContent.dockHitbox : null
             },
             Region {
                 item: (assistantSidebar.active || assistantSidebar.hitbox.visible) ? assistantSidebar.hitbox : null
@@ -206,7 +219,17 @@ PanelWindow {
         id: visualContent
         anchors.fill: parent
 
-        layer.enabled: true
+        // ⚡ Only enable the offscreen layer when something is actually visible.
+        // When bar/dock/notch/frame are all hidden, no shadow is needed.
+        // This saves a full-screen render-to-texture pass every frame.
+        readonly property bool needLayer: 
+            (unifiedPanel.barEnabled && unifiedPanel.barReveal) ||
+            (unifiedPanel.dockEnabled && unifiedPanel.dockReveal) ||
+            unifiedPanel.notchReveal ||
+            assistantSidebar.active ||
+            (Config.bar?.frameEnabled ?? false)
+
+        layer.enabled: needLayer
         layer.effect: Shadow {}
 
         ScreenFrameContent {
@@ -231,7 +254,7 @@ PanelWindow {
             anchors.fill: parent
             screen: unifiedPanel.targetScreen
             z: 3
-            visible: unifiedPanel.dockEnabled
+            visible: unifiedPanel.dockActuallyVisible
         }
 
         NotchContent {

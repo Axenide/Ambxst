@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import Quickshell
 import Quickshell.Io
 import qs.config
@@ -155,19 +156,21 @@ Item {
             x: root.colorPickerActive ? -30 : 0
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -375,9 +378,9 @@ Item {
                                         border.color: tintIconsSwitch.checked ? Styling.srItem("overprimary") : Colors.outline
 
                                         Behavior on color {
-                                            enabled: Config.animDuration > 0
+                                            enabled: Anim.animationsEnabled
                                             ColorAnimation {
-                                                duration: Config.animDuration / 2
+                                                duration: Anim.standardSmall
                                             }
                                         }
 
@@ -390,10 +393,11 @@ Item {
                                             color: tintIconsSwitch.checked ? Colors.background : Colors.overSurfaceVariant
 
                                             Behavior on x {
-                                                enabled: Config.animDuration > 0
+                                                enabled: Anim.animationsEnabled
                                                 NumberAnimation {
-                                                    duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutCubic
+                                                    duration: Anim.standardSmall
+                                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                 }
                                             }
                                         }
@@ -444,9 +448,9 @@ Item {
                                         border.color: enableCornersSwitch.checked ? Styling.srItem("overprimary") : Colors.outline
 
                                         Behavior on color {
-                                            enabled: Config.animDuration > 0
+                                            enabled: Anim.animationsEnabled
                                             ColorAnimation {
-                                                duration: Config.animDuration / 2
+                                                duration: Anim.standardSmall
                                             }
                                         }
 
@@ -459,15 +463,271 @@ Item {
                                             color: enableCornersSwitch.checked ? Colors.background : Colors.overSurfaceVariant
 
                                             Behavior on x {
-                                                enabled: Config.animDuration > 0
+                                                enabled: Anim.animationsEnabled
                                                 NumberAnimation {
-                                                    duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutCubic
+                                                    duration: Anim.standardSmall
+                                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                 }
                                             }
                                         }
                                     }
                                     background: null
+                                }
+                            }
+
+                            // Dynamic Color toggle (Material You from wallpaper)
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                visible: typeof Colors !== "undefined"
+
+                                Text {
+                                    text: "Dynamic"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                    Layout.preferredWidth: 80
+                                }
+
+                                Text {
+                                    text: "Auto-color from wallpaper"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    color: Colors.overSurfaceVariant
+                                    Layout.fillWidth: true
+                                    elide: Text.ElideRight
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Switch {
+                                    id: dynamicColorSwitch
+                                    checked: Config.theme.dynamicColor || false
+
+                                    indicator: Rectangle {
+                                        implicitWidth: 40
+                                        implicitHeight: 22
+                                        x: dynamicColorSwitch.leftPadding
+                                        y: parent.height / 2 - height / 2
+                                        radius: 11
+                                        color: dynamicColorSwitch.checked ? Colors.primary : Colors.surfaceVariant
+                                        border.color: dynamicColorSwitch.checked ? Colors.primary : Colors.outline
+
+                                        Behavior on color {
+                                            enabled: Anim.animationsEnabled
+                                            ColorAnimation {
+                                                duration: Anim.standardSmall
+                                                easing.type: Anim.easing("standard").type
+                                                easing.bezierCurve: Anim.easing("standard").bezierCurve
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            x: dynamicColorSwitch.checked ? parent.width - width - 2 : 2
+                                            y: 2
+                                            width: parent.height - 4
+                                            height: width
+                                            radius: width / 2
+                                            color: dynamicColorSwitch.checked ? Colors.background : Colors.overSurfaceVariant
+
+                                            Behavior on x {
+                                                enabled: Anim.animationsEnabled
+                                                NumberAnimation {
+                                                    duration: Anim.standardSmall
+                                                    easing.type: Anim.easing("standard").type
+                                                    easing.bezierCurve: Anim.easing("standard").bezierCurve
+                                                }
+                                            }
+                                        }
+                                    }
+                                    background: null
+
+                                    onClicked: {
+                                        if (checked !== (Config.theme.dynamicColor || false)) {
+                                            Config.theme.dynamicColor = checked;
+                                            Colors.dynamicColorEnabled = checked;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Animation Style selector — platform-based animation profiles
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Text {
+                                    text: "Anim Style"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                    Layout.preferredWidth: 80
+                                }
+
+                                ComboBox {
+                                    id: animStyleCombo
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 30
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-1)
+
+                                    background: Rectangle {
+                                        // Use Colors directly for reliable theme-aware colors
+                                        color: Colors.surfaceContainerHigh || Qt.rgba(0.15, 0.15, 0.18, 0.8)
+                                        radius: 4
+                                        border.color: Colors.surfaceBright || Qt.rgba(0.5, 0.5, 0.5, 0.3)
+                                        border.width: 1
+                                    }
+
+                                    contentItem: Text {
+                                        leftPadding: 8
+                                        rightPadding: 8
+                                        text: {
+                                            const idx = animStyleCombo.currentIndex;
+                                            if (idx >= 0 && animStyleCombo.model && idx < animStyleCombo.model.count) {
+                                                return animStyleCombo.model.get(idx).text || "";
+                                            }
+                                            return "Select style";
+                                        }
+                                        // font inherited from ComboBox
+                                        color: Colors.overBackground
+                                        verticalAlignment: Text.AlignVCenter
+                                        elide: Text.ElideRight
+                                    }
+
+                                    indicator: Text {
+                                        x: animStyleCombo.width - width - 8
+                                        y: (animStyleCombo.height - height) / 2
+                                        text: "▼"
+                                        font.family: Icons.font
+                                        font.pixelSize: 10
+                                        color: Colors.overSurfaceVariant
+                                    }
+
+
+
+                                    popup: Popup {
+                                        y: animStyleCombo.height + 2
+                                        width: animStyleCombo.width
+                                        implicitHeight: Math.min(contentItem.implicitHeight + 16, 400)
+                                        padding: 4
+
+                                        background: Rectangle {
+                                            color: Colors.surfaceContainer || Qt.rgba(0.1, 0.1, 0.12, 0.95)
+                                            radius: 6
+                                            border.color: Colors.surfaceBright || Qt.rgba(0.3, 0.3, 0.3, 0.5)
+                                            border.width: 1
+                                        }
+
+                                        contentItem: ListView {
+                                            clip: true
+                                            implicitHeight: contentHeight
+                                            model: animStyleCombo.delegateModel
+                                            currentIndex: animStyleCombo.currentIndex
+                                            interactive: contentHeight > 300
+                                            spacing: 2
+                                        }
+                                    }
+
+                                    model: ListModel {
+                                        ListElement { text: "M3 (Material 3)"; key: "m3" }
+                                        ListElement { text: "── Windows ──"; key: "" }
+                                        ListElement { text: "Windows Classic"; key: "windows-classic" }
+                                        ListElement { text: "Windows XP"; key: "windows-xp" }
+                                        ListElement { text: "Windows 7 (Aero)"; key: "windows-7" }
+                                        ListElement { text: "── Mac ──"; key: "" }
+                                        ListElement { text: "Mac OS Classic"; key: "mac-classic" }
+                                        ListElement { text: "Mac OS X"; key: "mac-legacy" }
+                                        ListElement { text: "macOS (Modern)"; key: "mac-modern" }
+                                        ListElement { text: "── Hyprland ──"; key: "" }
+                                        ListElement { text: "Hyprland (Native)"; key: "hyprland" }
+                                        ListElement { text: "── Android ──"; key: "" }
+                                        ListElement { text: "Android (Legacy)"; key: "android-legacy" }
+                                        ListElement { text: "Android Material"; key: "android-material" }
+                                        ListElement { text: "Android 12+ (You)"; key: "android-you" }
+                                    }
+
+                                    // Guard to prevent marking unsaved changes during init
+                                    property bool _initialized: false
+
+                                    property string currentKey: {
+                                        const idx = animStyleCombo.currentIndex;
+                                        return idx >= 0 ? animStyleCombo.model.get(idx).key : "m3";
+                                    }
+
+                                    Component.onCompleted: {
+                                        const cur = Config.theme.animStyle || "m3";
+                                        for (let i = 0; i < model.count; i++) {
+                                            if (model.get(i).key === cur) {
+                                                currentIndex = i;
+                                                break;
+                                            }
+                                        }
+                                        // Mark as initialized AFTER setting the index
+                                        Qt.callLater(() => animStyleCombo._initialized = true);
+                                    }
+
+                                    onCurrentKeyChanged: {
+                                        if (!animStyleCombo._initialized) return;
+                                        if (typeof Config === "undefined" || !Config.theme) return;
+                                        const key = animStyleCombo.currentKey;
+                                        if (key && key !== (Config.theme.animStyle || "m3")) {
+                                            // Save current speed for the old style
+                                            const oldKey = Config.theme.animStyle || "m3";
+                                            const savedSpeeds = StateService.get("animStyleSpeeds", {});
+                                            savedSpeeds[oldKey] = Config.theme.animDuration;
+                                            StateService.set("animStyleSpeeds", savedSpeeds);
+                                            
+                                            // Apply new style
+                                            Config.theme.animStyle = key;
+                                            
+                                            // Restore saved speed for new style, or use default
+                                            const styleDefaults = {
+                                                "m3": 300, "windows-classic": 100, "windows-xp": 200,
+                                                "windows-7": 250, "mac-classic": 80, "mac-legacy": 350,
+                                                "mac-modern": 300, "hyprland": 120, "android-legacy": 150,
+                                                "android-material": 200, "android-you": 300
+                                            };
+                                            const savedSpeed = savedSpeeds[key];
+                                            if (savedSpeed !== undefined) {
+                                                Config.theme.animDuration = savedSpeed;
+                                            } else if (styleDefaults[key] !== undefined) {
+                                                Config.theme.animDuration = styleDefaults[key];
+                                            }
+                                            GlobalStates.markThemeChanged();
+                                        }
+                                    }
+
+                                    delegate: ItemDelegate {
+                                        required property var modelData
+                                        width: animStyleCombo.width
+                                        height: modelData.key === "" ? 22 : 32
+                                        enabled: modelData.key !== ""
+                                        font.family: Config.theme.font
+                                        font.pixelSize: modelData.key === "" ? Styling.fontSize(-2) : Styling.fontSize(-1)
+                                        font.weight: modelData.key === "" ? Font.Normal : Font.Medium
+                                        leftPadding: modelData.key === "" ? 8 : 16
+                                        contentItem: Text {
+                                            text: modelData.text
+                                            font: parent.font
+                                            color: modelData.key === "" ? Colors.overSurfaceVariant : (parent.highlighted ? Qt.rgba(1, 1, 1, 1) : Colors.overBackground)
+                                            opacity: modelData.key === "" ? 0.5 : (parent.highlighted ? 1.0 : 0.85)
+                                            elide: Text.ElideRight
+                                            leftPadding: parent.leftPadding
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                        background: Rectangle {
+                                            color: {
+                                                if (parent.highlighted) return Qt.rgba(Colors.primary.r, Colors.primary.g, Colors.primary.b, 0.45);
+                                                if (parent.hovered) return Qt.rgba(Colors.overBackground.r, Colors.overBackground.g, Colors.overBackground.b, 0.12);
+                                                return "transparent";
+                                            }
+                                            radius: Styling.radius(2)
+                                            border.color: parent.highlighted ? Qt.rgba(Colors.primary.r, Colors.primary.g, Colors.primary.b, 0.6) : "transparent"
+                                            border.width: parent.highlighted ? 1 : 0
+                                        }
+                                    }
                                 }
                             }
 
@@ -477,7 +737,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Animation"
+                                    text: "Speed"
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -509,6 +769,11 @@ Item {
                                         if (newDuration !== Config.theme.animDuration) {
                                             GlobalStates.markThemeChanged();
                                             Config.theme.animDuration = newDuration;
+                                            // Save user preference for this style
+                                            const key = Config.theme.animStyle || "m3";
+                                            const savedSpeeds = StateService.get("animStyleSpeeds", {});
+                                            savedSpeeds[key] = newDuration;
+                                            StateService.set("animStyleSpeeds", savedSpeeds);
                                         }
                                     }
                                 }
@@ -1076,9 +1341,9 @@ Item {
                                         opacity: shadowColorButton.isHovered ? 0.15 : 0
 
                                         Behavior on opacity {
-                                            enabled: (Config.animDuration ?? 0) > 0
+                                            enabled: Anim.animationsEnabled
                                             NumberAnimation {
-                                                duration: (Config.animDuration ?? 0) / 2
+                                                duration: Anim.standardSmall
                                             }
                                         }
                                     }
@@ -1114,10 +1379,11 @@ Item {
                         property bool variantExpanded: false
 
                         Behavior on Layout.preferredHeight {
-                            enabled: (Config.animDuration ?? 0) > 0
+                            enabled: Anim.animationsEnabled
                             NumberAnimation {
-                                duration: (Config.animDuration ?? 0) / 2
-                                easing.type: Easing.OutCubic
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                             }
                         }
 
@@ -1180,10 +1446,11 @@ Item {
                                                     radius: isSelected ? Styling.radius(0) / 2 : Styling.radius(0)
 
                                                     Behavior on width {
-                                                        enabled: (Config.animDuration ?? 0) > 0
+                                                        enabled: Anim.animationsEnabled
                                                         NumberAnimation {
-                                                            duration: (Config.animDuration ?? 0) / 3
-                                                            easing.type: Easing.OutCubic
+                                                            duration: Anim.standardSmall
+                                                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                         }
                                                     }
 
@@ -1210,19 +1477,21 @@ Item {
                                                                     opacity: variantTagRow.isSelected ? 1 : 0
 
                                                                     Behavior on opacity {
-                                                                        enabled: (Config.animDuration ?? 0) > 0
+                                                                        enabled: Anim.animationsEnabled
                                                                         NumberAnimation {
-                                                                            duration: (Config.animDuration ?? 0) / 3
-                                                                            easing.type: Easing.OutCubic
+                                                                            duration: Anim.standardSmall
+                                                                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                                         }
                                                                     }
                                                                 }
 
                                                                 Behavior on width {
-                                                                    enabled: (Config.animDuration ?? 0) > 0
+                                                                    enabled: Anim.animationsEnabled
                                                                     NumberAnimation {
-                                                                        duration: (Config.animDuration ?? 0) / 3
-                                                                        easing.type: Easing.OutCubic
+                                                                        duration: Anim.standardSmall
+                                                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                                     }
                                                                 }
                                                             }
@@ -1236,10 +1505,11 @@ Item {
                                                                 color: variantTagRow.item
 
                                                                 Behavior on color {
-                                                                    enabled: (Config.animDuration ?? 0) > 0
+                                                                    enabled: Anim.animationsEnabled
                                                                     ColorAnimation {
-                                                                        duration: (Config.animDuration ?? 0) / 3
-                                                                        easing.type: Easing.OutCubic
+                                                                        duration: Anim.standardSmall
+                                                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                                     }
                                                                 }
                                                             }
@@ -1253,9 +1523,9 @@ Item {
                                                         opacity: variantTagRow.isHovered ? 0.15 : 0
 
                                                         Behavior on opacity {
-                                                            enabled: (Config.animDuration ?? 0) > 0
+                                                            enabled: Anim.animationsEnabled
                                                             NumberAnimation {
-                                                                duration: (Config.animDuration ?? 0) / 2
+                                                                duration: Anim.standardSmall
                                                             }
                                                         }
                                                     }
@@ -1336,10 +1606,11 @@ Item {
                                             radius: isSelected ? Styling.radius(0) / 2 : Styling.radius(0)
 
                                             Behavior on width {
-                                                enabled: (Config.animDuration ?? 0) > 0
+                                                enabled: Anim.animationsEnabled
                                                 NumberAnimation {
-                                                    duration: (Config.animDuration ?? 0) / 3
-                                                    easing.type: Easing.OutCubic
+                                                    duration: Anim.standardSmall
+                                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                 }
                                             }
 
@@ -1366,19 +1637,21 @@ Item {
                                                             opacity: variantTag.isSelected ? 1 : 0
 
                                                             Behavior on opacity {
-                                                                enabled: (Config.animDuration ?? 0) > 0
+                                                                enabled: Anim.animationsEnabled
                                                                 NumberAnimation {
-                                                                    duration: (Config.animDuration ?? 0) / 3
-                                                                    easing.type: Easing.OutCubic
+                                                                    duration: Anim.standardSmall
+                                                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                                 }
                                                             }
                                                         }
 
                                                         Behavior on width {
-                                                            enabled: (Config.animDuration ?? 0) > 0
+                                                            enabled: Anim.animationsEnabled
                                                             NumberAnimation {
-                                                                duration: (Config.animDuration ?? 0) / 3
-                                                                easing.type: Easing.OutCubic
+                                                                duration: Anim.standardSmall
+                                                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                             }
                                                         }
                                                     }
@@ -1392,10 +1665,11 @@ Item {
                                                         color: variantTag.item
 
                                                         Behavior on color {
-                                                            enabled: (Config.animDuration ?? 0) > 0
+                                                            enabled: Anim.animationsEnabled
                                                             ColorAnimation {
-                                                                duration: (Config.animDuration ?? 0) / 3
-                                                                easing.type: Easing.OutCubic
+                                                                duration: Anim.standardSmall
+                                                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                                             }
                                                         }
                                                     }
@@ -1410,9 +1684,9 @@ Item {
                                                 opacity: variantTag.isHovered ? 0.15 : 0
 
                                                 Behavior on opacity {
-                                                    enabled: (Config.animDuration ?? 0) > 0
+                                                    enabled: Anim.animationsEnabled
                                                     NumberAnimation {
-                                                        duration: (Config.animDuration ?? 0) / 2
+                                                        duration: Anim.standardSmall
                                                     }
                                                 }
                                             }
@@ -1517,19 +1791,21 @@ Item {
             x: root.colorPickerActive ? 0 : 30
 
             Behavior on x {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardSmall
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
 
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                duration: Anim.standardSmall
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
 
@@ -1549,7 +1825,7 @@ Item {
         }
 
         ColorPickerView {
-            id: colorPickerContent
+            id: colorPicker
             anchors.fill: parent
             anchors.leftMargin: root.sideMargin
             anchors.rightMargin: root.sideMargin

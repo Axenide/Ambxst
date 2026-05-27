@@ -9,13 +9,13 @@
       "locked": {
         "lastModified": 1779243005,
         "narHash": "sha256-oDJEY0yeMUDFvCUTKW69/lzoVk6cuRPscT0myeKnvec=",
-        "owner": "Axenide",
+        "owner": "Leriart",
         "repo": "axctl",
         "rev": "e8ac14221379cc5a5c8565c510123e1c0b7dff01",
         "type": "github"
       },
       "original": {
-        "owner": "Axenide",
+        "owner": "Leriart",
         "repo": "axctl",
         "type": "github"
       }

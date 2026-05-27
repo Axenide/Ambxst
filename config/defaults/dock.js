@@ -8,7 +8,7 @@ var data = {
     "iconSize": 24,
     "spacing": 4,
     "margin": 4,
-    "hoverRegionHeight": 16,
+    "hoverRegionHeight": 2,
     "pinnedOnStartup": false,
     "hoverToReveal": true,
     "availableOnFullscreen": false,

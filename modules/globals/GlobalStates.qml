@@ -53,7 +53,7 @@ Singleton {
     // ═══════════════════════════════════════════════════════════════
     property string compositorLayout: ""
     property bool compositorLayoutReady: false
-    readonly property var availableLayouts: ["dwindle", "master", "scrolling"]
+    readonly property var availableLayouts: ["dwindle", "master", "scrolling", "free"]
 
     Process {
         id: getLayoutProcess
@@ -347,7 +347,7 @@ Singleton {
 
     // Shell config sections and their properties
     readonly property var _shellSections: {
-        "bar": ["position", "launcherIcon", "launcherIconTint", "launcherIconFullTint", "launcherIconSize", "enableFirefoxPlayer", "screenList", "frameEnabled", "frameThickness", "pinnedOnStartup", "hoverToReveal", "hoverRegionHeight", "showPinButton", "availableOnFullscreen", "pillStyle", "use12hFormat", "containBar", "keepBarShadow", "keepBarBorder"],
+        "bar": ["position", "launcherIcon", "launcherIconTint", "launcherIconFullTint", "launcherIconSize", "enableFirefoxPlayer", "enableChromiumPlayer", "screenList", "frameEnabled", "frameThickness", "pinnedOnStartup", "hoverToReveal", "hoverRegionHeight", "showPinButton", "availableOnFullscreen", "pillStyle", "use12hFormat", "containBar", "keepBarShadow", "keepBarBorder", "hiddenIcons"],
         "notch": ["theme", "position", "hoverRegionHeight", "keepHidden"],
         "workspaces": ["shown", "showAppIcons", "alwaysShowNumbers", "showNumbers", "dynamic"],
         "overview": ["rows", "columns", "scale", "workspaceSpacing"],
@@ -525,12 +525,20 @@ Singleton {
         compositorHasChanges = true;
     }
 
+    property Process _applyProcess: Process {
+        id: _applyProcess
+        command: ["sh", "-c", Quickshell.env("HOME") + "/Documentos/GitHub/Ambxst/scripts/apply-config.sh"]
+        running: false
+    }
+
     function applyCompositorChanges() {
         if (compositorHasChanges) {
             Config.saveCompositor();
             compositorHasChanges = false;
             compositorSnapshot = null;
             Config.pauseAutoSave = false;
+            // Apply directly via script (bypasses QML signal chain)
+            _applyProcess.running = true;
         }
     }
 
@@ -553,6 +561,7 @@ Singleton {
     property string assistantScreenName: ""
 
     signal assistantFocusRequested(bool wasAlreadyOpen)
+    signal compositorConfigChanged()
 
     function toggleAssistant() {
         if (assistantVisible) {

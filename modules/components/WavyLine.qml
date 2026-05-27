@@ -1,11 +1,13 @@
 import QtQuick
 import qs.modules.theme
 
-Canvas {
+// GPU-native WavyLine — reemplaza el Canvas + JS Math.sin loop por ShaderEffect con GLSL.
+// La animación y la geometría de la onda corren 100% en la GPU, sin consumo de CPU.
+ShaderEffect {
     id: root
 
     // =========================================================================
-    // API Properties
+    // API Properties (misma interfaz que la versión Canvas)
     // =========================================================================
     property color color: Styling.srItem("overprimary")
     property real lineWidth: 2
@@ -15,48 +17,36 @@ Canvas {
     property bool running: true
 
     // Legacy compatibility
-    property real amplitude: lineWidth * amplitudeMultiplier
-    property real speed: 5  // Not used with Date.now() technique, kept for API compat
+    property real speed: 5  // Kept for API compat
     property bool animationsEnabled: true
 
     // =========================================================================
-    // Rendering
+    // Animación de fase — property animada por NumberAnimation
     // =========================================================================
-    readonly property bool shouldAnimate: running && animationsEnabled && 
+    readonly property bool shouldAnimate: running && animationsEnabled &&
                                           visible && width > 0 && opacity > 0
 
-    onPaint: {
-        var ctx = getContext("2d");
-        ctx.clearRect(0, 0, width, height);
+    property real _phase: 0
 
-        if (width <= 0 || height <= 0) return;
-
-        var amp = root.lineWidth * root.amplitudeMultiplier;
-        var freq = root.frequency;
-        var phase = Date.now() / 400.0;
-        var centerY = height / 2;
-
-        ctx.strokeStyle = root.color;
-        ctx.lineWidth = root.lineWidth;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-
-        for (var x = ctx.lineWidth / 2; x <= root.width - ctx.lineWidth / 2; x += 1) {
-            var waveY = centerY + amp * Math.sin(freq * 2 * Math.PI * x / root.fullLength + phase);
-            if (x === ctx.lineWidth / 2)
-                ctx.moveTo(x, waveY);
-            else
-                ctx.lineTo(x, waveY);
-        }
-
-        ctx.stroke();
-    }
-
-    // =========================================================================
-    // Animation Driver - FrameAnimation for smooth 60fps
-    // =========================================================================
-    FrameAnimation {
+    NumberAnimation on _phase {
+        id: phaseAnim
+        from: 0
+        to: Math.PI * 2
+        duration: 1600
+        loops: Animation.Infinite
         running: root.shouldAnimate
-        onTriggered: root.requestPaint()
     }
+
+    // =========================================================================
+    // Unficos de entrada al shader
+    // Nombres exactos = ubuf.{nombre} en el GLSL wavyline.frag
+    // =========================================================================
+    property real phase: _phase
+    property real amplitude: lineWidth * amplitudeMultiplier
+    property vector4d shaderColor: Qt.vector4d(color.r, color.g, color.b, color.a)
+    property real canvasWidth: width
+    property real canvasHeight: height
+
+    vertexShader: "wavyline.vert.qsb"
+    fragmentShader: "wavyline.frag.qsb"
 }

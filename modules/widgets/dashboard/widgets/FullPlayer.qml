@@ -128,10 +128,11 @@ StyledRect {
         opacity: (player.hasArtwork || player.wallpaperPath !== "") ? 0.25 : 0.0
         visible: player.hasArtwork || player.wallpaperPath !== ""
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                duration: Anim.standardNormal
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
     }
@@ -158,10 +159,11 @@ StyledRect {
         opacity: (player.hasArtwork || player.wallpaperPath !== "") ? 1.0 : 0.0
         visible: player.hasArtwork || player.wallpaperPath !== ""
         Behavior on opacity {
-            enabled: Config.animDuration > 0
+            enabled: Anim.animationsEnabled
             NumberAnimation {
-                duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                duration: Anim.standardNormal
+                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
             }
         }
     }
@@ -203,7 +205,7 @@ StyledRect {
                 accentColor: Colors.primary
                 trackColor: Colors.outline
                 lineWidth: 6
-                wavy: Config.performance.wavyLine
+                wavy: false
                 waveAmplitude: player.isPlaying ? 3 : 0
                 waveFrequency: 24
                 handleSpacing: 20
@@ -249,25 +251,7 @@ StyledRect {
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
 
-                        // Placeholder (with WavyLine)
-                        Rectangle {
-                            anchors.fill: parent
-                            color: Colors.surface
-                            visible: !player.hasArtwork && player.wallpaperPath === ""
 
-                            Loader {
-                                active: parent.visible && Config.performance.wavyLine
-                                anchors.centerIn: parent
-                                width: parent.width * 0.6
-                                height: 20
-                                sourceComponent: WavyLine {
-                                    anchors.fill: parent
-                                    color: Colors.primary
-                                    frequency: 2
-                                    amplitudeMultiplier: 2
-                                }
-                            }
-                        }
                     }
                 }
 
@@ -473,7 +457,8 @@ StyledRect {
                 NumberAnimation {
                     properties: "radius"
                     duration: 300
-                    easing.type: Easing.OutBack
+                    easing.type: Anim.easing("emphasized").type
+                        easing.bezierCurve: Anim.easing("emphasized").bezierCurve
                 }
             }
 
