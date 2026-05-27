@@ -465,8 +465,10 @@ StyledRect {
         target: AxctlService
         function onMonitorsChanged() {
             root.updateAxctlMatch();
-            // Sync to disk after Axctl reports the change
-            monitorSyncDebounce.restart();
+            // No longer restarting the debounce here - it created an infinite loop:
+            // sync -> hyprctl reload -> monitorsChanged -> restart debounce -> sync -> ...
+            // Disk persistence is now only triggered explicitly by the user
+            // via applyMonitorSetting() or the Apply button in MonitorsPanel
         }
     }
 

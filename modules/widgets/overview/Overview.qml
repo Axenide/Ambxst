@@ -68,6 +68,16 @@ Item {
         }
     }
 
+    // Timer to wait for axctl to process the move before refreshing window data
+    Timer {
+        id: delayedRefreshTimer
+        interval: 200
+        onTriggered: {
+            if (!clientProcess.running) clientProcess.running = true;
+            if (!monProcess.running) monProcess.running = true;
+        }
+    }
+
     // ── Config ──
     readonly property int rows: Config.overview.rows
     readonly property int columns: Config.overview.columns
@@ -748,10 +758,8 @@ Item {
                     }
                 }
 
-                Qt.callLater(function() {
-                    if (!clientProcess.running) clientProcess.running = true;
-                    if (!monProcess.running) monProcess.running = true;
-                });
+                // Wait 200ms for axctl to process the move before refreshing
+                delayedRefreshTimer.restart();
 
             } else if (dragTracker._holding && mouse.button === Qt.LeftButton) {
                 // Quick release → click: focus window

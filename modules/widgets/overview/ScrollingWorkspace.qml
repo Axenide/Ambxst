@@ -138,6 +138,17 @@ Item {
         onTriggered: root.isWheelScrolling = false
     }
 
+    // Timer to wait for axctl to process the move before refreshing window data
+    Timer {
+        id: delayedRefreshTimer
+        interval: 200
+        onTriggered: {
+            if (typeof CompositorData !== "undefined") {
+                CompositorData.refreshFromHyprctl();
+            }
+        }
+    }
+
     // Reset scroll when windows change (added, removed, or moved)
     onWorkspaceWindowsChanged: resetScroll()
     onContentBoundsChanged: {
@@ -693,7 +704,8 @@ Item {
 
                                 if (targetWs !== root.workspaceId && windowDelegate.windowData) {
                                     AxctlService.dispatch(`movetoworkspacesilent ${targetWs}, address:${windowDelegate.windowData.address || ""}`);
-                                    Qt.callLater(function() { CompositorData.refreshFromHyprctl(); });
+                                    // Wait 200ms for axctl to process the move before refreshing
+                                    delayedRefreshTimer.restart();
                                 }
 
                                 // Restore original parent and re-bind position.

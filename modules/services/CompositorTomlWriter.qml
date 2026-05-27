@@ -563,51 +563,44 @@ Singleton {
         toml += `force_default_wallpaper = ${Config.compositor.forceDefaultWallpaper}\n`;
         toml += `no_update_news = ${Config.compositor.noUpdateNews}\n`;
 
-        // Monitors
-        try {
-            var screens = Quickshell.screens;
-            if (screens) {
-                var axMons = AxctlService.monitors.values || [];
-                for (var mi = 0; mi < screens.length; mi++) {
-                    var scr = screens[mi];
-                    if (!scr || !scr.name) continue;
-                    var ax = null;
-                    for (var mj = 0; mj < axMons.length; mj++) {
-                        if (axMons[mj].name === scr.name) { ax = axMons[mj]; break; }
-                    }
-                    var w = ax ? (ax.width || scr.width || 1920) : (scr.width || 1920);
-                    var h = ax ? (ax.height || scr.height || 1080) : (scr.height || 1080);
-                    var x = scr.x || 0;
-                    var y = scr.y || 0;
-                    var s = ax ? (ax.scale || 1.0) : 1.0;
-                    var rr = ax ? (ax.refreshRate || 60) : 60;
-                    var t = ax ? (ax.transform || 0) : 0;
-
-                    toml += "[[monitors]]\n";
-                    toml += "name = \"" + scr.name + "\"\n";
-                    toml += "mode = \"" + w + "x" + h + "@" + rr.toFixed(2) + "Hz\"\n";
-                    toml += "position = \"" + x + "x" + y + "\"\n";
-                    toml += "scale = " + s + "\n";
-                    if (t > 0) toml += "transform = " + t + "\n";
-                    toml += "enabled = true\n";
-                    toml += "\n";
-                }
-            }
-        } catch (e) {
-            console.warn("CompositorTomlWriter: Error writing monitors section:", e);
-        }
+        // Monitors removed from CompositorTomlWriter.
+        // monitors_writer.py handles [[monitors]] in axctl.toml directly
+        // with the correct data. This section was writing stale data that
+        // caused axctl auto-reload to overwrite user's monitor changes.
 
         return toml;
     }
 
     function writeTomlFile() {
-        const tomlContent = generateToml();
-        const escapedPath = root.outputPath.replace(/'/g, "'\\''");
-        const escapedContent = tomlContent.replace(/'/g, "'\\''");
+        const newContent = generateToml();
+        const path = root.outputPath;
+        const escapedNew = newContent.replace(/'/g, "'\\''");
 
-        writeProcess.command = ["bash", "-c", `mkdir -p "$(dirname '${escapedPath}')" && echo '${escapedContent}' > '${escapedPath}'`];
+        // Must preserve [[monitors]] written by monitors_writer.py.
+        // If we just overwrite the file, monitors get nuked.
+        writeProcess.command = ["python3", "-c", `
+import os, re
+path = "${root.outputPath}"
+template = '''${escapedNew}'''
+
+if os.path.isfile(path):
+    with open(path) as f:
+        content = f.read()
+    # Extract [[monitors]] sections from existing file
+    monitors = re.findall(r'\\n?(\\[\\[monitors\\]\\].*?)(?=\\n\\[|\\Z)', content, re.DOTALL)
+else:
+    monitors = []
+
+# Append preserved monitors
+if monitors:
+    template += '\\n' + '\\n'.join(monitors) + '\\n'
+
+os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+with open(path, 'w') as f:
+    f.write(template)
+print('Written TOML to', path)
+`];
         writeProcess.running = true;
-        console.log("CompositorTomlWriter: Written TOML to", root.outputPath);
     }
 
     // Note: hyprland.conf is NOT generated here.

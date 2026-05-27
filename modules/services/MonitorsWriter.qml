@@ -65,10 +65,10 @@ Singleton {
             var ok = exitCode === 0;
             console.log("MonitorsWriter:", out.trim() || (ok ? "OK" : "FAIL"));
             root.syncFinished(ok, ok ? "OK" : out.trim());
-            try {
-                if (typeof CompositorTomlWriter !== "undefined")
-                    CompositorTomlWriter.writeTomlFile();
-            } catch (e) {}
+            // Do NOT call CompositorTomlWriter.writeTomlFile() here.
+            // monitors_writer.py already writes [[monitors]] to axctl.toml.
+            // Calling writeTomlFile() would OVERWRITE the entire toml file,
+            // removing the [[monitors]] section that was just written.
         }
     }
 }

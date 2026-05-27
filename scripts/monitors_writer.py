@@ -14,12 +14,13 @@ Commands:
   sync --no-apply   Write files only, no reload
 """
 
-import json, os, shutil, subprocess, sys
+import json, os, re, shutil, subprocess, sys
 from datetime import datetime
 
 CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "hypr", "monitors.conf")
 LUA  = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "hypr", "monitors.lua")
 NL   = os.path.expanduser("~/.local/share/ambxst")
+AXCTL_TOML = os.path.join(NL, "axctl.toml")
 
 # ─── hyprctl ───────────────────────────────────────────────────────────────────
 
@@ -146,6 +147,63 @@ def inject_nl(conf_lines, lua_lines):
         with open(path, "w") as f:
             f.write(content)
 
+def toml_entry(m):
+    """Generate one [[monitors]] TOML block."""
+    n = m["name"]
+    if not m.get("enabled", True):
+        return (
+            f"[[monitors]]\n"
+            f'name = "{n}"\n'
+            f"enabled = false\n"
+        )
+    mode = f"{m['width']}x{m['height']}@{m['refreshRate']:.2f}Hz"
+    pos = f"{m['x']}x{m['y']}"
+    return (
+        f"[[monitors]]\n"
+        f'name = "{n}"\n'
+        f'mode = "{mode}"\n'
+        f'position = "{pos}"\n'
+        f'scale = {m["scale"]}\n'
+        f"enabled = true\n"
+    )
+
+def write_axctl_monitors(monitors):
+    """Update [[monitors]] section in axctl.toml with correct data."""
+    path = AXCTL_TOML
+    if not os.path.isfile(path):
+        return
+
+    # Generate the new monitors block
+    toml_mons = ""
+    for m in monitors:
+        toml_mons += toml_entry(m) + "\n"
+
+    with open(path) as f:
+        content = f.read()
+
+    # Remove old [[monitors]] sections
+    content = re.sub(
+        r'\n?\[\[monitors\]\].*?(?=\n?\[|\Z)',
+        '', content, flags=re.DOTALL
+    ).strip()
+
+    # Insert monitors block after [startup] section (before [appearance] or first section)
+    if toml_mons:
+        # Find insertion point: after the first section header
+        match = re.search(r'^\[.*?\]', content, re.MULTILINE)
+        if match:
+            first_section_end = content.find('\n', match.start())
+            if first_section_end == -1:
+                first_section_end = len(content)
+            after_startup = content[:first_section_end + 1]
+            rest = content[first_section_end + 1:]
+            content = after_startup + '\n' + toml_mons.strip() + '\n\n' + rest
+        else:
+            content += '\n\n' + toml_mons + '\n'
+
+    with open(path, "w") as f:
+        f.write(content + "\n")
+
 # ─── Commands ─────────────────────────────────────────────────────────────────
 
 def cmd_list():
@@ -180,6 +238,9 @@ def cmd_sync(args):
     write(args.conf or CONF, conf)
     write(args.lua or LUA, lua)
     inject_nl(conf, lua)
+
+    # Write monitors section to axctl.toml with the correct data (no stale QML state)
+    write_axctl_monitors(monitors)
 
     if not args.no_apply:
         ok = hyprctl_reload()

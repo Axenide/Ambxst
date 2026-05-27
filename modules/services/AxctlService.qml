@@ -55,11 +55,21 @@ Singleton {
         } else if (action === "focuswindow") {
             cmdArgs = ["window", "focus", getAddr(rawArgs)];
         } else if (action === "movetoworkspacesilent") {
+            // axctl v0.0.19 bug: move-to-workspace-silent returns Success but does nothing.
+            // Direct hyprctl dispatch works, so we bypass axctl entirely.
             let subParts = rawArgs.split(',');
-            cmdArgs = ["window", "move-to-workspace-silent", subParts[0].trim()];
-            if (subParts.length > 1) {
-                cmdArgs.push(getAddr(subParts[1]));
-            }
+            let ws = subParts[0].trim();
+            let addr = subParts.length > 1 ? getAddr(subParts[1]) : "";
+            let hyprProc = Qt.createQmlObject('import Quickshell.Io; Process { stderr: StdioCollector {} }', root);
+            hyprProc.command = ["hyprctl", "dispatch", "movetoworkspacesilent", ws + ",address:" + addr];
+            hyprProc.onExited.connect((code) => {
+                if (code !== 0) {
+                    console.warn("AxctlService hyprctl dispatch error:", hyprProc.command.join(' '), "→", hyprProc.stderr.text);
+                }
+                hyprProc.destroy();
+            });
+            hyprProc.running = true;
+            return;
         } else if (action === "togglespecialworkspace") {
             cmdArgs = ["workspace", "toggle-special"];
             if (rawArgs) cmdArgs.push(rawArgs);
@@ -72,9 +82,14 @@ Singleton {
 
         let finalCommand = ["axctl", "-c", root.configPath].concat(cmdArgs.filter(x => x !== "" && x !== undefined));
 
-        let proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+        let proc = Qt.createQmlObject('import Quickshell.Io; Process { stderr: StdioCollector {} }', root);
         proc.command = finalCommand;
-        proc.onExited.connect(() => proc.destroy());
+        proc.onExited.connect((code) => {
+            if (code !== 0 && proc.stderr.text) {
+                console.warn("AxctlService dispatch error:", finalCommand.join(' '), "→", proc.stderr.text);
+            }
+            proc.destroy();
+        });
         proc.running = true;
     }
 

@@ -742,16 +742,12 @@ QtObject {
         });
     }
 
-    // Direct signal from Config when compositor settings change
-    property Connections globalStateConnections: Connections {
-        target: GlobalStates
-        function onCompositorConfigChanged() {
-            // Apply directly without waiting for guards/timers
-            root.applyCompositorConfig();
-            // Also write file directly if we have a cached batch command
-            root.writeConfigToFile(root._lastBatchCmd);
-        }
-    }
+    // Removed globalStateConnections - it was redundant.
+    // Every Config.compositor property already has its own handler
+    // (above in compositorConfigConnections) that calls applyCompositorConfig().
+    // That covers: dispatch + writeConfig + reload.
+    // This ADDITIONAL connection caused double dispatch, double file write,
+    // and double axctl reload on every property change.
 
     // Re-apply settings when Hyprland config is reloaded (user edits hyprland.conf)
     property Connections axctlConnections: Connections {
