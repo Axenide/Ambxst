@@ -95,29 +95,36 @@ Item {
         }
     }
 
+    // Gate animations until after the delegate's initial bindings settle.
+    // Without this, every rebuild animates from x/y/width/height=0 over the
+    // full animDuration, making chips appear to "grow into place" — which
+    // looks like stale/half-sized chips when state churns from window events.
+    property bool ready: false
+    Component.onCompleted: ready = true
+
     Behavior on x {
-        enabled: Config.animDuration > 0 && !root.useOverridePosition
+        enabled: ready && Config.animDuration > 0 && !root.useOverridePosition
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
         }
     }
     Behavior on y {
-        enabled: Config.animDuration > 0 && !root.useOverridePosition
+        enabled: ready && Config.animDuration > 0 && !root.useOverridePosition
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
         }
     }
     Behavior on width {
-        enabled: Config.animDuration > 0
+        enabled: ready && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
         }
     }
     Behavior on height {
-        enabled: Config.animDuration > 0
+        enabled: ready && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
@@ -342,9 +349,11 @@ Item {
                         CompositorData.updateWindowList();
                     }
 
-                    // Reset position in overview
-                    root.x = root.initX;
-                    root.y = root.initY;
+                    // Reset position in overview — use Qt.binding so x/y stay
+                    // reactive to initX/initY (drag.target overrides break the
+                    // original binding; we must restore it).
+                    root.x = Qt.binding(() => root.initX);
+                    root.y = Qt.binding(() => root.initY);
                 } else if (windowData?.floating && (root.x !== root.initX || root.y !== root.initY)) {
                     // Dropped on same workspace and floating - reposition
                     const relativeX = root.x - root.xOffset;
@@ -361,19 +370,23 @@ Item {
                     // Force immediate window data update
                     CompositorData.updateWindowList();
                     
-                    // Set override position for immediate visual update
+                    // Set override position for immediate visual update.
+                    // initX returns overrideX while useOverridePosition is true,
+                    // so binding x to initX keeps it at draggedX until the
+                    // override is cleared, then reactively snaps to the new
+                    // initX once axctl reports the updated window position.
                     root.overrideX = draggedX;
                     root.overrideY = draggedY;
                     root.useOverridePosition = true;
-                    
-                    root.x = draggedX;
-                    root.y = draggedY;
-                    
+
+                    root.x = Qt.binding(() => root.initX);
+                    root.y = Qt.binding(() => root.initY);
+
                     resetOverrideTimer.restart();
                 } else {
                     // Reset position for non-floating or non-moved windows
-                    root.x = root.initX;
-                    root.y = root.initY;
+                    root.x = Qt.binding(() => root.initX);
+                    root.y = Qt.binding(() => root.initY);
                 }
             }
         }
