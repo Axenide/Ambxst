@@ -42,9 +42,14 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    home.file = lib.mapAttrs' (name: value:
-      lib.nameValuePair ".config/ambxst/config/${name}.json" {
+    xdg.configFile = lib.mapAttrs' (name: value:
+      lib.nameValuePair "ambxst/config/${name}.json" {
         text = builtins.toJSON value;
+        onChange = ''
+          if [ -f /tmp/ambxst.pid ] && kill -0 "$(cat /tmp/ambxst.pid 2>/dev/null)" 2>/dev/null; then
+            ambxst reload
+          fi
+        '';
       }
     ) cfg.settings;
   };
