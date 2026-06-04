@@ -47,7 +47,7 @@ in {
         text = builtins.toJSON value;
         onChange = ''
           if [ -f /tmp/ambxst.pid ] && kill -0 "$(cat /tmp/ambxst.pid 2>/dev/null)" 2>/dev/null; then
-            ambxst reload
+            ambxst reload || true
           fi
         '';
       }
