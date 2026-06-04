@@ -21,8 +21,9 @@
         programs.ambxst.package = lib.mkDefault self.packages.${pkgs.system}.default;
       };
 
-      homeManagerModules.default = { ... }: {
+      homeManagerModules.default = { pkgs, ... }: {
         imports = [ ./nix/modules/home.nix ];
+        _module.args.ambxstPackage = self.packages.${pkgs.system}.default;
       };
 
       packages = ambxstLib.forAllSystems (system:
