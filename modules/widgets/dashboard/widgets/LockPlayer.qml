@@ -29,10 +29,11 @@ StyledRect {
     backgroundOpacity: (MprisController.activePlayer || wallpaperPath !== "") ? 0.0 : 1.0
 
     Behavior on backgroundOpacity {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -62,10 +63,11 @@ StyledRect {
             blur: 0.75
             opacity: (MprisController.activePlayer || wallpaperPath !== "") ? 1.0 : 0.0
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    duration: Anim.standardNormal
+                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                 }
             }
         }
@@ -111,24 +113,8 @@ StyledRect {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             height: 24
-            sourceComponent: CarouselProgress {
-                anchors.fill: parent
-                frequency: 4
-                color: Colors.surfaceBright
-                amplitudeMultiplier: 4
-                lineWidth: 2
-                fullLength: width
-                opacity: 1.0
-                animationsEnabled: true
-                active: true
-
-                Behavior on color {
-                    enabled: Config.animDuration > 0
-                    ColorAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                }
+            sourceComponent: Rectangle {
+                color: Qt.rgba(Colors.surfaceBright.r, Colors.surfaceBright.g, Colors.surfaceBright.b, 0.4)
             }
         }
     }
@@ -183,10 +169,11 @@ StyledRect {
                     blur: playPauseHover.hovered ? 0.75 : 0
 
                     Behavior on blur {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
                 }
@@ -197,10 +184,11 @@ StyledRect {
                     opacity: playPauseHover.hovered ? 0.5 : 0.0
 
                     Behavior on opacity {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
                 }
@@ -218,10 +206,11 @@ StyledRect {
                 visible: MprisController.canTogglePlaying
 
                 Behavior on opacity {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration / 2
-                        easing.type: Easing.OutQuart
+                        duration: Anim.standardSmall
+                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                     }
                 }
             }
@@ -292,10 +281,11 @@ StyledRect {
                     opacity: MprisController.canGoPrevious ? 1.0 : 0.3
 
                     Behavior on color {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         ColorAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 
@@ -332,10 +322,11 @@ StyledRect {
                     opacity: MprisController.canGoNext ? 1.0 : 0.3
 
                     Behavior on color {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         ColorAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 
@@ -378,10 +369,11 @@ StyledRect {
                     }
 
                     Behavior on color {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         ColorAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 
@@ -434,10 +426,11 @@ StyledRect {
                     opacity: MprisController.activePlayer ? 1.0 : 0.3
 
                     Behavior on color {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         ColorAnimation {
-                            duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            duration: Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
 

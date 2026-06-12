@@ -26,6 +26,10 @@ Singleton {
     }
 
     signal rawEvent(var event)
+    signal monitorsUpdated()
+    signal subscribeReady()
+    signal subscribeFailed()
+    signal configReloaded()
 
     // Config path for axctl daemon
     property string configPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst/axctl.toml"
@@ -51,23 +55,41 @@ Singleton {
         } else if (action === "focuswindow") {
             cmdArgs = ["window", "focus", getAddr(rawArgs)];
         } else if (action === "movetoworkspacesilent") {
+            // axctl v0.0.19 bug: move-to-workspace-silent returns Success but does nothing.
+            // Direct hyprctl dispatch works, so we bypass axctl entirely.
             let subParts = rawArgs.split(',');
-            cmdArgs = ["window", "move-to-workspace-silent", subParts[0].trim()];
-            if (subParts.length > 1) {
-                cmdArgs.push(getAddr(subParts[1]));
-            }
+            let ws = subParts[0].trim();
+            let addr = subParts.length > 1 ? getAddr(subParts[1]) : "";
+            let hyprProc = Qt.createQmlObject('import Quickshell.Io; Process { stderr: StdioCollector {} }', root);
+            hyprProc.command = ["hyprctl", "dispatch", "movetoworkspacesilent", ws + ",address:" + addr];
+            hyprProc.onExited.connect((code) => {
+                if (code !== 0) {
+                    console.warn("AxctlService hyprctl dispatch error:", hyprProc.command.join(' '), "→", hyprProc.stderr.text);
+                }
+                hyprProc.destroy();
+            });
+            hyprProc.running = true;
+            return;
         } else if (action === "togglespecialworkspace") {
             cmdArgs = ["workspace", "toggle-special"];
             if (rawArgs) cmdArgs.push(rawArgs);
+        } else if (action === "monitor") {
+            // Monitor commands go directly to hyprctl dispatch
+            cmdArgs = ["system", "execute", "hyprctl dispatch " + command];
         } else {
             cmdArgs = ["system", "execute", command];
         }
 
-        let finalCommand = ["axctl"].concat(cmdArgs.filter(x => x !== "" && x !== undefined));
+        let finalCommand = ["axctl", "-c", root.configPath].concat(cmdArgs.filter(x => x !== "" && x !== undefined));
 
-        let proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+        let proc = Qt.createQmlObject('import Quickshell.Io; Process { stderr: StdioCollector {} }', root);
         proc.command = finalCommand;
-        proc.onExited.connect(() => proc.destroy());
+        proc.onExited.connect((code) => {
+            if (code !== 0 && proc.stderr.text) {
+                console.warn("AxctlService dispatch error:", finalCommand.join(' '), "→", proc.stderr.text);
+            }
+            proc.destroy();
+        });
         proc.running = true;
     }
 
@@ -141,6 +163,9 @@ Singleton {
                 height: mon.height,
                 refreshRate: mon.refresh_rate,
                 scale: mon.scale,
+                x: mon.metadata ? parseInt(mon.metadata.x) || 0 : 0,
+                y: mon.metadata ? parseInt(mon.metadata.y) || 0 : 0,
+                transform: mon.metadata ? parseInt(mon.metadata.transform) || 0 : 0,
                 activeWorkspace: { id: parseInt(mon.metadata ? mon.metadata.active_workspace : 0) || 0, name: mon.metadata ? mon.metadata.active_workspace : "" }
             }));
             root.monitors.values = mappedMonitors;
@@ -148,6 +173,7 @@ Singleton {
             if (focused !== root.focusedMonitor) {
                 root.focusedMonitor = focused;
             }
+            root.monitorsUpdated();
         }
     }
 
@@ -177,16 +203,62 @@ Singleton {
         onTriggered: axctlSubscribe.running = true
     }
 
+    // Track subscribe failures to detect daemon death
+    property int _subscribeFailCount: 0
+    property int _subscribeSuccessCount: 0
+    property Timer healthCheckTimer: Timer {
+        interval: 5000
+        repeat: true
+        running: false
+        onTriggered: {
+            // If subscribe has been running a while, reset fail counter
+            if (_subscribeSuccessCount > 0) {
+                _subscribeFailCount = 0;
+            }
+        }
+    }
+
+    // Force-reset the subscribe connection
+    function restartSubscribe() {
+        console.log("AxctlService: Restarting subscribe connection...");
+        reconnectTimer.stop();
+        axctlSubscribe.running = false;
+        Qt.callLater(() => {
+            axctlSubscribe.running = true;
+        });
+    }
+
+    // Health check: if daemon is dead, restart it
+    function ensureDaemonRunning() {
+        if (!axctlProcess.running) {
+            console.warn("AxctlService: Daemon not running, restarting...");
+            axctlProcess.running = true;
+        }
+    }
+
     // Auto-reconnect on unexpected subscribe exit
     Timer {
         id: reconnectTimer
-        interval: 1000
-        onTriggered: axctlSubscribe.running = true
+        interval: 500  // Reduced from 1000ms for faster recovery
+        onTriggered: {
+            // Check daemon health before reconnecting
+            if (!axctlProcess.running) {
+                console.warn("AxctlService: Daemon not running, starting it...");
+                axctlProcess.running = true;
+                Qt.callLater(() => {
+                    // Wait a bit for daemon to start
+                    root.restartSubscribe();
+                });
+            } else {
+                axctlSubscribe.running = true;
+            }
+        }
     }
 
     property Process axctlSubscribe: Process {
         command: ["axctl", "subscribe"]
         running: false
+
         stdout: SplitParser {
             onRead: (data) => {
                 if (!data) return;
@@ -201,14 +273,49 @@ Singleton {
                     // Emit raw event for consumers
                     parsedJson.name = parsedJson.method ? parsedJson.method.split('.').pop().toLowerCase() : "";
                     parsedJson.data = parsedJson.params;
+
+                    // Detect config reload and emit dedicated signal
+                    if (parsedJson.name === "configreloaded") {
+                        console.log("AxctlService: Detected config reload event");
+                        root.configReloaded();
+                    }
+
                     root.rawEvent(parsedJson);
                 } catch (e) {
                     console.error("AxctlService subscribe JSON parse error:", e);
                 }
             }
         }
+
+        // Track process start for health monitoring
+        onStarted: {
+            _subscribeFailCount = 0;
+            _subscribeSuccessCount++;
+            healthCheckTimer.running = true;
+            root.subscribeReady();
+            console.log("AxctlService: Subscribe connected successfully");
+        }
+
         onExited: (code) => {
-            console.warn("axctl subscribe exited:", code);
+            healthCheckTimer.running = false;
+
+            if (code !== 0) {
+                _subscribeFailCount++;
+                console.warn("axctl subscribe exited (code " + code + "), fail #" + _subscribeFailCount);
+
+                // If subscribe keeps dying, daemon is likely dead — restart it
+                if (_subscribeFailCount >= 3) {
+                    console.warn("AxctlService: Subscribe failed 3 times, restarting daemon...");
+                    _subscribeFailCount = 0;
+                    axctlProcess.running = false;
+                    Qt.callLater(() => {
+                        axctlProcess.running = true;
+                    });
+                }
+                root.subscribeFailed();
+            } else {
+                console.log("axctl subscribe exited cleanly");
+            }
             reconnectTimer.restart();
         }
     }

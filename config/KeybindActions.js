@@ -46,6 +46,7 @@ var ACTION_CATALOG = [
     { id: "ambxst.lens", label: "Open Lens", category: "Ambxst", dispatcher: "exec", argument: "ambxst run lens" },
     { id: "ambxst.reload", label: "Reload Ambxst", category: "Ambxst", dispatcher: "exec", argument: "ambxst reload" },
     { id: "ambxst.quit", label: "Quit Ambxst", category: "Ambxst", dispatcher: "exec", argument: "ambxst quit" },
+    { id: "ambxst.toggle-metrics", label: "Toggle Metrics", category: "Ambxst", dispatcher: "exec", argument: "ambxst run toggle-metrics" },
 
     { id: "window.close", label: "Close Window", category: "Window", dispatcher: "killactive", argument: "" },
     { id: "window.focus", label: "Focus Window", category: "Window", dispatcher: "movefocus", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {
@@ -55,10 +56,12 @@ var ACTION_CATALOG = [
         return directionToLetter(args.direction);
     } },
     { id: "window.drag", label: "Drag Window", category: "Window", dispatcher: "movewindow", argument: "", flags: "m" },
-    { id: "window.resize-drag", label: "Resize Window (Drag)", category: "Window", dispatcher: "resizewindow", argument: "", flags: "m" },
+    { id: "window.resize-drag", label: "Resize Window (Drag)", category: "Window", dispatcher: "resizeactive", argument: "", flags: "m" },
     { id: "window.resize", label: "Resize Window", category: "Window", dispatcher: "resizeactive", args: [{ key: "delta", label: "Delta", placeholder: "50 0", defaultValue: "50 0" }], argumentBuilder: function (args) {
         return String(args.delta || "").trim();
     } },
+    { id: "window.resize-expand", label: "Expand Window (Top-Left Anchor)", category: "Window", dispatcher: "resizeactive", argument: "50 50" },
+    { id: "window.resize-shrink", label: "Shrink Window (Top-Left Anchor)", category: "Window", dispatcher: "resizeactive", argument: "-50 -50" },
 
     { id: "workspace.switch", label: "Switch Workspace", category: "Workspace", dispatcher: "workspace", args: [{ key: "index", label: "Workspace", placeholder: "1", defaultValue: "1" }], argumentBuilder: function (args) {
         return String(args.index || "").trim();
@@ -99,6 +102,23 @@ var ACTION_CATALOG = [
         return "movecoltoworkspace " + String(args.index || "").trim();
     } },
 
+    // Free Layout Actions (Windows-style)
+    { id: "free.snap-left", label: "Snap Left Half", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch centerwindow && hyprctl dispatch resizeactive -50% 0" },
+    { id: "free.snap-right", label: "Snap Right Half", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch centerwindow && hyprctl dispatch resizeactive 50% 0" },
+    { id: "free.snap-top", label: "Snap Top Half", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch centerwindow && hyprctl dispatch resizeactive 0 -50%" },
+    { id: "free.snap-bottom", label: "Snap Bottom Half", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch centerwindow && hyprctl dispatch resizeactive 0 50%" },
+    { id: "free.snap-center", label: "Center Window", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch centerwindow" },
+    { id: "free.snap-maximize", label: "Maximize", category: "Free Layout", dispatcher: "fullscreen", argument: "1" },
+    { id: "free.snap-restore", label: "Restore", category: "Free Layout", dispatcher: "fullscreen", argument: "0" },
+    { id: "free.snap-top-left", label: "Snap Top-Left Quarter", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch movewindow pixel exact 0 0,active && hyprctl dispatch resizeactive 50% 50%" },
+    { id: "free.snap-top-right", label: "Snap Top-Right Quarter", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch movewindow pixel exact 50% 0,active && hyprctl dispatch resizeactive 50% 50%" },
+    { id: "free.snap-bottom-left", label: "Snap Bottom-Left Quarter", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch movewindow pixel exact 0 50%,active && hyprctl dispatch resizeactive 50% 50%" },
+    { id: "free.snap-bottom-right", label: "Snap Bottom-Right Quarter", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch movewindow pixel exact 50% 50%,active && hyprctl dispatch resizeactive 50% 50%" },
+    { id: "free.toggle-tile", label: "Toggle Tile/Float", category: "Free Layout", dispatcher: "togglefloating" },
+    { id: "free.show-desktop", label: "Show Desktop", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch workspaceopt allfloat" },
+    { id: "free.workspace-left", label: "Move Window to Left Monitor", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch movewindow m:-1" },
+    { id: "free.workspace-right", label: "Move Window to Right Monitor", category: "Free Layout", dispatcher: "exec", argument: "hyprctl dispatch movewindow m:+1" },
+
     { id: "media.play-pause", label: "Play/Pause", category: "Media", dispatcher: "exec", argument: "playerctl play-pause" },
     { id: "media.play-pause-locked", label: "Play/Pause (Locked)", category: "Media", dispatcher: "exec", argument: "playerctl play-pause", flags: "l" },
     { id: "media.prev", label: "Previous Track", category: "Media", dispatcher: "exec", argument: "playerctl previous" },
@@ -113,6 +133,7 @@ var ACTION_CATALOG = [
     { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness -5", flags: "le" },
 
     { id: "system.calculator", label: "Calculator", category: "System", dispatcher: "exec", argument: "notify-send \"Soon\"" },
+    { id: "ambxst.lock", label: "Lock Screen", category: "Ambxst", dispatcher: "exec", argument: "ambxst lock" },
     { id: "system.lock", label: "Lock Session", category: "System", dispatcher: "exec", argument: "loginctl lock-session" },
     { id: "system.lock-locked", label: "Lock Session (Locked)", category: "System", dispatcher: "exec", argument: "loginctl lock-session", flags: "l" },
     { id: "system.dpms-off", label: "Display Off", category: "System", dispatcher: "exec", argument: "axctl monitor set-dpms 0 0", flags: "l" },
@@ -252,7 +273,7 @@ function actionFromLegacy(dispatcher, argument, flags) {
     }
     if (dispatcher === "togglespecialworkspace") return { id: "workspace.toggle-special", args: {} };
     if (dispatcher === "movewindow" && flags === "m") return { id: "window.drag", args: {} };
-    if (dispatcher === "resizewindow" && flags === "m") return { id: "window.resize-drag", args: {} };
+    if (dispatcher === "resizeactive" && flags === "m") return { id: "window.resize-drag", args: {} };
     if (dispatcher === "movewindow") return { id: "window.move", args: { direction: arg } };
     if (dispatcher === "movefocus") return { id: "window.focus", args: { direction: arg } };
     if (dispatcher === "resizeactive") return { id: "window.resize", args: { delta: arg } };
@@ -269,6 +290,22 @@ function actionFromLegacy(dispatcher, argument, flags) {
         if (arg.startsWith("swapcol ")) return { id: "scrolling.swap-column", args: { direction: arg.split(" ")[1] } };
         if (arg.startsWith("movecoltoworkspace ")) return { id: "scrolling.move-column-workspace", args: { index: arg.split(" ")[1] } };
     }
+    if (dispatcher === "axctl") {
+        if (arg.startsWith("movesnap ")) {
+            const pos = arg.split(" ")[1] || "";
+            const snapMap = {
+                "left": "free.snap-left", "right": "free.snap-right",
+                "up": "free.snap-top", "down": "free.snap-bottom",
+                "center": "free.snap-center", "maximize": "free.snap-maximize",
+                "restore": "free.snap-restore",
+                "topleft": "free.snap-top-left", "topright": "free.snap-top-right",
+                "bottomleft": "free.snap-bottom-left", "bottomright": "free.snap-bottom-right",
+            };
+            const id = snapMap[pos];
+            if (id) return { id: id, args: {} };
+        }
+        return { id: "command.run", args: { command: arg } };
+    }
     if (dispatcher === "exec") {
         if (arg === "playerctl play-pause" && flags === "l") return { id: "media.play-pause-locked", args: {} };
         if (arg === "playerctl play-pause") return { id: "media.play-pause", args: {} };
@@ -281,6 +318,7 @@ function actionFromLegacy(dispatcher, argument, flags) {
         if (arg.indexOf("ambxst brightness +5") === 0) return { id: "brightness.up", args: {} };
         if (arg.indexOf("ambxst brightness -5") === 0) return { id: "brightness.down", args: {} };
         if (arg === "notify-send \"Soon\"") return { id: "system.calculator", args: {} };
+        if (arg === "ambxst lock") return { id: "ambxst.lock", args: {} };
         if (arg === "loginctl lock-session" && flags === "l") return { id: "system.lock-locked", args: {} };
         if (arg === "loginctl lock-session") return { id: "system.lock", args: {} };
         if (arg === "axctl monitor set-dpms 0 0") return { id: "system.dpms-off", args: {} };

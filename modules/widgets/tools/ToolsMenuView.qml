@@ -2,24 +2,27 @@ import QtQuick
 import qs.modules.components
 import qs.modules.services
 import qs.config
+import qs.modules.theme
 
 Item {
     implicitWidth: toolsMenu.implicitWidth
     implicitHeight: toolsMenu.implicitHeight
 
     Behavior on implicitWidth {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
     Behavior on implicitHeight {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 

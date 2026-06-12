@@ -1,4 +1,10 @@
 #version 440
+
+#ifdef GL_ES
+precision highp float;
+precision mediump int;
+#endif
+
 layout(location = 0) in vec2 qt_TexCoord0;
 layout(location = 0) out vec4 fragColor;
 
@@ -8,7 +14,9 @@ layout(binding = 2) uniform sampler2D paletteTexture;
 layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
-    float paletteSize;
+    int paletteSize;
+    float sharpness;
+    float mixStrength;
     float texWidth;
     float texHeight;
 } ubuf;
@@ -16,39 +24,41 @@ layout(std140, binding = 0) uniform buf {
 void main() {
     vec4 tex = texture(source, qt_TexCoord0);
     vec3 color = tex.rgb;
-
-    vec3 accumulatedColor = vec3(0.0);
-    float totalWeight = 0.0;
     
-    int size = int(ubuf.paletteSize);
+    if (tex.a < 0.001) {
+        fragColor = vec4(0.0);
+        return;
+    }
     
-    // "Sharpness" factor. 
-    // Higher value = colors stick closer to the palette (more posterized).
-    // Lower value = colors blend more (more washed out/grey).
-    // 15.0 - 20.0 is a good sweet spot for keeping identity while allowing gradients.
-    float distributionSharpness = 20.0; 
-
-    for (int i = 0; i < 128; i++) {
+    int size = ubuf.paletteSize;
+    if (size <= 0 || ubuf.mixStrength <= 0.0) {
+        fragColor = tex * ubuf.qt_Opacity;
+        return;
+    }
+    
+    mediump vec3 accum = vec3(0.0);
+    mediump float sumW = 0.0;
+    
+    const float invLn2 = 1.44269504;
+    float sharpness = ubuf.sharpness;
+    
+    // Loop bound = 32 (max palette size is 26, gives margin)
+    // Previously 128 — the GLSL compiler would unroll ALL 128 iterations
+    // wasting GPU cycles on break checks. 32 fits in 1-2 warp/wavefront.
+    for (int i = 0; i < 32; ++i) {
         if (i >= size) break;
         
-        float u = (float(i) + 0.5) / ubuf.paletteSize;
-        vec3 pColor = texture(paletteTexture, vec2(u, 0.5)).rgb;
-        
+        vec3 pColor = texelFetch(paletteTexture, ivec2(i, 0), 0).rgb;
         vec3 diff = color - pColor;
-        // Euclidean squared distance
-        float distSq = dot(diff, diff); 
+        mediump float distSq = dot(diff, diff);
+        mediump float w = exp2(-sharpness * distSq * invLn2);
         
-        // Gaussian Weighting function: e^(-k * d^2)
-        // This creates a smooth bell curve of influence around each palette color.
-        float weight = exp(-distributionSharpness * distSq);
-        
-        accumulatedColor += pColor * weight;
-        totalWeight += weight;
+        accum += pColor * w;
+        sumW  += w;
     }
-
-    // Normalize
-    vec3 finalColor = accumulatedColor / (totalWeight + 0.00001); // Avoid div by zero
-
-    // Pre-multiply alpha for proper blending in Qt Quick
-    fragColor = vec4(finalColor * tex.a, tex.a) * ubuf.qt_Opacity;
+    
+    vec3 finalColor = accum / (sumW + 1e-5);
+    vec3 mixed = mix(color, finalColor, ubuf.mixStrength);
+    
+    fragColor = vec4(mixed * tex.a, tex.a) * ubuf.qt_Opacity;
 }

@@ -2,6 +2,7 @@ import QtQuick
 import qs.modules.widgets.overview
 import qs.modules.services
 import qs.modules.globals
+import qs.modules.theme
 import qs.config
 
 Item {
@@ -10,9 +11,6 @@ Item {
 
     // Detect if we're in scrolling layout mode
     readonly property bool isScrollingLayout: GlobalStates.compositorLayout === "scrolling"
-
-    implicitWidth: overviewLoader.item ? overviewLoader.item.implicitWidth : 400
-    implicitHeight: overviewLoader.item ? overviewLoader.item.implicitHeight : 300
 
     // Expose flickable and scrollbar needs for scrolling mode
     readonly property var flickable: isScrollingLayout && overviewLoader.item ? overviewLoader.item.flickable : null
@@ -26,29 +24,48 @@ Item {
         }
     }
 
-    Behavior on implicitWidth {
-        enabled: Config.animDuration > 0
-        NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
-        }
-    }
-
-    Behavior on implicitHeight {
-        enabled: Config.animDuration > 0
-        NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
-        }
-    }
-
     // Dynamic loader for the appropriate overview component
     Loader {
         id: overviewLoader
-        anchors.centerIn: parent
+        anchors.fill: parent
         active: true
-        
+        asynchronous: true
+
         sourceComponent: isScrollingLayout ? scrollingOverviewComponent : standardOverviewComponent
+
+        opacity: status === Loader.Ready ? 1 : 0
+
+        Behavior on opacity {
+            enabled: Anim.animationsEnabled
+            NumberAnimation {
+                duration: Anim.standardNormal
+                easing.type: Anim.easing("decelerate").type
+                easing.bezierCurve: Anim.easing("decelerate").bezierCurve
+            }
+        }
+
+        scale: status === Loader.Ready ? 1 : 0.92
+
+        Behavior on scale {
+            enabled: Anim.animationsEnabled
+            NumberAnimation {
+                duration: Anim.emphasizedNormal
+                easing.type: Anim.springSnappy().type
+                easing.bezierCurve: Anim.springSnappy().bezierCurve
+            }
+        }
+
+        transform: Translate {
+            y: overviewLoader.status === Loader.Ready ? 0 : 24
+            Behavior on y {
+                enabled: Anim.animationsEnabled
+                NumberAnimation {
+                    duration: Anim.emphasizedNormal
+                    easing.type: Anim.springSnappy().type
+                    easing.bezierCurve: Anim.springSnappy().bezierCurve
+                }
+            }
+        }
     }
 
     // Standard grid overview
@@ -86,43 +103,6 @@ Item {
             Component.onCompleted: {
                 forceActiveFocus();
             }
-        }
-    }
-
-    // Expose search-related properties for parent components (read from child)
-    readonly property var matchingWindows: overviewLoader.item ? overviewLoader.item.matchingWindows : []
-    readonly property int selectedMatchIndex: overviewLoader.item ? overviewLoader.item.selectedMatchIndex : 0
-
-    // Search query - writable, synced to child
-    property string searchQuery: ""
-    onSearchQueryChanged: {
-        if (overviewLoader.item) {
-            overviewLoader.item.searchQuery = searchQuery;
-        }
-    }
-
-    function resetSearch() {
-        searchQuery = "";
-        if (overviewLoader.item && overviewLoader.item.resetSearch) {
-            overviewLoader.item.resetSearch();
-        }
-    }
-
-    function navigateToSelectedWindow() {
-        if (overviewLoader.item && overviewLoader.item.navigateToSelectedWindow) {
-            overviewLoader.item.navigateToSelectedWindow();
-        }
-    }
-
-    function selectNextMatch() {
-        if (overviewLoader.item && overviewLoader.item.selectNextMatch) {
-            overviewLoader.item.selectNextMatch();
-        }
-    }
-
-    function selectPrevMatch() {
-        if (overviewLoader.item && overviewLoader.item.selectPrevMatch) {
-            overviewLoader.item.selectPrevMatch();
         }
     }
 }

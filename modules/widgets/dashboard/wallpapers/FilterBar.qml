@@ -151,8 +151,9 @@ FocusScope {
         // Animación suave para el scroll programático
         NumberAnimation on contentX {
             id: scrollAnimation
-            duration: Config.animDuration / 2
-            easing.type: Easing.OutQuart
+            duration: Anim.standardSmall
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
 
         // Modelo de filtros
@@ -271,19 +272,21 @@ FocusScope {
                                     opacity: isActive ? 1 : 0
 
                                     Behavior on opacity {
-                                        enabled: Config.animDuration > 0
+                                        enabled: Anim.animationsEnabled
                                         NumberAnimation {
-                                            duration: Config.animDuration / 3
-                                            easing.type: Easing.OutCubic
+                                            duration: Anim.standardSmall
+                                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                         }
                                     }
                                 }
 
                                 Behavior on width {
-                                    enabled: Config.animDuration > 0
+                                    enabled: Anim.animationsEnabled
                                     NumberAnimation {
-                                        duration: Config.animDuration / 3
-                                        easing.type: Easing.OutCubic
+                                        duration: Anim.standardSmall
+                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                     }
                                 }
                             }
@@ -296,10 +299,11 @@ FocusScope {
                                 color: filterTag.item
 
                                 Behavior on color {
-                                    enabled: Config.animDuration > 0
+                                    enabled: Anim.animationsEnabled
                                     ColorAnimation {
-                                        duration: Config.animDuration / 3
-                                        easing.type: Easing.OutCubic
+                                        duration: Anim.standardSmall
+                                        easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                     }
                                 }
                             }
@@ -330,10 +334,11 @@ FocusScope {
                     }
 
                     Behavior on width {
-                        enabled: Config.animDuration > 0
+                        enabled: Anim.animationsEnabled
                         NumberAnimation {
-                            duration: Config.animDuration / 3
-                            easing.type: Easing.OutCubic
+                            duration: Anim.standardSmall
+                            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                         }
                     }
                 }

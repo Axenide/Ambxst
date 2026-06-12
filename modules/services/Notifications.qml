@@ -138,10 +138,44 @@ Singleton {
 
     property bool silent: false
     property list<Notif> list: []
-    property var popupList: list.filter(notif => notif.popup)
+
+    // Muted apps — their notifications won't show popups or add to history
+    property var mutedApps: StateService.get("mutedApps", [])
+
+    // Filtered lists (excluding muted apps)
+    property var popupList: list.filter(notif => notif.popup && !root.isMuted(notif.appName))
+    property var visibleNotifications: list.filter(notif => !root.isMuted(notif.appName))
+
     property bool popupInhibited: silent
     property var latestTimeForApp: ({})
     property var totalCounts: ({})  // Conteo total independiente del almacenamiento: {appName: {summary: count}}
+
+    function isMuted(appName) {
+        if (!appName || !root.mutedApps || root.mutedApps.length === 0) return false;
+        return root.mutedApps.indexOf(appName) >= 0;
+    }
+
+    function muteApp(appName) {
+        if (!appName || root.isMuted(appName)) return;
+        root.mutedApps = root.mutedApps.concat([appName]);
+        StateService.set("mutedApps", root.mutedApps);
+        console.log("Muted app:", appName);
+    }
+
+    function unmuteApp(appName) {
+        if (!appName) return;
+        root.mutedApps = root.mutedApps.filter(a => a !== appName);
+        StateService.set("mutedApps", root.mutedApps);
+        console.log("Unmuted app:", appName);
+    }
+
+    function toggleMuteApp(appName) {
+        if (root.isMuted(appName)) {
+            root.unmuteApp(appName);
+        } else {
+            root.muteApp(appName);
+        }
+    }
 
     Component {
         id: notifComponent

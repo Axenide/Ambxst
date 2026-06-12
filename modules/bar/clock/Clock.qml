@@ -59,9 +59,9 @@ Item {
             radius: parent.radius ?? 0
 
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
         }
@@ -637,8 +637,12 @@ Item {
         scheduleNextDayUpdate();
     }
 
+    // ⚡ Adaptive timer: 30s idle vs 1s when popup is open.
+    // The display format is hh:mm (no seconds), so 30s is sufficient
+    // to catch minute transitions. When the user is looking at the
+    // clock popup, we poll every second for responsive updates.
     Timer {
-        interval: 1000
+        interval: root.popupOpen ? 1000 : 30000
         running: !SuspendManager.isSuspending
         repeat: true
         onTriggered: {

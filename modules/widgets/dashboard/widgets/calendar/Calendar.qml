@@ -9,23 +9,15 @@ Item {
     id: root
 
     property int monthShift: 0
-    property date currentDate: new Date()
-    property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift, currentDate)
+    property var viewingDate: CalendarLayout.getDateInXMonthsTime(monthShift)
     property var calendarLayoutData: CalendarLayout.getCalendarLayout(viewingDate, monthShift === 0)
     property var calendarLayout: calendarLayoutData.calendar
     property int currentWeekRow: calendarLayoutData.currentWeekRow
     property int currentDayOfWeek: {
         if (monthShift !== 0)
             return -1;
-        return (currentDate.getDay() + 6) % 7;
-    }
-
-    Timer {
-        interval: 60000
-        running: true
-        repeat: true
-        triggeredOnStart: true
-        onTriggered: root.currentDate = new Date()
+        var now = new Date();
+        return (now.getDay() + 6) % 7;
     }
 
     // Helper function to get localized day abbreviation

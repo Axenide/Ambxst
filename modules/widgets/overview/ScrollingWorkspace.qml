@@ -20,7 +20,7 @@ Item {
     required property real workspaceWidth
     required property real workspaceHeight
     required property real workspacePadding
-    required property real scale_
+    property real scale_: 0  // legacy, no longer used (uniformScale is computed from monitor+viewport)
     required property int monitorId
     required property var monitorData
     required property string barPosition
@@ -50,43 +50,57 @@ Item {
     readonly property real viewportWidth: workspaceWidth / 3
     readonly property real viewportOffset: viewportWidth  // Offset to center third
 
-    // Filter windows for this workspace and monitor
+    // Filter windows for this workspace and monitor.
+    // Defensive: if workspace or monitor metadata is missing, still show the window.
     readonly property var workspaceWindows: {
         return windowList.filter(win => {
-            return (win && win.workspace ? win.workspace.id : null) === workspaceId && win.monitor === monitorId;
+            if (!win) return false;
+            const wsOk = win.workspace?.id === workspaceId || win.workspace?.id === undefined;
+            const monOk = monitorId < 0 || win.monitor === undefined || win.monitor === monitorId;
+            return wsOk && monOk;
         });
     }
 
-    // Calculate content bounds based on actual window positions
-    // Windows are positioned relative to monitor, scaled, then offset by viewportOffset
+    // Monitor effective dimensions for bounds calculation
+    readonly property real monitorEffW: {
+        const md = root.monitorData;
+        if (!md) return 1920;
+        const ro = (md.transform % 2 === 1);
+        const mw = ro ? (md.height || 1080) : (md.width || 1920);
+        return mw > 0 ? mw : 1920;
+    }
+    readonly property real monitorEffH: {
+        const md = root.monitorData;
+        if (!md) return 1080;
+        const ro = (md.transform % 2 === 1);
+        const mh = ro ? (md.width || 1920) : (md.height || 1080);
+        return mh > 0 ? mh : 1080;
+    }
+
+    // ── Pure proportion-based content bounds ──
     readonly property var contentBounds: {
         if (workspaceWindows.length === 0) {
-            return {
-                minX: 0,
-                maxX: 0,
-                hasOverflow: false
-            };
+            return { minX: 0, maxX: 0, hasOverflow: false };
         }
 
-        let minX = Infinity;
-        let maxX = -Infinity;
+        const gutter = 0.02;
+        const evpw = root.viewportWidth * (1 - gutter);
+        let minX = Infinity, maxX = -Infinity;
 
         for (const win of workspaceWindows) {
-            // Calculate window position the same way as in the delegate
-            let baseX = ((win && win.at && win.at[0] !== undefined ? win.at[0] : 0) || 0) - ((monitorData && monitorData.x !== undefined ? monitorData.x : 0) || 0);
-            if (barPosition === "left")
-                baseX -= barReserved;
-            const scaledX = baseX * scale_;
-            const winWidth = ((win && win.size && win.size[0] !== undefined ? win.size[0] : 100) || 100) * scale_;
+            const mx = (monitorData && monitorData.x !== undefined ? monitorData.x : 0) || 0;
+            let baseX = ((win && win.at && win.at[0] !== undefined ? win.at[0] : 0) || 0) - mx;
+            if (barPosition === "left") baseX -= barReserved;
+            const relX = Math.max(0, Math.min(1, baseX / root.monitorEffW));
+            const wSize = (win && win.size && win.size[0] !== undefined ? win.size[0] : 0) || 0;
+            const relW = wSize > 200 ? Math.max(0.05, Math.min(1, wSize / root.monitorEffW)) : 0.85;
+            const scaledX = relX * evpw + root.viewportWidth * gutter / 2 + root.viewportOffset;
+            const winWidth = relW * evpw;
 
             minX = Math.min(minX, scaledX);
             maxX = Math.max(maxX, scaledX + winWidth);
         }
 
-        // The full workspace width is 3x viewport (workspaceWidth = viewportWidth * 3)
-        // Content in local coords spans from minX to maxX
-        // The full scrollable area in local coords is [-viewportWidth, 2*viewportWidth]
-        // Overflow exists only if content extends beyond the full workspace width
         const hasOverflow = minX < -viewportWidth || maxX > (viewportWidth * 2);
 
         return {
@@ -124,6 +138,17 @@ Item {
         onTriggered: root.isWheelScrolling = false
     }
 
+    // Timer to wait for axctl to process the move before refreshing window data
+    Timer {
+        id: delayedRefreshTimer
+        interval: 200
+        onTriggered: {
+            if (typeof CompositorData !== "undefined") {
+                CompositorData.refreshFromHyprctl();
+            }
+        }
+    }
+
     // Reset scroll when windows change (added, removed, or moved)
     onWorkspaceWindowsChanged: resetScroll()
     onContentBoundsChanged: {
@@ -138,10 +163,11 @@ Item {
     }
 
     Behavior on horizontalScrollOffset {
-        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && !root.isScrollDragging && !root.isWheelScrolling
+        enabled: Anim.animationsEnabled && !root.isScrollDragging && !root.isWheelScrolling
         NumberAnimation {
-            duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-            easing.type: Easing.OutQuart
+            duration: Anim.spatialFast
+            easing.type: Anim.easing("spatial").type
+            easing.bezierCurve: Anim.easing("spatial").bezierCurve
         }
     }
 
@@ -184,6 +210,18 @@ Item {
                 color: Colors.background
                 opacity: 0.3
             }
+
+            // Workspace number label
+            Text {
+                anchors.centerIn: parent
+                text: String(root.workspaceId)
+                font.family: Config.theme.font
+                font.pixelSize: Math.max(24, Math.round(workspaceHeight * 0.15))
+                font.bold: true
+                color: Colors.onSurface
+                opacity: 0.5
+                z: 5
+            }
         }
 
         // Border indicator for drag target
@@ -201,6 +239,7 @@ Item {
             id: windowsContainer
             anchors.fill: parent
             anchors.margins: root.workspacePadding
+            clip: true
 
             // Horizontal scroll handler - right-click drag
             MouseArea {
@@ -266,7 +305,10 @@ Item {
             TapHandler {
                 acceptedButtons: Qt.LeftButton
                 onDoubleTapped: {
-                    AxctlService.dispatch(`workspace ${root.workspaceId}`);
+                    if (root.overviewRoot && root.overviewRoot.wsProcess) {
+                        root.overviewRoot.wsProcess.command = ["hyprctl", "dispatch", "workspace", String(root.workspaceId)];
+                        root.overviewRoot.wsProcess.running = true;
+                    }
                     Visibilities.setActiveModule("", true);
                 }
             }
@@ -284,8 +326,16 @@ Item {
                         const cls = windowData.class || "";
                         if (!cls) return null;
                         const candidates = toplevels.filter(t => t.appId === cls);
-                        if (candidates.length <= 1) return candidates[0] || null;
-                        return candidates.find(t => t.title === (windowData.title || "")) || candidates[0];
+                        if (candidates.length === 0) return null;
+                        // Try exact title match first
+                        const titleMatch = candidates.find(t => t.title === (windowData.title || ""));
+                        if (titleMatch) return titleMatch;
+                        // Try partial title match
+                        const wt = (windowData.title || "").toLowerCase();
+                        const partial = candidates.find(t => { const tt = (t.title || "").toLowerCase(); return wt.includes(tt) || tt.includes(wt); });
+                        if (partial) return partial;
+                        // Return null to avoid same-class windows sharing a toplevel
+                        return null;
                     }
 
                     // Override position tracking for immediate visual update
@@ -293,25 +343,111 @@ Item {
                     property real overrideBaseY: -1
                     property bool useOverridePosition: false
 
-                    // Position calculations relative to center viewport
+                    readonly property real viewportWidth: root.viewportWidth
+                    readonly property real viewportHeight: root.workspaceHeight - root.workspacePadding * 2
+
+                    // ── Pure proportion-based coordinates (0.0..1.0) ──
+                    readonly property real gutter: 0.02
+                    readonly property real effectiveVpW: viewportWidth * (1 - gutter)
+                    readonly property real effectiveVpH: viewportHeight * (1 - gutter)
+
+                    readonly property real relX: {
+                        const mx = monitorData?.x ?? 0;
+                        let base = (windowData?.at?.[0] ?? 0) - mx;
+                        if (barPosition === "left") base -= barReserved;
+                        return Math.max(0, Math.min(1, root.monitorEffW > 0 ? base / root.monitorEffW : 0));
+                    }
+                    readonly property real relY: {
+                        const my = monitorData?.y ?? 0;
+                        let base = (windowData?.at?.[1] ?? 0) - my;
+                        if (barPosition === "top") base -= barReserved;
+                        return Math.max(0, Math.min(1, root.monitorEffH > 0 ? base / root.monitorEffH : 0));
+                    }
+                    readonly property real relW: {
+                        var w = windowData?.size?.[0] ?? 0;
+                        return w > 200 && root.monitorEffW > 0
+                            ? Math.max(0.05, Math.min(1, w / root.monitorEffW))
+                            : 0.85;
+                    }
+                    readonly property real relH: {
+                        var h = windowData?.size?.[1] ?? 0;
+                        return h > 200 && root.monitorEffH > 0
+                            ? Math.max(0.05, Math.min(1, h / root.monitorEffH))
+                            : 0.85;
+                    }
+                    // Fill dimensions: extend to neighbor without overlapping.
+                    // Must match the same coordinate system as relX/relY
+                    // (bar-adjusted, rotation-aware) for consistency.
+                    readonly property real fillW: {
+                        var neighbors = root.workspaceWindows;
+                        if (!neighbors || neighbors.length <= 1) return relW;
+                        var mx = monitorData?.x ?? 0;
+                        var my = monitorData?.y ?? 0;
+                        var ax = (windowData?.at?.[0] ?? 0) - mx;
+                        var ay = (windowData?.at?.[1] ?? 0) - my;
+                        if (barPosition === "left") ax -= barReserved;
+                        if (barPosition === "top") ay -= barReserved;
+                        var aw = windowData?.size?.[0] ?? root.monitorEffW;
+                        var ah = windowData?.size?.[1] ?? root.monitorEffH;
+                        var limit = root.monitorEffW - (barPosition === "left" || barPosition === "right" ? barReserved : 0);
+                        for (var n = 0; n < neighbors.length; n++) {
+                            var nb = neighbors[n];
+                            if (!nb || nb.address === (windowData?.address ?? "")) continue;
+                            var bx = (nb.at?.[0] ?? 0) - mx;
+                            var by = (nb.at?.[1] ?? 0) - my;
+                            if (barPosition === "left") bx -= barReserved;
+                            if (barPosition === "top") by -= barReserved;
+                            var bw = nb.size?.[0] ?? root.monitorEffW;
+                            var bh = nb.size?.[1] ?? root.monitorEffH;
+                            var nbContained = (bx >= ax && by >= ay && bx + bw <= ax + aw && by + bh <= ay + ah);
+                            if (!nbContained && bx > ax && by < ay + ah && by + bh > ay)
+                                limit = Math.min(limit, bx);
+                        }
+                        var effW = root.monitorEffW - (barPosition === "left" || barPosition === "right" ? barReserved : 0);
+                        var neighborW = effW > 0 ? (limit - ax) / effW : 1;
+                        return Math.max(relW, Math.max(0.05, Math.min(1, neighborW)));
+                    }
+                    readonly property real fillH: {
+                        var neighbors = root.workspaceWindows;
+                        if (!neighbors || neighbors.length <= 1) return relH;
+                        var mx = monitorData?.x ?? 0;
+                        var my = monitorData?.y ?? 0;
+                        var ax = (windowData?.at?.[0] ?? 0) - mx;
+                        var ay = (windowData?.at?.[1] ?? 0) - my;
+                        if (barPosition === "left") ax -= barReserved;
+                        if (barPosition === "top") ay -= barReserved;
+                        var aw = windowData?.size?.[0] ?? root.monitorEffW;
+                        var ah = windowData?.size?.[1] ?? root.monitorEffH;
+                        var limit = root.monitorEffH - (barPosition === "top" || barPosition === "bottom" ? barReserved : 0);
+                        for (var n = 0; n < neighbors.length; n++) {
+                            var nb = neighbors[n];
+                            if (!nb || nb.address === (windowData?.address ?? "")) continue;
+                            var bx = (nb.at?.[0] ?? 0) - mx;
+                            var by = (nb.at?.[1] ?? 0) - my;
+                            if (barPosition === "left") bx -= barReserved;
+                            if (barPosition === "top") by -= barReserved;
+                            var bw = nb.size?.[0] ?? root.monitorEffW;
+                            var bh = nb.size?.[1] ?? root.monitorEffH;
+                            var nbContained = (bx >= ax && by >= ay && bx + bw <= ax + aw && by + bh <= ay + ah);
+                            if (!nbContained && by > ay && bx < ax + aw && bx + bw > ax)
+                                limit = Math.min(limit, by);
+                        }
+                        var effH = root.monitorEffH - (barPosition === "top" || barPosition === "bottom" ? barReserved : 0);
+                        var neighborH = effH > 0 ? (limit - ay) / effH : 1;
+                        return Math.max(relH, Math.max(0.05, Math.min(1, neighborH)));
+                    }
+
                     readonly property real baseX: {
-                        if (useOverridePosition && overrideBaseX >= 0)
-                            return overrideBaseX;
-                        let base = ((windowData && windowData.at && windowData.at[0] !== undefined ? windowData.at[0] : 0) || 0) - ((monitorData && monitorData.x !== undefined ? monitorData.x : 0) || 0);
-                        if (barPosition === "left")
-                            base -= barReserved;
-                        return (base * scale_) + root.viewportOffset + root.horizontalScrollOffset;
+                        if (useOverridePosition && overrideBaseX >= 0) return overrideBaseX;
+                        return Math.round(relX * effectiveVpW + viewportWidth * gutter / 2 + root.viewportOffset + root.horizontalScrollOffset);
                     }
                     readonly property real baseY: {
-                        if (useOverridePosition && overrideBaseY >= 0)
-                            return overrideBaseY;
-                        let base = ((windowData && windowData.at && windowData.at[1] !== undefined ? windowData.at[1] : 0) || 0) - ((monitorData && monitorData.y !== undefined ? monitorData.y : 0) || 0);
-                        if (barPosition === "top")
-                            base -= barReserved;
-                        return Math.max(base * scale_, 0);
+                        if (useOverridePosition && overrideBaseY >= 0) return overrideBaseY;
+                        return Math.round(relY * effectiveVpH + viewportHeight * gutter / 2);
                     }
-                    readonly property real targetWidth: Math.round(((windowData && windowData.size && windowData.size[0] !== undefined ? windowData.size[0] : 100) || 100) * scale_)
-                    readonly property real targetHeight: Math.round(((windowData && windowData.size && windowData.size[1] !== undefined ? windowData.size[1] : 100) || 100) * scale_)
+
+                    readonly property real targetWidth: Math.max(24, Math.round(fillW * effectiveVpW))
+                    readonly property real targetHeight: Math.max(24, Math.round(fillH * effectiveVpH))
                     readonly property bool compactMode: targetHeight < 60 || targetWidth < 60
                     readonly property string iconPath: AppSearch.guessIcon((windowData && windowData.class !== undefined ? windowData.class : "") || "")
                     readonly property int calculatedRadius: Styling.radius(-2)
@@ -332,10 +468,33 @@ Item {
                     property point pressPos: Qt.point(0, 0)
                     readonly property real dragThreshold: 5
 
-                    Drag.active: dragging
-                    Drag.source: windowDelegate
-                    Drag.hotSpot.x: width / 2
-                    Drag.hotSpot.y: height / 2
+                    // Entry / hover / close animations
+                    property bool _entered: false
+                    property bool _closing: false
+                    Component.onCompleted: _entered = true
+
+                    readonly property real hoverScale: !dragging && hovered && !_closing ? 1.03 : 1.0
+                    scale: _closing ? 0.3 : (_entered ? hoverScale : 0.85)
+
+                    Behavior on scale {
+                        enabled: Anim.animationsEnabled
+                        NumberAnimation {
+                            property var _ease: _closing ? Anim.easing("emphasized", "exit") : Anim.easing("emphasized")
+                            duration: _closing ? Anim.standardSmall : Anim.standardNormal
+                            easing.type: _ease.type
+                            easing.bezierCurve: _ease.bezierCurve
+                        }
+                    }
+
+                    opacity: _closing ? 0.0 : (_entered ? 1.0 : 0.0)
+                    Behavior on opacity {
+                        enabled: Anim.animationsEnabled
+                        NumberAnimation {
+                            duration: _closing ? Anim.standardSmall : Anim.standardNormal
+                            easing.type: Anim.easing("standard").type
+                            easing.bezierCurve: Anim.easing("standard").bezierCurve
+                        }
+                    }
 
                     // Timer to reset override position after AxctlService update
                     Timer {
@@ -353,161 +512,168 @@ Item {
                         }
                     }
 
-                    Behavior on x {
-                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && !windowDelegate.dragging && !windowDelegate.useOverridePosition
-                        NumberAnimation {
-                            duration: (Config.animDuration !== undefined ? Config.animDuration : 0)
-                            easing.type: Easing.OutQuart
-                        }
-                    }
-                    Behavior on y {
-                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && !windowDelegate.dragging && !windowDelegate.useOverridePosition
-                        NumberAnimation {
-                            duration: (Config.animDuration !== undefined ? Config.animDuration : 0)
-                            easing.type: Easing.OutQuart
-                        }
-                    }
+                    // ═══════════════════════════════════════════════════
+                    // VISUAL: Clean dark card, no white background
+                    // ═══════════════════════════════════════════════════
 
+                    // ── Live window preview: render at source size, Scale to fill card ──
                     ClippingRectangle {
+                        id: swClipRect
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
                         antialiasing: true
                         color: "transparent"
-                        border.color: Colors.background
+                        border.color: "transparent"
                         border.width: 0
 
                         ScreencopyView {
                             id: windowPreview
-                            anchors.fill: parent
+                            width: Math.max(1, (windowData && windowData.size && windowData.size[0] !== undefined ? windowData.size[0] : 0) || 640)
+                            height: Math.max(1, (windowData && windowData.size && windowData.size[1] !== undefined ? windowData.size[1] : 0) || 480)
                             captureSource: Config.performance.windowPreview && GlobalStates.overviewOpen ? windowDelegate.toplevel : null
                             live: GlobalStates.overviewOpen
                             visible: Config.performance.windowPreview
-                        }
-                    }
 
-                    // Background when no preview
-                    Rectangle {
-                        id: previewBackground
-                        anchors.fill: parent
-                        radius: windowDelegate.calculatedRadius
-                        color: windowDelegate.dragging ? Colors.surfaceBright : windowDelegate.hovered ? Colors.surface : Colors.background
-                        border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
-                        border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
-                        visible: !Config.performance.windowPreview
-
-                        Behavior on color {
-                            enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                            ColorAnimation {
-                                duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
+                            transform: Scale {
+                                origin.x: 0; origin.y: 0
+                                xScale: swClipRect.width / windowPreview.width
+                                yScale: swClipRect.height / windowPreview.height
                             }
                         }
                     }
 
-                    // Icon
+                    // ── Dark fallback card ──
+                    Rectangle {
+                        id: fallbackCard
+                        anchors.fill: parent
+                        radius: windowDelegate.calculatedRadius
+                        color: Qt.rgba(Colors.surfaceContainer.r, Colors.surfaceContainer.g, Colors.surfaceContainer.b, 0.35)
+                        visible: !windowPreview.hasContent || !Config.performance.windowPreview
+                        border.color: windowDelegate.isSelected ? Colors.tertiary
+                            : windowDelegate.isMatched ? Styling.srItem("overprimary")
+                            : windowDelegate.hovered ? Qt.rgba(Colors.onSurface.r, Colors.onSurface.g, Colors.onSurface.b, 0.25)
+                            : Qt.rgba(Colors.onSurface.r, Colors.onSurface.g, Colors.onSurface.b, 0.10)
+                        border.width: windowDelegate.isSelected ? 2 : windowDelegate.isMatched ? 2 : 1
+                        Behavior on border.color {
+                            enabled: Anim.animationsEnabled
+                            ColorAnimation { duration: Anim.standardSmall }
+                        }
+                    }
+
+                    // ── App icon ──
                     Image {
                         mipmap: true
                         id: windowIcon
-                        readonly property real iconSize: Math.round(Math.min(windowDelegate.targetWidth, windowDelegate.targetHeight) * (windowDelegate.compactMode ? 0.6 : 0.35))
+                        readonly property real iconSize: Math.round(Math.min(windowDelegate.targetWidth, windowDelegate.targetHeight) * (windowDelegate.compactMode ? 0.55 : 0.30))
                         anchors.centerIn: parent
                         width: iconSize
                         height: iconSize
                         source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
                         sourceSize: Qt.size(iconSize, iconSize)
                         asynchronous: true
-                        visible: !Config.performance.windowPreview
-                        z: 10
+                        visible: !windowPreview.hasContent || !Config.performance.windowPreview
+                        opacity: 0.7
+                        z: 2
                     }
 
-                    // Overlay when preview is available (only show on interaction)
+                    // ── Hover / selection border ──
                     Rectangle {
-                        id: previewOverlay
+                        id: borderOverlay
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
-                        color: windowDelegate.dragging ? Qt.rgba(Colors.surfaceContainerHighest.r, Colors.surfaceContainerHighest.g, Colors.surfaceContainerHighest.b, 0.5) : windowDelegate.hovered ? Qt.rgba(Colors.surfaceContainer.r, Colors.surfaceContainer.g, Colors.surfaceContainer.b, 0.2) : "transparent"
-                        border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
+                        color: "transparent"
+                        border.color: windowDelegate.isSelected ? Colors.tertiary
+                            : windowDelegate.isMatched ? Styling.srItem("overprimary")
+                            : windowDelegate.hovered ? Styling.srItem("overprimary")
+                            : "transparent"
                         border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
-                        visible: Config.performance.windowPreview && (windowDelegate.hovered || windowDelegate.dragging || windowDelegate.isMatched || windowDelegate.isSelected)
-                        z: 5
+                        z: 3
+                        Behavior on border.color {
+                            enabled: Anim.animationsEnabled
+                            ColorAnimation { duration: Anim.standardSmall }
+                        }
+                        Behavior on border.width {
+                            enabled: Anim.animationsEnabled
+                            NumberAnimation {
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                                easing.bezierCurve: Anim.easing("standard").bezierCurve
+                            }
+                        }
                     }
 
-                    // Corner icon when preview available
+                    // ── Hover tint ──
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: windowDelegate.calculatedRadius
+                        color: windowDelegate.dragging ? Qt.rgba(1, 1, 1, 0.10) : windowDelegate.hovered ? Qt.rgba(1, 1, 1, 0.05) : "transparent"
+                        z: 1
+                        Behavior on color {
+                            enabled: Anim.animationsEnabled
+                            ColorAnimation { duration: Anim.standardSmall }
+                        }
+                    }
+
+                    // ── Corner icon (when preview active) ──
                     Image {
                         mipmap: true
                         visible: windowPreview.hasContent && !windowDelegate.compactMode && Config.performance.windowPreview
                         anchors.bottom: parent.bottom
                         anchors.right: parent.right
-                        anchors.margins: 4
-                        width: 16
-                        height: 16
+                        anchors.margins: 3
+                        width: 14
+                        height: 14
                         source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
-                        sourceSize: Qt.size(16, 16)
+                        sourceSize: Qt.size(14, 14)
                         asynchronous: true
-                        opacity: 0.8
-                        z: 10
+                        opacity: 0.6
+                        z: 4
                     }
 
-                    // XWayland indicator
+                    // ── XWayland indicator ──
                     Rectangle {
                         visible: (windowDelegate.windowData && windowDelegate.windowData.xwayland !== undefined ? windowDelegate.windowData.xwayland : false) || false
                         anchors.top: parent.top
                         anchors.right: parent.right
                         anchors.margins: 2
-                        width: 6
-                        height: 6
+                        width: 5
+                        height: 5
                         radius: 3
                         color: Colors.error
-                        z: 10
+                        z: 4
                     }
 
+                    // ═══════════════════════════════════════════════════════
+                    // RIGHT-CLICK DRAG TO MOVE WINDOW BETWEEN WORKSPACES
+                    // Left clicks pass through to workspace cells below.
+                    // ═══════════════════════════════════════════════════════
                     MouseArea {
                         id: dragArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        acceptedButtons: Qt.LeftButton | Qt.MiddleButton | Qt.RightButton
-                        drag.target: windowDelegate.dragging ? windowDelegate : null
-                        drag.threshold: 0
-
-                        // Right-click drag state for horizontal scroll
-                        property real rightDragStartX: 0
-                        property real rightScrollStartOffset: 0
+                        acceptedButtons: Qt.RightButton
 
                         onEntered: windowDelegate.hovered = true
                         onExited: windowDelegate.hovered = false
 
                         onPressed: mouse => {
-                            if (mouse.button === Qt.LeftButton) {
-                                windowDelegate.pressPos = Qt.point(mouse.x, mouse.y);
-                                windowDelegate.initX = windowDelegate.x;
-                                windowDelegate.initY = windowDelegate.y;
-                            } else if (mouse.button === Qt.RightButton && root.contentBounds.hasOverflow) {
-                                rightDragStartX = mouse.x;
-                                rightScrollStartOffset = root.horizontalScrollOffset;
-                                root.isScrollDragging = true;
-                            }
+                            if (mouse.button !== Qt.RightButton) return;
+                            windowDelegate.pressPos = Qt.point(mouse.x, mouse.y);
+                            windowDelegate.initX = windowDelegate.x;
+                            windowDelegate.initY = windowDelegate.y;
                         }
 
                         onPositionChanged: mouse => {
-                            // Handle right-click drag for horizontal scroll
-                            if (root.isScrollDragging && (mouse.buttons & Qt.RightButton) && root.contentBounds.hasOverflow) {
-                                const delta = mouse.x - rightDragStartX;
-                                root.horizontalScrollOffset = root.clampHorizontalScroll(rightScrollStartOffset + delta);
-                                return;
-                            }
-
-                            if (!(mouse.buttons & Qt.LeftButton))
+                            if (!(mouse.buttons & Qt.RightButton))
                                 return;
 
-                            // Check if we should start dragging
                             if (!windowDelegate.dragging) {
                                 const dx = mouse.x - windowDelegate.pressPos.x;
                                 const dy = mouse.y - windowDelegate.pressPos.y;
                                 const distance = Math.sqrt(dx * dx + dy * dy);
-
                                 if (distance > windowDelegate.dragThreshold) {
-                                    // Start dragging
                                     windowDelegate.dragging = true;
                                     root.draggingFromWorkspace = root.workspaceId;
-
                                     // Reparent to drag overlay
                                     if (root.dragOverlay) {
                                         windowDelegate.originalParent = windowDelegate.parent;
@@ -516,191 +682,44 @@ Item {
                                         windowDelegate.x = globalPos.x;
                                         windowDelegate.y = globalPos.y;
                                     }
+                                } else {
+                                    return;
                                 }
-                            } else {
-                                // Update target workspace indicator while dragging
-                                if (root.overviewRoot && root.overviewRoot.getWorkspaceAtY) {
-                                    const globalPos = dragArea.mapToItem(null, mouse.x, mouse.y);
-                                    const targetWs = root.overviewRoot.getWorkspaceAtY(globalPos.y);
-                                    if (targetWs !== -1 && targetWs !== root.workspaceId) {
-                                        root.draggingTargetWorkspace = targetWs;
-                                    } else {
-                                        root.draggingTargetWorkspace = -1;
-                                    }
-                                }
+                            }
+
+                            // Update target workspace while dragging
+                            if (root.overviewRoot && root.overviewRoot.getWorkspaceAtY) {
+                                const globalPos = dragArea.mapToItem(null, mouse.x, mouse.y);
+                                const targetWs = root.overviewRoot.getWorkspaceAtY(globalPos.y);
+                                root.draggingTargetWorkspace = (targetWs !== -1 && targetWs !== root.workspaceId) ? targetWs : -1;
                             }
                         }
 
                         onReleased: mouse => {
-                            if (mouse.button === Qt.LeftButton) {
-                                if (windowDelegate.dragging) {
-                                    windowDelegate.dragging = false;
+                            if (mouse.button !== Qt.RightButton) return;
 
-                                    // Calculate target workspace from cursor position
-                                    let targetWs = root.workspaceId; // Default to current workspace
-                                    if (root.overviewRoot && root.overviewRoot.getWorkspaceAtY) {
-                                        const globalPos = dragArea.mapToItem(null, mouse.x, mouse.y);
-                                        const calculatedWs = root.overviewRoot.getWorkspaceAtY(globalPos.y);
-                                        if (calculatedWs !== -1) {
-                                            targetWs = calculatedWs;
-                                        }
-                                    }
+                            if (windowDelegate.dragging) {
+                                windowDelegate.dragging = false;
+                                const targetWs = root.draggingTargetWorkspace !== -1 ? root.draggingTargetWorkspace : root.workspaceId;
 
-                                    if (targetWs !== root.workspaceId) {
-                                        // Moving to different workspace
-                                        if ((windowDelegate.windowData && windowDelegate.windowData.floating !== undefined ? windowDelegate.windowData.floating : false)) {
-                                            // Calculate position for floating window in target workspace
-                                            const draggedX = windowDelegate.x;
-                                            const draggedY = windowDelegate.y;
-                                            
-                                            const workspaceGlobalPos = windowsContainer.mapToItem(root.dragOverlay, 0, 0);
-                                            const relativeX = draggedX - workspaceGlobalPos.x;
-                                            const relativeY = draggedY - workspaceGlobalPos.y;
-                                            
-                                            const workspaceX = relativeX - root.horizontalScrollOffset - root.viewportOffset;
-                                            const workspaceY = relativeY;
-                                            
-                                            const monitorWidth = ((monitorData && monitorData.width !== undefined ? monitorData.width : 1920) || 1920) / ((monitorData && monitorData.scale !== undefined ? monitorData.scale : 1.0) || 1.0);
-                                            const monitorHeight = ((monitorData && monitorData.height !== undefined ? monitorData.height : 1080) || 1080) / ((monitorData && monitorData.scale !== undefined ? monitorData.scale : 1.0) || 1.0);
-                                            
-                                            let adjustedMonitorWidth = monitorWidth;
-                                            let adjustedMonitorHeight = monitorHeight;
-                                            if (barPosition === "left" || barPosition === "right") {
-                                                adjustedMonitorWidth -= barReserved;
-                                            }
-                                            if (barPosition === "top" || barPosition === "bottom") {
-                                                adjustedMonitorHeight -= barReserved;
-                                            }
-                                            
-                                            const actualX = workspaceX / scale_;
-                                            const actualY = workspaceY / scale_;
-                                            
-                                            const percentageX = Math.round((actualX / adjustedMonitorWidth) * 100);
-                                            const percentageY = Math.round((actualY / adjustedMonitorHeight) * 100);
-                                            
-                                            // Move to workspace and set position
-                                            AxctlService.dispatch(`movetoworkspacesilent ${targetWs}, address:${(windowDelegate.windowData && windowDelegate.windowData.address !== undefined ? windowDelegate.windowData.address : "")}`);
-                                            AxctlService.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${(windowDelegate.windowData && windowDelegate.windowData.address !== undefined ? windowDelegate.windowData.address : "")}`);
-                                            
-                                            // Force immediate window data update
-                                            CompositorData.updateWindowList();
-                                        } else {
-                                            // Just move workspace without repositioning for tiled windows
-                                            AxctlService.dispatch(`movetoworkspacesilent ${targetWs}, address:${(windowDelegate.windowData && windowDelegate.windowData.address !== undefined ? windowDelegate.windowData.address : "")}`);
-                                            
-                                            // Force immediate window data update
-                                            CompositorData.updateWindowList();
-                                        }
-                                        
-                                        // Restore original parent and reset position
-                                        if (windowDelegate.originalParent) {
-                                            windowDelegate.parent = windowDelegate.originalParent;
-                                            windowDelegate.originalParent = null;
-                                        }
-                                        windowDelegate.x = windowDelegate.initX;
-                                        windowDelegate.y = windowDelegate.initY;
-                                        
-                                    } else if ((windowDelegate.windowData && windowDelegate.windowData.floating !== undefined ? windowDelegate.windowData.floating : false) && (windowDelegate.x !== windowDelegate.initX || windowDelegate.y !== windowDelegate.initY)) {
-                                        // Dropped on same workspace and window is floating - reposition it
-                                        // The window is currently in the drag overlay with global coordinates
-                                        
-                                        // Store current drag position
-                                        const draggedX = windowDelegate.x;
-                                        const draggedY = windowDelegate.y;
-                                        
-                                        // Get the workspace container position
-                                        const workspaceGlobalPos = windowsContainer.mapToItem(root.dragOverlay, 0, 0);
-                                        
-                                        // Calculate position relative to workspace
-                                        const relativeX = draggedX - workspaceGlobalPos.x;
-                                        const relativeY = draggedY - workspaceGlobalPos.y;
-                                        
-                                        // Remove horizontal scroll offset to get actual position in workspace
-                                        const workspaceX = relativeX - root.horizontalScrollOffset - root.viewportOffset;
-                                        const workspaceY = relativeY;
-                                        
-                                        // Convert to percentage of workspace dimensions (in scaled space)
-                                        const monitorWidth = ((monitorData && monitorData.width !== undefined ? monitorData.width : 1920) || 1920) / ((monitorData && monitorData.scale !== undefined ? monitorData.scale : 1.0) || 1.0);
-                                        const monitorHeight = ((monitorData && monitorData.height !== undefined ? monitorData.height : 1080) || 1080) / ((monitorData && monitorData.scale !== undefined ? monitorData.scale : 1.0) || 1.0);
-                                        
-                                        // Adjust for bar reserved space
-                                        let adjustedMonitorWidth = monitorWidth;
-                                        let adjustedMonitorHeight = monitorHeight;
-                                        if (barPosition === "left" || barPosition === "right") {
-                                            adjustedMonitorWidth -= barReserved;
-                                        }
-                                        if (barPosition === "top" || barPosition === "bottom") {
-                                            adjustedMonitorHeight -= barReserved;
-                                        }
-                                        
-                                        // Convert from scaled overview space to actual position
-                                        const actualX = workspaceX / scale_;
-                                        const actualY = workspaceY / scale_;
-                                        
-                                        // Calculate percentage
-                                        const percentageX = Math.round((actualX / adjustedMonitorWidth) * 100);
-                                        const percentageY = Math.round((actualY / adjustedMonitorHeight) * 100);
-                                        
-                                        // Dispatch movewindowpixel command
-                                        AxctlService.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${(windowDelegate.windowData && windowDelegate.windowData.address !== undefined ? windowDelegate.windowData.address : "")}`);
-                                        
-                                        // Force immediate window data update
-                                        CompositorData.updateWindowList();
-                                        
-                                        // Restore original parent
-                                        if (windowDelegate.originalParent) {
-                                            windowDelegate.parent = windowDelegate.originalParent;
-                                            windowDelegate.originalParent = null;
-                                        }
-                                        
-                                        // Set override position for immediate visual update
-                                        // Calculate what baseX/baseY should be at the dropped position
-                                        windowDelegate.overrideBaseX = relativeX;
-                                        windowDelegate.overrideBaseY = relativeY;
-                                        windowDelegate.useOverridePosition = true;
-                                        
-                                        // Force position to dropped location
-                                        windowDelegate.x = relativeX;
-                                        windowDelegate.y = relativeY;
-                                        
-                                        // Start timer to clear override
-                                        resetOverrideTimer.restart();
-                                    } else {
-                                        // Not a floating window or didn't move - restore original parent and position
-                                        if (windowDelegate.originalParent) {
-                                            windowDelegate.parent = windowDelegate.originalParent;
-                                            windowDelegate.originalParent = null;
-                                        }
-                                        windowDelegate.x = windowDelegate.initX;
-                                        windowDelegate.y = windowDelegate.initY;
-                                    }
-
-                                    root.draggingFromWorkspace = -1;
-                                    root.draggingTargetWorkspace = -1;
+                                if (targetWs !== root.workspaceId && windowDelegate.windowData) {
+                                    AxctlService.dispatch(`movetoworkspacesilent ${targetWs}, address:${windowDelegate.windowData.address || ""}`);
+                                    // Wait 200ms for axctl to process the move before refreshing
+                                    delayedRefreshTimer.restart();
                                 }
-                            } else if (mouse.button === Qt.RightButton) {
-                                root.isScrollDragging = false;
-                            }
-                        }
 
-                        onClicked: mouse => {
-                            if (!windowDelegate.windowData)
-                                return;
-                            if (mouse.button === Qt.LeftButton && !windowDelegate.dragging) {
-                                AxctlService.dispatch(`focuswindow address:${windowDelegate.windowData.address}`);
-                            } else if (mouse.button === Qt.MiddleButton) {
-                                AxctlService.dispatch(`closewindow address:${windowDelegate.windowData.address}`);
-                            }
-                        }
+                                // Restore original parent and re-bind position.
+                                // Setting x/y directly breaks the baseX/baseY bindings;
+                                // Qt.binding restores them so the thumbnail follows window data.
+                                if (windowDelegate.originalParent) {
+                                    windowDelegate.parent = windowDelegate.originalParent;
+                                    windowDelegate.originalParent = null;
+                                }
+                                windowDelegate.x = Qt.binding(function() { return windowDelegate.baseX; });
+                                windowDelegate.y = Qt.binding(function() { return windowDelegate.baseY; });
 
-                        onDoubleClicked: mouse => {
-                            if (!windowDelegate.windowData)
-                                return;
-                            if (mouse.button === Qt.LeftButton) {
-                                Visibilities.setActiveModule("", true);
-                                Qt.callLater(() => {
-                                    AxctlService.dispatch(`focuswindow address:${windowDelegate.windowData.address}`);
-                                });
+                                root.draggingFromWorkspace = -1;
+                                root.draggingTargetWorkspace = -1;
                             }
                         }
                     }

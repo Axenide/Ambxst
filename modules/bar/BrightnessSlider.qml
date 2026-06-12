@@ -31,17 +31,19 @@ Item {
     }
 
     Behavior on iconRotation {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
     Behavior on iconScale {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -73,8 +75,9 @@ Item {
     transitions: Transition {
         NumberAnimation {
             properties: "implicitWidth,implicitHeight,Layout.preferredWidth,Layout.preferredHeight"
-            duration: 200
-            easing.type: Easing.OutCubic
+            duration: Anim.standardSmall
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -99,9 +102,9 @@ Item {
             radius: parent.radius ?? 0
 
             Behavior on opacity {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 NumberAnimation {
-                    duration: Config.animDuration / 2
+                    duration: Anim.standardSmall
                 }
             }
         }
@@ -133,12 +136,12 @@ Item {
             smoothDrag: true
             value: 0
             resizeParent: false
-            wavy: true
+            wavy: false
             scroll: root.isExpanded
             iconClickable: root.isExpanded
             sliderVisible: root.isExpanded || isDragging || root.externalBrightnessChange
-            wavyAmplitude: (root.isExpanded || isDragging || root.externalBrightnessChange) ? (1.5 * value) : 0
-            wavyFrequency: (root.isExpanded || isDragging || root.externalBrightnessChange) ? (8.0 * value) : 0
+            wavyAmplitude: 0
+            wavyFrequency: 0
             iconPos: root.vertical ? "end" : "start"
             icon: Icons.sun
             iconRotation: root.iconRotation
@@ -153,8 +156,10 @@ Item {
 
             onIconClicked: {}
 
+            // FIX: Guard enabled to prevent segfault when monitor is destroyed mid-incubation
             Connections {
                 target: currentMonitor
+                enabled: currentMonitor !== null
                 ignoreUnknownSignals: true
                 function onBrightnessChanged() {
                     root.updateSliderFromMonitor(true);

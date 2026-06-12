@@ -25,10 +25,11 @@ StyledRect {
     }
     
     Behavior on implicitHeight {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutCubic
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -135,13 +136,15 @@ StyledRect {
             opacity: root.expandedPanel !== -1 ? 1 : 0
             
             Behavior on Layout.preferredHeight {
-                enabled: Config.animDuration > 0
-                NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart }
+                enabled: Anim.animationsEnabled
+                NumberAnimation { duration: Anim.standardNormal; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve }
             }
             
             Behavior on opacity {
-                enabled: Config.animDuration > 0
-                NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart }
+                enabled: Anim.animationsEnabled
+                NumberAnimation { duration: Anim.standardNormal; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve }
             }
             
             StyledRect {
@@ -172,8 +175,10 @@ StyledRect {
                             }
                         }
 
-                        Behavior on opacity { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart } }
-                        Behavior on x { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart } }
+                        Behavior on opacity { enabled: Anim.animationsEnabled; NumberAnimation { duration: Anim.standardNormal; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve } }
+                        Behavior on x { enabled: Anim.animationsEnabled; NumberAnimation { duration: Anim.standardNormal; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve } }
                     }
 
                     Loader {
@@ -192,8 +197,10 @@ StyledRect {
                             }
                         }
 
-                        Behavior on opacity { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart } }
-                        Behavior on x { enabled: Config.animDuration > 0; NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart } }
+                        Behavior on opacity { enabled: Anim.animationsEnabled; NumberAnimation { duration: Anim.standardNormal; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve } }
+                        Behavior on x { enabled: Anim.animationsEnabled; NumberAnimation { duration: Anim.standardNormal; easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve } }
                     }
                 }
             }

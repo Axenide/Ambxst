@@ -41,9 +41,9 @@ Item {
                 radius: previewRect.radius
 
                 Behavior on border.width {
-                    enabled: (Config.animDuration ?? 0) > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: (Config.animDuration ?? 0) / 2
+                        duration: Anim.standardSmall
                     }
                 }
             }
@@ -76,9 +76,9 @@ Item {
                 opacity: 0
 
                 Behavior on opacity {
-                    enabled: (Config.animDuration ?? 0) > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: (Config.animDuration ?? 0) / 2
+                        duration: Anim.standardSmall
                     }
                 }
             }
@@ -96,9 +96,9 @@ Item {
             Layout.alignment: Qt.AlignHCenter
 
             Behavior on color {
-                enabled: (Config.animDuration ?? 0) > 0
+                enabled: Anim.animationsEnabled
                 ColorAnimation {
-                    duration: (Config.animDuration ?? 0) / 2
+                    duration: Anim.standardSmall
                 }
             }
         }

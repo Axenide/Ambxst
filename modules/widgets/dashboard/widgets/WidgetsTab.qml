@@ -114,7 +114,7 @@ Rectangle {
                         anchors.fill: parent
 
                         Behavior on variant {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                         }
 
                         Text {
@@ -134,38 +134,42 @@ Rectangle {
                             property real syncIconRotation: 0
 
                             Behavior on text {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                             }
 
                             Behavior on color {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 ColorAnimation {
-                                    duration: Config.animDuration / 2
-                                    easing.type: Easing.OutCubic
+                                    duration: Anim.standardSmall
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
 
                             Behavior on opacity {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
                                     duration: 150
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
 
                             Behavior on rotation {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
                                     duration: 400
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
 
                             Behavior on scale {
-                                enabled: Config.animDuration > 0
+                                enabled: Anim.animationsEnabled
                                 NumberAnimation {
                                     duration: 400
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                                 }
                             }
                         }

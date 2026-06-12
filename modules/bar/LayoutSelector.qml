@@ -26,18 +26,20 @@ StyledRect {
     Layout.preferredHeight: orientation === "vertical" ? (totalButtons * buttonSize + (totalButtons - 1) * spacing + padding * 2) : 36
 
     Behavior on Layout.preferredWidth {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
     Behavior on Layout.preferredHeight {
-        enabled: Config.animDuration > 0
+        enabled: Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            duration: Anim.standardNormal
+            easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 
@@ -112,10 +114,11 @@ StyledRect {
                         verticalAlignment: Text.AlignVCenter
 
                         Behavior on color {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             ColorAnimation {
-                                duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                             }
                         }
                     }
@@ -166,10 +169,11 @@ StyledRect {
                         verticalAlignment: Text.AlignVCenter
 
                         Behavior on color {
-                            enabled: Config.animDuration > 0
+                            enabled: Anim.animationsEnabled
                             ColorAnimation {
-                                duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                duration: Anim.standardSmall
+                                easing.type: Anim.easing("standard").type
+                        easing.bezierCurve: Anim.easing("standard").bezierCurve
                             }
                         }
                     }

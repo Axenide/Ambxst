@@ -221,6 +221,8 @@ Item {
         // Color grid (SCROLLABLE)
         GridView {
             id: colorGrid
+
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

@@ -228,10 +228,11 @@ Item {
         flickableDirection: Flickable.VerticalFlick
 
         Behavior on contentY {
-            enabled: Config.animDuration > 0 && !scrollingOverviewRoot.isManualScrolling
+            enabled: Anim.animationsEnabled && !scrollingOverviewRoot.isManualScrolling
             NumberAnimation {
-                duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                duration: Anim.spatialDefault
+                easing.type: Anim.easing("spatial").type
+                easing.bezierCurve: Anim.easing("spatial").bezierCurve
             }
         }
 
@@ -319,10 +320,11 @@ Item {
                 z: 10
 
                 Behavior on y {
-                    enabled: Config.animDuration > 0
+                    enabled: Anim.animationsEnabled
                     NumberAnimation {
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        duration: Anim.spatialDefault
+                        easing.type: Anim.easing("spatial").type
+                        easing.bezierCurve: Anim.easing("spatial").bezierCurve
                     }
                 }
             }

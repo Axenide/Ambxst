@@ -5,6 +5,7 @@ import Quickshell
 import qs.modules.services
 import qs.modules.theme
 import qs.modules.globals
+import qs.modules.components
 import qs.config
 
 Button {
@@ -41,19 +42,49 @@ Button {
         bottomLeftRadius: root.vertical ? root.endRadius : root.startRadius
         bottomRightRadius: root.vertical ? root.endRadius : root.endRadius
 
+        // Enhanced hover overlay (more visible than StateLayer's subtle 0.08)
         Rectangle {
             anchors.fill: parent
-            color: parent.item || "transparent"
-            opacity: root.pressed ? 0.5 : (root.hovered ? 0.25 : 0)
+            color: Styling.srItem("overprimary") || Colors.overBackground
+            opacity: root.pressed ? 0.20 : (root.hovered ? 0.12 : 0)
             radius: parent.radius ?? 0
-
             Behavior on opacity {
-                enabled: (Config.animDuration ?? 0) > 0
-                NumberAnimation {
-                    duration: (Config.animDuration ?? 0) / 2
-                }
+                enabled: Anim.animationsEnabled
+                NumberAnimation { duration: Anim.standardSmall; easing.type: Easing.OutCubic }
             }
         }
+
+        // M3 StateLayer for hover/press/focus feedback + ripple
+        StateLayer {
+            anchors.fill: parent
+            interactive: root.enabled
+            color: Styling.srItem("overprimary") || Colors.overBackground
+            enableOverlay: true
+            enableRipple: true
+            onClicked: root.onToggle()
+        }
+    }
+
+    // Press animation: spring scale
+    transform: Scale {
+        origin.x: root.width / 2
+        origin.y: root.height / 2
+        xScale: root.pressed ? 0.88 : 1.0
+        yScale: root.pressed ? 0.88 : 1.0
+        Behavior on xScale {
+            enabled: Anim.animationsEnabled
+            NumberAnimation { duration: Anim.emphasizedNormal; easing.type: Anim.springSnappy().type; easing.bezierCurve: Anim.springSnappy().bezierCurve }
+        }
+        Behavior on yScale {
+            enabled: Anim.animationsEnabled
+            NumberAnimation { duration: Anim.emphasizedNormal; easing.type: Anim.springSnappy().type; easing.bezierCurve: Anim.springSnappy().bezierCurve }
+        }
+    }
+
+    // HoverHandler for cursor
+    HoverHandler {
+        id: btnHover
+        cursorShape: Qt.PointingHandCursor
     }
 
     contentItem: Item {
@@ -97,7 +128,7 @@ Button {
         }
     }
 
-    onClicked: root.onToggle()
+    onClicked: root.onToggle() // StateLayer handles visual feedback
 
     ToolTip.visible: false
     ToolTip.text: root.tooltipText

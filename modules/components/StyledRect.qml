@@ -19,7 +19,10 @@ ClippingRectangle {
     property bool animateRadius: true
     property real backgroundOpacity: -1  // -1 means use config value
 
-    readonly property var variantConfig: Styling.getStyledRectConfig(variant) || {}
+    property var variantConfig: ({})
+    onVariantChanged: {
+        variantConfig = Styling.getStyledRectConfig(variant) || {};
+    }
 
     readonly property var gradientStops: variantConfig.gradient
 
@@ -106,9 +109,11 @@ ClippingRectangle {
     }
 
     Behavior on radius {
-        enabled: root.animateRadius && Config.animDuration > 0
+        enabled: root.animateRadius && Anim.animationsEnabled
         NumberAnimation {
-            duration: Config.animDuration / 4
+            duration: Anim.standardSmall
+            easing.type: Anim.easing("standard").type
+            easing.bezierCurve: Anim.easing("standard").bezierCurve
         }
     }
 

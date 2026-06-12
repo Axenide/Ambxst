@@ -24,34 +24,53 @@ Item {
         "magenta", "lightMagenta"
     ]
 
-    // Palette generation for the shader
-    Item {
-        id: paletteSourceItem
-        visible: true 
+    // ─── Optimized palette texture ───
+    // Instead of rendering a Row of Rectangles via ShaderEffectSource(live: true) every frame
+    // (which forces a full render-to-texture pass 60 times per second),
+    // we use a Canvas that paints ONCE via requestPaint() only when needed.
+    // The ShaderEffectSource has live: false — it only re-captures when we call scheduleUpdate().
+    // This is the QML equivalent of "pre-baking" a texture.
+
+    Canvas {
+        id: paletteCanvas
         width: root.optimizedPalette.length
         height: 1
-        opacity: 0
-        
-        Row {
-            anchors.fill: parent
-            Repeater {
-                model: root.optimizedPalette
-                Rectangle {
-                    width: 1
-                    height: 1
-                    color: Colors[modelData]
-                }
+        visible: false
+
+        onPaint: {
+            var ctx = getContext("2d");
+            if (!ctx) return;
+            ctx.clearRect(0, 0, width, height);
+            var pal = root.optimizedPalette;
+            for (var i = 0; i < pal.length; i++) {
+                ctx.fillStyle = Colors[pal[i]];
+                ctx.fillRect(i, 0, 1, 1);
             }
+        }
+
+        Component.onCompleted: requestPaint()    // ⚡ Trigger initial paint
+
+        // Repaint when theme colors change (Colors is a FileView, uses onFileChanged)
+        Connections {
+            target: Colors
+            function onFileChanged() { Qt.callLater(paletteCanvas.requestPaint); }
         }
     }
 
     ShaderEffectSource {
         id: paletteTextureSource
-        sourceItem: paletteSourceItem
+        sourceItem: paletteCanvas
+        live: false                    // ⚡ Only capture once, not every frame
         hideSource: true
         visible: false
         smooth: false
         recursive: false
+
+        // Force re-capture when Canvas repaints
+        Connections {
+            target: paletteCanvas
+            function onPainted() { paletteTextureSource.scheduleUpdate(); }
+        }
     }
 
     // Container for masking (rounded corners)

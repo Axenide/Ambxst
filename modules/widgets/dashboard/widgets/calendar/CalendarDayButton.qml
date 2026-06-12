@@ -47,7 +47,7 @@ Rectangle {
             }
 
             Behavior on color {
-                enabled: Config.animDuration > 0
+                enabled: Anim.animationsEnabled
                 ColorAnimation {
                     duration: 150
                 }

@@ -1,0 +1,10 @@
+{
+  "theme": "default",
+  "position": "top",
+  "hoverRegionHeight": 16,
+  "keepHidden": false,
+  "noMediaDisplay": "compositor",
+  "customText": "Ambxst",
+  "disableHoverExpansion": false,
+  "showMetrics": false
+}
