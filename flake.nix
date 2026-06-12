@@ -5,23 +5,31 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     axctl = {
-      url = "github:Leriart/axctl";
+      url = "github:Axenide/axctl";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, axctl, ... }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      axctl,
+      ...
+    }:
     let
       ambxstLib = import ./nix/lib.nix { inherit nixpkgs; };
       version = nixpkgs.lib.removeSuffix "\n" (builtins.readFile ./version);
-    in {
+    in
+    {
       nixosModules.default = { pkgs, lib, ... }: {
         imports = [ ./nix/modules ];
         programs.ambxst.enable = lib.mkDefault true;
         programs.ambxst.package = lib.mkDefault self.packages.${pkgs.system}.default;
       };
 
-      packages = ambxstLib.forAllSystems (system:
+      packages = ambxstLib.forAllSystems (
+        system:
         let
           pkgs = import nixpkgs {
             inherit system;
@@ -31,19 +39,29 @@
           lib = nixpkgs.lib;
 
           Ambxst = import ./nix/packages {
-            inherit pkgs lib self system axctl version;
+            inherit
+              pkgs
+              lib
+              self
+              system
+              axctl
+              version
+              ;
           };
-        in {
+        in
+        {
           default = Ambxst;
           Ambxst = Ambxst;
         }
       );
 
-      devShells = ambxstLib.forAllSystems (system:
+      devShells = ambxstLib.forAllSystems (
+        system:
         let
           pkgs = import nixpkgs { inherit system; };
           Ambxst = self.packages.${system}.default;
-        in {
+        in
+        {
           default = pkgs.mkShell {
             packages = [ Ambxst ];
             shellHook = ''
@@ -55,10 +73,12 @@
         }
       );
 
-      apps = ambxstLib.forAllSystems (system:
+      apps = ambxstLib.forAllSystems (
+        system:
         let
           Ambxst = self.packages.${system}.default;
-        in {
+        in
+        {
           default = {
             type = "app";
             program = "${Ambxst}/bin/ambxst";
