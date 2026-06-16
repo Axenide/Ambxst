@@ -141,6 +141,9 @@ Singleton {
                 height: mon.height,
                 refreshRate: mon.refresh_rate,
                 scale: mon.scale,
+                x: mon.metadata ? (parseInt(mon.metadata.x) || 0) : 0,
+                y: mon.metadata ? (parseInt(mon.metadata.y) || 0) : 0,
+                transform: mon.metadata ? (parseInt(mon.metadata.transform) || 0) : 0,
                 activeWorkspace: { id: parseInt(mon.metadata ? mon.metadata.active_workspace : 0) || 0, name: mon.metadata ? mon.metadata.active_workspace : "" }
             }));
             root.monitors.values = mappedMonitors;
