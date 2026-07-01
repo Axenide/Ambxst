@@ -63,7 +63,7 @@ Item {
 
                     Image {
                         anchors.fill: parent
-                        source: `file://${Quickshell.env("HOME")}/.face.icon`
+                        source: `file://${Quickshell.env("HOME")}/.face.icon?${GlobalStates.avatarCacheBuster}`
                         fillMode: Image.PreserveAspectCrop
                         sourceSize: Qt.size(48, 48)
                     }
