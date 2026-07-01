@@ -439,24 +439,32 @@ Singleton {
 
     signal timeoutWithAnimation(id: var)
 
+    property var _pendingTimeoutIds: []
+
     Timer {
         id: timeoutAnimationTimer
         interval: 350
         running: false
         repeat: false
-        property int notificationId: -1
         onTriggered: {
-            const index = root.list.findIndex(notif => notif.id === notificationId);
-            if (index !== -1 && root.list[index] != null)
-                root.list[index].popup = false;
-            root.timeout(notificationId);
+            const pendingIds = root._pendingTimeoutIds;
+            root._pendingTimeoutIds = [];
+            for (var i = 0; i < pendingIds.length; i++) {
+                const id = pendingIds[i];
+                const index = root.list.findIndex(notif => notif.id === id);
+                if (index !== -1 && root.list[index] != null)
+                    root.list[index].popup = false;
+                root.timeout(id);
+            }
         }
     }
 
     function timeoutNotification(id) {
         root.timeoutWithAnimation(id);
-        timeoutAnimationTimer.notificationId = id;
-        timeoutAnimationTimer.restart();
+        root._pendingTimeoutIds.push(id);
+        if (!timeoutAnimationTimer.running) {
+            timeoutAnimationTimer.restart();
+        }
     }
 
     function timeoutAll() {
