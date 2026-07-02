@@ -142,6 +142,13 @@ Singleton {
 
         const focusedScreenName = focusedMonitor.name;
 
+        // Save the currently focused app's address BEFORE clearing modules,
+        // because clearAll will trigger screenNotchOpen → false → keyboardFocus → None,
+        // and the compositor may not automatically restore focus when we're done.
+        if (moduleName) {
+            AxctlService.saveFocus();
+        }
+
         clearAll();
 
         if (moduleName) {
@@ -152,6 +159,14 @@ Singleton {
         }
 
         lastFocusedScreen = focusedScreenName;
+
+        // After all modules have been closed and the shell has released exclusive
+        // keyboard focus, explicitly tell the compositor to refocus the saved client.
+        // This ensures the previously active application regains focus immediately
+        // without requiring the user to click back into it.
+        if (!moduleName) {
+            AxctlService.restoreFocus();
+        }
     }
 
     function moveActiveModuleToFocusedScreen() {

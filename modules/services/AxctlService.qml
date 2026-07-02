@@ -13,6 +13,30 @@ Singleton {
 
     property int focusHistoryCounter: 0
 
+    // Saved focus address — set before a shell overlay (notch/launcher/dashboard)
+    // captures exclusive keyboard focus, and dispatched to the compositor to
+    // restore focus when the overlay closes.
+    property string savedFocusAddress: ""
+
+    // Captures the currently focused client's address so it can be restored later.
+    function saveFocus() {
+        if (root.focusedClient && root.focusedClient.address) {
+            root.savedFocusAddress = root.focusedClient.address;
+        }
+    }
+
+    // Dispatches a focuswindow command for the saved address, then clears it.
+    function restoreFocus() {
+        if (root.savedFocusAddress) {
+            root.dispatch("focuswindow " + root.savedFocusAddress);
+            root.savedFocusAddress = "";
+        }
+    }
+
+    function clearSavedFocus() {
+        root.savedFocusAddress = "";
+    }
+
     property QtObject clients: QtObject {
         property var values: []
     }
