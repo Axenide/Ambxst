@@ -31,14 +31,14 @@ QtObject {
         const backgroundtertiary = isLight ? toRGB(Qt.darker(bg, 1.2)) : toRGB(Qt.darker(bg, 3.0))
         const backgroundfloating = isLight ? toRGB(Qt.darker(bg, 1.05)) : "0,0,0"
 
-        // Text derivatives
+        // Text derivatives — use gentle scaling so all variants stay visible
         const fg = Colors.overBackground
         const textbrightest = toRGB(fg)
-        const textbrighter = isLight ? toRGB(Qt.lighter(fg, 1.15)) : toRGB(Qt.darker(fg, 1.15))
-        const textbright = isLight ? toRGB(Qt.lighter(fg, 1.38)) : toRGB(Qt.darker(fg, 1.38))
-        const textdark = isLight ? toRGB(Qt.lighter(fg, 1.82)) : toRGB(Qt.darker(fg, 1.82))
-        const textdarker = isLight ? toRGB(Qt.lighter(fg, 2.22)) : toRGB(Qt.darker(fg, 2.22))
-        const textdarkest = isLight ? toRGB(Qt.lighter(fg, 3.19)) : toRGB(Qt.darker(fg, 3.19))
+        const textbrighter = isLight ? toRGB(Qt.lighter(fg, 1.5)) : toRGB(Qt.darker(fg, 1.05))
+        const textbright = isLight ? toRGB(Qt.lighter(fg, 2.0)) : toRGB(Qt.darker(fg, 1.10))
+        const textdark = isLight ? toRGB(Qt.lighter(fg, 3.0)) : toRGB(Qt.darker(fg, 1.18))
+        const textdarker = isLight ? toRGB(Qt.lighter(fg, 4.0)) : toRGB(Qt.darker(fg, 1.28))
+        const textdarkest = isLight ? toRGB(Qt.lighter(fg, 5.0)) : toRGB(Qt.darker(fg, 1.40))
 
         let css = `/**
  * @name Ambxst
@@ -65,7 +65,7 @@ QtObject {
   --textdark: ${textdark};
   --textdarker: ${textdarker};
   --textdarkest: ${textdarkest};
-  --font: ${font}, gg sans;
+  --font: "${font}", "gg sans";
   --backgroundaccent: ${backgroundaccent};
   --backgroundprimary: ${backgroundprimary};
   --backgroundsecondary: ${backgroundsecondary};
