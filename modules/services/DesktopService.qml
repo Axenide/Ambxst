@@ -131,7 +131,7 @@ Singleton {
 
     function runInActiveWorkspace(command) {
         var processComponent = Qt.createQmlObject('import Quickshell.Io; Process { }', root);
-        processComponent.command = ["bash", "-c", "cd ~ && env -u HL_INITIAL_WORKSPACE_TOKEN setsid " + command + " < /dev/null > /dev/null 2>&1 &"];
+        processComponent.command = ["axctl", "system", "execute", command];
         processComponent.onExited.connect(() => processComponent.destroy());
         processComponent.running = true;
     }
