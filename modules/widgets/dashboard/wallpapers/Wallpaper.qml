@@ -78,9 +78,9 @@ PanelWindow {
 
     property string colorPresetsDir: Quickshell.env("HOME") + "/.config/ambxst/colors"
     property string officialColorPresetsDir: decodeURIComponent(Qt.resolvedUrl("../../../../assets/colors").toString().replace("file://", ""))
-    onColorPresetsDirChanged: console.log("Color Presets Directory:", colorPresetsDir)
+    onColorPresetsDirChanged: console.debug("Color Presets Directory:", colorPresetsDir)
     property list<string> colorPresets: []
-    onColorPresetsChanged: console.log("Color Presets Updated:", colorPresets)
+    onColorPresetsChanged: console.debug("Color Presets Updated:", colorPresets)
     property string activeColorPreset: wallpaperConfig.adapter.activeColorPreset || ""
 
     // React to light/dark mode changes
@@ -119,7 +119,7 @@ PanelWindow {
         // Try official first, then user. Use bash conditional.
         var cmd = "if [ -f '" + officialFile + "' ]; then cp '" + officialFile + "' '" + dest + "'; else cp '" + userFile + "' '" + dest + "'; fi";
 
-        console.log("Applying color preset:", activeColorPreset);
+        console.debug("Applying color preset:", activeColorPreset);
         applyPresetProcess.command = ["bash", "-c", cmd];
         applyPresetProcess.running = true;
     }
@@ -214,7 +214,7 @@ PanelWindow {
             return;
         }
 
-        console.log("Generating lockscreen frame for:", filePath);
+        console.debug("Generating lockscreen frame for:", filePath);
 
         var scriptPath = decodeURIComponent(Qt.resolvedUrl("../../../../scripts/lockwall.py").toString().replace("file://", ""));
         // QUICKSHELL-GIT: var dataPath = Quickshell.cacheDir;
@@ -254,7 +254,7 @@ PanelWindow {
         if (GlobalStates.wallpaperManager !== wallpaper)
             return;
 
-        console.log("Wallpaper directory changed to:", wallpaperDir);
+        console.debug("Wallpaper directory changed to:", wallpaperDir);
         usingFallback = false;
 
         // Clear current lists to reflect change immediately
@@ -287,7 +287,7 @@ PanelWindow {
             return;
         }
 
-        console.log("setWallpaper called with:", path, "for screen:", targetScreen);
+        console.debug("setWallpaper called with:", path, "for screen:", targetScreen);
         initialLoadCompleted = true;
         var pathIndex = wallpaperPaths.indexOf(path);
         if (pathIndex !== -1) {
@@ -329,7 +329,7 @@ PanelWindow {
             return;
         }
         
-        console.log("Clearing per-screen wallpaper for:", targetScreen);
+        console.debug("Clearing per-screen wallpaper for:", targetScreen);
         let perScreen = Object.assign({}, wallpaperConfig.adapter.perScreenWallpapers || {});
         if (perScreen[targetScreen]) {
             delete perScreen[targetScreen];
@@ -390,7 +390,7 @@ PanelWindow {
         wallpaperConfig.adapter.matugenScheme = scheme;
 
         if (wallpaperConfig.adapter.activeColorPreset) {
-            console.log("Switching to Matugen scheme, clearing preset");
+            console.debug("Switching to Matugen scheme, clearing preset");
             wallpaperConfig.adapter.activeColorPreset = "";
         } else {
             runMatugenForCurrentWallpaper();
@@ -402,17 +402,17 @@ PanelWindow {
 
     function runMatugenForCurrentWallpaper() {
         if (activeColorPreset) {
-            console.log("Skipping Matugen because color preset is active:", activeColorPreset);
+            console.debug("Skipping Matugen because color preset is active:", activeColorPreset);
             return;
         }
 
         if (currentWallpaper && initialLoadCompleted) {
-            console.log("Running Matugen for current wallpaper:", currentWallpaper);
+            console.debug("Running Matugen for current wallpaper:", currentWallpaper);
 
             var fileType = getFileType(currentWallpaper);
             var matugenSource = getColorSource(currentWallpaper);
 
-            console.log("Using source for matugen:", matugenSource, "(type:", fileType + ")");
+            console.debug("Using source for matugen:", matugenSource, "(type:", fileType + ")");
 
             // Stop existing processes if running to prioritize new request
             if (matugenProcessWithConfig.running) {
@@ -476,7 +476,7 @@ PanelWindow {
         interval: 1200 // give mpvpaper processes time to spawn and initialize
         repeat: false
         onTriggered: {
-            console.log("Broadcasting video sync to all mpvpaper sockets...");
+            console.debug("Broadcasting video sync to all mpvpaper sockets...");
             mpvSyncProcess.running = true;
         }
     }
@@ -486,7 +486,7 @@ PanelWindow {
         running: false
         command: ["bash", "-c", "for sock in /tmp/ambxst_mpv_socket_*; do echo '{ \"command\": [\"set_property\", \"time-pos\", 0] }' | socat - \"$sock\" 2>/dev/null; done"]
         onExited: code => {
-            console.log("Video sync broadcast completed with code:", code);
+            console.debug("Video sync broadcast completed with code:", code);
         }
     }
 
@@ -502,7 +502,7 @@ PanelWindow {
         var colors = [];
         // Log the first color to see if it changed
         var firstColorRaw = Colors[optimizedPalette[0]];
-        console.log("Generating MPV shader. First palette color (" + optimizedPalette[0] + "):", firstColorRaw);
+        console.debug("Generating MPV shader. First palette color (" + optimizedPalette[0] + "):", firstColorRaw);
 
         for (var i = 0; i < optimizedPalette.length; i++) {
             var rawColor = Colors[optimizedPalette[i]];
@@ -558,7 +558,7 @@ PanelWindow {
                 console.warn("MPV IPC failed (is mpvpaper running?) Code:", code);
                 if (ipcRetryCount < 10) {
                     ipcRetryCount++;
-                    console.log("Retrying IPC (" + ipcRetryCount + "/10)...");
+                    console.debug("Retrying IPC (" + ipcRetryCount + "/10)...");
                     ipcRetryTimer.restart();
                 }
             } else {
@@ -575,7 +575,7 @@ PanelWindow {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length > 0) {
-                    console.log("mpvShaderWriter stdout:", text);
+                    console.debug("mpvShaderWriter stdout:", text);
                 }
             }
         }
@@ -590,7 +590,7 @@ PanelWindow {
 
         onExited: code => {
             if (code === 0) {
-                console.log("MPV tint shader generated at:", mpvShaderPath);
+                console.debug("MPV tint shader generated at:", mpvShaderPath);
                 mpvShaderReady = true;
                 // Apply immediately via IPC
                 updateMpvRuntime(true);
@@ -605,7 +605,7 @@ PanelWindow {
         id: shaderUpdateDebounce
         interval: 500
         onTriggered: {
-            console.log("Shader debounce triggered, updating MPV...");
+            console.debug("Shader debounce triggered, updating MPV...");
             updateMpvShader();
         }
     }
@@ -614,17 +614,17 @@ PanelWindow {
         target: Colors
         // Watch for file reload (theme change)
         function onFileChanged() {
-            console.log("Colors file changed, scheduling update...");
+            console.debug("Colors file changed, scheduling update...");
             shaderUpdateDebounce.restart();
         }
         // Watch for background change (OLED mode often affects this first/only)
         function onBackgroundChanged() {
-            console.log("Colors background changed, scheduling update...");
+            console.debug("Colors background changed, scheduling update...");
             shaderUpdateDebounce.restart();
         }
         // Fallback
         function onPrimaryChanged() {
-            console.log("Colors primary changed, scheduling update...");
+            console.debug("Colors primary changed, scheduling update...");
             shaderUpdateDebounce.restart();
         }
     }
@@ -632,13 +632,13 @@ PanelWindow {
     Connections {
         target: Config
         function onOledModeChanged() {
-            console.log("Config OLED mode changed, scheduling update...");
+            console.debug("Config OLED mode changed, scheduling update...");
             shaderUpdateDebounce.restart();
         }
     }
 
     onTintEnabledChanged: {
-        console.log("Tint enabled changed to", tintEnabled);
+        console.debug("Tint enabled changed to", tintEnabled);
         updateMpvShader();
     }
 
@@ -690,7 +690,7 @@ PanelWindow {
 
         onLoaded: {
             if (!wallpaperConfig.adapter.wallPath) {
-                console.log("Loaded config but wallPath is empty, using fallback");
+                console.debug("Loaded config but wallPath is empty, using fallback");
                 wallpaperConfig.adapter.wallPath = fallbackDir;
             }
         }
@@ -750,7 +750,7 @@ PanelWindow {
 
             onWallPathChanged: {
                 if (wallPath) {
-                    console.log("Config wallPath updated:", wallPath);
+                    console.debug("Config wallPath updated:", wallPath);
 
                     // Initialize scanning on first valid wallPath load
                     if (!wallpaper._wallpaperDirInitialized && GlobalStates.wallpaperManager === wallpaper) {
@@ -782,10 +782,10 @@ PanelWindow {
 
         onExited: function (exitCode) {
             if (exitCode !== 0) {
-                console.log("wallpapers.json does not exist, creating with fallbackDir");
+                console.debug("wallpapers.json does not exist, creating with fallbackDir");
                 wallpaperConfig.adapter.wallPath = fallbackDir;
             } else {
-                console.log("wallpapers.json exists");
+                console.debug("wallpapers.json exists");
             }
         }
     }
@@ -798,7 +798,7 @@ PanelWindow {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length > 0) {
-                    console.log("Matugen (with config) output:", text);
+                    console.debug("Matugen (with config) output:", text);
                 }
             }
         }
@@ -812,7 +812,7 @@ PanelWindow {
         }
 
         onExited: {
-            console.log("Matugen with config finished");
+            console.debug("Matugen with config finished");
         }
     }
 
@@ -824,7 +824,7 @@ PanelWindow {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length > 0) {
-                    console.log("Matugen (normal) output:", text);
+                    console.debug("Matugen (normal) output:", text);
                 }
             }
         }
@@ -838,7 +838,7 @@ PanelWindow {
         }
 
         onExited: {
-            console.log("Matugen normal finished");
+            console.debug("Matugen normal finished");
         }
     }
 
@@ -852,7 +852,7 @@ PanelWindow {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length > 0) {
-                    console.log("Thumbnail Generator:", text);
+                    console.debug("Thumbnail Generator:", text);
                 }
             }
         }
@@ -867,7 +867,7 @@ PanelWindow {
 
         onExited: function (exitCode) {
             if (exitCode === 0) {
-                console.log("✅ Video thumbnails generated successfully");
+                console.debug("✅ Video thumbnails generated successfully");
                 thumbnailsVersion++;
             } else {
                 console.warn("⚠️ Thumbnail generation failed with code:", exitCode);
@@ -891,7 +891,7 @@ PanelWindow {
         stdout: StdioCollector {
             onStreamFinished: {
                 if (text.length > 0) {
-                    console.log("Lockscreen Wallpaper Generator:", text);
+                    console.debug("Lockscreen Wallpaper Generator:", text);
                 }
             }
         }
@@ -906,7 +906,7 @@ PanelWindow {
 
         onExited: function (exitCode) {
             if (exitCode === 0) {
-                console.log("✅ Lockscreen wallpaper ready");
+                console.debug("✅ Lockscreen wallpaper ready");
             } else {
                 console.warn("⚠️ Lockscreen wallpaper generation failed with code:", exitCode);
             }
@@ -920,7 +920,7 @@ PanelWindow {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                console.log("scanSubfolders stdout:", text);
+                console.debug("scanSubfolders stdout:", text);
                 var rawPaths = text.trim().split("\n").filter(function (f) {
                     return f.length > 0;
                 });
@@ -941,7 +941,7 @@ PanelWindow {
                 topLevelFolders.sort();
                 subfolderFilters = topLevelFolders;
                 subfolderFiltersChanged();  // Emitir señal manualmente
-                console.log("Updated subfolderFilters:", subfolderFilters);
+                console.debug("Updated subfolderFilters:", subfolderFilters);
             }
         }
 
@@ -955,9 +955,9 @@ PanelWindow {
 
         onRunningChanged: {
             if (running) {
-                console.log("Starting scanSubfolders for directory:", wallpaperDir);
+                console.debug("Starting scanSubfolders for directory:", wallpaperDir);
             } else {
-                console.log("Finished scanSubfolders");
+                console.debug("Finished scanSubfolders");
             }
         }
     }
@@ -972,7 +972,7 @@ PanelWindow {
         onFileChanged: {
             if (wallpaperDir === "")
                 return;
-            console.log("Wallpaper directory changed, rescanning...");
+            console.debug("Wallpaper directory changed, rescanning...");
             scanWallpapers.running = true;
             scanSubfoldersProcess.running = true;
             // Regenerar thumbnails si hay nuevos videos (delayed)
@@ -994,7 +994,7 @@ PanelWindow {
             watchChanges: true
             printErrors: false
             onFileChanged: {
-                console.log("Subdirectory content changed (" + path + "), rescanning...");
+                console.debug("Subdirectory content changed (" + path + "), rescanning...");
                 scanWallpapers.running = true;
                 scanSubfoldersProcess.running = true;
 
@@ -1015,7 +1015,7 @@ PanelWindow {
         printErrors: false
 
         onFileChanged: {
-            console.log("User color presets directory changed, rescanning...");
+            console.debug("User color presets directory changed, rescanning...");
             scanPresetsProcess.running = true;
         }
     }
@@ -1028,7 +1028,7 @@ PanelWindow {
         printErrors: false
 
         onFileChanged: {
-            console.log("Official color presets directory changed, rescanning...");
+            console.debug("Official color presets directory changed, rescanning...");
             scanPresetsProcess.running = true;
         }
     }
@@ -1040,7 +1040,7 @@ PanelWindow {
 
         onRunningChanged: {
             if (running && wallpaperDir === "") {
-                console.log("Blocking scanWallpapers because wallpaperDir is empty");
+                console.debug("Blocking scanWallpapers because wallpaperDir is empty");
                 running = false;
             }
         }
@@ -1051,7 +1051,7 @@ PanelWindow {
                     return f.length > 0;
                 });
                 if (files.length === 0) {
-                    console.log("No wallpapers found in main directory, using fallback");
+                    console.debug("No wallpapers found in main directory, using fallback");
                     usingFallback = true;
                     scanFallback.running = true;
                 } else {
@@ -1060,7 +1060,7 @@ PanelWindow {
                     var newFiles = files.sort();
                     var listChanged = JSON.stringify(newFiles) !== JSON.stringify(wallpaperPaths);
                     if (listChanged) {
-                        console.log("Wallpaper directory updated. Found", newFiles.length, "images");
+                        console.debug("Wallpaper directory updated. Found", newFiles.length, "images");
                         wallpaperPaths = newFiles;
 
                         // Always try to load the saved wallpaper when list changes
@@ -1075,10 +1075,10 @@ PanelWindow {
                                 var savedIndex = wallpaperPaths.indexOf(wallpaperConfig.adapter.currentWall);
                                 if (savedIndex !== -1) {
                                     currentIndex = savedIndex;
-                                    console.log("Loaded saved wallpaper at index:", savedIndex);
+                                    console.debug("Loaded saved wallpaper at index:", savedIndex);
                                 } else {
                                     currentIndex = 0;
-                                    console.log("Saved wallpaper not found, using first");
+                                    console.debug("Saved wallpaper not found, using first");
                                 }
                             } else {
                                 currentIndex = 0;
@@ -1103,7 +1103,7 @@ PanelWindow {
                     console.warn("Error scanning wallpaper directory:", text);
                     // Only fallback if we don't already have wallpapers loaded AND we have a valid directory that failed
                     if (wallpaperPaths.length === 0 && wallpaperDir !== "") {
-                        console.log("Directory scan failed for " + wallpaperDir + ", using fallback");
+                        console.debug("Directory scan failed for " + wallpaperDir + ", using fallback");
                         usingFallback = true;
                         scanFallback.running = true;
                     }
@@ -1122,7 +1122,7 @@ PanelWindow {
                 var files = text.trim().split("\n").filter(function (f) {
                     return f.length > 0;
                 });
-                console.log("Using fallback wallpapers. Found", files.length, "images");
+                console.debug("Using fallback wallpapers. Found", files.length, "images");
 
                 // Only use fallback if we don't already have main wallpapers loaded
                 if (usingFallback) {
@@ -1162,7 +1162,7 @@ PanelWindow {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                console.log("Scan Presets Output:", text);
+                console.debug("Scan Presets Output:", text);
                 var rawLines = text.trim().split("\n");
                 var uniqueNames = [];
                 for (var i = 0; i < rawLines.length; i++) {
@@ -1176,7 +1176,7 @@ PanelWindow {
                     }
                 }
                 uniqueNames.sort();
-                console.log("Found color presets:", uniqueNames);
+                console.debug("Found color presets:", uniqueNames);
                 colorPresets = uniqueNames;
             }
         }
@@ -1196,7 +1196,7 @@ PanelWindow {
 
         onExited: code => {
             if (code === 0)
-                console.log("Color preset applied successfully");
+                console.debug("Color preset applied successfully");
             else
                 console.warn("Failed to apply color preset, code:", code);
         }
@@ -1237,7 +1237,7 @@ PanelWindow {
             command: ["pkill", "-f", wallpaper.mpvSocket]
 
             onExited: function (exitCode) {
-                console.log("Killed mpvpaper processes on socket", wallpaper.mpvSocket, ", exit code:", exitCode);
+                console.debug("Killed mpvpaper processes on socket", wallpaper.mpvSocket, ", exit code:", exitCode);
             }
         }
 
@@ -1394,7 +1394,7 @@ PanelWindow {
                     interval: 100
                     onTriggered: {
                         if (sourceFile) {
-                            console.log("Restarting mpvpaper for:", sourceFile);
+                            console.debug("Restarting mpvpaper for:", sourceFile);
                             mpvpaperProcess.running = true;
                             wallpaper.requestVideoSync();
                         }
@@ -1403,7 +1403,7 @@ PanelWindow {
 
                 onSourceFileChanged: {
                     if (sourceFile) {
-                        console.log("Source file changed to:", sourceFile);
+                        console.debug("Source file changed to:", sourceFile);
                         mpvpaperProcess.running = false;
                         mpvpaperRestartTimer.restart();
                     }
@@ -1411,7 +1411,7 @@ PanelWindow {
 
                 Component.onCompleted: {
                     if (sourceFile) {
-                        console.log("Initial mpvpaper run for:", sourceFile);
+                        console.debug("Initial mpvpaper run for:", sourceFile);
                         mpvpaperProcess.running = true;
                         wallpaper.requestVideoSync();
                     }
@@ -1429,7 +1429,7 @@ PanelWindow {
                     stdout: StdioCollector {
                         onStreamFinished: {
                             if (text.length > 0) {
-                                console.log("mpvpaper output:", text);
+                                console.debug("mpvpaper output:", text);
                             }
                         }
                     }
@@ -1443,7 +1443,7 @@ PanelWindow {
                     }
 
                     onExited: function (exitCode) {
-                        console.log("mpvpaper process exited with code:", exitCode);
+                        console.debug("mpvpaper process exited with code:", exitCode);
                     }
                 }
             }

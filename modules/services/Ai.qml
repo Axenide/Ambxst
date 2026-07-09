@@ -715,7 +715,6 @@ for f in files:
     property int pendingFetches: 0
 
     function fetchAvailableModels() {
-        fetchingModels = false; // Force refresh
         if (fetchingModels)
             return;
 
@@ -1081,6 +1080,8 @@ for f in files:
             }
             if (!isDuplicate)
                 updatedList.push(m);
+            else
+                m.destroy();
         }
 
         models = updatedList;

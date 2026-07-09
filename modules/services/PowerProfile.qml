@@ -27,7 +27,7 @@ Singleton {
     function initialize() {
         if (_initialized) return;
         _initialized = true;
-        console.info("PowerProfile: Component initialized");
+        console.debug("PowerProfile: Component initialized");
         checkPowerProfilesCtl.running = true;
     }
 
@@ -43,22 +43,22 @@ Singleton {
 
         onExited: exitCode => {
             if (exitCode === 0) {
-                console.info("PowerProfile: powerprofilesctl detected");
+                console.debug("PowerProfile: powerprofilesctl detected");
                 backendType = "powerprofilesctl";
                 isAvailable = true;
 
                 // Delay untuk ensure process ready
                 Qt.callLater(() => {
-                    console.info("PowerProfile: Getting profiles...");
+                    console.debug("PowerProfile: Getting profiles...");
                     getProc.running = true;
                 });
 
                 Qt.callLater(() => {
-                    console.info("PowerProfile: Listing profiles...");
+                    console.debug("PowerProfile: Listing profiles...");
                     listProc.running = true;
                 }, 100);
             } else {
-                console.info("PowerProfile: powerprofilesctl not available, trying tlp...");
+                console.debug("PowerProfile: powerprofilesctl not available, trying tlp...");
                 checkTLP.running = true;
             }
         }
@@ -76,13 +76,13 @@ Singleton {
             onRead: data => {
                 const output = data.trim();
                 if (output && output.length > 0) {
-                    console.info("PowerProfile: " + output);
+                    console.debug("PowerProfile: " + output);
                 }
             }
         }
         onExited: exitCode => {
             if (exitCode === 0) {
-                console.info("PowerProfile: ✓ TLP detected");
+                console.debug("PowerProfile: ✓ TLP detected");
                 backendType = "tlp";
                 isAvailable = true;
                 availableProfiles = ["power-saver", "balanced", "performance"];
@@ -106,7 +106,7 @@ Singleton {
             onRead: data => {
                 const profile = data.trim();
                 if (profile && profile.length > 0) {
-                    console.info("PowerProfile: Current profile:", profile);
+                    console.debug("PowerProfile: Current profile:", profile);
                     currentProfile = profile;
                     profileChanged(profile);
                 }
@@ -133,10 +133,10 @@ Singleton {
         }
 
         onExited: exitCode => {
-            console.info("PowerProfile: listProc exit code:", exitCode);
+            console.debug("PowerProfile: listProc exit code:", exitCode);
 
             if (exitCode === 0 && fullOutput.trim().length > 0) {
-                console.info("PowerProfile: Full output:", fullOutput);
+                console.debug("PowerProfile: Full output:", fullOutput);
                 const lines = fullOutput.split('\n');
                 const profiles = [];
 
@@ -162,7 +162,7 @@ Singleton {
                 });
 
                 availableProfiles = profiles;
-                console.info("PowerProfile: powerprofilesctl profiles loaded:", availableProfiles);
+                console.debug("PowerProfile: powerprofilesctl profiles loaded:", availableProfiles);
             } else {
                 // Fallback ke TLP jika powerprofilesctl gagal
                 console.warn("PowerProfile: powerprofilesctl list failed, falling back to TLP...");
@@ -188,7 +188,7 @@ Singleton {
                 if (!line)
                     return;
 
-                console.info("PowerProfile: tlp-stat output:", line);
+                console.debug("PowerProfile: tlp-stat output:", line);
                 let profile = "";
 
                 if (line.includes("power-saver") || line.includes("powersaver")) {
@@ -201,7 +201,7 @@ Singleton {
 
                 if (profile && currentProfile !== profile) {
                     currentProfile = profile;
-                    console.info("PowerProfile: ✓ Current profile set to:", profile);
+                    console.debug("PowerProfile: ✓ Current profile set to:", profile);
                     profileChanged(profile);
                 }
             }
@@ -232,7 +232,7 @@ Singleton {
 
         onExited: exitCode => {
             if (exitCode === 0) {
-                console.info("PowerProfile: Profile changed successfully");
+                console.debug("PowerProfile: Profile changed successfully");
                 Qt.callLater(() => {
                     if (backendType === "powerprofilesctl") {
                         getProc.running = true;
@@ -266,7 +266,7 @@ Singleton {
             listProc.running = true;
         } else if (backendType === "tlp") {
             // TLP profiles sudah hardcoded
-            console.info("PowerProfile: Available profiles:", availableProfiles);
+            console.debug("PowerProfile: Available profiles:", availableProfiles);
         }
     }
 
@@ -289,10 +289,10 @@ Singleton {
             return;
         }
 
-        console.info("PowerProfile: Setting profile to:", profileName, "using", backendType);
+        console.debug("PowerProfile: Setting profile to:", profileName, "using", backendType);
 
         currentProfile = profileName;
-        console.info("PowerProfile: ✓ UI updated to:", profileName);
+        console.debug("PowerProfile: ✓ UI updated to:", profileName);
 
         if (backendType === "powerprofilesctl") {
             setProc.command = ["powerprofilesctl", "set", profileName];

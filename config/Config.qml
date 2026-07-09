@@ -40,6 +40,34 @@ Singleton {
 
     property bool pauseAutoSave: false
 
+    // Debounced auto-save: coalesces rapid adapter updates (e.g. dragging a
+    // slider) into a single disk write per domain instead of one write per
+    // property change. Explicit save*() calls remain immediate.
+    property var _pendingSaves: []
+
+    function scheduleSave(loader) {
+        if (root._pendingSaves.indexOf(loader) === -1)
+            root._pendingSaves.push(loader);
+        saveDebounceTimer.restart();
+    }
+
+    Timer {
+        id: saveDebounceTimer
+        interval: 150
+        repeat: false
+        onTriggered: {
+            var pending = root._pendingSaves;
+            root._pendingSaves = [];
+            for (var i = 0; i < pending.length; i++) {
+                try {
+                    pending[i].writeAdapter();
+                } catch (e) {
+                    console.warn("Config: deferred save failed:", e);
+                }
+            }
+        }
+    }
+
     // Module init status
     property bool themeReady: false
     property bool barReady: false
@@ -126,7 +154,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.themeReady && !root.pauseAutoSave) {
-                themeLoader.writeAdapter();
+                root.scheduleSave(themeLoader);
             }
         }
 
@@ -521,7 +549,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.barReady && !root.pauseAutoSave) {
-                barLoader.writeAdapter();
+                root.scheduleSave(barLoader);
             }
         }
 
@@ -580,7 +608,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.workspacesReady && !root.pauseAutoSave) {
-                workspacesLoader.writeAdapter();
+                root.scheduleSave(workspacesLoader);
             }
         }
 
@@ -623,14 +651,14 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.overviewReady && !root.pauseAutoSave) {
-                overviewLoader.writeAdapter();
+                root.scheduleSave(overviewLoader);
             }
         }
 
         adapter: JsonAdapter {
             property int rows: 2
             property int columns: 5
-            property real scale: 0.1
+            property real scale: 0.15
             property real workspaceSpacing: 4
         }
     }
@@ -665,7 +693,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.notchReady && !root.pauseAutoSave) {
-                notchLoader.writeAdapter();
+                root.scheduleSave(notchLoader);
             }
         }
 
@@ -710,7 +738,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.compositorReady && !root.pauseAutoSave) {
-                compositorLoader.writeAdapter();
+                root.scheduleSave(compositorLoader);
             }
         }
 
@@ -790,7 +818,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.performanceReady && !root.pauseAutoSave) {
-                performanceLoader.writeAdapter();
+                root.scheduleSave(performanceLoader);
             }
         }
 
@@ -799,7 +827,7 @@ Singleton {
             property bool windowPreview: true
             property bool wavyLine: true
             property bool rotateCoverArt: true
-            property bool dashboardPersistTabs: true
+            property bool dashboardPersistTabs: false
             property int dashboardMaxPersistentTabs: 2
         }
     }
@@ -834,7 +862,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.weatherReady && !root.pauseAutoSave) {
-                weatherLoader.writeAdapter();
+                root.scheduleSave(weatherLoader);
             }
         }
 
@@ -874,7 +902,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.desktopReady && !root.pauseAutoSave) {
-                desktopLoader.writeAdapter();
+                root.scheduleSave(desktopLoader);
             }
         }
 
@@ -916,7 +944,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.lockscreenReady && !root.pauseAutoSave) {
-                lockscreenLoader.writeAdapter();
+                root.scheduleSave(lockscreenLoader);
             }
         }
 
@@ -955,7 +983,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.prefixReady && !root.pauseAutoSave) {
-                prefixLoader.writeAdapter();
+                root.scheduleSave(prefixLoader);
             }
         }
 
@@ -998,7 +1026,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.systemReady && !root.pauseAutoSave) {
-                systemLoader.writeAdapter();
+                root.scheduleSave(systemLoader);
             }
         }
 
@@ -1080,19 +1108,19 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.dockReady && !root.pauseAutoSave) {
-                dockLoader.writeAdapter();
+                root.scheduleSave(dockLoader);
             }
         }
 
         adapter: JsonAdapter {
-            property bool enabled: false
+            property bool enabled: true
             property string theme: "default"
             property string position: "bottom"
-            property int height: 56
-            property int iconSize: 40
+            property int height: 48
+            property int iconSize: 24
             property int spacing: 4
-            property int margin: 8
-            property int hoverRegionHeight: 4
+            property int margin: 4
+            property int hoverRegionHeight: 16
             property bool pinnedOnStartup: false
             property bool hoverToReveal: true
             property bool availableOnFullscreen: false
@@ -1131,7 +1159,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.pinnedAppsReady && !root.pauseAutoSave) {
-                pinnedAppsLoader.writeAdapter();
+                root.scheduleSave(pinnedAppsLoader);
             }
         }
 
@@ -1170,7 +1198,7 @@ Singleton {
         onPathChanged: reload()
         onAdapterUpdated: {
             if (root.aiReady && !root.pauseAutoSave) {
-                aiLoader.writeAdapter();
+                root.scheduleSave(aiLoader);
             }
         }
 
@@ -1388,7 +1416,7 @@ Singleton {
         }
         onAdapterUpdated: {
             if (root.keybindsInitialLoadComplete) {
-                keybindsLoader.writeAdapter();
+                root.scheduleSave(keybindsLoader);
             }
         }
 

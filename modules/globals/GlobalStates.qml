@@ -165,6 +165,17 @@ Singleton {
     readonly property bool launcherOpen: getActiveLauncher()
     readonly property bool dashboardOpen: getActiveDashboard()
 
+    // Safety net: if the dashboard closes while an edit session is still pending
+    // (window dismissed without Apply/Discard), revert changes so auto-save can
+    // never remain paused for the rest of the session.
+    onDashboardOpenChanged: {
+        if (!dashboardOpen) {
+            discardThemeChanges();
+            discardShellChanges();
+            discardCompositorChanges();
+        }
+    }
+
     // Lockscreen state
     property bool lockscreenVisible: false
 
@@ -312,13 +323,20 @@ Singleton {
         }
     }
 
+    // Keep Config.pauseAutoSave in sync with all active edit sessions so that
+    // applying/discarding one flow does not prematurely un-pause another, and
+    // an interrupted flow cannot leave auto-save stuck off.
+    function _syncPauseAutoSave() {
+        Config.pauseAutoSave = themeHasChanges || shellHasChanges || compositorHasChanges;
+    }
+
     function markThemeChanged() {
         // Take a snapshot before the first change
         if (!themeHasChanges) {
             themeSnapshot = createThemeSnapshot();
-            Config.pauseAutoSave = true;
         }
         themeHasChanges = true;
+        _syncPauseAutoSave();
     }
 
     function applyThemeChanges() {
@@ -326,7 +344,7 @@ Singleton {
             Config.loader.writeAdapter();
             themeHasChanges = false;
             themeSnapshot = null;
-            Config.pauseAutoSave = false;
+            _syncPauseAutoSave();
         }
     }
 
@@ -335,7 +353,7 @@ Singleton {
             restoreThemeSnapshot(themeSnapshot);
             themeHasChanges = false;
             themeSnapshot = null;
-            Config.pauseAutoSave = false;
+            _syncPauseAutoSave();
         }
     }
 
@@ -427,9 +445,9 @@ Singleton {
         // Take a snapshot before the first change
         if (!shellHasChanges) {
             shellSnapshot = createShellSnapshot();
-            Config.pauseAutoSave = true;
         }
         shellHasChanges = true;
+        _syncPauseAutoSave();
     }
 
     function applyShellChanges() {
@@ -445,7 +463,7 @@ Singleton {
             
             shellHasChanges = false;
             shellSnapshot = null;
-            Config.pauseAutoSave = false;
+            _syncPauseAutoSave();
         }
     }
 
@@ -454,7 +472,7 @@ Singleton {
             restoreShellSnapshot(shellSnapshot);
             shellHasChanges = false;
             shellSnapshot = null;
-            Config.pauseAutoSave = false;
+            _syncPauseAutoSave();
         }
     }
 
@@ -520,9 +538,9 @@ Singleton {
         // Take a snapshot before the first change
         if (!compositorHasChanges) {
             compositorSnapshot = createCompositorSnapshot();
-            Config.pauseAutoSave = true;
         }
         compositorHasChanges = true;
+        _syncPauseAutoSave();
     }
 
     function applyCompositorChanges() {
@@ -530,7 +548,7 @@ Singleton {
             Config.saveCompositor();
             compositorHasChanges = false;
             compositorSnapshot = null;
-            Config.pauseAutoSave = false;
+            _syncPauseAutoSave();
         }
     }
 
@@ -539,7 +557,7 @@ Singleton {
             restoreCompositorSnapshot(compositorSnapshot);
             compositorHasChanges = false;
             compositorSnapshot = null;
-            Config.pauseAutoSave = false;
+            _syncPauseAutoSave();
         }
     }
 

@@ -13,6 +13,7 @@ WavyLine {
 
     // Map Carousel properties to WavyLine properties
     lineWidth: dotSize
+    running: active
     
     // Default WavyLine properties are already set in WavyLine.qml
     // Users can override frequency, amplitude etc.

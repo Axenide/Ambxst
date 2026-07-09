@@ -1255,6 +1255,8 @@ Item {
                 model: notesModel
                 currentIndex: root.selectedIndex
                 spacing: 0
+                cacheBuffer: 400
+                reuseItems: true
                 interactive: !root.deleteMode && !root.renameMode && root.expandedItemIndex === -1
 
                 property bool enableScrollAnimation: true
@@ -1403,10 +1405,11 @@ Item {
                         }
                     }
                     property string displayText: {
+                        var title = modelData.title || "Untitled";
                         if (isInDeleteMode) {
-                            return "Delete \"" + modelData.title.substring(0, 20) + (modelData.title.length > 20 ? '...' : '') + "\"?";
+                            return "Delete \"" + title.substring(0, 20) + (title.length > 20 ? '...' : '') + "\"?";
                         }
-                        return modelData.title || "Untitled";
+                        return title;
                     }
 
                     MouseArea {

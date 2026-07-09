@@ -89,9 +89,10 @@ Item {
         }
 
         // Calculate expanded item height
-        var itemData = itemsModel.get(index).itemData;
+        var entry = itemsModel.get(index);
+        var itemData = entry ? entry.itemData : null;
         var optionsCount = 4;
-        if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
+        if (itemData && (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview))) {
             optionsCount++;
         }
         var listHeight = 36 * Math.min(3, optionsCount);
@@ -1001,8 +1002,8 @@ Item {
                     visible: ClipboardService.items.length > 0
                     clip: true
                     interactive: !root.deleteMode && root.expandedItemIndex === -1
-                    cacheBuffer: 96
-                    reuseItems: false
+                    cacheBuffer: 400
+                    reuseItems: true
                     boundsBehavior: Flickable.StopAtBounds
 
                     // Propiedad para detectar si está en movimiento (drag o flick)

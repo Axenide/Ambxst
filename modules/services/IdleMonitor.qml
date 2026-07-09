@@ -149,7 +149,9 @@ Item {
     Timer {
         id: mediaCheckTimer
         interval: 5000
-        running: true
+        // Media inhibitors only matter to un-idle the session, so there is no
+        // need to poll axctl while the session is already active.
+        running: root.enabled && root.respectInhibitors && root.isIdle
         repeat: true
         onTriggered: root._checkMediaInhibitor()
     }

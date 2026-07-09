@@ -98,7 +98,8 @@ PanelWindow {
 
         // Check active toplevel first (fast path)
         const toplevel = ToplevelManager.activeToplevel;
-        if (toplevel && toplevel.fullscreen && AxctlService.focusedMonitor.id === monId) {
+        const focusedMon = AxctlService.focusedMonitor;
+        if (toplevel && toplevel.fullscreen && focusedMon && focusedMon.id === monId) {
             return true;
         }
 

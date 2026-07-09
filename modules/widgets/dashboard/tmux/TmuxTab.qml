@@ -763,8 +763,8 @@ Item {
                 visible: true
                 clip: true
                 interactive: !root.deleteMode && !root.renameMode && root.expandedItemIndex === -1
-                cacheBuffer: 96
-                reuseItems: false
+                cacheBuffer: 400
+                reuseItems: true
 
                 // Propiedad para detectar si está en movimiento (drag o flick)
                 property bool isScrolling: dragging || flicking

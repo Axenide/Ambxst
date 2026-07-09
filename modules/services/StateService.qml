@@ -112,15 +112,10 @@ Singleton {
         save();
     }
 
-    // Auto-load on creation
-    Timer {
-        interval: 50
-        running: true
-        repeat: false
-        onTriggered: {
-            if (!root.initialized) {
-                root.load();
-            }
-        }
-    }
+    // Auto-load on creation. Deferred to the next tick so dependent singletons
+    // have finished constructing before stateLoaded() fires.
+    Component.onCompleted: Qt.callLater(function () {
+        if (!root.initialized)
+            root.load();
+    })
 }
