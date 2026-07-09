@@ -7,5 +7,7 @@ var data = {
     "keepHidden": false,
     "noMediaDisplay": "userHost",
     "customText": "Ambxst",
-    "disableHoverExpansion": true
+    "disableHoverExpansion": true,
+    "showCavaOnMedia": false,
+    "cavaBars": 16
 }

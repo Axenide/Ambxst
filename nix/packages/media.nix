@@ -2,6 +2,7 @@
 { pkgs }:
 
 with pkgs; [
+  cava
   gpu-screen-recorder
   mpvpaper
 

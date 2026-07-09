@@ -124,24 +124,62 @@ Item {
         }
     }
 
+    // Cava visualizer support
+    readonly property bool cavaEnabled: (Config.notch.showCavaOnMedia ?? false) && isPlaying && player !== null
+    property var cavaBars: []
+    property bool cavaRestartHold: false
+
+    Timer {
+        id: cavaRestartTimer
+        interval: 40
+        repeat: false
+        onTriggered: compactPlayer.cavaRestartHold = false
+    }
+
+    Connections {
+        target: Config.notch
+        function onCavaBarsChanged() {
+            if (!compactPlayer.cavaEnabled || !compactPlayer.visible)
+                return;
+            compactPlayer.cavaRestartHold = true;
+            cavaRestartTimer.restart();
+        }
+    }
+
+    Process {
+        id: cavaProcess
+        running: compactPlayer.cavaEnabled && compactPlayer.visible && !compactPlayer.cavaRestartHold
+        command: [
+            "bash", "-c",
+            "printf '[general]\\nbars=" + (Config.notch.cavaBars ?? 16) + "\\n[output]\\nmethod=raw\\nraw_target=/dev/stdout\\ndata_format=ascii\\nascii_max_range=7\\nbar_delimiter=59\\nframe_delimiter=10\\n' > /tmp/ambxst-cava.ini && exec cava -p /tmp/ambxst-cava.ini"
+        ]
+
+        stdout: SplitParser {
+            splitMarker: "\n"
+            onRead: data => {
+                const trimmed = data.trim();
+                if (trimmed === "") return;
+                const parts = trimmed.split(";");
+                const parsed = parts.map(x => parseInt(x, 10) || 0);
+                if (parsed.length > 0) {
+                    compactPlayer.cavaBars = parsed;
+                }
+            }
+        }
+    }
+
     StyledRect {
         variant: "common"
         anchors.fill: parent
         radius: Styling.radius(-4)
 
-        Text {
-            id: mediaTitle
+        Item {
+            id: mediaTitleContainer
             anchors.centerIn: parent
-            width: parent.width - 32
-            text: compactPlayer.displayedTitle
-            font.family: Config.theme.font
-            font.pixelSize: Styling.fontSize(0)
-            font.bold: true
-            color: Colors.overBackground
-            elide: Text.ElideRight
+            width: parent.width
+            height: parent.height
             visible: opacity > 0
             opacity: (compactPlayer.notchHovered && compactPlayer.player) ? 0.0 : 1.0
-            horizontalAlignment: Text.AlignHCenter
             z: 5
 
             Behavior on opacity {
@@ -149,6 +187,72 @@ Item {
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
+                }
+            }
+
+            Text {
+                id: mediaTitle
+                anchors.centerIn: parent
+                width: parent.width - 32
+                text: compactPlayer.displayedTitle
+                font.family: Config.theme.font
+                font.pixelSize: Styling.fontSize(0)
+                font.bold: true
+                color: Colors.overBackground
+                elide: Text.ElideRight
+                visible: opacity > 0
+                opacity: compactPlayer.cavaEnabled ? 0.0 : 1.0
+                horizontalAlignment: Text.AlignHCenter
+
+                Behavior on opacity {
+                    enabled: Config.animDuration > 0
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+            }
+
+            // Cava bars visualizer (shown in place of title when enabled + playing)
+            Row {
+                id: cavaBarsRow
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: Math.max(1, (parent.width - anchors.margins * 2 - compactPlayer.cavaBars.length * barWidth) / Math.max(1, compactPlayer.cavaBars.length - 1))
+                visible: opacity > 0
+                opacity: compactPlayer.cavaEnabled ? 1.0 : 0.0
+
+                Behavior on opacity {
+                    enabled: Config.animDuration > 0
+                    NumberAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutQuart
+                    }
+                }
+
+                readonly property real barWidth: Math.max(2, Math.floor((parent.width - anchors.margins * 2) / Math.max(1, compactPlayer.cavaBars.length) - 1))
+
+                Repeater {
+                    model: compactPlayer.cavaBars.length
+                    Item {
+                        required property int index
+                        width: cavaBarsRow.barWidth
+                        height: cavaBarsRow.height
+                        Rectangle {
+                            width: parent.width
+                            height: Math.max(2, (compactPlayer.cavaBars[index] / 7.0) * cavaBarsRow.height)
+                            anchors.bottom: parent.bottom
+                            color: Colors.overBackground
+                            radius: 1
+                            Behavior on height {
+                                enabled: Config.animDuration > 0
+                                NumberAnimation {
+                                    duration: 50
+                                    easing.type: Easing.OutQuart
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

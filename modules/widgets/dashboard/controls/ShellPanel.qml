@@ -1125,6 +1125,31 @@ Item {
                                 }
                             }
                         }
+
+                        ToggleRow {
+                            label: "Cava Visualizer on Media"
+                            checked: Config.notch.showCavaOnMedia ?? false
+                            onToggled: value => {
+                                if (value !== Config.notch.showCavaOnMedia) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.showCavaOnMedia = value;
+                                }
+                            }
+                        }
+
+                        NumberInputRow {
+                            label: "Cava Bars"
+                            visible: Config.notch.showCavaOnMedia ?? false
+                            value: Config.notch.cavaBars ?? 16
+                            minValue: 4
+                            maxValue: 32
+                            onValueEdited: newValue => {
+                                if (newValue !== Config.notch.cavaBars) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.cavaBars = newValue;
+                                }
+                            }
+                        }
                     }
 
                     Separator {

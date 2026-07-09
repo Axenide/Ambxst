@@ -677,6 +677,8 @@ Singleton {
             property string noMediaDisplay: "userHost"
             property string customText: "Ambxst"
             property bool disableHoverExpansion: true
+            property bool showCavaOnMedia: false
+            property int cavaBars: 16
         }
     }
 
@@ -1230,7 +1232,7 @@ Singleton {
             if (current.ambxst.dashboard && typeof current.ambxst.dashboard === "object" && !current.ambxst.dashboard.modifiers) {
                 console.log("Migrating nested ambxst binds to flat structure...");
                 const nested = current.ambxst.dashboard;
-                
+
                 // Map old names to new names and update arguments
                 if (nested.widgets) {
                     current.ambxst.launcher = nested.widgets;
@@ -3416,7 +3418,7 @@ Singleton {
                 // Trigger save
                 GlobalStates.markShellChanged();
             }
-        } 
+        }
         // If notch moves top
         else if (notchPosition === "top") {
             // Restore Dock if displaced
@@ -3518,20 +3520,20 @@ Singleton {
 
     function resolveColor(colorValue) {
         if (!colorValue) return "transparent"; // Fallback
-        
+
         if (isHexColor(colorValue)) {
             return colorValue;
         }
-        
+
         // Check Colors singleton
         if (typeof Colors === 'undefined' || !Colors) return "transparent";
-        
-        return Colors[colorValue] || "transparent"; 
+
+        return Colors[colorValue] || "transparent";
     }
 
     function resolveColorWithOpacity(colorValue, opacity) {
         if (!colorValue) return Qt.rgba(0,0,0,0);
-        
+
         const color = isHexColor(colorValue) ? Qt.color(colorValue) : (Colors[colorValue] || Qt.color("transparent"));
         return Qt.rgba(color.r, color.g, color.b, opacity);
     }
