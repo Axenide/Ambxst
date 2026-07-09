@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
@@ -349,6 +350,108 @@ Item {
 
                 onEditingFinished: {
                     textInputRowRoot.valueEdited(text);
+                }
+            }
+        }
+    }
+
+    // Inline component for text rows with a "browse" file picker button
+    component FilePickerRow: RowLayout {
+        id: filePickerRowRoot
+        property string label: ""
+        property string value: ""
+        property string placeholder: ""
+        property string dialogTitle: "Select File"
+        property string fileFilter: "Images | *.png *.jpg *.jpeg *.svg *.webp *.gif"
+        signal valueEdited(string newValue)
+
+        Layout.fillWidth: true
+        spacing: 8
+
+        Text {
+            text: filePickerRowRoot.label
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(0)
+            color: Colors.overBackground
+            Layout.preferredWidth: 100
+            visible: filePickerRowRoot.label !== ""
+        }
+
+        StyledRect {
+            variant: "common"
+            Layout.fillWidth: true
+            Layout.preferredHeight: 32
+            radius: Styling.radius(-2)
+
+            TextInput {
+                id: filePickerField
+                anchors.fill: parent
+                anchors.margins: 8
+                font.family: Config.theme.font
+                font.pixelSize: Styling.fontSize(0)
+                color: Colors.overBackground
+                selectByMouse: true
+                clip: true
+                verticalAlignment: TextInput.AlignVCenter
+
+                readonly property string configValue: filePickerRowRoot.value
+                onConfigValueChanged: {
+                    if (!activeFocus && text !== configValue) {
+                        text = configValue;
+                    }
+                }
+                Component.onCompleted: text = configValue
+
+                Text {
+                    anchors.fill: parent
+                    verticalAlignment: Text.AlignVCenter
+                    text: filePickerRowRoot.placeholder
+                    font.family: Config.theme.font
+                    font.pixelSize: Styling.fontSize(0)
+                    color: Colors.overSurfaceVariant
+                    visible: filePickerField.text === ""
+                }
+
+                onEditingFinished: {
+                    filePickerRowRoot.valueEdited(text);
+                }
+            }
+        }
+
+        StyledRect {
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            radius: Styling.radius(-2)
+            variant: browseArea.containsMouse ? "focus" : "pane"
+
+            Text {
+                anchors.centerIn: parent
+                text: Icons.folder
+                font.family: Icons.font
+                font.pixelSize: 16
+                color: Colors.overSurfaceVariant
+            }
+
+            MouseArea {
+                id: browseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: filePickerProcess.running = true
+            }
+
+            Process {
+                id: filePickerProcess
+                running: false
+                command: ["zenity", "--file-selection", "--title=" + filePickerRowRoot.dialogTitle, "--file-filter=" + filePickerRowRoot.fileFilter]
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        const picked = text.trim();
+                        if (picked) {
+                            filePickerField.text = picked;
+                            filePickerRowRoot.valueEdited(picked);
+                        }
+                    }
                 }
             }
         }
@@ -720,10 +823,11 @@ Item {
                             }
                         }
 
-                        TextInputRow {
+                        FilePickerRow {
                             label: "Launcher Icon"
                             value: Config.bar.launcherIcon ?? ""
                             placeholder: "Symbol or path to icon..."
+                            dialogTitle: "Select Launcher Icon"
                             onValueEdited: newValue => {
                                 if (newValue !== Config.bar.launcherIcon) {
                                     GlobalStates.markShellChanged();
@@ -1167,11 +1271,12 @@ Item {
                             }
                         }
 
-                        TextInputRow {
+                        FilePickerRow {
                             label: "Image Path"
                             visible: Config.notch.noMediaBackground === "image"
                             value: Config.notch.noMediaBackgroundImage ?? ""
                             placeholder: "/path/to/image.png"
+                            dialogTitle: "Select Background Image"
                             onValueEdited: newValue => {
                                 if (newValue !== Config.notch.noMediaBackgroundImage) {
                                     GlobalStates.markShellChanged();

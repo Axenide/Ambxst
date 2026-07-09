@@ -18,11 +18,14 @@ Singleton {
     // restore focus when the overlay closes.
     property string savedFocusAddress: ""
 
-    // Captures the currently focused client's address so it can be restored later.
+    // Captures the address of the window that is focused *right now* so it can be
+    // restored later. If no window is currently focused (e.g. the active
+    // workspace is empty), nothing is saved so closing the overlay leaves the
+    // user where they are instead of pulling focus to a stale window.
     function saveFocus() {
-        if (root.focusedClient && root.focusedClient.address) {
-            root.savedFocusAddress = root.focusedClient.address;
-        }
+        let clients = root.clients.values || [];
+        let current = clients.find(c => c.is_focused);
+        root.savedFocusAddress = (current && current.address) ? current.address : "";
     }
 
     // Dispatches a focuswindow command for the saved address, then clears it.
@@ -135,7 +138,11 @@ Singleton {
                 };
             });
             root.clients.values = mappedClients;
-            let focused = mappedClients.find(w => w.address === (root.focusedClient ? root.focusedClient.address : undefined)) || mappedClients.find(w => w.is_focused) || null;
+            // Prefer the window the compositor actually reports as focused. Only
+            // fall back to the previously tracked client when nothing is focused
+            // (e.g. a shell overlay is holding exclusive keyboard focus), so the
+            // last real focus is preserved for restoreFocus().
+            let focused = mappedClients.find(w => w.is_focused) || mappedClients.find(w => w.address === (root.focusedClient ? root.focusedClient.address : undefined)) || null;
             if (focused !== root.focusedClient) {
                 root.focusedClient = focused;
             }
