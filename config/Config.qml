@@ -705,7 +705,7 @@ Singleton {
             property string noMediaDisplay: "userHost"
             property string customText: "Ambxst"
             property bool disableHoverExpansion: true
-            property string noMediaBackground: "wallpaper"
+            property string noMediaBackground: "none"
             property string noMediaBackgroundImage: ""
             property real noMediaBackgroundBlur: 0.75
         }

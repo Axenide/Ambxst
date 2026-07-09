@@ -8,7 +8,7 @@ var data = {
     "noMediaDisplay": "userHost",
     "customText": "Ambxst",
     "disableHoverExpansion": true,
-    "noMediaBackground": "wallpaper",
+    "noMediaBackground": "none",
     "noMediaBackgroundImage": "",
     "noMediaBackgroundBlur": 0.75
 }
