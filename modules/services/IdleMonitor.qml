@@ -13,6 +13,25 @@ Item {
     property var _monitorId: 0
     property bool _initialized: false
 
+    // Bounded retry for the startup race where the axctl daemon socket isn't
+    // ready yet when the monitor is first created.
+    property int _initRetries: 0
+    readonly property int _maxInitRetries: 10
+
+    Timer {
+        id: _initRetryTimer
+        interval: 1000
+        repeat: false
+        onTriggered: root._initMonitor()
+    }
+
+    function _scheduleInitRetry() {
+        if (!_initialized && enabled && timeout > 0 && _initRetries < _maxInitRetries) {
+            _initRetries++;
+            _initRetryTimer.restart();
+        }
+    }
+
     property var _createProcess: Process {
         id: _createProcess
         command: ["sh", "-c", ""]
@@ -26,12 +45,15 @@ Item {
                     var json = JSON.parse(_createStdout.text.trim());
                     _monitorId = json.id;
                     _initialized = true;
+                    _initRetries = 0;
                     _startPolling();
                 } catch (e) {
-                    console.error("Failed to parse idle monitor response:", _createStdout.text, e);
+                    console.warn("Idle monitor not ready, retrying:", _createStdout.text.trim());
+                    _scheduleInitRetry();
                 }
             } else {
-                console.error("Failed to create idle monitor: code=", code, "output:", _createStdout.text);
+                console.warn("Failed to create idle monitor (code=" + code + "), retrying");
+                _scheduleInitRetry();
             }
         }
     }

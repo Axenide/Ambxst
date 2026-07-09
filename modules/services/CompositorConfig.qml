@@ -24,7 +24,9 @@ QtObject {
                         currentAnimationConfig = parsed;
                     }
                 } catch (e) {
-                    console.error("CompositorConfig: Error parsing animations:", e);
+                    // Transient at startup if the axctl socket isn't ready yet;
+                    // re-fetched on the next applyCompositorConfig() trigger.
+                    console.warn("CompositorConfig: animations not ready yet, will retry");
                 }
             }
         }
