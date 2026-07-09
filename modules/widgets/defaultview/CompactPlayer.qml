@@ -36,6 +36,33 @@ Item {
         return frame ? "file://" + frame : "";
     }
 
+    // Configurable background shown when no media is playing:
+    // "wallpaper" (default), "image" (custom), or "none" (see-through).
+    readonly property string noMediaBackgroundMode: Config.notch.noMediaBackground ?? "wallpaper"
+    readonly property real noMediaBackgroundBlur: Config.notch.noMediaBackgroundBlur ?? 0.75
+
+    function _normalizeImagePath(p) {
+        if (!p || p === "")
+            return "";
+        if (p.startsWith("file://") || p.startsWith("http://") || p.startsWith("https://"))
+            return p;
+        return "file://" + p;
+    }
+
+    // Image source used for the no-media background per the configured mode.
+    readonly property string noMediaSource: {
+        if (noMediaBackgroundMode === "wallpaper")
+            return wallpaperPath;
+        if (noMediaBackgroundMode === "image")
+            return _normalizeImagePath(Config.notch.noMediaBackgroundImage ?? "");
+        return ""; // "none" -> see-through
+    }
+
+    // Unified background source/state used across the player chrome.
+    readonly property string backgroundSource: hasArtwork ? (player?.trackArtUrl ?? "") : noMediaSource
+    readonly property bool hasBackground: backgroundSource !== ""
+    readonly property real backgroundBlur: hasArtwork ? 0.75 : noMediaBackgroundBlur
+
     readonly property string focusedTitle: {
         const activeWsId = AxctlService.focusedMonitor?.activeWorkspace?.id;
         if (!activeWsId) return "";
@@ -163,7 +190,7 @@ Item {
                 mipmap: true
                 id: backgroundArt
                 anchors.fill: parent
-                source: (compactPlayer.player?.trackArtUrl ?? "") !== "" ? compactPlayer.player.trackArtUrl : compactPlayer.wallpaperPath
+                source: compactPlayer.backgroundSource
                 sourceSize: Qt.size(64, 64)
                 fillMode: Image.PreserveAspectCrop
                 asynchronous: true
@@ -174,11 +201,11 @@ Item {
                 anchors.fill: backgroundArt
                 source: backgroundArt
                 // Only enable blur when there's content to blur (saves GPU)
-                blurEnabled: hasArtwork || wallpaperPath !== ""
+                blurEnabled: compactPlayer.hasBackground
                 blurMax: 32
-                blur: 0.75
+                blur: compactPlayer.backgroundBlur
                 autoPaddingEnabled: false
-                opacity: (hasArtwork || wallpaperPath !== "") ? 1.0 : 0.0
+                opacity: (compactPlayer.hasBackground) ? 1.0 : 0.0
                 Behavior on opacity {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
@@ -191,7 +218,7 @@ Item {
             StyledRect {
                 anchors.fill: parent
                 variant: "internalbg"
-                opacity: (hasArtwork || wallpaperPath !== "") ? 0.5 : 0.0
+                opacity: (compactPlayer.hasBackground) ? 0.5 : 0.0
                 radius: Styling.radius(-4)
                 Behavior on opacity {
                     enabled: Config.animDuration > 0
@@ -240,7 +267,7 @@ Item {
                         mipmap: true
                         id: artworkImage
                         anchors.fill: parent
-                        source: (compactPlayer.player?.trackArtUrl ?? "") !== "" ? compactPlayer.player.trackArtUrl : compactPlayer.wallpaperPath
+                        source: compactPlayer.backgroundSource
                         sourceSize: Qt.size(48, 48)
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
@@ -250,10 +277,10 @@ Item {
                         anchors.fill: parent
                         source: artworkImage
                         // Only enable blur when there's content to blur (saves GPU)
-                        blurEnabled: (hasArtwork || wallpaperPath !== "") && compactPlayer.notchHovered
+                        blurEnabled: (compactPlayer.hasBackground) && compactPlayer.notchHovered
                         blurMax: 32
-                        blur: 0.75
-                        opacity: (hasArtwork || wallpaperPath !== "") ? 1.0 : 0.0 // Simplificado
+                        blur: compactPlayer.backgroundBlur
+                        opacity: (compactPlayer.hasBackground) ? 1.0 : 0.0 // Simplificado
                         Behavior on opacity {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
@@ -266,7 +293,7 @@ Item {
                     StyledRect {
                         anchors.fill: parent
                         variant: "internalbg"
-                        opacity: ((hasArtwork || wallpaperPath !== "") && compactPlayer.notchHovered) ? 0.5 : 0.0
+                        opacity: ((compactPlayer.hasBackground) && compactPlayer.notchHovered) ? 0.5 : 0.0
                         radius: parent.radius
                         Behavior on opacity {
                             enabled: Config.animDuration > 0
@@ -282,7 +309,7 @@ Item {
                         anchors.centerIn: parent
                         text: compactPlayer.isPlaying ? Icons.pause : Icons.play
                         textFormat: Text.RichText
-                        color: playPauseHover.hovered ? ((hasArtwork || wallpaperPath !== "") ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : ((hasArtwork || wallpaperPath !== "") ? Colors.overBackground : Colors.overBackground)
+                        color: playPauseHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : ((compactPlayer.hasBackground) ? Colors.overBackground : Colors.overBackground)
                         font.pixelSize: 16
                         font.family: Icons.font
                         opacity: (compactPlayer.player?.canPause ?? false) && compactPlayer.notchHovered ? 1.0 : 0.0
@@ -339,7 +366,7 @@ Item {
                 id: previousBtn
                 text: Icons.previous
                 textFormat: Text.RichText
-                color: previousHover.hovered ? ((hasArtwork || wallpaperPath !== "") ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
+                color: previousHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
                 font.pixelSize: 16
                 font.family: Icons.font
                 opacity: compactPlayer.player?.canGoPrevious ?? false ? 1.0 : 0.3
@@ -399,14 +426,14 @@ Item {
                 Layout.rightMargin: compactPlayer.notchHovered ? 0 : 8
                 player: compactPlayer.player
                 visible: compactPlayer.notchHovered
-                hasArtwork: compactPlayer.hasArtwork || compactPlayer.wallpaperPath !== ""
+                hasArtwork: compactPlayer.hasBackground
             }
 
             Text {
                 id: nextBtn
                 text: Icons.next
                 textFormat: Text.RichText
-                color: nextHover.hovered ? ((hasArtwork || wallpaperPath !== "") ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
+                color: nextHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
                 font.pixelSize: 16
                 font.family: Icons.font
                 opacity: compactPlayer.player?.canGoNext ?? false ? 1.0 : 0.3
@@ -473,7 +500,7 @@ Item {
                     }
                 }
                 textFormat: Text.RichText
-                color: modeBtn.modeHover.hovered ? ((hasArtwork || wallpaperPath !== "") ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
+                color: modeBtn.modeHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
                 property alias modeHover: modeHover
                 font.pixelSize: 16
                 font.family: Icons.font
@@ -545,7 +572,7 @@ Item {
                 id: playerIcon
                 text: compactPlayer.getPlayerIcon(compactPlayer.player)
                 textFormat: Text.RichText
-                color: playerIconHover.hovered ? ((hasArtwork || wallpaperPath !== "") ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
+                color: playerIconHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
                 font.pixelSize: 20
                 font.family: Icons.font
                 verticalAlignment: Text.AlignVCenter

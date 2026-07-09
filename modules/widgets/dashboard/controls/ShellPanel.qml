@@ -1125,6 +1125,103 @@ Item {
                                 }
                             }
                         }
+
+                        Separator {
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: "No Media Background"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        SelectorRow {
+                            label: ""
+                            options: [
+                                {
+                                    label: "Wallpaper",
+                                    value: "wallpaper",
+                                    icon: Icons.image
+                                },
+                                {
+                                    label: "Image",
+                                    value: "image",
+                                    icon: Icons.file
+                                },
+                                {
+                                    label: "None",
+                                    value: "none",
+                                    icon: Icons.minus
+                                }
+                            ]
+                            value: Config.notch.noMediaBackground ?? "wallpaper"
+                            onValueSelected: newValue => {
+                                if (newValue !== Config.notch.noMediaBackground) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.noMediaBackground = newValue;
+                                }
+                            }
+                        }
+
+                        TextInputRow {
+                            label: "Image Path"
+                            visible: Config.notch.noMediaBackground === "image"
+                            value: Config.notch.noMediaBackgroundImage ?? ""
+                            placeholder: "/path/to/image.png"
+                            onValueEdited: newValue => {
+                                if (newValue !== Config.notch.noMediaBackgroundImage) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.noMediaBackgroundImage = newValue;
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            visible: Config.notch.noMediaBackground === "wallpaper" || Config.notch.noMediaBackground === "image"
+
+                            Text {
+                                text: "Blur"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(0)
+                                color: Colors.overBackground
+                                Layout.preferredWidth: 100
+                            }
+
+                            StyledSlider {
+                                id: noMediaBlurSlider
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 20
+                                progressColor: Styling.srItem("overprimary")
+                                tooltipText: `${value.toFixed(2)}`
+                                scroll: true
+                                stepSize: 0.05
+                                snapMode: "always"
+
+                                readonly property real configValue: Config.notch.noMediaBackgroundBlur ?? 0.75
+
+                                onConfigValueChanged: {
+                                    if (Math.abs(value - configValue) > 0.001) {
+                                        value = configValue;
+                                    }
+                                }
+
+                                Component.onCompleted: value = configValue
+
+                                onValueChanged: {
+                                    let newBlur = Math.round(value * 100) / 100;
+                                    if (Math.abs(newBlur - (Config.notch.noMediaBackgroundBlur ?? 0.75)) > 0.001) {
+                                        GlobalStates.markShellChanged();
+                                        Config.notch.noMediaBackgroundBlur = newBlur;
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Separator {
