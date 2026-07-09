@@ -10,6 +10,7 @@ import qs.modules.globals
 import qs.modules.services
 import qs.config
 import "notes_utils.js" as NotesUtils
+import "../list_utils.js" as ListUtils
 
 Item {
     id: root
@@ -429,25 +430,9 @@ Item {
         if (index < 0 || index >= notesModel.count)
             return;
 
-        var itemY = 0;
-        for (var i = 0; i < index; i++) {
-            itemY += 48;
-        }
-
-        // 3 options: Edit, Rename, Delete
-        var listHeight = 36 * 3;
-        var expandedHeight = 48 + 4 + listHeight + 8;
-
-        var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height);
-        var viewportTop = resultsList.contentY;
-        var viewportBottom = viewportTop + resultsList.height;
-        var itemBottom = itemY + expandedHeight;
-
-        if (itemY < viewportTop) {
-            resultsList.contentY = itemY;
-        } else if (itemBottom > viewportBottom) {
-            resultsList.contentY = Math.min(itemBottom - resultsList.height, maxContentY);
-        }
+        // 3 options: Edit, Rename, Delete.
+        var itemY = index * ListUtils.ROW_HEIGHT;
+        ListUtils.scrollToReveal(resultsList, itemY, ListUtils.expandedRowHeight(3));
     }
 
     onSelectedIndexChanged: {

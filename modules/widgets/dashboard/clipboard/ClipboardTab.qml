@@ -10,6 +10,7 @@ import qs.modules.globals
 import qs.modules.services
 import qs.config
 import "clipboard_utils.js" as ClipboardUtils
+import "../list_utils.js" as ListUtils
 
 Item {
     id: root
@@ -82,40 +83,17 @@ Item {
         if (index < 0 || index >= itemsModel.count)
             return;
 
-        // Calculate Y position of the item
-        var itemY = 0;
-        for (var i = 0; i < index; i++) {
-            itemY += 48; // All items before are collapsed (base height)
-        }
+        var itemY = index * ListUtils.ROW_HEIGHT;
 
-        // Calculate expanded item height
+        // Clipboard rows gain an extra "Open" option for files/images/URLs.
         var entry = itemsModel.get(index);
         var itemData = entry ? entry.itemData : null;
         var optionsCount = 4;
         if (itemData && (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview))) {
             optionsCount++;
         }
-        var listHeight = 36 * Math.min(3, optionsCount);
-        var expandedHeight = 48 + 4 + listHeight + 8;
 
-        // Calculate max valid scroll position
-        var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height);
-
-        // Current viewport bounds
-        var viewportTop = resultsList.contentY;
-        var viewportBottom = viewportTop + resultsList.height;
-
-        // Only scroll if item is not fully visible
-        var itemBottom = itemY + expandedHeight;
-
-        if (itemY < viewportTop) {
-            // Item top is above viewport - scroll up to show it
-            resultsList.contentY = itemY;
-        } else if (itemBottom > viewportBottom) {
-            // Item bottom is below viewport - scroll down to show it
-            resultsList.contentY = Math.min(itemBottom - resultsList.height, maxContentY);
-        }
-    // Otherwise, item is already fully visible - no scroll needed
+        ListUtils.scrollToReveal(resultsList, itemY, ListUtils.expandedRowHeight(optionsCount));
     }
 
     property int previewImageSize: 200

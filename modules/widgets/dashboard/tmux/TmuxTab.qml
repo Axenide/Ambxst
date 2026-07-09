@@ -9,6 +9,7 @@ import qs.modules.components
 import qs.modules.globals
 import qs.modules.services
 import qs.config
+import "../list_utils.js" as ListUtils
 
 Item {
     id: root
@@ -70,34 +71,9 @@ Item {
         if (index < 0 || index >= sessionsModel.count)
             return;
 
-        // Calculate Y position of the item
-        var itemY = 0;
-        for (var i = 0; i < index; i++) {
-            itemY += 48; // All items before are collapsed (base height)
-        }
-
-        // Calculate expanded item height - always 3 options (Open, Rename, Quit)
-        var listHeight = 36 * 3;
-        var expandedHeight = 48 + 4 + listHeight + 8;
-
-        // Calculate max valid scroll position
-        var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height);
-
-        // Current viewport bounds
-        var viewportTop = resultsList.contentY;
-        var viewportBottom = viewportTop + resultsList.height;
-
-        // Only scroll if item is not fully visible
-        var itemBottom = itemY + expandedHeight;
-
-        if (itemY < viewportTop) {
-            // Item top is above viewport - scroll up to show it
-            resultsList.contentY = itemY;
-        } else if (itemBottom > viewportBottom) {
-            // Item bottom is below viewport - scroll down to show it
-            resultsList.contentY = Math.min(itemBottom - resultsList.height, maxContentY);
-        }
-    // Otherwise, item is already fully visible - no scroll needed
+        // Always 3 options (Open, Rename, Quit).
+        var itemY = index * ListUtils.ROW_HEIGHT;
+        ListUtils.scrollToReveal(resultsList, itemY, ListUtils.expandedRowHeight(3));
     }
 
     onSelectedIndexChanged: {
