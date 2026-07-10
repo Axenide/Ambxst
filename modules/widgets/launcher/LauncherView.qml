@@ -14,10 +14,11 @@ import "../dashboard/emoji"
 import "../dashboard/tmux"
 import "../dashboard/notes"
 import "../dashboard/list_utils.js" as ListUtils
+import qs.modules.notch
 
-Rectangle {
+NotchAnimationBehavior {
     id: root
-    color: "transparent"
+    isVisible: GlobalStates.launcherOpen
     
     readonly property bool isCompact: currentTab === 0 || currentTab === 2
     implicitWidth: isCompact ? 464 : 900

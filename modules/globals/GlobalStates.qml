@@ -153,6 +153,16 @@ Singleton {
         return active ? active.presets : false;
     }
 
+    function getActiveTools() {
+        let active = Visibilities.getForActive();
+        return active ? active.tools : false;
+    }
+
+    function getActivePowerMenu() {
+        let active = Visibilities.getForActive();
+        return active ? active.powermenu : false;
+    }
+
     function getActiveNotchOpen() {
         let active = Visibilities.getForActive();
         return active ? (active.launcher || active.dashboard || active.overview) : false;
@@ -164,6 +174,8 @@ Singleton {
     readonly property bool presetsOpen: getActivePresets()
     readonly property bool launcherOpen: getActiveLauncher()
     readonly property bool dashboardOpen: getActiveDashboard()
+    readonly property bool toolsOpen: getActiveTools()
+    readonly property bool powermenuOpen: getActivePowerMenu()
 
     // Safety net: if the dashboard closes while an edit session is still pending
     // (window dismissed without Apply/Discard), revert changes so auto-save can

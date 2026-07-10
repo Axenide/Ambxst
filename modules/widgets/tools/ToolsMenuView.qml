@@ -1,9 +1,13 @@
 import QtQuick
 import qs.modules.components
 import qs.modules.services
+import qs.modules.globals
+import qs.modules.notch
 import qs.config
 
-Item {
+NotchAnimationBehavior {
+    id: root
+    isVisible: GlobalStates.toolsOpen
     implicitWidth: toolsMenu.implicitWidth
     implicitHeight: toolsMenu.implicitHeight
 
