@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Quickshell
 import qs.modules.theme
 import QtQuick.Effects
 import qs.modules.components
@@ -63,57 +64,63 @@ Rectangle {
     }
 
     // Dynamic Settings Indexer
+    // Builds the search index by crawling panels. Uses Quickshell's LazyLoader so each
+    // heavy panel (ShellPanel, BindsPanel, …) is instantiated in the gaps between frame
+    // renders instead of blocking the UI thread — the notch close animation keeps running
+    // smoothly. Crawling is also deferred until the window has settled so opening Settings
+    // is instant. The active panel is crawled immediately via panelLoader.onLoaded below.
     Item {
         id: settingsIndexer
-        visible: false // Headless
+        visible: false
 
         property int currentPanelIndex: 0
         property var aggregatedItems: []
         property bool isIndexing: false
 
-        // Helper to load panels one by one
-        Loader {
-            id: indexerLoader
-            active: settingsIndexer.isIndexing
-            asynchronous: true
-            source: settingsIndexer.isIndexing && settingsIndexer.currentPanelIndex < contentArea.panelComponents.length ? contentArea.panelComponents[settingsIndexer.currentPanelIndex].component : ""
-
-            onStatusChanged: {
-                if (status === Loader.Ready && item) {
-                    // Scrape
-                    const sectionId = contentArea.panelComponents[settingsIndexer.currentPanelIndex].section;
-                    const newItems = SettingsCrawler.crawl(item, sectionId);
-                    settingsIndexer.aggregatedItems = settingsIndexer.aggregatedItems.concat(newItems);
-
-                    // Move to next
-                    settingsIndexer.currentPanelIndex++;
-                } else if (status === Loader.Error) {
-                    console.warn("Failed to load panel for indexing:", source);
-                    settingsIndexer.currentPanelIndex++;
-                }
-            }
-        }
-
-        onCurrentPanelIndexChanged: {
+        function loadCurrentPanel() {
             if (currentPanelIndex >= contentArea.panelComponents.length) {
-                // Done
                 if (isIndexing) {
                     isIndexing = false;
                     searchIndex.addDynamicItems(aggregatedItems);
                 }
+                return;
+            }
+            // LazyLoader does not auto-restart incubation when its source changes, so
+            // toggle loading to (re)start asynchronous creation of the next panel.
+            indexerLoader.source = contentArea.panelComponents[currentPanelIndex].component;
+            indexerLoader.loading = false;
+            indexerLoader.loading = true;
+        }
+
+        LazyLoader {
+            id: indexerLoader
+            // Never read .item while loading (it would force a blocking completion);
+            // react to itemChanged instead, once the panel is fully created.
+            onItemChanged: {
+                if (item) {
+                    const sectionId = contentArea.panelComponents[settingsIndexer.currentPanelIndex].section;
+                    const newItems = SettingsCrawler.crawl(item, sectionId);
+                    settingsIndexer.aggregatedItems = settingsIndexer.aggregatedItems.concat(newItems);
+                    settingsIndexer.currentPanelIndex++;
+                }
             }
         }
 
-        Component.onCompleted: {
-            // Start indexing after a short delay to allow UI to settle
-            indexingTimer.start();
-        }
+        onCurrentPanelIndexChanged: loadCurrentPanel()
 
+        Component.onCompleted: startIndexingTimer.start()
+
+        // Defer until the window/open animation has settled, so opening Settings never
+        // competes with the (concurrent) notch close for the UI thread.
         Timer {
-            id: indexingTimer
-            interval: 500
+            id: startIndexingTimer
+            interval: 1500
             onTriggered: {
-                settingsIndexer.isIndexing = true;
+                if (settingsWindow.visible && !settingsIndexer.isIndexing) {
+                    settingsIndexer.isIndexing = true;
+                    settingsIndexer.currentPanelIndex = 0;
+                    settingsIndexer.loadCurrentPanel();
+                }
             }
         }
     }
@@ -623,6 +630,12 @@ Rectangle {
                             item.currentSection = root.pendingSubSection;
                             root.pendingSubSection = "";
                         }
+                        // Index this panel's searchable settings immediately. The panel is
+                        // already instantiated by this Loader, so crawling adds entries at no
+                        // extra instantiation cost and never blocks the UI.
+                        const loadedItems = SettingsCrawler.crawl(item, root.currentSection);
+                        if (loadedItems.length > 0)
+                            searchIndex.addDynamicItems(loadedItems);
                     }
                 }
             }
