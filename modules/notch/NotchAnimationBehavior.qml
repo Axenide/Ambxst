@@ -8,7 +8,7 @@ Item {
     // Controls visibility with animated entrance/exit
     property bool isVisible: false
 
-    // Scale + opacity entrance — scale pops from 0.85 with OutBack overshoot
+    // Scale + opacity entrance — scale eases from 0.85 to 1.0 (no overshoot)
     scale: isVisible ? 1.0 : 0.85
     opacity: isVisible ? 1.0 : 0.0
     visible: opacity > 0
@@ -29,9 +29,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            // Overshoot only on entrance; closing settles smoothly without overshoot
-            easing.type: root.isVisible ? Easing.OutBack : Easing.OutQuart
-            easing.overshoot: 1.2
+            easing.type: Easing.OutQuart
         }
     }
 

@@ -61,8 +61,7 @@ Item {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
-            easing.overshoot: isExpanded ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
         }
     }
 
@@ -70,8 +69,7 @@ Item {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
-            easing.overshoot: isExpanded ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
         }
     }
 
@@ -98,8 +96,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
             }
         }
 
@@ -107,8 +104,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
             }
         }
 
@@ -116,8 +112,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
             }
         }
 
@@ -125,8 +120,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
             }
         }
 
@@ -251,8 +245,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
                 }
             }
 
@@ -260,8 +253,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
                 }
             }
 
@@ -269,8 +261,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
                 }
             }
 
@@ -278,8 +269,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
                 }
             }
         }
@@ -359,8 +349,7 @@ Item {
                         from: 0.8
                         to: 1
                         duration: Config.animDuration
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.2
+                        easing.type: Easing.OutQuart
                     }
                 }
 
@@ -428,8 +417,7 @@ Item {
                         from: 0.8
                         to: 1
                         duration: Config.animDuration
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.2
+                        easing.type: Easing.OutQuart
                     }
                 }
 
