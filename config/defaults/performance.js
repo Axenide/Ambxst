@@ -7,5 +7,5 @@ var data = {
     "rotateCoverArt": true,
     "dashboardPersistTabs": false,
     "dashboardMaxPersistentTabs": 2,
-    "optimizeVideoWallpapers": true
+    "optimizeVideoWallpapers": false
 }

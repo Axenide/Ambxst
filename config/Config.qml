@@ -832,7 +832,7 @@ Singleton {
             property bool rotateCoverArt: true
             property bool dashboardPersistTabs: false
             property int dashboardMaxPersistentTabs: 2
-            property bool optimizeVideoWallpapers: true
+            property bool optimizeVideoWallpapers: false
         }
     }
 

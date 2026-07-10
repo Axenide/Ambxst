@@ -435,7 +435,7 @@ Item {
                         ToggleRow {
                             Layout.fillWidth: true
                             label: "Optimize Video Wallpapers"
-                            description: "Downscale video wallpapers to your screen's resolution and refresh rate (cached) to cut GPU usage"
+                            description: "Downscale video wallpapers to your screen's resolution/refresh to cut GPU usage. First use of each video does a one-time background transcode."
                             checked: Config.performance.optimizeVideoWallpapers
                             onToggled: checked => {
                                 Config.performance.optimizeVideoWallpapers = checked;

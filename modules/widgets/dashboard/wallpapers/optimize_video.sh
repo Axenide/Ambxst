@@ -66,8 +66,13 @@ if [ -f "$OUT" ] && [ "$OUT" -nt "$SRC" ]; then
     exit 0
 fi
 
+# Run at low CPU/IO priority so the one-time transcode doesn't hog the machine
+# when a video wallpaper is set. `ionice` is optional (util-linux).
+IONICE=""
+command -v ionice >/dev/null 2>&1 && IONICE="ionice -c 3"
+
 TMP="${OUT}.tmp.mp4"
-if ffmpeg -y -nostdin -loglevel error -i "$SRC" \
+if nice -n 19 $IONICE ffmpeg -y -nostdin -loglevel error -i "$SRC" \
     -vf "scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS}" \
     -c:v libx264 -preset veryfast -crf 23 -an -pix_fmt yuv420p "$TMP" >/dev/null 2>&1; then
     mv -f "$TMP" "$OUT"
