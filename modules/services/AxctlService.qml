@@ -61,17 +61,29 @@ Singleton {
             const activeWs = fmon && fmon.activeWorkspace ? fmon.activeWorkspace.id : -1;
             if (win && win.workspace && win.workspace.id === activeWs) {
                 // Re-focus the app, but without warping the cursor to its centre.
-                // Hyprland's focuswindow dispatcher warps by default; briefly
-                // disabling cursor:no_warps scopes the no-warp to just this
-                // focus so the cursor stays where the user left it (Windows
-                // start-menu behaviour). The ; chaining always re-enables warp
-                // even if the focus dispatch fails for a stale address.
-                let p = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
-                p.command = ["bash", "-c",
-                    'hyprctl keyword cursor:no_warps 1; axctl window focus ' + addr
-                    + '; hyprctl keyword cursor:no_warps 0'];
-                p.onExited.connect(() => p.destroy());
-                p.running = true;
+                // Hyprland's focuswindow dispatcher warps by default, so we
+                // briefly disable cursor:no_warps, focus, then re-enable it. The
+                // chain (set-off -> focus -> set-on) runs each step on the
+                // previous process's exit so warp is guaranteed off before the
+                // focus and always restored afterwards. Using direct axctl/hyprctl
+                // processes (not a bash -c wrapper) keeps the call environment
+                // identical to the rest of the shell, so the focus actually lands.
+                let setOff = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+                setOff.command = ["hyprctl", "keyword", "cursor:no_warps", "1"];
+                setOff.onExited.connect(() => {
+                    setOff.destroy();
+                    let focus = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+                    focus.command = ["axctl", "window", "focus", addr];
+                    focus.onExited.connect(() => {
+                        let setOn = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+                        setOn.command = ["hyprctl", "keyword", "cursor:no_warps", "0"];
+                        setOn.onExited.connect(() => setOn.destroy());
+                        setOn.running = true;
+                        focus.destroy();
+                    });
+                    focus.running = true;
+                });
+                setOff.running = true;
             }
         }
     }
