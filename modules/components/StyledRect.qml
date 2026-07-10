@@ -202,8 +202,10 @@ ClippingRectangle {
         }
     }
 
-    // Shadow effect
-    layer.enabled: enableShadow
+    // Shadow effect. Only spin up the offscreen layer (an FBO per instance) when
+    // the shadow would actually be visible — with shadow opacity at 0 this avoids
+    // ~one render target per shadowed StyledRect (dozens shell-wide) for free.
+    layer.enabled: enableShadow && Config.theme.shadowOpacity > 0
     layer.effect: Shadow {}
 
     // Border overlay to avoid ClippingRectangle artifacts
