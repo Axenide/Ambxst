@@ -59,8 +59,18 @@ Singleton {
             const win = clients.find(c => c.address === addr);
             const fmon = root.focusedMonitor;
             const activeWs = fmon && fmon.activeWorkspace ? fmon.activeWorkspace.id : -1;
-            if (win && win.workspace && win.workspace.id === activeWs)
-                root.dispatch("focuswindow " + addr);
+            if (win && win.workspace && win.workspace.id === activeWs) {
+                // Save cursor position, focus window, restore cursor position.
+                // focuswindow dispatcher warps the cursor to the window centre;
+                // the restore undoes that warp so the cursor stays where the
+                // user left it (like Windows start menu behaviour).
+                let p = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+                p.command = ["bash", "-c",
+                    'p=$(hyprctl cursorpos) && axctl window focus ' + addr
+                    + ' && hyprctl setcursorpos ${p%,*} ${p#*, }'];
+                p.onExited.connect(() => p.destroy());
+                p.running = true;
+            }
         }
     }
 
