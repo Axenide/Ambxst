@@ -11,11 +11,12 @@ MONITOR="${3:-ALL}"
 
 # Kill existing mpvpaper instances (all, or just this monitor's).
 #
-# NOTE: we match on the command line rather than the process name. On NixOS the
-# mpvpaper binary is a wrapper whose process name is ".mpvpaper-wrapped", so
-# `pkill -x mpvpaper` silently matches nothing and old decoders pile up on every
-# wallpaper change (wasting GPU). Matching the cmdline is reliable everywhere; we
-# explicitly skip this launcher script so it never kills itself.
+# NOTE: we match on the command line rather than the process name. When mpvpaper
+# is launched through a wrapper its process name may not be exactly "mpvpaper"
+# (e.g. ".mpvpaper-wrapped"), so `pkill -x mpvpaper` can silently match nothing
+# and leave old decoders running on every wallpaper change (wasting GPU).
+# Matching the cmdline is reliable regardless of packaging; we explicitly skip
+# this launcher script so it never kills itself.
 for pid in $(pgrep -f mpvpaper 2>/dev/null); do
     [ "$pid" = "$$" ] && continue
     args=$(cat "/proc/$pid/cmdline" 2>/dev/null | tr '\0' ' ')
