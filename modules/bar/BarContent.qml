@@ -28,12 +28,6 @@ Item {
     property string barPosition: (Config.bar && Config.bar.position !== undefined && ["top", "bottom", "left", "right"].includes(Config.bar.position) ? Config.bar.position : "top")
     property string orientation: barPosition === "left" || barPosition === "right" ? "vertical" : "horizontal"
 
-    // Ordered, user-configurable bar item lists (see config/defaults/bar.js).
-    // Each entry is an item id; "spring" inserts a flexible spacer that also
-    // hosts the integrated dock. Remove an id to hide it; reorder to rearrange.
-    readonly property var hItems: (Config.bar && Config.bar.items) ? Config.bar.items : []
-    readonly property var vItems: (Config.bar && Config.bar.itemsVertical) ? Config.bar.itemsVertical : []
-
     // Auto-hide properties
     onPinnedChanged: {
         if (Config.bar && Config.bar.pinnedOnStartup !== pinned) {
@@ -42,6 +36,10 @@ Item {
     }
 
     property bool pinned: (Config.bar && Config.bar.pinnedOnStartup !== undefined ? Config.bar.pinnedOnStartup : true)
+
+    // Monitor reference and reference to toplevels on monitor
+    readonly property var compositorMonitor: AxctlService.monitorFor(screen)
+    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.activeWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.activeWorkspace.id)
 
     // Fullscreen detection - use ToplevelManager (native Wayland) for reliable detection
     readonly property bool activeWindowFullscreen: {
@@ -142,6 +140,28 @@ Item {
             }
         }
     }
+
+    // Integrated dock configuration
+    readonly property bool integratedDockEnabled: (Config.dock && Config.dock.enabled !== undefined ? Config.dock.enabled : false) && (Config.dock && Config.dock.theme !== undefined ? Config.dock.theme : "default") === "integrated"
+    // Map dock position for integrated based on orientation
+    readonly property string integratedDockPosition: {
+        const pos = (Config.dock && Config.dock.position !== undefined ? Config.dock.position : "center");
+
+        if (root.orientation === "horizontal") {
+            if (pos === "left" || pos === "start")
+                return "start";
+            if (pos === "right" || pos === "end")
+                return "end";
+            return "center";
+        }
+        
+        // Vertical always falls back to center logic inside the column but we treat it as appended to group
+        return "center";
+    }
+
+    // Radius helpers for dock connections
+    readonly property bool dockAtStart: integratedDockEnabled && integratedDockPosition === "start"
+    readonly property bool dockAtEnd: integratedDockEnabled && integratedDockPosition === "end"
 
     readonly property int frameOffset: (Config.bar && Config.bar.frameEnabled !== undefined ? Config.bar.frameEnabled : false) ? (Config.bar && Config.bar.frameThickness !== undefined ? Config.bar.frameThickness : 6) : 0
 
@@ -342,18 +362,193 @@ Item {
                         // Obtener referencia al notch de esta pantalla
                         readonly property var notchContainer: Visibilities.getNotchForScreen(root.screen.name)
 
-                        Repeater {
-                            model: root.hItems
+                        LauncherButton {
+                            id: launcherButton
+                            startRadius: root.outerRadius
+                            endRadius: root.innerRadius
+                            enableShadow: root.shadowsEnabled
+                        }
 
-                            delegate: BarItem {
-                                itemId: modelData
-                                bar: root
-                                vertical: false
-                                itemsList: root.hItems
-                                enableShadow: root.shadowsEnabled
-                                startRadius: (index === 0 || root.hItems[index - 1] === "spring") ? root.outerRadius : root.innerRadius
-                                endRadius: (index === root.hItems.length - 1 || root.hItems[index + 1] === "spring") ? root.outerRadius : root.innerRadius
+                        Workspaces {
+                            orientation: root.orientation
+                            bar: QtObject {
+                                property var screen: root.screen
                             }
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        LayoutSelectorButton {
+                            id: layoutSelectorButton
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: (root.pinButtonVisible) ? root.innerRadius : (root.dockAtStart ? root.innerRadius : root.outerRadius)
+                        }
+
+                        // Pin button (horizontal)
+                        Loader {
+                            active: (Config.bar && Config.bar.showPinButton !== undefined ? Config.bar.showPinButton : true)
+                            visible: active
+                            Layout.alignment: Qt.AlignVCenter
+
+                            sourceComponent: Button {
+                                id: pinButton
+                                implicitWidth: 36
+                                implicitHeight: 36
+
+                                background: StyledRect {
+                                    id: pinButtonBg
+                                    variant: root.pinned ? "primary" : "bg"
+                                    enableShadow: root.shadowsEnabled
+                                    
+                                    // PinButton is typically last in group 1 (unless IntegratedDock follows at start)
+                                    property real startRadius: root.innerRadius
+                                    property real endRadius: root.dockAtStart ? root.innerRadius : root.outerRadius
+                                    
+                                    topLeftRadius: startRadius
+                                    bottomLeftRadius: startRadius
+                                    topRightRadius: endRadius
+                                    bottomRightRadius: endRadius
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        color: Styling.srItem("overprimary")
+                                        opacity: root.pinned ? 0 : (pinButton.pressed ? 0.5 : (pinButton.hovered ? 0.25 : 0))
+                                        radius: (parent.radius !== undefined ? parent.radius : 0)
+
+                                        Behavior on opacity {
+                                            enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                                            NumberAnimation {
+                                                duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
+                                            }
+                                        }
+                                    }
+                                }
+
+                                contentItem: Text {
+                                    text: Icons.pin
+                                    font.family: Icons.font
+                                    font.pixelSize: 18
+                                    color: root.pinned ? pinButtonBg.item : (pinButton.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground))
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+
+                                    rotation: root.pinned ? 0 : 45
+                                    Behavior on rotation {
+                                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                                        NumberAnimation {
+                                            duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
+                                        }
+                                    }
+
+                                    Behavior on color {
+                                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                                        ColorAnimation {
+                                            duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
+                                        }
+                                    }
+                                }
+
+                                onClicked: root.pinned = !root.pinned
+
+                                StyledToolTip {
+                                    show: pinButton.hovered
+                                    tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                }
+                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            visible: root.orientation === "horizontal" && integratedDockEnabled
+
+                            Bar.IntegratedDock {
+                                bar: root
+                                orientation: root.orientation
+                                anchors.verticalCenter: parent.verticalCenter
+                                enableShadow: root.shadowsEnabled
+
+                                // Connect to left/right groups if at start/end
+                                startRadius: root.dockAtStart ? root.innerRadius : root.outerRadius
+                                endRadius: root.dockAtEnd ? root.innerRadius : root.outerRadius
+
+                                // Calculate target position based on config
+                                property real targetX: {
+                                    if (integratedDockPosition === "start")
+                                        return 0;
+                                    if (integratedDockPosition === "end")
+                                        return parent.width - width;
+
+                                    // Center logic (reactive using parent.x + margin offset)
+                                    // RowLayout has anchors.margins: 4, so offset is 4
+                                    return (bar.width - width) / 2 - (parent.x + 4);
+                                }
+
+                                // Clamp the x position so it never leaves the container (preventing overlap)
+                                x: Math.max(0, Math.min(parent.width - width, targetX))
+
+                                width: Math.min(implicitWidth, parent.width)
+                                height: implicitHeight
+                            }
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            visible: !(root.orientation === "horizontal" && integratedDockEnabled)
+                        }
+
+                        PresetsButton {
+                            id: presetsButton
+                            startRadius: root.dockAtEnd ? root.innerRadius : root.outerRadius
+                            endRadius: root.innerRadius
+                            enableShadow: root.shadowsEnabled
+                        }
+
+                        ToolsButton {
+                            id: toolsButton
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                            enableShadow: root.shadowsEnabled
+                        }
+
+                        SysTray {
+                            bar: root
+                            enableShadow: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        ControlsButton {
+                            id: controlsButton
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        Bar.BatteryIndicator {
+                            id: batteryIndicator
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        Clock {
+                            id: clockComponent
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        PowerButton {
+                            id: powerButton
+                            startRadius: root.innerRadius
+                            endRadius: root.outerRadius
+                            enableShadow: root.shadowsEnabled
                         }
                     }
                 }
@@ -365,18 +560,204 @@ Item {
                     sourceComponent: ColumnLayout {
                         spacing: 4
 
-                        Repeater {
-                            model: root.vItems
+                        LauncherButton {
+                            id: launcherButtonVert
+                            Layout.preferredHeight: 36
+                            startRadius: root.outerRadius
+                            endRadius: root.innerRadius
+                            vertical: true
+                            enableShadow: root.shadowsEnabled
+                        }
 
-                            delegate: BarItem {
-                                itemId: modelData
-                                bar: root
-                                vertical: true
-                                itemsList: root.vItems
-                                enableShadow: root.shadowsEnabled
-                                startRadius: (index === 0 || root.vItems[index - 1] === "spring") ? root.outerRadius : root.innerRadius
-                                endRadius: (index === root.vItems.length - 1 || root.vItems[index + 1] === "spring") ? root.outerRadius : root.innerRadius
+                        SysTray {
+                            bar: root
+                            enableShadow: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        ToolsButton {
+                            id: toolsButtonVert
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                            vertical: true
+                            enableShadow: root.shadowsEnabled
+                        }
+
+                        PresetsButton {
+                            id: presetsButtonVert
+                            startRadius: root.innerRadius
+                            endRadius: root.outerRadius
+                            vertical: true
+                            enableShadow: root.shadowsEnabled
+                        }
+
+                        // Center Group Container
+                        Item {
+                            Layout.fillHeight: true
+                            Layout.fillWidth: true
+
+                            ColumnLayout {
+                                anchors.horizontalCenter: parent.horizontalCenter
+
+                                // Calculate target position to be absolutely centered in the bar (vertically)
+                                property real targetY: {
+                                    if (!parent || !bar)
+                                        return 0;
+
+                                    // Force re-evaluation when parent moves
+                                    var _trigger = parent.y;
+
+                                    var parentPos = parent.mapToItem(bar, 0, 0);
+                                    return (bar.height - height) / 2 - parentPos.y;
+                                }
+
+                                // Clamp y position
+                                y: Math.max(0, Math.min(parent.height - height, targetY))
+
+                                height: Math.min(parent.height, implicitHeight)
+                                width: parent.width
+                                spacing: 4
+
+                                LayoutSelectorButton {
+                                    id: layoutSelectorButtonVert
+                                    bar: root
+                                    layerEnabled: root.shadowsEnabled
+                                    Layout.alignment: Qt.AlignHCenter
+                                    startRadius: root.outerRadius
+                                    endRadius: root.innerRadius
+                                    vertical: true
+                                }
+
+                                Workspaces {
+                                    id: workspacesVert
+                                    orientation: root.orientation
+                                    bar: QtObject {
+                                        property var screen: root.screen
+                                    }
+                                    Layout.alignment: Qt.AlignHCenter
+                                    startRadius: root.innerRadius
+                                    endRadius: root.innerRadius
+                                }
+
+                                // Pin button (vertical)
+                                Loader {
+                                    active: (Config.bar && Config.bar.showPinButton !== undefined ? Config.bar.showPinButton : true)
+                                    visible: active
+                                    Layout.alignment: Qt.AlignHCenter
+                            
+                                    sourceComponent: Button {
+                                        id: pinButtonV
+                                        implicitWidth: 36
+                                        implicitHeight: 36
+                            
+                                        background: StyledRect {
+                                            id: pinButtonVBg
+                                            variant: root.pinned ? "primary" : "bg"
+                                            enableShadow: root.shadowsEnabled
+                                        
+                                            property real startRadius: root.innerRadius
+                                            // In vertical, dock is always appended to this group if enabled
+                                            property real endRadius: root.integratedDockEnabled ? root.innerRadius : root.outerRadius
+                                        
+                                            topLeftRadius: startRadius
+                                            topRightRadius: startRadius
+                                            bottomLeftRadius: endRadius
+                                            bottomRightRadius: endRadius
+
+                                            Rectangle {
+                                                anchors.fill: parent
+                                                color: Styling.srItem("overprimary")
+                                                opacity: root.pinned ? 0 : (pinButtonV.pressed ? 0.5 : (pinButtonV.hovered ? 0.25 : 0))
+                                                radius: (parent.radius !== undefined ? parent.radius : 0)
+
+                                                Behavior on opacity {
+                                                    enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                                                    NumberAnimation {
+                                                        duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        contentItem: Text {
+                                            text: Icons.pin
+                                            font.family: Icons.font
+                                            font.pixelSize: 18
+                                            color: root.pinned ? pinButtonVBg.item : (pinButtonV.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground))
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+
+                                            rotation: root.pinned ? 0 : 45
+                                            Behavior on rotation {
+                                                enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                                                NumberAnimation {
+                                                    duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
+                                                }
+                                            }
+
+                                            Behavior on color {
+                                                enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
+                                                ColorAnimation {
+                                                    duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
+                                                }
+                                            }
+                                        }
+
+                                        onClicked: root.pinned = !root.pinned
+
+                                        StyledToolTip {
+                                            show: pinButtonV.hovered
+                                            tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                        }
+                                    }
+                                }
                             }
+
+                            Bar.IntegratedDock {
+                                bar: root
+                                orientation: root.orientation
+                                visible: integratedDockEnabled
+                                Layout.fillHeight: true
+                                Layout.fillWidth: true
+                                enableShadow: root.shadowsEnabled
+                                
+                                startRadius: root.innerRadius
+                                endRadius: root.outerRadius
+                            }
+                        }
+
+                        ControlsButton {
+                            id: controlsButtonVert
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.outerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        Bar.BatteryIndicator {
+                            id: batteryIndicatorVert
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        Clock {
+                            id: clockComponentVert
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        PowerButton {
+                            id: powerButtonVert
+                            Layout.preferredHeight: 36
+                            startRadius: root.innerRadius
+                            endRadius: root.outerRadius
+                            vertical: true
+                            enableShadow: root.shadowsEnabled
                         }
                     }
                 }

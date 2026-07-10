@@ -575,9 +575,7 @@ Singleton {
             property bool containBar: false
             property bool keepBarShadow: false
             property bool keepBarBorder: false
-            property list<string> items: ["launcher", "workspaces", "layout", "pin", "spring", "presets", "tools", "systray", "controls", "battery", "clock", "power"]
-            property list<string> itemsVertical: ["launcher", "systray", "tools", "presets", "spring", "layout", "workspaces", "pin", "spring", "controls", "battery", "clock", "power"]
-         }
+        }
     }
 
     // ============================================
