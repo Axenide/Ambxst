@@ -63,17 +63,15 @@ Item {
     readonly property bool hasBackground: backgroundSource !== ""
     readonly property real backgroundBlur: hasArtwork ? 0.75 : noMediaBackgroundBlur
 
+    // Reflect the currently focused app's title. Read directly off
+    // ToplevelManager.activeToplevel so the binding re-evaluates when the
+    // focused window's title changes in place (e.g. switching browser tabs),
+    // not only when focus itself moves between windows.
     readonly property string focusedTitle: {
-        const activeWsId = AxctlService.focusedMonitor?.activeWorkspace?.id;
-        if (!activeWsId) return "";
-        const windows = CompositorData.workspaceWindowsMap[activeWsId] || [];
-        if (windows.length === 0) return "";
-        const best = windows.reduce((best, win) => {
-            const bestFocus = best?.focusHistoryID ?? Infinity;
-            const winFocus = win?.focusHistoryID ?? Infinity;
-            return winFocus < bestFocus ? win : best;
-        }, null);
-        return best ? best.title : "";
+        const active = ToplevelManager.activeToplevel;
+        if (!active)
+            return "";
+        return active.title || "";
     }
 
     property string hostname: ""
