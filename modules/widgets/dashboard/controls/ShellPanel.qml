@@ -777,9 +777,55 @@ Item {
                     // BAR SECTION
                     // ═══════════════════════════════════════════════════════════════
                     ColumnLayout {
+                        id: barSection
                         visible: root.currentSection === "bar"
                         Layout.fillWidth: true
                         spacing: 8
+
+                        readonly property var knownItems: [
+                            { id: "launcher", label: "Launcher" },
+                            { id: "workspaces", label: "Workspaces" },
+                            { id: "layout", label: "Layout Selector" },
+                            { id: "presets", label: "Presets" },
+                            { id: "tools", label: "Tools" },
+                            { id: "systray", label: "System Tray" },
+                            { id: "controls", label: "Controls" },
+                            { id: "battery", label: "Battery" },
+                            { id: "clock", label: "Clock" },
+                            { id: "power", label: "Power" }
+                        ]
+
+                        function isEnabled(id) {
+                            const items = Config.bar.items ?? [];
+                            return items.indexOf(id) !== -1;
+                        }
+
+                        // Add/remove an item from both the horizontal and vertical lists,
+                        // keeping each list's internal order and spring placeholders intact.
+                        function toggleItem(id) {
+                            const h = (Config.bar.items ?? []).slice();
+                            const v = (Config.bar.itemsVertical ?? []).slice();
+                            if (barSection.isEnabled(id)) {
+                                const hi = h.indexOf(id);
+                                if (hi >= 0)
+                                    h.splice(hi, 1);
+                                const vi = v.indexOf(id);
+                                if (vi >= 0)
+                                    v.splice(vi, 1);
+                            } else {
+                                let hIdx = h.indexOf("power");
+                                if (hIdx < 0)
+                                    hIdx = h.length;
+                                h.splice(hIdx, 0, id);
+                                let vIdx = v.indexOf("power");
+                                if (vIdx < 0)
+                                    vIdx = v.length;
+                                v.splice(vIdx, 0, id);
+                            }
+                            Config.bar.items = h;
+                            Config.bar.itemsVertical = v;
+                            GlobalStates.markShellChanged();
+                        }
 
                         Text {
                             text: "Bar"
@@ -992,6 +1038,38 @@ Item {
                             onScreensChanged: newList => {
                                 GlobalStates.markShellChanged();
                                 Config.bar.screenList = newList;
+                            }
+                        }
+
+                        Separator {
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: "Bar Items"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        Text {
+                            text: "Toggle which items appear in the bar. Drag-free add/remove — reordering is done by editing the config lists directly."
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overSurfaceVariant
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        Repeater {
+                            model: barSection.knownItems
+
+                            delegate: ToggleRow {
+                                label: modelData.label
+                                checked: barSection.isEnabled(modelData.id)
+                                onToggled: value => barSection.toggleItem(modelData.id)
                             }
                         }
                     }
