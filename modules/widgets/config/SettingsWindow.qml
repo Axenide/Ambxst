@@ -60,9 +60,16 @@ FloatingWindow {
                     AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${client.address}`);
                     return false;
                 }
-                // Window is already on the target workspace; focusing it now
-                // brings the view along without a spurious workspace switch.
-                AxctlService.dispatch(`focuswindow address:${client.address}`);
+                // The window is on the target workspace. Only pull focus over with
+                // focuswindow (which warps the cursor to the window centre) if we
+                // aren't already viewing that workspace — i.e. after a silent
+                // cross-workspace move. When it opened on the current workspace it
+                // already has focus, so skip focuswindow to avoid warping the
+                // cursor on every settings open (unlike any normal app).
+                const activeWs = AxctlService.focusedMonitor?.activeWorkspace?.id;
+                if (activeWs !== targetWorkspace) {
+                    AxctlService.dispatch(`focuswindow address:${client.address}`);
+                }
                 return true;
             }
         }
