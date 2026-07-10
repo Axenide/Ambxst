@@ -4,6 +4,7 @@ import Quickshell.Wayland
 import Quickshell.Io
 import qs.modules.globals
 import qs.modules.theme
+import qs.modules.services
 import qs.config
 import "MpvShaderGenerator.js" as ShaderGenerator
 
@@ -98,11 +99,52 @@ PanelWindow {
             });
             loadOptimizedProcess.command = ["bash", "-c", "echo '" + jsonCmd + "' | socat - " + wallpaper.mpvSocket];
             loadOptimizedProcess.running = true;
+            // loadfile resumes playback; re-apply the pause state shortly after.
+            wallpaperPauseTimer.restart();
         }
     }
 
     Process {
         id: loadOptimizedProcess
+        running: false
+    }
+
+    // --- Pause decoding while the wallpaper is fully hidden ---
+    // When a fullscreen window on this screen completely covers the wallpaper,
+    // pause mpv over IPC so it stops decoding/rendering (GPU drops to ~idle);
+    // resume when it becomes visible again. Only affects video wallpapers.
+    readonly property var _screenMonitor: AxctlService.monitorFor(wallpaper.screen)
+    readonly property bool wallpaperHidden: {
+        // A true-fullscreen window fully covers the wallpaper. Use the Wayland
+        // toplevel fullscreen flag (axctl's is_fullscreen is unreliable, and this
+        // is false for mere maximize, so gap-visible wallpapers keep animating).
+        var t = ToplevelManager.activeToplevel;
+        if (!t || !t.fullscreen)
+            return false;
+        var mon = _screenMonitor;
+        var fmon = AxctlService.focusedMonitor;
+        return mon && fmon && fmon.id === mon.id;
+    }
+
+    onWallpaperHiddenChanged: wallpaperPauseTimer.restart()
+
+    Timer {
+        id: wallpaperPauseTimer
+        interval: 250
+        repeat: false
+        onTriggered: {
+            if (getFileType(wallpaper.effectiveWallpaper) !== "video")
+                return;
+            var jsonCmd = JSON.stringify({
+                command: ["set_property", "pause", wallpaper.wallpaperHidden]
+            });
+            wallpaperPauseProcess.command = ["bash", "-c", "echo '" + jsonCmd + "' | socat - " + wallpaper.mpvSocket];
+            wallpaperPauseProcess.running = true;
+        }
+    }
+
+    Process {
+        id: wallpaperPauseProcess
         running: false
     }
 

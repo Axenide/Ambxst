@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Weather fetching script for Ambxst
 # Usage: weather.sh [location]
