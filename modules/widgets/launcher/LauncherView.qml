@@ -13,6 +13,7 @@ import "../dashboard/clipboard"
 import "../dashboard/emoji"
 import "../dashboard/tmux"
 import "../dashboard/notes"
+import "../dashboard/list_utils.js" as ListUtils
 
 Rectangle {
     id: root
@@ -132,6 +133,10 @@ Rectangle {
         property int expandedItemIndex: -1
         property int selectedOptionIndex: 0
         property bool keyboardNavigation: false
+
+        // Row layout helper (shared O(1) math for scroll positioning).
+        // App rows have 3 options (Launch, Pin/Unpin, Create Shortcut).
+        readonly property real expandedRowH: (expandedItemIndex >= 0 && expandedItemIndex < appsModel.count) ? ListUtils.expandedRowHeight(3) : ListUtils.ROW_HEIGHT
 
         // Animated model for smooth filtering
         property var filteredApps: []
@@ -350,34 +355,9 @@ Rectangle {
             if (index < 0 || index >= appsModel.count)
                 return;
 
-            // Calculate Y position of the item
-            var itemY = 0;
-            for (var i = 0; i < index; i++) {
-                itemY += 48; // All items before are collapsed (base height)
-            }
-
-            // Calculate expanded item height - always 3 options (Launch, Pin/Unpin, Create Shortcut)
-            var listHeight = 36 * 3;
-            var expandedHeight = 48 + 4 + listHeight + 8;
-
-            // Calculate max valid scroll position
-            var maxContentY = Math.max(0, resultsList.contentHeight - resultsList.height);
-
-            // Current viewport bounds
-            var viewportTop = resultsList.contentY;
-            var viewportBottom = viewportTop + resultsList.height;
-
-            // Only scroll if item is not fully visible
-            var itemBottom = itemY + expandedHeight;
-
-            if (itemY < viewportTop) {
-                // Item top is above viewport - scroll up to show it
-                resultsList.contentY = itemY;
-            } else if (itemBottom > viewportBottom) {
-                // Item bottom is below viewport - scroll down to show it
-                resultsList.contentY = Math.min(itemBottom - resultsList.height, maxContentY);
-            }
-        // Otherwise, item is already fully visible - no scroll needed
+            // Always 3 options (Launch, Pin/Unpin, Create Shortcut).
+            var itemY = index * ListUtils.ROW_HEIGHT;
+            ListUtils.scrollToReveal(resultsList, itemY, ListUtils.expandedRowHeight(3));
         }
 
         Behavior on height {
@@ -612,21 +592,8 @@ Rectangle {
 
                     // Manual smooth auto-scroll accounting for variable height items
                     if (currentIndex >= 0) {
-                        var itemY = 0;
-                        for (var i = 0; i < currentIndex && i < appsModel.count; i++) {
-                            var itemHeight = 48;
-                            if (i === appLauncher.expandedItemIndex) {
-                                var listHeight = 36 * 3;
-                                itemHeight = 48 + 4 + listHeight + 8;
-                            }
-                            itemY += itemHeight;
-                        }
-
-                        var currentItemHeight = 48;
-                        if (currentIndex === appLauncher.expandedItemIndex) {
-                            var listHeight = 36 * 3;
-                            currentItemHeight = 48 + 4 + listHeight + 8;
-                        }
+                        var itemY = ListUtils.rowY(currentIndex, appLauncher.expandedItemIndex, appLauncher.expandedRowH);
+                        var currentItemHeight = ListUtils.rowHeight(currentIndex, appLauncher.expandedItemIndex, appLauncher.expandedRowH);
 
                         var viewportTop = resultsList.contentY;
                         var viewportBottom = viewportTop + resultsList.height;
