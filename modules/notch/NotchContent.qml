@@ -153,7 +153,9 @@ Item {
     // Default view component - user@host text
     Component {
         id: defaultViewComponent
-        DefaultView {}
+        DefaultView {
+            screen: root.screen
+        }
     }
 
     // Persistent views to avoid creation lag when opening the notch

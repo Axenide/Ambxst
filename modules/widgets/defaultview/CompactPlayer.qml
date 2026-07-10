@@ -18,6 +18,7 @@ Item {
 
     required property var player
     required property bool notchHovered
+    property var screen: null
 
     onPlayerChanged: {
         if (!player) {
@@ -63,15 +64,28 @@ Item {
     readonly property bool hasBackground: backgroundSource !== ""
     readonly property real backgroundBlur: hasArtwork ? 0.75 : noMediaBackgroundBlur
 
-    // Reflect the currently focused app's title. Read directly off
-    // ToplevelManager.activeToplevel so the binding re-evaluates when the
-    // focused window's title changes in place (e.g. switching browser tabs),
-    // not only when focus itself moves between windows.
+    // Per-screen focused-app title. Scoped to the notch's own screen so a
+    // notch never shows another monitor's focused app. Read from
+    // AxctlService.clients, which is reassigned on every window event
+    // (including in-place title changes like a browser tab switch), so the
+    // binding re-evaluates and picks up the new title immediately.
     readonly property string focusedTitle: {
-        const active = ToplevelManager.activeToplevel;
-        if (!active)
+        if (!screen)
             return "";
-        return active.title || "";
+        const mon = AxctlService.monitorFor(screen);
+        if (!mon)
+            return "";
+        const wsId = mon.activeWorkspace ? mon.activeWorkspace.id : -1;
+        const clients = AxctlService.clients.values || [];
+        const onScreen = clients.filter(c => c.monitor === mon.id && (wsId < 0 || (c.workspace && c.workspace.id === wsId)) && !c.hidden);
+        if (onScreen.length === 0)
+            return "";
+        const best = onScreen.reduce((best, c) => {
+            const bf = best ? (best.focusHistoryID ?? Infinity) : Infinity;
+            const cf = c.focusHistoryID ?? Infinity;
+            return cf < bf ? c : best;
+        }, null);
+        return best ? best.title : "";
     }
 
     property string hostname: ""

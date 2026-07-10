@@ -11,6 +11,8 @@ Item {
     anchors.top: parent.top
     focus: false
 
+    property var screen: null
+
     // Layout constants
     readonly property int notificationPadding: 16
     readonly property int notificationPaddingBottom: Config.notchTheme === "island" ? 20 : 16
@@ -157,6 +159,7 @@ Item {
                 height: 32
                 player: activePlayer
                 notchHovered: expandedState
+                screen: root.screen
             }
 
             Separator {
