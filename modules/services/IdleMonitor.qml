@@ -231,8 +231,19 @@ Item {
         _destroyMonitor();
     }
 
+    // Wait until the axctl daemon is ready before creating the monitor, so we
+    // don't hit the "socket not ready" error on startup. The bounded retry above
+    // remains as a fallback for any other transient failure.
+    Connections {
+        target: AxctlService
+        function onReadyChanged() {
+            if (AxctlService.ready && root.enabled && root.timeout > 0 && !root._initialized)
+                root._initMonitor();
+        }
+    }
+
     Component.onCompleted: {
-        if (enabled && timeout > 0) {
+        if (AxctlService.ready && enabled && timeout > 0) {
             _initMonitor();
         }
     }

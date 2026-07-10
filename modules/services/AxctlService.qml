@@ -11,6 +11,11 @@ Singleton {
     property var focusedWorkspace: null
     property var focusedClient: null
 
+    // Becomes true once the axctl daemon socket is up and the subscribe stream
+    // has delivered its first state. Services that query axctl at startup should
+    // gate on this instead of racing the daemon (which spawns socket errors).
+    property bool ready: false
+
     property int focusHistoryCounter: 0
 
     // Saved focus address — set before a shell overlay (notch/launcher/dashboard)
@@ -229,6 +234,8 @@ Singleton {
                     // Apply inline state immediately (every event carries full state)
                     if (parsedJson.state) {
                         root.applyState(parsedJson.state);
+                        if (!root.ready)
+                            root.ready = true;
                     }
 
                     // Emit raw event for consumers

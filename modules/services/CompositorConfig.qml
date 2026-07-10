@@ -395,6 +395,16 @@ QtObject {
         }
     }
 
+    // Re-apply once the axctl daemon is ready, so the initial animations fetch
+    // succeeds instead of racing the daemon socket at startup.
+    property Connections axctlReadyConnections: Connections {
+        target: AxctlService
+        function onReadyChanged() {
+            if (AxctlService.ready)
+                applyCompositorConfig();
+        }
+    }
+
 
     Component.onCompleted: {
         // Apply immediately if Config is already loaded.
