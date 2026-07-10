@@ -430,6 +430,17 @@ Item {
                                 Config.performance.rotateCoverArt = !checked;
                             }
                         }
+
+                        // Optimize Video Wallpapers toggle
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: "Optimize Video Wallpapers"
+                            description: "Downscale video wallpapers to your screen's resolution and refresh rate (cached) to cut GPU usage"
+                            checked: Config.performance.optimizeVideoWallpapers
+                            onToggled: checked => {
+                                Config.performance.optimizeVideoWallpapers = checked;
+                            }
+                        }
                     }
 
                     // =====================

@@ -40,6 +40,72 @@ PanelWindow {
     property alias tintEnabled: wallpaperAdapter.tintEnabled
     property int thumbnailsVersion: 0
 
+    // --- Video wallpaper GPU optimization ---
+    // Oversized video wallpapers (e.g. 4K/60 on a 1080p screen) make the GPU
+    // decode+scale far more than needed. When enabled, transcode the video to
+    // the monitor's native resolution + refresh rate once (cached) and play
+    // that instead. Falls back to the original if disabled or on any failure.
+    readonly property bool optimizeVideoWallpapers: Config.performance.optimizeVideoWallpapers
+    readonly property string _optimizeScript: decodeURIComponent(Qt.resolvedUrl("optimize_video.sh").toString().replace("file://", ""))
+    readonly property string _optimizeDir: Quickshell.env("HOME") + "/.cache/ambxst/optimized_wallpapers"
+    property string _optimizingSource: ""
+    property string _optimizedVideoPath: ""
+
+    // Kick off a (cached) transcode of the current video wallpaper to the
+    // monitor's native resolution + refresh rate. mpvpaper keeps playing the
+    // original meanwhile; once ready we hot-swap the file into the SAME mpv
+    // instance via IPC (loadfile) — no second decoder process is spawned.
+    function updateVideoSource() {
+        _optimizedVideoPath = "";
+        var src = effectiveWallpaper;
+        if (!src || getFileType(src) !== "video" || !optimizeVideoWallpapers || !currentScreenName)
+            return;
+        _optimizingSource = src;
+        optimizeProcess.command = ["bash", _optimizeScript, src, currentScreenName, _optimizeDir];
+        optimizeProcess.running = true;
+    }
+
+    onOptimizeVideoWallpapersChanged: updateVideoSource()
+    onCurrentScreenNameChanged: updateVideoSource()
+
+    Process {
+        id: optimizeProcess
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                var out = text.trim();
+                // A different path means a real optimized copy exists; ignore if
+                // the wallpaper changed while transcoding, or if it fell back to
+                // the original (out === source).
+                if (out && out !== wallpaper._optimizingSource && wallpaper._optimizingSource === wallpaper.effectiveWallpaper) {
+                    wallpaper._optimizedVideoPath = out;
+                    loadOptimizedTimer.restart();
+                }
+            }
+        }
+    }
+
+    Timer {
+        id: loadOptimizedTimer
+        interval: 1500 // allow mpvpaper's IPC socket to come up
+        repeat: false
+        onTriggered: {
+            if (!wallpaper._optimizedVideoPath || getFileType(wallpaper.effectiveWallpaper) !== "video")
+                return;
+            console.debug("Swapping in optimized video wallpaper:", wallpaper._optimizedVideoPath);
+            var jsonCmd = JSON.stringify({
+                command: ["loadfile", wallpaper._optimizedVideoPath, "replace"]
+            });
+            loadOptimizedProcess.command = ["bash", "-c", "echo '" + jsonCmd + "' | socat - " + wallpaper.mpvSocket];
+            loadOptimizedProcess.running = true;
+        }
+    }
+
+    Process {
+        id: loadOptimizedProcess
+        running: false
+    }
+
     // QUICKSHELL-GIT: property string mpvShaderDir: Quickshell.cacheDir + "/mpv_shaders_" + (currentScreenName ? currentScreenName : "ALL")
     property string mpvShaderDir: Quickshell.env("HOME") + "/.cache/ambxst/mpv_shaders_" + (currentScreenName ? currentScreenName : "ALL")
     property string mpvShaderPath: ""
@@ -643,6 +709,7 @@ PanelWindow {
     }
 
     onEffectiveWallpaperChanged: {
+        updateVideoSource();
         if (getFileType(effectiveWallpaper) === "video") {
             shaderUpdateDebounce.restart();
         }
