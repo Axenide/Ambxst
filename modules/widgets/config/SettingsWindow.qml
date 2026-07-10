@@ -97,9 +97,26 @@ FloatingWindow {
         radius: 0
 
         // Settings Tab Content
-        SettingsTab {
+        // Loaded asynchronously: opening Settings must never block the (concurrent)
+        // notch close animation on the main thread. The heavy SettingsTab plus its
+        // panel search-indexer are incubated on a later tick, after the notch has
+        // already closed, keeping the shell feeling native and lag-free.
+        Loader {
+            id: settingsTabLoader
             anchors.fill: parent
             anchors.margins: 16
+            asynchronous: true
+            active: settingsWindow.visible
+            source: "../dashboard/controls/SettingsTab.qml"
+
+            opacity: status === Loader.Ready ? 1 : 0
+            Behavior on opacity {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration
+                    easing.type: Easing.OutCubic
+                }
+            }
         }
     }
 
