@@ -23,8 +23,7 @@ Item {
             property: "leftMargin"
             to: root.parentWidth / 8 + root.dismissOvershoot
             duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.1
+            easing.type: Easing.OutQuart
         }
 
         NumberAnimation {

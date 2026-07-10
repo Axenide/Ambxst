@@ -22,8 +22,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.2
+            easing.type: Easing.OutQuart
         }
     }
 
@@ -380,8 +379,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutBack
-                                    easing.overshoot: 1.2
+                                    easing.type: Easing.OutQuart
                                 }
                             }
 

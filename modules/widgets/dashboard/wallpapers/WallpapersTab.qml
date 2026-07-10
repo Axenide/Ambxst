@@ -464,8 +464,7 @@ FocusScope {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutBack
-                                                easing.overshoot: 1.5
+                                                easing.type: Easing.OutQuart
                                             }
                                         }
                                     }
@@ -617,8 +616,7 @@ FocusScope {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutBack
-                                                easing.overshoot: 1.5
+                                                easing.type: Easing.OutQuart
                                             }
                                         }
                                     }
@@ -747,8 +745,7 @@ FocusScope {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutBack
-                                                easing.overshoot: 1.5
+                                                easing.type: Easing.OutQuart
                                             }
                                         }
                                     }

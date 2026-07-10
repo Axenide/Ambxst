@@ -347,8 +347,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutBack
-                                easing.overshoot: 1.5
+                                easing.type: Easing.OutQuart
                             }
                         }
                         HoverHandler {
@@ -405,8 +404,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.5
+                        easing.type: Easing.OutQuart
                     }
                 }
                 HoverHandler {
@@ -472,8 +470,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.5
+                        easing.type: Easing.OutQuart
                     }
                 }
                 HoverHandler {
@@ -546,8 +543,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutBack
-                        easing.overshoot: 1.5
+                        easing.type: Easing.OutQuart
                     }
                 }
                 HoverHandler {

@@ -473,7 +473,7 @@ StyledRect {
                 NumberAnimation {
                     properties: "radius"
                     duration: 300
-                    easing.type: Easing.OutBack
+                    easing.type: Easing.OutQuart
                 }
             }
 

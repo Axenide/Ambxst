@@ -549,8 +549,7 @@ NotchAnimationBehavior {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.1
+            easing.type: Easing.OutQuart
         }
     }
 
@@ -558,8 +557,7 @@ NotchAnimationBehavior {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutBack
-            easing.overshoot: 1.1
+            easing.type: Easing.OutQuart
         }
     }
 
