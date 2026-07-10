@@ -29,7 +29,8 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutBack
+            // Overshoot only on entrance; closing settles smoothly without overshoot
+            easing.type: root.isVisible ? Easing.OutBack : Easing.OutQuart
             easing.overshoot: 1.2
         }
     }
