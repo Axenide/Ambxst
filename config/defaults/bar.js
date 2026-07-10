@@ -20,5 +20,7 @@ var data = {
     "use12hFormat": false,
     "containBar": false,
     "keepBarShadow": false,
-    "keepBarBorder": false
+    "keepBarBorder": false,
+    "items": ["launcher", "workspaces", "layout", "pin", "spring", "presets", "tools", "systray", "controls", "battery", "clock", "power"],
+    "itemsVertical": ["launcher", "systray", "tools", "presets", "spring", "layout", "workspaces", "pin", "spring", "controls", "battery", "clock", "power"]
 }
