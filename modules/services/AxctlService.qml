@@ -60,14 +60,16 @@ Singleton {
             const fmon = root.focusedMonitor;
             const activeWs = fmon && fmon.activeWorkspace ? fmon.activeWorkspace.id : -1;
             if (win && win.workspace && win.workspace.id === activeWs) {
-                // Save cursor position, focus window, restore cursor position.
-                // focuswindow dispatcher warps the cursor to the window centre;
-                // the restore undoes that warp so the cursor stays where the
-                // user left it (like Windows start menu behaviour).
+                // Re-focus the app, but without warping the cursor to its centre.
+                // Hyprland's focuswindow dispatcher warps by default; briefly
+                // disabling cursor:no_warps scopes the no-warp to just this
+                // focus so the cursor stays where the user left it (Windows
+                // start-menu behaviour). The ; chaining always re-enables warp
+                // even if the focus dispatch fails for a stale address.
                 let p = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
                 p.command = ["bash", "-c",
-                    'p=$(hyprctl cursorpos) && axctl window focus ' + addr
-                    + ' && hyprctl setcursorpos ${p%,*} ${p#*, }'];
+                    'hyprctl keyword cursor:no_warps 1; axctl window focus ' + addr
+                    + '; hyprctl keyword cursor:no_warps 0'];
                 p.onExited.connect(() => p.destroy());
                 p.running = true;
             }
