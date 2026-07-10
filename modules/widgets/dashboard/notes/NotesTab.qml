@@ -59,6 +59,17 @@ Item {
     property int selectedOptionIndex: 0
     property bool keyboardNavigation: false
 
+    // Row layout helpers (shared O(1) math for highlight positioning). Expansion
+    // is suppressed in delete/rename modes; create-button rows have 2 options.
+    readonly property int effectiveExpandedIndex: (deleteMode || renameMode) ? -1 : expandedItemIndex
+    readonly property real expandedRowH: {
+        var idx = effectiveExpandedIndex;
+        if (idx < 0 || idx >= notesModel.count)
+            return ListUtils.ROW_HEIGHT;
+        var isCreateBtn = idx < filteredNotes.length && filteredNotes[idx].isCreateButton;
+        return ListUtils.expandedRowHeight(isCreateBtn ? 2 : 3);
+    }
+
     // Current note content for editor
     property string currentNoteId: ""
     property string currentNoteContent: ""
@@ -1266,32 +1277,9 @@ Item {
 
                 highlight: Item {
                     width: resultsList.width
-                    height: {
-                        let baseHeight = 48;
-                        if (resultsList.currentIndex === root.expandedItemIndex && !root.deleteMode && !root.renameMode) {
-                            // Check if current item is create button
-                            var isCreateBtn = resultsList.currentIndex >= 0 && resultsList.currentIndex < filteredNotes.length && filteredNotes[resultsList.currentIndex].isCreateButton;
-                            var optionCount = isCreateBtn ? 2 : 3;
-                            var listHeight = 36 * optionCount;
-                            return baseHeight + 4 + listHeight + 8;
-                        }
-                        return baseHeight;
-                    }
+                    height: ListUtils.rowHeight(resultsList.currentIndex, root.effectiveExpandedIndex, root.expandedRowH)
 
-                    y: {
-                        var yPos = 0;
-                        for (var i = 0; i < resultsList.currentIndex && i < notesModel.count; i++) {
-                            var itemHeight = 48;
-                            if (i === root.expandedItemIndex && !root.deleteMode && !root.renameMode) {
-                                var isCreateBtn = i < filteredNotes.length && filteredNotes[i].isCreateButton;
-                                var optionCount = isCreateBtn ? 2 : 3;
-                                var listHeight = 36 * optionCount;
-                                itemHeight = 48 + 4 + listHeight + 8;
-                            }
-                            yPos += itemHeight;
-                        }
-                        return yPos;
-                    }
+                    y: ListUtils.rowY(resultsList.currentIndex, root.effectiveExpandedIndex, root.expandedRowH)
 
                     Behavior on y {
                         enabled: Config.animDuration > 0

@@ -51,6 +51,11 @@ Item {
     property bool keyboardNavigation: false
     property bool isFiltering: false
 
+    // Row layout helpers (shared O(1) math for highlight/scroll positioning).
+    // Expansion is suppressed in delete/rename modes; rows have 3 options.
+    readonly property int effectiveExpandedIndex: (deleteMode || renameMode) ? -1 : expandedItemIndex
+    readonly property real expandedRowH: (effectiveExpandedIndex >= 0 && effectiveExpandedIndex < sessionsModel.count) ? ListUtils.expandedRowHeight(3) : ListUtils.ROW_HEIGHT
+
     // Session preview state
     property var sessionWindows: []
     property var sessionPanes: []
@@ -765,21 +770,8 @@ Item {
 
                     // Manual smooth auto-scroll (accounting for variable height items)
                     if (currentIndex >= 0) {
-                        var itemY = 0;
-                        for (var i = 0; i < currentIndex && i < sessionsModel.count; i++) {
-                            var itemHeight = 48;
-                            if (i === root.expandedItemIndex && !root.deleteMode && !root.renameMode) {
-                                var listHeight = 36 * 3; // Always 3 options
-                                itemHeight = 48 + 4 + listHeight + 8;
-                            }
-                            itemY += itemHeight;
-                        }
-
-                        var currentItemHeight = 48;
-                        if (currentIndex === root.expandedItemIndex && !root.deleteMode && !root.renameMode) {
-                            var listHeight = 36 * 3;
-                            currentItemHeight = 48 + 4 + listHeight + 8;
-                        }
+                        var itemY = ListUtils.rowY(currentIndex, root.effectiveExpandedIndex, root.expandedRowH);
+                        var currentItemHeight = ListUtils.rowHeight(currentIndex, root.effectiveExpandedIndex, root.expandedRowH);
 
                         var viewportTop = resultsList.contentY;
                         var viewportBottom = viewportTop + resultsList.height;
@@ -1630,29 +1622,10 @@ Item {
 
                 highlight: Item {
                     width: resultsList.width
-                    height: {
-                        let baseHeight = 48;
-                        if (resultsList.currentIndex === root.expandedItemIndex && !root.deleteMode && !root.renameMode) {
-                            var listHeight = 36 * 3;
-                            return baseHeight + 4 + listHeight + 8;
-                        }
-                        return baseHeight;
-                    }
+                    height: ListUtils.rowHeight(resultsList.currentIndex, root.effectiveExpandedIndex, root.expandedRowH)
 
                     // Calculate Y position based on index, accounting for expanded items
-                    y: {
-                        var yPos = 0;
-                        for (var i = 0; i < resultsList.currentIndex && i < sessionsModel.count; i++) {
-                            var itemData = sessionsModel.get(i).sessionData;
-                            var itemHeight = 48;
-                            if (i === root.expandedItemIndex && !root.deleteMode && !root.renameMode) {
-                                var listHeight = 36 * 3;
-                                itemHeight = 48 + 4 + listHeight + 8;
-                            }
-                            yPos += itemHeight;
-                        }
-                        return yPos;
-                    }
+                    y: ListUtils.rowY(resultsList.currentIndex, root.effectiveExpandedIndex, root.expandedRowH)
 
                     Behavior on y {
                         enabled: Config.animDuration > 0

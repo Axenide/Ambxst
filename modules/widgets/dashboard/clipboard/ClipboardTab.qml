@@ -68,6 +68,21 @@ Item {
     property int selectedOptionIndex: 0
     property bool keyboardNavigation: false
 
+    // Row layout helpers (shared O(1) math for highlight/scroll positioning).
+    // Expansion is suppressed in delete/alias modes.
+    readonly property int effectiveExpandedIndex: (deleteMode || aliasMode) ? -1 : expandedItemIndex
+    readonly property real expandedRowH: {
+        var idx = effectiveExpandedIndex;
+        if (idx < 0 || idx >= itemsModel.count)
+            return ListUtils.ROW_HEIGHT;
+        var entry = itemsModel.get(idx);
+        var d = entry ? entry.itemData : null;
+        var opts = 4;
+        if (d && (d.isFile || d.isImage || ClipboardUtils.isUrl(d.preview)))
+            opts++;
+        return ListUtils.expandedRowHeight(opts);
+    }
+
     onExpandedItemIndexChanged:
     // Close expanded options when selection changes to a different item is handled in onSelectedIndexChanged
     {}
@@ -1007,31 +1022,8 @@ Item {
 
                         // Manual smooth auto-scroll (simplified for variable height items)
                         if (currentIndex >= 0) {
-                            var itemY = 0;
-                            for (var i = 0; i < currentIndex && i < itemsModel.count; i++) {
-                                var itemData = itemsModel.get(i).itemData;
-                                var itemHeight = 48;
-                                if (i === root.expandedItemIndex && !root.deleteMode && !root.aliasMode) {
-                                    var optionsCount = 4;
-                                    if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
-                                        optionsCount++;
-                                    }
-                                    var listHeight = 36 * Math.min(3, optionsCount);
-                                    itemHeight = 48 + 4 + listHeight + 8;
-                                }
-                                itemY += itemHeight;
-                            }
-
-                            var currentItemHeight = 48;
-                            if (currentIndex === root.expandedItemIndex && !root.deleteMode && !root.aliasMode && currentIndex < itemsModel.count) {
-                                var itemData = itemsModel.get(currentIndex).itemData;
-                                var optionsCount = 4;
-                                if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
-                                    optionsCount++;
-                                }
-                                var listHeight = 36 * Math.min(3, optionsCount);
-                                currentItemHeight = 48 + 4 + listHeight + 8;
-                            }
+                            var itemY = ListUtils.rowY(currentIndex, root.effectiveExpandedIndex, root.expandedRowH);
+                            var currentItemHeight = ListUtils.rowHeight(currentIndex, root.effectiveExpandedIndex, root.expandedRowH);
 
                             var viewportTop = resultsList.contentY;
                             var viewportBottom = viewportTop + resultsList.height;
@@ -1048,38 +1040,10 @@ Item {
 
                     highlight: Item {
                         width: resultsList.width
-                        height: {
-                            let baseHeight = 48;
-                            if (resultsList.currentIndex === root.expandedItemIndex && !root.deleteMode && !root.aliasMode) {
-                                var itemData = itemsModel.get(resultsList.currentIndex).itemData;
-                                var optionsCount = 4;
-                                if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
-                                    optionsCount++;
-                                }
-                                var listHeight = 36 * Math.min(3, optionsCount);
-                                return baseHeight + 4 + listHeight + 8;
-                            }
-                            return baseHeight;
-                        }
+                        height: ListUtils.rowHeight(resultsList.currentIndex, root.effectiveExpandedIndex, root.expandedRowH)
 
                         // Calculate Y position based on index, not item position
-                        y: {
-                            var yPos = 0;
-                            for (var i = 0; i < resultsList.currentIndex && i < itemsModel.count; i++) {
-                                var itemHeight = 48;
-                                if (i === root.expandedItemIndex && !root.deleteMode && !root.aliasMode) {
-                                    var itemData = itemsModel.get(i).itemData;
-                                    var optionsCount = 4;
-                                    if (itemData.isFile || itemData.isImage || ClipboardUtils.isUrl(itemData.preview)) {
-                                        optionsCount++;
-                                    }
-                                    var listHeight = 36 * Math.min(3, optionsCount);
-                                    itemHeight = 48 + 4 + listHeight + 8;
-                                }
-                                yPos += itemHeight;
-                            }
-                            return yPos;
-                        }
+                        y: ListUtils.rowY(resultsList.currentIndex, root.effectiveExpandedIndex, root.expandedRowH)
 
                         Behavior on y {
                             enabled: Config.animDuration > 0

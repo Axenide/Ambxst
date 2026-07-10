@@ -11,6 +11,21 @@ function expandedRowHeight(optionsCount) {
     return ROW_HEIGHT + 4 + listHeight + 8;
 }
 
+// Y offset of the row at `index`, given that at most one row (`expandedIndex`)
+// is expanded to `expandedHeight`. O(1) equivalent of summing per-row heights,
+// since every other row is ROW_HEIGHT. Pass expandedIndex < 0 for none.
+function rowY(index, expandedIndex, expandedHeight) {
+    var y = index * ROW_HEIGHT;
+    if (expandedIndex >= 0 && expandedIndex < index)
+        y += expandedHeight - ROW_HEIGHT;
+    return y;
+}
+
+// Height of the row at `index` (expandedHeight if it's the expanded row).
+function rowHeight(index, expandedIndex, expandedHeight) {
+    return index === expandedIndex ? expandedHeight : ROW_HEIGHT;
+}
+
 // Scroll a ListView so that the row starting at `itemY` with height
 // `rowHeight` is fully visible. No-op if it already is.
 function scrollToReveal(listView, itemY, rowHeight) {
