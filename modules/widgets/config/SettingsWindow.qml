@@ -52,8 +52,16 @@ FloatingWindow {
             const client = clients[i];
             if (client.title === settingsWindow.title) {
                 if (client.workspace?.id !== targetWorkspace) {
+                    // Move first, then focus on a later tick. Doing both in the
+                    // same tick races: the silent move hasn't applied yet when we
+                    // focus, so the view stays on the window's old workspace
+                    // (e.g. jumping to workspace 1 on first open). Returning false
+                    // keeps the placement timer running for the follow-up focus.
                     AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${client.address}`);
+                    return false;
                 }
+                // Window is already on the target workspace; focusing it now
+                // brings the view along without a spurious workspace switch.
                 AxctlService.dispatch(`focuswindow address:${client.address}`);
                 return true;
             }

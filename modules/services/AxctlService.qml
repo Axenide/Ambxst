@@ -33,15 +33,39 @@ Singleton {
         root.savedFocusAddress = (current && current.address) ? current.address : "";
     }
 
-    // Dispatches a focuswindow command for the saved address, then clears it.
+    // Re-focus the saved window after an overlay closes. Deferred (see below).
     function restoreFocus() {
-        if (root.savedFocusAddress) {
-            root.dispatch("focuswindow " + root.savedFocusAddress);
+        if (root.savedFocusAddress)
+            restoreFocusTimer.restart();
+    }
+
+    // The refocus is deferred for two reasons:
+    //  1. The shell overlay only drops its exclusive keyboard grab a frame or two
+    //     after the module closes; dispatching focuswindow before that happens is
+    //     ignored by the compositor, leaving the app unfocused until the user
+    //     clicks it (and breaking things like emoji paste that type into it).
+    //  2. We only refocus if the saved window is still on the *current* active
+    //     workspace, so a stale saved address can never yank the user to another
+    //     workspace (e.g. opening settings jumping back to workspace 1).
+    property Timer restoreFocusTimer: Timer {
+        interval: 60
+        repeat: false
+        onTriggered: {
+            const addr = root.savedFocusAddress;
             root.savedFocusAddress = "";
+            if (!addr)
+                return;
+            const clients = root.clients.values || [];
+            const win = clients.find(c => c.address === addr);
+            const fmon = root.focusedMonitor;
+            const activeWs = fmon && fmon.activeWorkspace ? fmon.activeWorkspace.id : -1;
+            if (win && win.workspace && win.workspace.id === activeWs)
+                root.dispatch("focuswindow " + addr);
         }
     }
 
     function clearSavedFocus() {
+        restoreFocusTimer.stop();
         root.savedFocusAddress = "";
     }
 
