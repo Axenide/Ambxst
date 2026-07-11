@@ -136,7 +136,6 @@ Singleton {
     }
 
     function setActiveModule(moduleName) {
-        GlobalStates.trace("setActiveModule:" + moduleName);
         const focusedMonitor = AxctlService.focusedMonitor;
         if (!focusedMonitor)
             return;

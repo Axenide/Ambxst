@@ -126,8 +126,6 @@ Rectangle {
     }
 
     // Store pending subsection to apply when panel loads
-    Component.onCompleted: GlobalStates.trace("SettingsTab:created")
-
     property string pendingSubSection: ""
 
     function dispatchSubSection(sectionId, subSectionId) {
@@ -625,7 +623,6 @@ Rectangle {
                 }
 
                 onLoaded: {
-                    GlobalStates.trace("panelLoader:loaded");
                     if (item) {
                         item.maxContentWidth = contentArea.maxContentWidth;
                         // Apply pending subsection if any

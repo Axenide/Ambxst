@@ -439,8 +439,6 @@ Item {
         }
 
         function onDashboardChanged() {
-            if (!screenVisibilities.dashboard)
-                GlobalStates.trace("notch:dashboardClose");
             if (screenVisibilities.dashboard) {
                 persistentDashboardViewLoader.active = true;
                 Qt.callLater(() => {

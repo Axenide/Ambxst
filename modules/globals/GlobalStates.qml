@@ -17,22 +17,6 @@ Singleton {
     }
 
     Process {
-        id: traceProc
-        running: false
-    }
-
-    // Temporary perf trace (remove after diagnosing settings-open freeze)
-    function trace(tag) {
-        try {
-            const safe = String(tag).replace(/'/g, "'\\''");
-            traceProc.command = ["sh", "-c", "echo $(date +%s%3N) " + safe + " >> /tmp/ambxst_trace.log"];
-            traceProc.running = true;
-        } catch (e) {
-            console.log("trace error", e);
-        }
-    }
-
-    Process {
         id: filePickerProcess
         running: false
         command: ["zenity", "--file-selection", "--title=Select User Icon", "--file-filter=Images | *.png *.jpg *.jpeg *.svg *.webp"]
