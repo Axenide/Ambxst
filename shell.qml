@@ -248,10 +248,32 @@ ShellRoot {
         source: "modules/tools/MirrorWindow.qml"
     }
 
-    // Settings
+    // Settings — defer creation until the notch has finished closing, so the
+    // heavy new-window + SettingsTab instantiation can't stall the notch's
+    // close animation on the main thread (which previously froze it ~1s).
+    property bool settingsWindowDeferredActive: false
+
+    Timer {
+        id: settingsWindowDelayTimer
+        interval: 400
+        onTriggered: settingsWindowDeferredActive = GlobalStates.settingsWindowVisible
+    }
+
+    Connections {
+        target: GlobalStates
+        function onSettingsWindowVisibleChanged() {
+            if (GlobalStates.settingsWindowVisible) {
+                settingsWindowDelayTimer.restart();
+            } else {
+                settingsWindowDelayTimer.stop();
+                settingsWindowDeferredActive = false;
+            }
+        }
+    }
+
     Loader {
         id: settingsWindowLoader
-        active: SuspendManager.wakeReady && GlobalStates.settingsWindowVisible
+        active: SuspendManager.wakeReady && settingsWindowDeferredActive
         source: "modules/widgets/config/SettingsWindow.qml"
     }
 
