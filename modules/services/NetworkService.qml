@@ -217,12 +217,27 @@ Singleton {
         }
     }
 
+    // Restart the event monitor if it exits (dbus drop, nmcli crash, missing
+    // tool) so network/Wi-Fi state stays live instead of freezing at defaults.
+    property Timer subscriberRestartTimer: Timer {
+        interval: 2000
+        repeat: false
+        onTriggered: {
+            if (!SuspendManager.isSuspending)
+                subscriber.running = true;
+        }
+    }
+
     Process {
         id: subscriber
         running: true
         command: ["nmcli", "monitor"]
         stdout: SplitParser {
             onRead: root.update()
+        }
+        onExited: (code) => {
+            if (!SuspendManager.isSuspending)
+                subscriberRestartTimer.restart();
         }
     }
 

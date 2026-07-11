@@ -92,7 +92,7 @@ Item {
 
             Rectangle {
                 anchors.fill: parent
-                radius: 8
+                radius: Styling.popupRadius()
                 color: "transparent"
             }
 

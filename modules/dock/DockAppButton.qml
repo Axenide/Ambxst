@@ -128,7 +128,7 @@ Button {
                             width: root.instanceCount <= 3 ? root.countDotWidth : root.countDotHeight
                             height: root.countDotHeight
                             radius: height / 2
-                            color: root.appIsActive ? Styling.srItem("overprimary") : Qt.rgba(Colors.overBackground.r, Colors.overBackground.g, Colors.overBackground.b, 0.4)
+                            color: root.appIsActive ? Styling.srItem("overprimary") : Styling.tint(Colors.overBackground, 0.4)
 
                             Behavior on color {
                                 enabled: Config.animDuration > 0
@@ -158,7 +158,7 @@ Button {
                             width: root.countDotHeight
                             height: root.instanceCount <= 3 ? root.countDotWidth : root.countDotHeight
                             radius: width / 2
-                            color: root.appIsActive ? Styling.srItem("overprimary") : Qt.rgba(Colors.overBackground.r, Colors.overBackground.g, Colors.overBackground.b, 0.4)
+                            color: root.appIsActive ? Styling.srItem("overprimary") : Styling.tint(Colors.overBackground, 0.4)
 
                             Behavior on color {
                                 enabled: Config.animDuration > 0

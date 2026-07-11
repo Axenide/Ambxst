@@ -43,7 +43,7 @@ Button {
         Rectangle {
             anchors.fill: parent
             radius: Styling.radius(-3)
-            color: root.appIsActive ? Styling.srItem("overprimary") : (root.hovered || root.pressed) ? Qt.rgba(Styling.srItem("overprimary").r, Styling.srItem("overprimary").g, Styling.srItem("overprimary").b, 0.15) : "transparent"
+            color: root.appIsActive ? Styling.srItem("overprimary") : (root.hovered || root.pressed) ? Styling.tint(Styling.srItem("overprimary"), 0.15) : "transparent"
             opacity: root.pressed ? 1 : (root.appIsActive ? 0.3 : 0.7)
 
             Behavior on color {
@@ -125,7 +125,7 @@ Button {
                             width: root.instanceCount <= 3 ? 6 : root.indicatorDotSize
                             height: root.indicatorDotSize
                             radius: height / 2
-                            color: root.appIsActive ? Styling.srItem("overprimary") : Qt.rgba(Colors.overBackground.r, Colors.overBackground.g, Colors.overBackground.b, 0.4)
+                            color: root.appIsActive ? Styling.srItem("overprimary") : Styling.tint(Colors.overBackground, 0.4)
 
                             Behavior on color {
                                 enabled: Config.animDuration > 0
@@ -152,7 +152,7 @@ Button {
                             width: root.indicatorDotSize
                             height: root.instanceCount <= 3 ? 6 : root.indicatorDotSize
                             radius: width / 2
-                            color: root.appIsActive ? Styling.srItem("overprimary") : Qt.rgba(Colors.overBackground.r, Colors.overBackground.g, Colors.overBackground.b, 0.4)
+                            color: root.appIsActive ? Styling.srItem("overprimary") : Styling.tint(Colors.overBackground, 0.4)
 
                             Behavior on color {
                                 enabled: Config.animDuration > 0

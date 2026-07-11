@@ -1979,10 +1979,21 @@ Item {
                                 }
                             }
 
-                            Item {
-                                Layout.preferredWidth: 32
-                                Layout.preferredHeight: 32
-                                Layout.alignment: Qt.AlignTop
+                                Item {
+                                    Layout.preferredWidth: 32
+                                    Layout.preferredHeight: 32
+                                    Layout.alignment: Qt.AlignTop
+
+                                    Component.onCompleted: {
+                                        // Seed the favicon on first layout. The
+                                        // 1ms polling Timer that did this was removed
+                                        // because every link delegate spun one; the
+                                        // onFaviconUrlChanged handler still covers
+                                        // later URL updates (e.g. cache refresh).
+                                        if (iconBackground.iconType === "link" && iconBackground.faviconUrl !== "") {
+                                            faviconImage.source = iconBackground.faviconUrl;
+                                        }
+                                    }
 
                                 StyledRect {
                                     id: iconBackground
@@ -2090,18 +2101,6 @@ Item {
                                             }
                                         } else if (status === Image.Null || status === Image.Loading) {
                                             iconBackground.faviconLoaded = false;
-                                        }
-                                    }
-                                }
-
-                                Timer {
-                                    id: faviconLoader
-                                    interval: 1
-                                    running: iconBackground.iconType === "link" && iconBackground.faviconUrl !== "" && faviconImage.source === ""
-                                    onTriggered: {
-                                        if (iconBackground.faviconUrl !== "") {
-                                            iconBackground.triedFallback = false;
-                                            faviconImage.source = iconBackground.faviconUrl;
                                         }
                                     }
                                 }

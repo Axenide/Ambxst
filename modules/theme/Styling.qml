@@ -17,6 +17,29 @@ QtObject {
         return Math.max(Config.theme.monoFontSize + offset, 8);
     }
 
+    // Standard radius for floating surfaces (popups, OSD, notifications).
+    // Keeps every "floating" element visually consistent regardless of where
+    // it is defined.
+    function popupRadius() {
+        return radius(8);
+    }
+
+    // Apply an alpha to an existing theme color without unpacking channels by
+    // hand everywhere (e.g. Qt.rgba(Colors.overBackground.r, .g, .b, 0.2)).
+    function tint(color, alpha) {
+        return Qt.rgba(color.r, color.g, color.b, alpha);
+    }
+
+    // Consistent interaction feedback alphas used across every interactive
+    // surface (buttons, app icons, list rows) so hover/press feel is uniform.
+    readonly property real hoverAlpha: 0.12
+    readonly property real pressAlpha: 0.24
+
+    // Single canonical easing for shell motion. Centralizing it lets every
+    // surface share the same "weight" of animation (OutQuart was inconsistent
+    // with OutCubic/OutQuad used elsewhere).
+    readonly property int animEasing: Easing.OutCubic
+
     function getStyledRectConfig(variant) {
         switch (variant) {
         case "transparent":

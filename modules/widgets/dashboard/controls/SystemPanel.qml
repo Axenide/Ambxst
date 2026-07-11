@@ -441,6 +441,42 @@ Item {
                                 Config.performance.optimizeVideoWallpapers = checked;
                             }
                         }
+
+                        // Keep recently-used dashboard tabs resident (LRU)
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: "Keep Tabs Loaded"
+                            description: "Keep recently opened dashboard tabs resident instead of unloading them for snappier switching"
+                            checked: Config.performance.dashboardPersistTabs
+                            onToggled: checked => {
+                                Config.performance.dashboardPersistTabs = checked;
+                            }
+                        }
+
+                        // Max number of resident tabs
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            enabled: Config.performance.dashboardPersistTabs
+
+                            Text {
+                                text: "Max Kept Tabs"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(0)
+                                color: Colors.overBackground
+                                Layout.fillWidth: true
+                            }
+
+                            SpinBox {
+                                from: 1
+                                to: 12
+                                value: Config.performance.dashboardMaxPersistentTabs
+                                onValueChanged: {
+                                    if (value !== Config.performance.dashboardMaxPersistentTabs)
+                                        Config.performance.dashboardMaxPersistentTabs = value;
+                                }
+                            }
+                        }
                     }
 
                     // =====================

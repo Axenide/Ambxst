@@ -5,5 +5,7 @@ var data = {
     "defaultModel": "gemini-2.0-flash",
     "sidebarWidth": 400,
     "sidebarPosition": "right",
-    "sidebarPinnedOnStartup": false
+    "sidebarPinnedOnStartup": false,
+    "customEndpoint": "",
+    "customCurlTemplate": ""
 }

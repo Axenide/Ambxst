@@ -577,10 +577,24 @@ Singleton {
     // ASSISTANT SIDEBAR STATE
     // ═══════════════════════════════════════════════════════════════
     property bool assistantVisible: false
-    property bool assistantPinned: Config.ai.sidebarPinnedOnStartup ?? false
-    property int assistantWidth: Config.ai.sidebarWidth ?? 400
-    property string assistantPosition: Config.ai.sidebarPosition ?? "right"
+    // Seeded from Config.ai once config has fully loaded (see below); until
+    // then we use the blueprint defaults so we never capture a half-loaded
+    // adapter value.
+    property bool assistantPinned: false
+    property int assistantWidth: 400
+    property string assistantPosition: "right"
     property string assistantScreenName: ""
+
+    Connections {
+        target: Config
+        function onInitialLoadCompleteChanged() {
+            if (Config.initialLoadComplete) {
+                root.assistantPinned = Config.ai.sidebarPinnedOnStartup ?? false;
+                root.assistantWidth = Config.ai.sidebarWidth ?? 400;
+                root.assistantPosition = Config.ai.sidebarPosition ?? "right";
+            }
+        }
+    }
 
     signal assistantFocusRequested(bool wasAlreadyOpen)
 

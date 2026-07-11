@@ -25,6 +25,14 @@ function validate(current, defaults, keyName) {
         for (var key in defaults) {
             result[key] = validate(current[key], defaults[key], key);
         }
+        // Preserve keys present in the user's file but absent from the blueprint
+        // (forward-compatible / dynamically-added keys such as customEndpoint).
+        // Without this, valid user settings are silently wiped on every load.
+        for (var ckey in current) {
+            if (!(ckey in result)) {
+                result[ckey] = current[ckey];
+            }
+        }
         return result;
     }
 

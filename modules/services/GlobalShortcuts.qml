@@ -14,11 +14,22 @@ QtObject {
     readonly property string appId: "ambxst"
     readonly property string ipcPipe: "/tmp/ambxst_ipc.pipe"
 
+    // Restart the IPC pipe reader if it exits unexpectedly (OOM, /tmp cleared,
+    // hot-reload race, etc.) so the command channel never dies silently.
+    property Timer pipeRestartTimer: Timer {
+        interval: 1000
+        repeat: false
+        onTriggered: {
+            if (!SuspendManager.isSuspending)
+                root.pipeListener.running = true;
+        }
+    }
+
     // High-performance Pipe Listener (Daemon mode)
     property Process pipeListener: Process {
         command: ["bash", "-c", "rm -f " + root.ipcPipe + "; mkfifo " + root.ipcPipe + "; tail -f " + root.ipcPipe]
         running: true
-        
+
         stdout: SplitParser {
             onRead: data => {
                 const cmd = data.trim();
@@ -27,6 +38,12 @@ QtObject {
                 }
             }
         }
+
+        onExited: (code) => {
+            // Restart on abnormal exit; a clean stop (e.g. shell shutdown) is 0.
+            if (code !== 0 && !SuspendManager.isSuspending)
+                root.pipeRestartTimer.restart();
+        }
     }
 
     function run(command) {
@@ -34,10 +51,10 @@ QtObject {
         switch (command) {
             // Launcher (Standalone Notch Module)
             case "launcher": toggleLauncher(); break;
-            case "clipboard": toggleLauncherWithPrefix(1, Config.prefix.clipboard + " "); break;
-            case "emoji": toggleLauncherWithPrefix(2, Config.prefix.emoji + " "); break;
-            case "tmux": toggleLauncherWithPrefix(3, Config.prefix.tmux + " "); break;
-            case "notes": toggleLauncherWithPrefix(4, Config.prefix.notes + " "); break;
+            case "clipboard": toggleLauncherWithPrefix(1, (Config.prefix?.clipboard ?? "") + " "); break;
+            case "emoji": toggleLauncherWithPrefix(2, (Config.prefix?.emoji ?? "") + " "); break;
+            case "tmux": toggleLauncherWithPrefix(3, (Config.prefix?.tmux ?? "") + " "); break;
+            case "notes": toggleLauncherWithPrefix(4, (Config.prefix?.notes ?? "") + " "); break;
 
             // Dashboard
             case "dashboard": toggleDashboardTab(0); break;

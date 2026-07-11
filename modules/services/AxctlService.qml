@@ -169,8 +169,14 @@ Singleton {
         // --- Windows ---
         if (state.windows) {
             let existingClients = root.clients.values || [];
+            // Index existing clients by address once (O(n)) so the per-window
+            // lookup below is O(1) instead of O(n²) on every compositor event.
+            let existingMap = {};
+            for (let i = 0; i < existingClients.length; i++) {
+                existingMap[existingClients[i].address] = existingClients[i];
+            }
             let mappedClients = state.windows.map(win => {
-                let existing = existingClients.find(c => c.address === win.id);
+                let existing = existingMap[win.id];
                 let prevFocus = existing && existing.focusHistoryID !== undefined ? existing.focusHistoryID : 999999;
                 let newFocus = win.is_focused ? (existing && existing.is_focused ? prevFocus : --root.focusHistoryCounter) : prevFocus;
                 return {

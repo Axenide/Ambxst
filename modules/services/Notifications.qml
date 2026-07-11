@@ -186,6 +186,19 @@ Singleton {
         });
     }
 
+    // Coalesce rapid notification changes (add/dismiss/expire bursts) into a
+    // single disk write instead of re-serializing the whole history per event.
+    property Timer saveDebounce: Timer {
+        interval: 300
+        repeat: false
+        onTriggered: saveNotifications()
+    }
+
+    function scheduleNotificationSave() {
+        if (!SuspendManager.isSuspending)
+            saveDebounce.restart();
+    }
+
     function saveNotifications() {
         // Limitar notificaciones almacenadas a 5 por summary para evitar almacenamiento excesivo
         const limitedList = limitNotificationsPerSummary(root.list);
@@ -327,7 +340,7 @@ Singleton {
             // Usar Qt.callLater para evitar race conditions al actualizar la lista
             Qt.callLater(() => {
                 root.list = [...root.list, newNotifObject];
-                saveNotifications();
+                scheduleNotificationSave();
             });
 
             // Popup - ahora se muestra en el notch en lugar de popup window
@@ -381,7 +394,7 @@ Singleton {
         }
 
         root.list = [...root.list, newNotifObject];
-        saveNotifications();
+        scheduleNotificationSave();
         root.notify(newNotifObject);
         return newNotifObject;
     }
@@ -392,7 +405,7 @@ Singleton {
         if (index !== -1) {
             root.list.splice(index, 1);
             triggerListChange();
-            saveNotifications();
+            scheduleNotificationSave();
         }
         if (notifServerIndex !== -1) {
             notifServer.trackedNotifications.values[notifServerIndex].dismiss();
@@ -415,7 +428,7 @@ Singleton {
         if (removedCount > 0) {
             root.list = newList;
             triggerListChange();
-            saveNotifications();
+            scheduleNotificationSave();
         }
 
         ids.forEach(id => {
@@ -430,7 +443,7 @@ Singleton {
     function discardAllNotifications() {
         root.list = [];
         triggerListChange();
-        saveNotifications();
+        scheduleNotificationSave();
         notifServer.trackedNotifications.values.forEach(notif => {
             notif.dismiss();
         });

@@ -36,7 +36,7 @@ ToolTip {
         Text {
             text: root.description
             visible: root.description.length > 0
-            color: Qt.rgba(Colors.overBackground.r, Colors.overBackground.g, Colors.overBackground.b, 0.7)
+            color: Styling.tint(Colors.overBackground, 0.7)
             font.pixelSize: Styling.fontSize(-2)
             font.family: Config.theme.font
         }

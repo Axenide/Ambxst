@@ -264,7 +264,10 @@ run)
 
 	# Fast path: Write directly to pipe if it exists (Zero latency)
 	if [ -p "$PIPE" ]; then
-		echo "$CMD" >"$PIPE" &
+		# Bound the write with timeout: a FIFO with no active reader would
+		# otherwise block this process forever, leaking a hung shell and
+		# silently dropping the command.
+		( timeout 2 printf '%s\n' "$CMD" >"$PIPE" ) 2>/dev/null &
 		exit 0
 	fi
 

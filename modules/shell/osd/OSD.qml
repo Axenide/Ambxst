@@ -167,16 +167,18 @@ PanelWindow {
                         thickness: 3
                         handleSpacing: 0
                         progressColor: root.osdMuted ? Colors.outline : Styling.srItem("overprimary")
-                        backgroundColor: Qt.rgba(Colors.overBackground.r, Colors.overBackground.g, Colors.overBackground.b, 0.2)
+                        backgroundColor: Styling.tint(Colors.overBackground, 0.2)
                     }
                 }
             }
         }
     }
 
-    // Hovering pauses the auto-hide timer; clicking dismisses immediately
+    // Hovering pauses the auto-hide timer; clicking dismisses immediately.
+    // Scoped to the pill (osdRect) so the transparent 100px bottom margin
+    // strip doesn't swallow clicks meant for windows beneath the OSD.
     MouseArea {
-        anchors.fill: parent
+        anchors.fill: osdRect
         hoverEnabled: true
         onEntered: hideTimer.stop()
         onExited: hideTimer.restart()
