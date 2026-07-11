@@ -10,6 +10,9 @@ import qs.config
 FloatingWindow {
     id: settingsWindow
 
+    Component.onCompleted: GlobalStates.trace("SettingsWindow:created")
+    onVisibleChanged: GlobalStates.trace("SettingsWindow:visible=" + visible)
+
     // Window properties
     implicitWidth: 900
     implicitHeight: 650

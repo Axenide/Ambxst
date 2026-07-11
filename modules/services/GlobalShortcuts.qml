@@ -86,6 +86,7 @@ QtObject {
 
     function toggleSettings(screenName) {
         const willOpen = !GlobalStates.settingsWindowVisible;
+        GlobalStates.trace("toggleSettings:willOpen=" + willOpen);
         if (willOpen) {
             const targetMonitor = screenName ? AxctlService.monitorFor(screenName) : AxctlService.focusedMonitor;
             GlobalStates.settingsTargetWorkspaceId = targetMonitor?.activeWorkspace?.id || AxctlService.focusedMonitor?.activeWorkspace?.id || AxctlService.focusedWorkspace?.id || 0;

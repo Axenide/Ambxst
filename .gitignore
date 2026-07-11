@@ -2,3 +2,6 @@
 .ruff_cache/
 scripts/__pycache__
 .sisyphus
+
+# Cloned Quickshell documentation for reference (not part of the project)
+quickshell-docs/
