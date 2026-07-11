@@ -355,17 +355,22 @@ Rectangle {
                 }
             }
 
-            // Sidebar container with background
-            StyledRect {
-                id: sidebarContainer
-                variant: "common"
+            // Sidebar container with background (floating + vertically centered)
+            Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
 
-                Flickable {
-                    id: sidebarFlickable
-                    anchors.fill: parent
-                    anchors.margins: 4
+                StyledRect {
+                    id: sidebarContainer
+                    variant: "common"
+                    width: parent.width
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: Math.min(sidebar.height + 8, parent.height)
+
+                    Flickable {
+                        id: sidebarFlickable
+                        anchors.fill: parent
+                        anchors.margins: 4
                     contentWidth: width
                     contentHeight: sidebar.height
                     clip: true
@@ -533,6 +538,7 @@ Rectangle {
                             }
                         }
                     }
+                }
                 }
             }
         }
