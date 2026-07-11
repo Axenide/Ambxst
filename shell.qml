@@ -255,7 +255,7 @@ ShellRoot {
 
     Timer {
         id: settingsWindowDelayTimer
-        interval: 400
+        interval: 425
         onTriggered: settingsWindowDeferredActive = GlobalStates.settingsWindowVisible
     }
 
