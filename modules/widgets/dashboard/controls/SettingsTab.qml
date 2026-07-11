@@ -311,13 +311,23 @@ Rectangle {
             Layout.preferredWidth: 200
             Layout.maximumWidth: 200
             Layout.fillHeight: true
-            spacing: 4
 
-            // Search input (separate from panel list)
-            SearchInput {
-                id: searchInput
+            Item {
+                id: sidebarArea
                 Layout.fillWidth: true
-                placeholderText: "Search..."
+                Layout.fillHeight: true
+
+                Column {
+                    id: sidebarGroup
+                    width: parent.width
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+
+                    // Search input (floats above the sidebar, separate item)
+                    SearchInput {
+                        id: searchInput
+                        width: parent.width
+                        placeholderText: "Search..."
                 clearOnEscape: true
 
                 onSearchTextChanged: text => {
@@ -355,17 +365,12 @@ Rectangle {
                 }
             }
 
-            // Sidebar container with background (floating + vertically centered)
-            Item {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-
-                StyledRect {
-                    id: sidebarContainer
-                    variant: "common"
-                    width: parent.width
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: Math.min(sidebar.height + 8, parent.height)
+                    // Sidebar list container (floats below the search)
+                    StyledRect {
+                        id: sidebarContainer
+                        variant: "common"
+                        width: parent.width
+                        height: Math.min(sidebar.height + 8, sidebarArea.height - searchInput.height - sidebarGroup.spacing)
 
                     Flickable {
                         id: sidebarFlickable
@@ -538,6 +543,7 @@ Rectangle {
                             }
                         }
                     }
+                }
                 }
                 }
             }
