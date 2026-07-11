@@ -16,13 +16,20 @@ Singleton {
         filePickerProcess.running = true;
     }
 
+    Process {
+        id: traceProc
+        running: false
+    }
+
     // Temporary perf trace (remove after diagnosing settings-open freeze)
     function trace(tag) {
-        const safe = String(tag).replace(/'/g, "'\\''");
-        const p = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
-        p.command = ["sh", "-c", "echo $(date +%s%3N) " + safe + " >> /tmp/ambxst_trace.log"];
-        p.onExited.connect(() => p.destroy());
-        p.running = true;
+        try {
+            const safe = String(tag).replace(/'/g, "'\\''");
+            traceProc.command = ["sh", "-c", "echo $(date +%s%3N) " + safe + " >> /tmp/ambxst_trace.log"];
+            traceProc.running = true;
+        } catch (e) {
+            console.log("trace error", e);
+        }
     }
 
     Process {
