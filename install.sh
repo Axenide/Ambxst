@@ -2,7 +2,7 @@
 set -e
 
 # === Configuration ===
-REPO_URL="https://github.com/Axenide/Ambxst.git"
+REPO_URL="https://github.com/git-napkin/Ambxst.git"
 INSTALL_PATH="$HOME/.local/src/ambxst"
 BIN_DIR="/usr/local/bin"
 QUICKSHELL_REPO="https://git.outfoxxed.me/outfoxxed/quickshell"

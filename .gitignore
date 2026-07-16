@@ -5,3 +5,6 @@ scripts/__pycache__
 
 # Cloned Quickshell documentation for reference (not part of the project)
 quickshell-docs/
+
+# Local "known-good" commit marker
+lastworkingcommit.txt
