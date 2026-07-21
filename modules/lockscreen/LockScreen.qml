@@ -13,6 +13,7 @@ import qs.modules.theme
 import qs.modules.globals
 import qs.modules.widgets.dashboard.widgets
 import qs.config
+import qs.modules.lockscreen
 
 // Lock surface UI - shown on each screen when locked
 WlSessionLockSurface {
@@ -22,6 +23,12 @@ WlSessionLockSurface {
     property bool authenticating: false
     property string errorMessage: ""
     property int failLockSecondsLeft: 0
+    property bool fingerprintAvailable: false
+    property bool fingerprintEnrolled: false
+    property bool fingerprintActive: false
+    property bool fingerprintFailed: false
+    property string fingerprintError: ""
+    property int fingerprintTimeoutMs: 30000
 
     // Always transparent - blur background handles the visuals
     color: "transparent"
@@ -335,7 +342,7 @@ WlSessionLockSurface {
             bottomMargin: !isTopPosition ? (startAnim ? 32 : -80) : 0
         }
         width: 350
-        height: 96
+        height: Config.lockscreen.enableFingerprint && fingerprintAvailable ? 120 : 96
 
         opacity: startAnim ? 1 : 0
         scale: startAnim ? 1 : 0.92
@@ -441,7 +448,7 @@ WlSessionLockSurface {
                 // Password field
                 StyledRect {
                     id: passwordFieldBg
-                    width: parent.width - avatarContainer.width - parent.spacing
+                    width: parent.width - avatarContainer.width - parent.spacing - (Config.lockscreen.enableFingerprint && fingerprintAvailable ? 52 : 0)
                     height: 48
                     anchors.verticalCenter: parent.verticalCenter
                     variant: passwordInputBox.showError ? "error" : "common"
@@ -504,7 +511,7 @@ WlSessionLockSurface {
                             background: null
                             echoMode: TextInput.Password
                             verticalAlignment: TextInput.AlignVCenter
-                            enabled: !authenticating
+                            enabled: !authenticating && !fingerprintActive
 
                             Behavior on color {
                                 enabled: Config.animDuration > 0
@@ -533,6 +540,49 @@ WlSessionLockSurface {
                                 authenticating = true;
                                 errorMessage = "";
                                 pamAuth.start();
+                            }
+                        }
+                    }
+
+                    // Fingerprint button (only visible when fingerprint is available)
+                    Item {
+                        width: 48
+                        height: 48
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: Config.lockscreen.enableFingerprint && fingerprintAvailable
+
+                        Text {
+                            id: fingerprintIcon
+                            anchors.centerIn: parent
+                            text: fingerprintActive ? Icons.circleNotch : (fingerprintFailed ? Icons.warning : Icons.fingerprint)
+                            font.family: Icons.font
+                            font.pixelSize: 28
+                            color: fingerprintFailed ? Colors.error : (fingerprintActive ? Colors.primary : Colors.onSurfaceDim)
+                            rotation: fingerprintActive ? fingerprintRotation.value : 0
+
+                            NumberAnimation on rotation {
+                                id: fingerprintRotation
+                                from: 0; to: 360
+                                duration: 1000
+                                loops: Animation.Infinite
+                                running: fingerprintActive
+                            }
+
+                            Behavior on color {
+                                enabled: Config.animDuration > 0
+                                ColorAnimation {
+                                    duration: Config.animDuration
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            onClicked: {
+                                if (!fingerprintActive && !authenticating) {
+                                    startFingerprintAuth();
+                                }
                             }
                         }
                     }
@@ -702,6 +752,75 @@ WlSessionLockSurface {
         }
     }
 
+    // Fingerprint authentication service
+    Connections {
+        target: FingerprintService
+
+        onAuthSuccess: {
+            fingerprintActive = false;
+            fingerprintFailed = false;
+            fingerprintError = "";
+
+            // Trigger unlock animation
+            startAnim = false;
+            unlockTimer.start();
+        }
+
+        onAuthFailed: {
+            fingerprintActive = false;
+            fingerprintFailed = true;
+            fingerprintError = error;
+
+            // Auto-clear error after a delay
+            fingerprintErrorTimer.start();
+        }
+    }
+
+    // Timer to clear fingerprint error state
+    Timer {
+        id: fingerprintErrorTimer
+        interval: 3000
+        repeat: false
+        onTriggered: {
+            fingerprintFailed = false;
+            fingerprintError = "";
+        }
+    }
+
+    // Fingerprint auto-start timeout (falls back to password)
+    Timer {
+        id: fingerprintTimeoutTimer
+        interval: Config.lockscreen.fingerprintTimeout * 1000
+        repeat: false
+        onTriggered: {
+            if (fingerprintActive) {
+                FingerprintService.stopVerification();
+                fingerprintActive = false;
+            }
+        }
+    }
+
+    // Helper: start fingerprint authentication
+    function startFingerprintAuth() {
+        if (!FingerprintService.available || !FingerprintService.enrolled)
+            return;
+
+        fingerprintActive = true;
+        fingerprintFailed = false;
+        fingerprintError = "";
+        fingerprintTimeoutTimer.start();
+        FingerprintService.startVerification();
+    }
+
+    // Helper: stop fingerprint authentication
+    function stopFingerprintAuth() {
+        fingerprintTimeoutTimer.stop();
+        if (fingerprintActive) {
+            FingerprintService.stopVerification();
+        }
+        fingerprintActive = false;
+    }
+
     // Screen corners
     RoundCorner {
         id: topLeft
@@ -747,5 +866,21 @@ WlSessionLockSurface {
         // Start animations
         startAnim = true;
         passwordInput.forceActiveFocus();
+
+        // Check fingerprint availability and auto-start if enabled
+        if (Config.lockscreen.enableFingerprint) {
+            FingerprintService.update();
+            if (FingerprintService.available && FingerprintService.enrolled) {
+                fingerprintAvailable = true;
+                fingerprintEnrolled = true;
+
+                if (Config.lockscreen.fingerprintAutoStart) {
+                    // Delay slightly to let animations start first
+                    Qt.callLater(function() {
+                        startFingerprintAuth();
+                    });
+                }
+            }
+        }
     }
 }

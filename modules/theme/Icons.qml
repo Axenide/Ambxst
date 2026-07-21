@@ -245,6 +245,8 @@ QtObject {
 
     readonly property string shieldCheck: ""
     readonly property string shield: ""
+    readonly property string fingerprint: "󰉋"
+    readonly property string warning: "!"
 
     readonly property string list: ""
     readonly property string paperPlane: ""

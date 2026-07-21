@@ -6,7 +6,9 @@ Lock screen UI with PAM authentication via WlSessionLockSurface.
 ## STRUCTURE
 ```
 modules/lockscreen/
-├── LockScreen.qml       # Main component (750 lines)
+├── LockScreen.qml       # Main component (800+ lines)
+├── FingerprintService.qml  # fprintd D-Bus communication service
+├── FingerprintPopup.qml    # Reusable fingerprint scanning GUI
 ├── ambxst-auth          # Helper script (if any)
 └── config/pam/          # PAM configuration
     └── password.conf    # Custom PAM rules for lockscreen
@@ -24,6 +26,25 @@ Related: `modules/widgets/dashboard/widgets/LockPlayer.qml` (music player on loc
 | `authPasswordHolder` | `LockScreen.qml:620` | Temp holder for password during PAM auth |
 | `wrongPasswordAnim` | `LockScreen.qml:541` | Shake animation on auth failure |
 | `unlockTimer` | `LockScreen.qml:588` | Triggers GlobalStates.lockscreenVisible = false after exit animation |
+
+### Fingerprint Authentication
+| Symbol | Location | Role |
+|--------|----------|------|
+| `FingerprintService` | `FingerprintService.qml` | Singleton; fprintd D-Bus communication via Python script |
+| `FingerprintPopup` | `FingerprintPopup.qml` | Reusable fingerprint scanning GUI component |
+| `FingerprintEnrollWizard` | `FingerprintEnrollWizard.qml` | Guided enrollment flow with visual feedback |
+| `DashboardAuthGate` | `DashboardAuthGate.qml` | Auth prompt for dashboard access (fingerprint/password) |
+| `startFingerprintAuth()` | `LockScreen.qml` | Starts fingerprint verification, sets scanning state |
+| `fingerprintActive` | `LockScreen.qml` | Tracks if fingerprint scan is in progress |
+| `fingerprintAvailable` | `LockScreen.qml` | Whether fprintd device is available |
+| `fingerprintEnrolled` | `LockScreen.qml` | Whether any fingers are enrolled |
+| `fingerprintTimeoutTimer` | `LockScreen.qml` | Falls back to password after timeout |
+| `fingerprintErrorTimer` | `LockScreen.qml` | Clears fingerprint error state after delay |
+| `retryCount` | `FingerprintService.qml` | Current retry attempt for verification |
+| `maxRetries` | `FingerprintService.qml` | Maximum retry attempts (default: 3) |
+| `deviceMonitorTimer` | `FingerprintService.qml` | Periodic device availability check |
+| `deviceLost()` | `FingerprintService.qml` | Signal emitted when fprintd device disconnects |
+| `deviceRestored()` | `FingerprintService.qml` | Signal emitted when fprintd device reconnects |
 
 Key behaviors:
 - On lock: capture screen (`screencopyBackground.captureFrame()`), start entry animations, force focus to password field

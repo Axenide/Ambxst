@@ -954,6 +954,13 @@ Singleton {
 
         adapter: JsonAdapter {
             property string position: "bottom"
+            property bool enableFingerprint: true
+            property bool fingerprintAutoStart: true
+            property int fingerprintTimeout: 30
+            property bool fingerprintFallbackToPassword: true
+            property bool fingerprintShowEnrollPrompt: true
+            property bool requireAuthForDashboard: false
+            property string authMethod: "both"
         }
     }
 

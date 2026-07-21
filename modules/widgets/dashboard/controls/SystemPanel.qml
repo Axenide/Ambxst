@@ -7,6 +7,7 @@ import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
 import qs.config
+import qs.modules.lockscreen
 
 Item {
     id: root
@@ -141,6 +142,10 @@ Item {
                         SectionButton {
                             text: "Idle"
                             sectionId: "idle"
+                        }
+                        SectionButton {
+                            text: "Authentication"
+                            sectionId: "authentication"
                         }
                     }
 
@@ -637,6 +642,399 @@ Item {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // =====================
+                    // AUTHENTICATION SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "authentication"
+                        property string settingsSection: "authentication"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Authentication"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        Text {
+                            text: "Manage password and fingerprint authentication for the lock screen"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overSurfaceVariant
+                            opacity: 0.7
+                        }
+
+                        // ===== Password Settings =====
+                        Text {
+                            text: "Password"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            font.weight: Font.Medium
+                            color: Colors.overBackground
+                            Layout.topMargin: 8
+                        }
+
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: "Enable Password Auth"
+                            description: "Allow password authentication on the lock screen"
+                            checked: Config.lockscreen.enableFingerprint !== undefined ? true : true
+                            onToggled: checked => {
+                                // Password auth is always available as fallback
+                            }
+                        }
+
+                        StyledRect {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            radius: Styling.radius(-2)
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 8
+
+                            Text {
+                                text: Icons.keyboard
+                                font.family: Icons.font
+                                font.pixelSize: 18
+                                color: Colors.primary
+                            }
+
+                                Text {
+                                    text: "Change Password"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    // Open a password change dialog or run passwd command
+                                    var proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+                                    proc.command = ["passwd"];
+                                    proc.running = true;
+                                }
+                            }
+                        }
+
+                        // ===== Fingerprint Settings =====
+                        Text {
+                            text: "Fingerprint"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            font.weight: Font.Medium
+                            color: Colors.overBackground
+                            Layout.topMargin: 16
+                        }
+
+                        // Fingerprint availability status
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            Text {
+                                text: FingerprintService.available ? Icons.shieldCheck : Icons.warning
+                                font.family: Icons.font
+                                font.pixelSize: 18
+                                color: FingerprintService.available ? Colors.green : Colors.error
+                            }
+
+                            Text {
+                                text: FingerprintService.available
+                                    ? (FingerprintService.enrolled
+                                        ? "Fingerprint reader detected (" + FingerprintService.enrolledFingers.length + " fingers enrolled)"
+                                        : "Fingerprint reader detected (no fingers enrolled)")
+                                    : "Fingerprint reader not available"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: FingerprintService.available ? Colors.onSurfaceDim : Colors.onSurfaceVariant
+                                opacity: 0.8
+                            }
+                        }
+
+                        // Enable fingerprint auth toggle
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: "Enable Fingerprint Auth"
+                            description: "Use fingerprint to unlock the lock screen"
+                            checked: Config.lockscreen.enableFingerprint
+                            enabled: FingerprintService.available
+                            onToggled: checked => {
+                                Config.lockscreen.enableFingerprint = checked;
+                            }
+                        }
+
+                        // Auto-start fingerprint scanning
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: "Auto-start Scanning"
+                            description: "Automatically start fingerprint scanning when the lock screen appears"
+                            checked: Config.lockscreen.fingerprintAutoStart
+                            enabled: Config.lockscreen.enableFingerprint && FingerprintService.available
+                            onToggled: checked => {
+                                Config.lockscreen.fingerprintAutoStart = checked;
+                            }
+                        }
+
+                        // Fingerprint timeout
+                        NumberInputRow {
+                            Layout.fillWidth: true
+                            label: "Scan Timeout"
+                            value: Config.lockscreen.fingerprintTimeout
+                            minValue: 5
+                            maxValue: 120
+                            suffix: "s"
+                            enabled: Config.lockscreen.enableFingerprint && FingerprintService.available
+                            onValueEdited: val => {
+                                Config.lockscreen.fingerprintTimeout = val;
+                            }
+                        }
+
+                        // Fallback to password
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: "Fallback to Password"
+                            description: "Fall back to password entry when fingerprint fails"
+                            checked: Config.lockscreen.fingerprintFallbackToPassword
+                            enabled: Config.lockscreen.enableFingerprint && FingerprintService.available
+                            onToggled: checked => {
+                                Config.lockscreen.fingerprintFallbackToPassword = checked;
+                            }
+                        }
+
+                        // Dashboard auth gate settings
+                        Text {
+                            text: "Dashboard Authentication"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            font.weight: Font.Medium
+                            color: Colors.overBackground
+                            Layout.topMargin: 16
+                        }
+
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: "Require Auth for Dashboard"
+                            description: "Require fingerprint or password to open the dashboard"
+                            checked: Config.lockscreen.requireAuthForDashboard
+                            onToggled: checked => {
+                                Config.lockscreen.requireAuthForDashboard = checked;
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            enabled: Config.lockscreen.requireAuthForDashboard
+
+                            Text {
+                                text: "Auth Method"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(0)
+                                color: Colors.overBackground
+                                Layout.preferredWidth: 100
+                            }
+
+                            Row {
+                                spacing: 8
+
+                                Repeater {
+                                    model: [
+                                        { id: "both", label: "Both" },
+                                        { id: "fingerprint", label: "Fingerprint" },
+                                        { id: "password", label: "Password" }
+                                    ]
+
+                                    delegate: StyledRect {
+                                        required property var modelData
+                                        id: methodButton
+                                        property bool isSelected: Config.lockscreen.authMethod === modelData.id
+                                        property bool isHovered: false
+
+                                        variant: isSelected ? "primary" : (isHovered ? "focus" : "common")
+                                        width: methodLabel.width + 24
+                                        height: 36
+                                        radius: Styling.radius(-2)
+
+                                        Text {
+                                            id: methodLabel
+                                            anchors.centerIn: parent
+                                            text: modelData.label
+                                            font.family: Config.theme.font
+                                            font.pixelSize: Styling.fontSize(0)
+                                            font.bold: isSelected
+                                            color: methodButton.item
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onEntered: methodButton.isHovered = true
+                                            onExited: methodButton.isHovered = false
+                                            onClicked: {
+                                                Config.lockscreen.authMethod = modelData.id;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Enrolled fingers list
+                        Text {
+                            text: "Enrolled Fingers"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            font.weight: Font.Medium
+                            color: Colors.overBackground
+                            Layout.topMargin: 8
+                            visible: FingerprintService.available
+                        }
+
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 1
+                            visible: FingerprintService.available
+                        }
+
+                        Repeater {
+                            model: FingerprintService.enrolledFingers
+                            visible: FingerprintService.available
+
+                            delegate: RowLayout {
+                                required property string modelData
+                                required property int index
+
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Text {
+                                    text: modelData
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                }
+
+                                Item {
+                                    Layout.fillWidth: true
+                                }
+
+                                StyledRect {
+                                    id: deleteFingerBtn
+                                    variant: "error"
+                                    Layout.preferredWidth: 32
+                                    Layout.preferredHeight: 32
+                                    radius: Styling.radius(-2)
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: Icons.trash
+                                        font.family: Icons.font
+                                        font.pixelSize: 14
+                                        color: deleteFingerBtn.item
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: {
+                                            FingerprintService.deleteFinger(modelData);
+                                            FingerprintService.listFingers();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // Enroll new finger button
+                        StyledRect {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            radius: Styling.radius(-2)
+                            visible: FingerprintService.available
+                            enabled: FingerprintService.available
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 8
+
+                                Text {
+                                    text: Icons.plus
+                                    font.family: Icons.font
+                                    font.pixelSize: 16
+                                    color: parent.enabled ? Colors.primary : Colors.onSurfaceVariant
+                                }
+
+                                Text {
+                                    text: "Enroll New Finger"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: parent.enabled ? Colors.overBackground : Colors.onSurfaceVariant
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                enabled: FingerprintService.available
+                                onClicked: {
+                                    FingerprintEnrollWizard.open("right-index-finger");
+                                }
+                            }
+                        }
+
+                        // Refresh button
+                        StyledRect {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 36
+                            radius: Styling.radius(-2)
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 8
+                                spacing: 8
+
+                                Text {
+                                    text: Icons.arrowCounterClockwise
+                                    font.family: Icons.font
+                                    font.pixelSize: 16
+                                    color: Colors.primary
+                                }
+
+                                Text {
+                                    text: "Refresh Fingerprint Status"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                }
+                            }
+
+                            MouseArea {
+                                anchors.fill: parent
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    FingerprintService.update();
+                                }
+                            }
+                        }
+
+                        // Bottom spacing
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
                         }
                     }
 

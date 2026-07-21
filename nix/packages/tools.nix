@@ -25,4 +25,9 @@ with pkgs; [
   zenity
   inetutils
   adw-gtk3
+
+   # Fingerprint authentication
+  fprintd
+  pam
+  python3Packages.dbus-python
 ]

@@ -320,6 +320,19 @@ ShellRoot {
         onTriggered: {
             let _ = NightLightService.active;
             _ = GameModeService.toggled;
+            _ = FprintdInterceptor.active; // Force init fingerprint interceptor
+        }
+    }
+
+    // Start fprintd monitoring when fingerprint auth is enabled
+    Connections {
+        target: Config.lockscreen
+        function onEnableFingerprintChanged() {
+            if (Config.lockscreen.enableFingerprint && FprintdInterceptor.active) {
+                FprintdInterceptor.startMonitoring();
+            } else {
+                FprintdInterceptor.stopMonitoring();
+            }
         }
     }
 }

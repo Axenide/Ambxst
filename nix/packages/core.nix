@@ -20,4 +20,7 @@ with pkgs; [
   kdePackages.qtmultimedia
   kdePackages.qtshadertools
   kdePackages.syntax-highlighting
+
+  # D-Bus (for fprintd monitoring)
+  dbus
 ]
