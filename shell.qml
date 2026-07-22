@@ -1,7 +1,7 @@
 //@ pragma UseQApplication
-//@ pragma ShellId ambxst
-//@ pragma DataDir $BASE/ambxst
-//@ pragma StateDir $BASE/ambxst
+//@ pragma ShellId ambxst+
+//@ pragma DataDir $BASE/ambxst+
+//@ pragma StateDir $BASE/ambxst+
 
 import QtQuick
 import Quickshell
@@ -31,7 +31,7 @@ ShellRoot {
     id: root
 
     Component.onCompleted: {
-        console.log("ambxst: shell initialized (version", Config.version + ")");
+        console.log("ambxst+: shell initialized (version", Config.version + ")");
     }
 
     ContextMenu {

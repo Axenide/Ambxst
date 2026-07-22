@@ -6,7 +6,7 @@ Dynamic theming layer providing colors, icons, and style utilities as singletons
 ## STRUCTURE
 | File | Type | Role |
 |------|------|------|
-| `Colors.qml` | Singleton | Watches `~/.cache/ambxst/colors.json`. Provides reactive palette (`primary`, `secondary`, `surface`, `onSurface`, etc.) |
+| `Colors.qml` | Singleton | Watches `~/.cache/ambxst+/colors.json`. Provides reactive palette (`primary`, `secondary`, `surface`, `onSurface`, etc.) |
 | `Styling.qml` | Singleton | `radius(offset)`, `fontSize(offset)`, `getStyledRectConfig(variant)`. Animation durations, spacing constants |
 | `Icons.qml` | Singleton | Character map for Phosphor-Bold icon font (`lock`, `power`, `layout`, etc.) |
 | `*Generator.qml` | Components | Translate `Colors` palette into config files for other apps |
@@ -22,7 +22,7 @@ Dynamic theming layer providing colors, icons, and style utilities as singletons
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| **Change colors** | `Colors.qml` | Modify `~/.cache/ambxst/colors.json` or change color preset |
+| **Change colors** | `Colors.qml` | Modify `~/.cache/ambxst+/colors.json` or change color preset |
 | **Add StyledRect variant** | `Styling.qml` → `getStyledRectConfig()` | Returns gradient, border, opacity config per variant |
 | **Adjust radius/font** | `Styling.qml` | `radius(offset)` and `fontSize(offset)` apply global scaling |
 | **Add icon** | `Icons.qml` | Add Phosphor-Bold unicode mapping |

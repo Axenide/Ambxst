@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Ambxst CLI - It was needed, so here it is. lol
+# ambxst+ CLI - It was needed, so here it is. lol
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Use environment variables if set by flake, otherwise fall back to PATH
-QS_BIN="${AMBXST_QS:-qs}"
-NIXGL_BIN="${AMBXST_NIXGL:-}"
+QS_BIN="${AMBXST_PLUS_QS:-qs}"
+NIXGL_BIN="${AMBXST_PLUS_NIXGL:-}"
 
 if [ -z "${QML2_IMPORT_PATH:-}" ]; then
 	if command -v qs >/dev/null 2>&1; then
@@ -20,31 +20,27 @@ if [ -n "${QML2_IMPORT_PATH:-}" ] && [ -z "${QML_IMPORT_PATH:-}" ]; then
 	export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
 fi
 
-# Qt Quick GPU acceleration settings (user overrides preserved)
-# Vulkan preferred for both AMD and NVIDIA (requires mesa/26.0+ or NVIDIA 525+)
-# Falls back gracefully on older drivers.
-# We probe with 'vulkaninfo --summary' rather than 'glxinfo' because glxinfo
-# only indicates OpenGL/GLX availability — it does NOT confirm a Vulkan ICD
-# is present. Setting QT_QUICK_BACKEND=vulkan without a working ICD causes Qt
-# to silently fall back to software rendering.
-if [[ -z "${QT_QUICK_BACKEND:-}" ]]; then
-	if vulkaninfo --summary >/dev/null 2>&1; then
-		export QT_QUICK_BACKEND=vulkan
-	else
-		export QT_QUICK_BACKEND=opengl
-	fi
-fi
-
-# Faster QML array operations
-[[ -z "${QML_USE_TYPED_ARRAYS:-}" ]] && export QML_USE_TYPED_ARRAYS=1
-
-# Multi-threaded rendering for smoother UI
-[[ -z "${QT_THREADED_RENDERER:-}" ]] && export QT_THREADED_RENDERER=1
-
 # Ensure config files exist - copy from preset if missing
 ensure_config_files() {
-	local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst/config"
-	local preset_dir="${SCRIPT_DIR}/assets/presets/Ambxst Default"
+	local old_config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst"
+	local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/config"
+	local preset_dir="${SCRIPT_DIR}/assets/presets/ambxst+ Default"
+
+	# First-boot migration: copy old ~/.config/ambxst to ~/.config/ambxst+
+	if [ -d "$old_config_dir" ] && [ ! -f "${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/.migrated" ]; then
+		echo "Migrating config from $old_config_dir to ${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+..."
+		mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+"
+		cp -r "$old_config_dir/." "${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/"
+		# Migrate old flat config to new config/ subdirectory if needed
+		mkdir -p "$config_dir"
+		for f in theme bar workspaces overview notch compositor performance desktop lockscreen dock ai system; do
+			if [ -f "${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/${f}.json" ] && [ ! -f "${config_dir}/${f}.json" ]; then
+				mv "${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/${f}.json" "${config_dir}/${f}.json"
+			fi
+		done
+		touch "${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/.migrated"
+		echo "Migration complete."
+	fi
 
 	# Create config directory if it doesn't exist
 	mkdir -p "$config_dir"
@@ -60,13 +56,13 @@ ensure_config_files
 
 show_help() {
 	cat <<EOF
-Ambxst CLI - Desktop Environment Control
+Ambxst[+] CLI - Desktop Environment Control
 
-Usage: ambxst [COMMAND]
+Usage: ambxst+ [COMMAND]
 
 Commands:
-    (none)                            Launch Ambxst
-    update                            Update Ambxst
+    (none)                            Launch Ambxst[+]
+    update                            Update Ambxst[+]
     refresh                           Refresh local/dev profile (for developers)
     lock                              Activate lockscreen
     brightness <percent> [monitor]    Set brightness (0-100)
@@ -75,51 +71,51 @@ Commands:
     brightness -r [monitor]           Restore saved brightness
     brightness -l                     List monitors and their brightness
     help                              Show this help message
-    version, -v, --version            Show Ambxst version
-    goodbye                           Uninstall Ambxst :(
+    version, -v, --version            Show Ambxst[+] version
+    goodbye                           Uninstall Ambxst[+] :(
     install <target>                    Install compositor config (hyprland)
     remove <target>                    Remove compositor config (hyprland)
 
 Examples:
-    ambxst brightness 75              Set all monitors to 75%
-    ambxst brightness 50 HDMI-A-1     Set HDMI-A-1 to 50%
-    ambxst brightness +10             Increase brightness by 10%
-    ambxst brightness -5 HDMI-A-1     Decrease HDMI-A-1 brightness by 5%
-    ambxst brightness 10 -s           Save current, then set all to 10%
-    ambxst brightness -s HDMI-A-1     Save current brightness of HDMI-A-1
-    ambxst brightness -r              Restore saved brightness
+    ambxst+ brightness 75              Set all monitors to 75%
+    ambxst+ brightness 50 HDMI-A-1     Set HDMI-A-1 to 50%
+    ambxst+ brightness +10             Increase brightness by 10%
+    ambxst+ brightness -5 HDMI-A-1     Decrease HDMI-A-1 brightness by 5%
+    ambxst+ brightness 10 -s           Save current, then set all to 10%
+    ambxst+ brightness -s HDMI-A-1     Save current brightness of HDMI-A-1
+    ambxst+ brightness -r              Restore saved brightness
 
 EOF
 }
 
-AMBXST_HYPR_CONF_SOURCE="source = ~/.local/share/ambxst/hyprland.conf"
-AMBXST_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()'
-AMBXST_HYPR_CONF_BLOCK=$(
+AMBXST_PLUS_HYPR_CONF_SOURCE="source = ~/.local/share/ambxst+/hyprland.conf"
+AMBXST_PLUS_HYPR_LUA_SOURCE='loadfile(os.getenv("HOME") .. "/.local/share/ambxst+/hyprland.lua")()'
+AMBXST_PLUS_HYPR_CONF_BLOCK=$(
 	cat <<'EOF'
-# Ambxst
-source = ~/.local/share/ambxst/hyprland.conf
+# Ambxst[+]
+source = ~/.local/share/ambxst+/hyprland.conf
 
 # OVERRIDES
-# Down here you can write or source anything that you want to override from Ambxst's settings.
+# Down here you can write or source anything that you want to override from Ambxst[+]'s settings.
 EOF
 )
-AMBXST_HYPR_LUA_BLOCK=$(
+AMBXST_PLUS_HYPR_LUA_BLOCK=$(
 	cat <<'EOF'
--- Ambxst
-loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()
+-- Ambxst[+]
+loadfile(os.getenv("HOME") .. "/.local/share/ambxst+/hyprland.lua")()
 
 -- OVERRIDES
--- Down here you can write or source anything that you want to override from Ambxst's settings.
+-- Down here you can write or source anything that you want to override from Ambxst[+]'s settings.
 EOF
 )
 
-append_ambxst_hyprland_block() {
+append_ambxst_plus_hyprland_block() {
 	local conf="$1"
 	local source="$2"
 	local block="$3"
 
 	if [ -f "$conf" ] && grep -qF "$source" "$conf"; then
-		echo "Ambxst Hyprland block already present in $conf"
+		echo "Ambxst[+] Hyprland block already present in $conf"
 		return 0
 	fi
 
@@ -129,10 +125,10 @@ append_ambxst_hyprland_block() {
 		printf "%s\n" "$block" >"$conf"
 	fi
 
-	echo "Added Ambxst Hyprland block to $conf"
+	echo "Added Ambxst[+] Hyprland block to $conf"
 }
 
-remove_ambxst_hyprland_block() {
+remove_ambxst_plus_hyprland_block() {
 	local conf="$1"
 	local source="$2"
 
@@ -144,12 +140,12 @@ remove_ambxst_hyprland_block() {
 	awk -v source="$source" '
 		function is_remove(line) {
 			return line == source \
-				|| line == "# Ambxst" \
-				|| line == "-- Ambxst" \
+				|| line == "# Ambxst[+]" \
+				|| line == "-- Ambxst[+]" \
 				|| line == "# OVERRIDES" \
 				|| line == "-- OVERRIDES" \
-				|| line == "# Down here you can write or source anything that you want to override from Ambxst'\''s settings." \
-				|| line == "-- Down here you can write or source anything that you want to override from Ambxst'\''s settings."
+				|| line == "# Down here you can write or source anything that you want to override from Ambxst[+]'\''s settings." \
+				|| line == "-- Down here you can write or source anything that you want to override from Ambxst[+]'\''s settings."
 		}
 		{
 			lines[NR] = $0
@@ -169,18 +165,42 @@ remove_ambxst_hyprland_block() {
 		}
 	' "$conf" >"${conf}.tmp" && mv "${conf}.tmp" "$conf"
 
-	echo "Removed Ambxst Hyprland block from $conf"
+	echo "Removed Ambxst[+] Hyprland block from $conf"
 }
 
-find_ambxst_pid() {
-	# Optimized: single pgrep call with alternation pattern
-	# Matches qs/quickshell processes running our shell.qml
-	pgrep -f "qs.*shell\.qml\|quickshell.*shell\.qml" 2>/dev/null | head -1
+find_ambxst_plus_pid() {
+	# Try to find QuickShell process running shell.qml
+	# QuickShell binary can be named 'qs' or 'quickshell'
+	local pid
+
+	# First try with full path (production/flake mode)
+	pid=$(pgrep -f "qs.*${SCRIPT_DIR}/shell.qml" 2>/dev/null | head -1)
+	if [ -z "$pid" ]; then
+		pid=$(pgrep -f "quickshell.*${SCRIPT_DIR}/shell.qml" 2>/dev/null | head -1)
+	fi
+
+	# If not found, try with relative path (development mode)
+	if [ -z "$pid" ]; then
+		pid=$(pgrep -f "qs.*shell.qml" 2>/dev/null | head -1)
+	fi
+	if [ -z "$pid" ]; then
+		pid=$(pgrep -f "quickshell.*shell.qml" 2>/dev/null | head -1)
+	fi
+
+	# Last resort: find any qs/quickshell process in this directory
+	if [ -z "$pid" ]; then
+		pid=$(pgrep -a "qs" 2>/dev/null | grep -F "$SCRIPT_DIR" | awk '{print $1}' | head -1)
+	fi
+	if [ -z "$pid" ]; then
+		pid=$(pgrep -a quickshell 2>/dev/null | grep -F "$SCRIPT_DIR" | awk '{print $1}' | head -1)
+	fi
+
+	echo "$pid"
 }
 
-find_ambxst_pid_cached() {
+find_ambxst_plus_pid_cached() {
 	# Optimized PID lookup: check cache file first, then fall back to pgrep
-	local pid_file="/tmp/ambxst.pid"
+	local pid_file="/tmp/ambxst+.pid"
 	local pid=""
 
 	# Check if cache file exists and process is alive
@@ -195,47 +215,43 @@ find_ambxst_pid_cached() {
 		rm -f "$pid_file"
 	fi
 
-	# Fallback: use pgrep search, then ps aux as last resort
-	pid=$(find_ambxst_pid)
-	if [ -z "$pid" ]; then
-		# Last-resort fallback: ps aux grep (handles systems without pgrep)
-		pid=$(ps aux | grep -E "qs.*shell\.qml|quickshell.*shell\.qml" | grep -v grep | awk '{print $2}' | head -1)
-	fi
+	# Fallback: use expensive pgrep search
+	pid=$(find_ambxst_plus_pid)
 	echo "$pid"
 }
 
-restart_ambxst() {
+restart_ambxst_plus() {
 	# Kill axctl processes first (they survive parent death when forked/detached)
 	pkill -f "axctl.*daemon" 2>/dev/null || true
 	pkill -f "axctl subscribe" 2>/dev/null || true
 
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_ambxst_plus_pid_cached)
 	if [ -n "$PID" ]; then
-		echo "Stopping Ambxst (PID $PID)..."
+		echo "Stopping Ambxst[+] (PID $PID)..."
 		kill "$PID"
 		# Wait for process to exit
 		while kill -0 "$PID" 2>/dev/null; do
 			sleep 0.1
 		done
 	fi
-	echo "Starting Ambxst..."
+	echo "Starting Ambxst[+]..."
 	# Relaunch the script in background
 	nohup "$0" >/dev/null 2>&1 &
 }
 
 case "${1:-}" in
 update)
-	echo "Updating Ambxst..."
-	bash "${SCRIPT_DIR}/install.sh"
-	restart_ambxst
+	echo "Updating Ambxst[+]..."
+	curl -fsSL get.axeni.de/ambxst+ | sh
+	restart_ambxst_plus
 	;;
 refresh)
-	echo "Refreshing Ambxst profile..."
-	exec nix profile upgrade Ambxst --refresh --impure
+	echo "Refreshing Ambxst[+] profile..."
+	exec nix profile upgrade ambxst-plus --refresh --impure
 	;;
 run)
 	CMD="${2:-}"
-	PIPE="/tmp/ambxst_ipc.pipe"
+	PIPE="/tmp/ambxst+_ipc.pipe"
 
 	if [ -z "$CMD" ]; then
 		echo "Error: No command specified for run"
@@ -244,70 +260,87 @@ run)
 
 	# Fast path: Write directly to pipe if it exists (Zero latency)
 	if [ -p "$PIPE" ]; then
-		# Bound the write with timeout: a FIFO with no active reader would
-		# otherwise block this process forever, leaking a hung shell and
-		# silently dropping the command.
-		( timeout 2 printf '%s\n' "$CMD" >"$PIPE" ) 2>/dev/null &
+		echo "$CMD" >"$PIPE" &
 		exit 0
 	fi
 
 	# Fallback path: Use QS IPC with cached PID lookup
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_ambxst_plus_pid_cached)
 	if [ -z "$PID" ]; then
-		echo "Error: Ambxst is not running"
+		echo "Error: Ambxst[+] is not running"
 		exit 1
 	fi
 
-	qs ipc --pid "$PID" call ambxst run "$CMD" 2>/dev/null || {
+	qs ipc --pid "$PID" call ambxstPlus run "$CMD" 2>/dev/null || {
 		echo "Error: Could not run command '$CMD'"
 		exit 1
 	}
 	;;
 lock)
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_ambxst_plus_pid_cached)
 	if [ -z "$PID" ]; then
-		echo "Error: Ambxst is not running"
+		echo "Error: Ambxst[+] is not running"
 		exit 1
 	fi
-	qs ipc --pid "$PID" call ambxst run lockscreen 2>/dev/null || {
+	qs ipc --pid "$PID" call ambxstPlus run lockscreen 2>/dev/null || {
 		echo "Error: Could not activate lockscreen"
 		exit 1
 	}
 	;;
 reload)
-	restart_ambxst
+	restart_ambxst_plus
 	;;
 quit)
 	# Kill axctl processes first
 	pkill -f "axctl.*daemon" 2>/dev/null || true
 	pkill -f "axctl subscribe" 2>/dev/null || true
 
-	PID=$(find_ambxst_pid_cached)
+	PID=$(find_ambxst_plus_pid_cached)
 	if [ -n "$PID" ]; then
-		echo "Stopping Ambxst (PID $PID)..."
+		echo "Stopping Ambxst[+] (PID $PID)..."
 		kill "$PID"
 	else
-		echo "Ambxst is not running"
+		echo "Ambxst[+] is not running"
 	fi
 	;;
 screen)
 	SUB="${2:-}"
-	if [ "$SUB" = "off" ]; then
-		if command -v hyprctl &>/dev/null; then
-			hyprctl dispatch dpms off
-		else
-			notify-send "Screen Off" "Not supported on this compositor yet"
-		fi
-	elif [ "$SUB" = "on" ]; then
-		if command -v hyprctl &>/dev/null; then
-			hyprctl dispatch dpms on
-		else
-			notify-send "Screen On" "Not supported on this compositor yet"
-		fi
-	else
-		echo "Usage: ambxst screen [on|off]"
+	AXCTL_STATE=""
+	case "$SUB" in
+	off) AXCTL_STATE="0" ;;
+	on) AXCTL_STATE="1" ;;
+	*)
+		echo "Usage: ambxst+ screen [on|off]"
+		exit 1
+		;;
+	esac
+
+	if ! command -v axctl &>/dev/null; then
+		notify-send "Screen ${SUB}" "axctl is required to control the screen"
 		exit 1
 	fi
+
+	MONITORS_JSON=$(axctl monitor list 2>/dev/null) || {
+		notify-send "Screen ${SUB}" "Failed to list monitors via axctl"
+		exit 1
+	}
+
+	MONITOR_IDS=$(echo "$MONITORS_JSON" | jq -r '.[].id' 2>/dev/null) || {
+		notify-send "Screen ${SUB}" "Failed to parse monitor list"
+		exit 1
+	}
+
+	if [ -z "$MONITOR_IDS" ]; then
+		notify-send "Screen ${SUB}" "No monitors detected"
+		exit 1
+	fi
+
+	for MON_ID in $MONITOR_IDS; do
+		if ! axctl monitor set-dpms "$MON_ID" "$AXCTL_STATE" >/dev/null 2>&1; then
+			notify-send "Screen ${SUB}" "Failed to set DPMS on monitor $MON_ID"
+			exit 1
+		fi
+	done
 	;;
 suspend)
 	if command -v systemctl &>/dev/null; then
@@ -320,13 +353,13 @@ suspend)
 	fi
 	;;
 brightness)
-	PID=$(find_ambxst_pid_cached)
+		PID=$(find_ambxst_plus_pid_cached)
 	if [ -z "$PID" ]; then
-		echo "Error: Ambxst is not running"
+		echo "Error: Ambxst[+] is not running"
 		exit 1
 	fi
 
-	BRIGHTNESS_SAVE_FILE="/tmp/ambxst_brightness_saved.txt"
+	BRIGHTNESS_SAVE_FILE="/tmp/ambxst+_brightness_saved.txt"
 
 	# Parse arguments
 	ARG2="${2:-}"
@@ -451,7 +484,7 @@ brightness)
 		exit 0
 	else
 		echo "Error: Invalid brightness value. Must be 0-100 or +/-delta."
-		echo "Run 'ambxst help' for usage information"
+		echo "Run 'ambxst+ help' for usage information"
 		exit 1
 	fi
 
@@ -540,7 +573,7 @@ brightness)
 	fi
 	;;
 version | -v | --version)
-	echo "Ambxst $(cat "${SCRIPT_DIR}/version")"
+	echo "Ambxst[+] $(cat "${SCRIPT_DIR}/version")"
 	;;
 install)
 	TARGET="${2:-}"
@@ -553,9 +586,9 @@ install)
 		mkdir -p "$HYPR_DIR"
 
 		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
-			append_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE" "$AMBXST_HYPR_LUA_BLOCK"
+			append_ambxst_plus_hyprland_block "$HYPR_LUA" "$AMBXST_PLUS_HYPR_LUA_SOURCE" "$AMBXST_PLUS_HYPR_LUA_BLOCK"
 		else
-			append_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
+			append_ambxst_plus_hyprland_block "$HYPR_CONF" "$AMBXST_PLUS_HYPR_CONF_SOURCE" "$AMBXST_PLUS_HYPR_CONF_BLOCK"
 		fi
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
@@ -569,15 +602,15 @@ remove)
 		HYPR_LUA="$HYPR_DIR/hyprland.lua"
 		HYPR_CONF="$HYPR_DIR/hyprland.conf"
 
-		remove_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE"
-		remove_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE"
+		remove_ambxst_plus_hyprland_block "$HYPR_LUA" "$AMBXST_PLUS_HYPR_LUA_SOURCE"
+		remove_ambxst_plus_hyprland_block "$HYPR_CONF" "$AMBXST_PLUS_HYPR_CONF_SOURCE"
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
 		exit 1
 	fi
 	;;
 goodbye)
-	echo "Uninstalling Ambxst..."
+	echo "Uninstalling Ambxst[+]..."
 
 	read -p "Are you sure? (y/N): " -n 1 -r
 	echo
@@ -587,13 +620,13 @@ goodbye)
 	fi
 
 	if [ -f /etc/NIXOS ]; then
-		if nix profile list 2>/dev/null | grep -q "Ambxst"; then
+		if nix profile list 2>/dev/null | grep -q "ambxst-plus"; then
 			echo "Removing from nix profile..."
-			nix profile remove Ambxst
-		elif command -v ambxst >/dev/null 2>&1; then
-			echo "Ambxst was declared in this system. Please remove it from your configuration in order to uninstall."
+			nix profile remove ambxst-plus
+		elif command -v ambxst+ >/dev/null 2>&1; then
+			echo "Ambxst[+] was declared in this system. Please remove it from your configuration in order to uninstall."
 		else
-			echo "Ambxst is not installed."
+			echo "Ambxst[+] is not installed."
 		fi
 		exit 0
 	fi
@@ -605,39 +638,21 @@ goodbye)
 		REMOVE_CONFIG=true
 	fi
 
-	rm -rf "$HOME/.local/src/ambxst"
-	rm -rf "$HOME/.local/share/ambxst"
-	rm -rf "$HOME/.local/state/ambxst"
+	rm -rf "$HOME/.local/src/ambxst+"
+	rm -rf "$HOME/.local/share/ambxst+"
+	rm -rf "$HOME/.local/state/ambxst+"
 
 	if [ "$REMOVE_CONFIG" = true ]; then
-		rm -rf "$HOME/.config/ambxst"
+		rm -rf "$HOME/.config/ambxst+"
 		echo "Configuration files removed."
 	fi
 
-	echo "Ambxst uninstalled. :("
+	echo "Ambxst[+] uninstalled. :("
 	;;
 help | --help | -h)
 	show_help
 	;;
 "")
-	# Clean up any stale Ambxst processes from an early start (e.g. systemd user service)
-	pkill -f "qs -p .*shell.qml" 2>/dev/null || true
-	pkill -f "axctl.*daemon" 2>/dev/null || true
-	pkill -f "axctl subscribe" 2>/dev/null || true
-
-	# Wait for external monitor to settle if one is physically connected.
-	# Detects non-internal monitors (non-eDP, non-LVDS, non-Virtual, non-HEADLESS)
-	# via hyprctl and waits for them to become active before launching the shell.
-	if hyprctl monitors all -j 2>/dev/null | jq -e '.[] | select(.name | test("^(eDP|LVDS|Virtual|HEADLESS)") | not)' >/dev/null 2>&1; then
-		for _ in {1..50}; do
-			if hyprctl monitors -j 2>/dev/null | jq -e '.[] | select(.name | test("^(eDP|LVDS|Virtual|HEADLESS)") | not)' >/dev/null 2>&1; then
-				sleep 1.0
-				break
-			fi
-			sleep 0.2
-		done
-	fi
-
 	# Run daemon priority script (backgrounded to not block startup)
 	bash "${SCRIPT_DIR}/scripts/daemon_priority.sh" &
 
@@ -653,7 +668,7 @@ help | --help | -h)
 	unset HL_INITIAL_WORKSPACE_TOKEN
 
 	# Cache this script's PID before exec (for fast PID lookups in future CLI calls)
-	echo $$ >/tmp/ambxst.pid
+	echo $$ >/tmp/ambxst+.pid
 
 	# Launch QuickShell with the main shell.qml
 	# If NIXGL_BIN is set (NixOS/Nix setup), use it. Otherwise, just run qs directly.
@@ -665,7 +680,7 @@ help | --help | -h)
 	;;
 *)
 	echo "Error: Unknown command '$1'"
-	echo "Run 'ambxst help' for usage information"
+	echo "Run 'ambxst+ help' for usage information"
 	exit 1
 	;;
 esac

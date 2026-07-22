@@ -13,7 +13,7 @@ FloatingWindow {
     // Window properties
     implicitWidth: 900
     implicitHeight: 650
-    title: "Ambxst Settings"
+    title: "Ambxst[+] Settings"
     visible: GlobalStates.settingsWindowVisible
 
     // Center on screen (approximate, since FloatingWindow usually centers by default or relies on WM)

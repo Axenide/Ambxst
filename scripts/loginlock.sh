@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOCKFILE="/tmp/ambxst_loginlock.lock"
+LOCKFILE="/tmp/ambxst+_loginlock.lock"
 if [ -e "$LOCKFILE" ]; then
 	PID=$(cat "$LOCKFILE")
 	if kill -0 "$PID" 2>/dev/null; then
@@ -10,13 +10,13 @@ if [ -e "$LOCKFILE" ]; then
 fi
 echo $$ >"$LOCKFILE"
 
-CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst/config/system.json"
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/config/system.json"
 
 get_lock_cmd() {
 	if [ -f "$CONFIG_FILE" ]; then
-		jq -r '.idle.general.lock_cmd // "ambxst lock"' "$CONFIG_FILE"
+		jq -r '.idle.general.lock_cmd // "ambxst+ lock"' "$CONFIG_FILE"
 	else
-		echo "ambxst lock"
+		echo "ambxst+ lock"
 	fi
 }
 

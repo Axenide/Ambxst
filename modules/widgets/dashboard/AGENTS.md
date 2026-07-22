@@ -1,7 +1,7 @@
 # DASHBOARD KNOWLEDGE BASE
 
 ## OVERVIEW
-Central interactive hub of Ambxst. Tabbed interface with LRU-based lazy-loading for widgets, system controls, media, AI tools, clipboard, notes, and tmux management. Opened via the Notch overlay.
+Central interactive hub of Ambxst[+]. Tabbed interface with LRU-based lazy-loading for widgets, system controls, media, AI tools, clipboard, notes, and tmux management. Opened via the Notch overlay.
 
 ## STRUCTURE
 - **Root**: `Dashboard.qml` — Orchestrates LRU logic, tab layout, and open/close animations.

@@ -108,7 +108,7 @@ Singleton {
     signal rawEvent(var event)
 
     // Config path for axctl daemon
-    property string configPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst/axctl.toml"
+    property string configPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst+/axctl.toml"
 
     function dispatch(command) {
         if (!command) return;
@@ -244,7 +244,7 @@ Singleton {
     }
 
     property Process ensureConfigDir: Process {
-        command: ["mkdir", "-p", (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst"]
+        command: ["mkdir", "-p", (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst+"]
         running: true
     }
 

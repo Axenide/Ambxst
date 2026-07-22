@@ -30,7 +30,7 @@ for pid in $(pgrep -f mpvpaper 2>/dev/null); do
         kill "$pid" 2>/dev/null
     fi
 done
-SOCKET="/tmp/ambxst_mpv_socket_${MONITOR}"
+SOCKET="/tmp/ambxst+_mpv_socket_${MONITOR}"
 
 MPV_OPTS="no-audio loop hwdec=auto scale=bilinear interpolation=no video-sync=display-resample panscan=1.0 video-scale-x=1.0 video-scale-y=1.0 load-scripts=no input-ipc-server=$SOCKET"
 

@@ -1,4 +1,4 @@
-# Main Ambxst package
+# Main Ambxst[+] package
 { pkgs, lib, self, system, axctl, version }:
 
 let
@@ -25,23 +25,23 @@ let
     ++ fontsPkgs
     ++ tesseractPkgs;
 
-  envAmbxst = pkgs.buildEnv {
-    name = "Ambxst-env";
+  envAmbxstPlus = pkgs.buildEnv {
+    name = "ambxst+-env";
     paths = baseEnv;
   };
 
   # Create fontconfig configuration to find bundled fonts
-  fontconfigConf = pkgs.writeTextDir "etc/fonts/conf.d/99-ambxst-fonts.conf" ''
+  fontconfigConf = pkgs.writeTextDir "etc/fonts/conf.d/99-ambxst+-fonts.conf" ''
     <?xml version="1.0"?>
     <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
     <fontconfig>
-      <dir>${envAmbxst}/share/fonts</dir>
+      <dir>${envAmbxstPlus}/share/fonts</dir>
     </fontconfig>
   '';
 
   # Copy shell sources to the Nix store
   shellSrc = pkgs.stdenv.mkDerivation {
-    pname = "ambxst-shell";
+    pname = "ambxst+-shell";
     inherit version;
     src = lib.cleanSource self;
     dontBuild = true;
@@ -51,12 +51,12 @@ let
     '';
   };
 
-  launcher = pkgs.writeShellScriptBin "ambxst" ''
+  launcher = pkgs.writeShellScriptBin "ambxst+" ''
     export AMBXST_QS="${quickshellPkg}/bin/qs"
-    export PATH="${envAmbxst}/bin:$PATH"
+    export PATH="${envAmbxstPlus}/bin:$PATH"
 
-    # Set QML2_IMPORT_PATH to include modules from envAmbxst (like syntax-highlighting)
-    export QML2_IMPORT_PATH="${envAmbxst}/lib/qt-6/qml:$QML2_IMPORT_PATH"
+    # Set QML2_IMPORT_PATH to include modules from envAmbxstPlus (like syntax-highlighting)
+    export QML2_IMPORT_PATH="${envAmbxstPlus}/lib/qt-6/qml:$QML2_IMPORT_PATH"
     export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
 
     # Make bundled fonts available to fontconfig
@@ -67,13 +67,13 @@ let
   '';
 
 in pkgs.buildEnv {
-   name = "Ambxst-${version}";
-   paths = [ envAmbxst launcher ];
+   name = "ambxst+-${version}";
+   paths = [ envAmbxstPlus launcher ];
    meta = with pkgs.lib; {
-     description = "Ambxst - A customizable Quickshell desktop shell";
-     homepage = "https://github.com/git-napkin/Ambxst";
+     description = "Ambxst[+] - A Quickshell desktop shell";
+     homepage = "https://github.com/git-napkin/ambxst+-plus";
      license = licenses.gpl3;
      platforms = platforms.linux;
-     mainProgram = "ambxst";
+     mainProgram = "ambxst+";
    };
 }

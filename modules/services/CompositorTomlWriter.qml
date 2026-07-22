@@ -9,12 +9,12 @@ import "../../config/KeybindActions.js" as KeybindActions
 
 /**
  * CompositorTomlWriter - Generates TOML configuration for axctl
- * Writes to ~/.local/share/ambxst/axctl.toml
+ * Writes to ~/.local/share/ambxst+/axctl.toml
  */
 Singleton {
     id: root
 
-    property string outputPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst/axctl.toml"
+    property string outputPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst+/axctl.toml"
 
     property Process writeProcess: Process {
         running: false
@@ -129,7 +129,7 @@ Singleton {
         let toml = "";
 
         toml += "[startup]\n";
-        toml += "exec-once = \"ambxst\"\n";
+        toml += "exec-once = \"ambxst+\"\n";
 
         function tomlEscape(str) {
             if (str === null || str === undefined)
@@ -253,7 +253,7 @@ Singleton {
         // Keybinds
         if (Config.keybindsLoader.loaded && Config.keybindsLoader.adapter) {
             const adapter = Config.keybindsLoader.adapter;
-            const ambxst = adapter.ambxst;
+            const ambxstPlus = adapter.ambxstPlus;
 
             function pushCoreBind(keybind) {
                 if (!keybind)
@@ -270,27 +270,27 @@ Singleton {
                 );
             }
 
-            if (ambxst) {
-                pushCoreBind(ambxst.launcher);
-                pushCoreBind(ambxst.dashboard);
-                pushCoreBind(ambxst.assistant);
-                pushCoreBind(ambxst.clipboard);
-                pushCoreBind(ambxst.emoji);
-                pushCoreBind(ambxst.notes);
-                pushCoreBind(ambxst.tmux);
-                pushCoreBind(ambxst.wallpapers);
+            if (ambxstPlus) {
+                pushCoreBind(ambxstPlus.launcher);
+                pushCoreBind(ambxstPlus.dashboard);
+                pushCoreBind(ambxstPlus.assistant);
+                pushCoreBind(ambxstPlus.clipboard);
+                pushCoreBind(ambxstPlus.emoji);
+                pushCoreBind(ambxstPlus.notes);
+                pushCoreBind(ambxstPlus.tmux);
+                pushCoreBind(ambxstPlus.wallpapers);
 
-                if (ambxst.system) {
-                    pushCoreBind(ambxst.system.overview);
-                    pushCoreBind(ambxst.system.powermenu);
-                    pushCoreBind(ambxst.system.config);
-                    pushCoreBind(ambxst.system.lockscreen);
-                    pushCoreBind(ambxst.system.tools);
-                    pushCoreBind(ambxst.system.screenshot);
-                    pushCoreBind(ambxst.system.screenrecord);
-                    pushCoreBind(ambxst.system.lens);
-                    if (ambxst.system.reload) pushCoreBind(ambxst.system.reload);
-                    if (ambxst.system.quit) pushCoreBind(ambxst.system.quit);
+                if (ambxstPlus.system) {
+                    pushCoreBind(ambxstPlus.system.overview);
+                    pushCoreBind(ambxstPlus.system.powermenu);
+                    pushCoreBind(ambxstPlus.system.config);
+                    pushCoreBind(ambxstPlus.system.lockscreen);
+                    pushCoreBind(ambxstPlus.system.tools);
+                    pushCoreBind(ambxstPlus.system.screenshot);
+                    pushCoreBind(ambxstPlus.system.screenrecord);
+                    pushCoreBind(ambxstPlus.system.lens);
+                    if (ambxstPlus.system.reload) pushCoreBind(ambxstPlus.system.reload);
+                    if (ambxstPlus.system.quit) pushCoreBind(ambxstPlus.system.quit);
                 }
             }
 
@@ -368,7 +368,7 @@ Singleton {
         toml += "ignore_alpha_value = 0.4\n";
 
         toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"ambxst\"\n";
+        toml += "namespace = \"ambxst+\"\n";
         toml += "blur = true\n";
         toml += "blur_popups = true\n";
         toml += "no_anim = true\n";

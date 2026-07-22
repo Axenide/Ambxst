@@ -7,7 +7,7 @@ set -u
 
 SRC="${1:-}"
 MONITOR="${2:-}"
-OUTDIR="${3:-$HOME/.cache/ambxst/optimized_wallpapers}"
+OUTDIR="${3:-$HOME/.cache/ambxst+/optimized_wallpapers}"
 
 # On any problem, fall back to the original source so the wallpaper still shows.
 fallback() { printf '%s\n' "$SRC"; exit 0; }

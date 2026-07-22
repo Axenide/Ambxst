@@ -1,7 +1,7 @@
 # COMPONENTS KNOWLEDGE BASE
 
 ## OVERVIEW
-Atomic design library for the Ambxst shell. 26 QML components + 29 GLSL shaders (`.frag`/`.vert`/`.qsb`). Every themed container in the shell ultimately uses `StyledRect`. Shader-driven UI for gradients, wavy animations, and panel blur effects.
+Atomic design library for the Ambxst[+] shell. 26 QML components + 29 GLSL shaders (`.frag`/`.vert`/`.qsb`). Every themed container in the shell ultimately uses `StyledRect`. Shader-driven UI for gradients, wavy animations, and panel blur effects.
 
 ## STRUCTURE
 ### Layout & Containers

@@ -2,8 +2,8 @@
 set -e
 
 # === Configuration ===
-REPO_URL="https://github.com/git-napkin/Ambxst.git"
-INSTALL_PATH="$HOME/.local/src/ambxst"
+REPO_URL="https://github.com/git-napkin/ambxst+-plus.git"
+INSTALL_PATH="$HOME/.local/src/ambxst+"
 BIN_DIR="/usr/local/bin"
 QUICKSHELL_REPO="https://git.outfoxxed.me/outfoxxed/quickshell"
 
@@ -95,14 +95,14 @@ filter_packages() {
 install_dependencies() {
   case "$DISTRO" in
   nixos)
-    local FLAKE_URI="${1:-github:git-napkin/Ambxst}"
+    local FLAKE_URI="${1:-github:git-napkin/ambxst+-plus}"
     nix profile list | grep -q "ddcutil" && nix profile remove ddcutil 2>/dev/null || true
 
-    if nix profile list | grep -q "Ambxst"; then
-      log_info "Updating Ambxst..."
-      nix profile upgrade Ambxst --refresh --impure
+    if nix profile list | grep -q "ambxst+"; then
+      log_info "Updating Ambxst[+]..."
+      nix profile upgrade ambxst+ --refresh --impure
     else
-      log_info "Installing Ambxst..."
+      log_info "Installing Ambxst[+]..."
       nix profile add "$FLAKE_URI" --impure
     fi
     ;;
@@ -220,7 +220,7 @@ install_phosphor_fonts() {
 
 # === Migration ===
 migrate_old_paths() {
-  log_info "Checking for old Ambxst paths..."
+  log_info "Checking for old Ambxst[+] paths..."
 
   # Source migration (PascalCase -> lowercase)
   local OLD_SRC="$HOME/Ambxst"
@@ -232,7 +232,7 @@ migrate_old_paths() {
 
   # Config migration
   local OLD_CONFIG="$HOME/.config/Ambxst"
-  local NEW_CONFIG="$HOME/.config/ambxst"
+  local NEW_CONFIG="$HOME/.config/ambxst+"
   if [[ -d "$OLD_CONFIG" && ! -d "$NEW_CONFIG" ]]; then
     log_info "Migrating config: $OLD_CONFIG -> $NEW_CONFIG"
     mv "$OLD_CONFIG" "$NEW_CONFIG"
@@ -240,7 +240,7 @@ migrate_old_paths() {
 
   # Share migration
   local OLD_SHARE="$HOME/.local/share/Ambxst"
-  local NEW_SHARE="$HOME/.local/share/ambxst"
+  local NEW_SHARE="$HOME/.local/share/ambxst+"
   if [[ -d "$OLD_SHARE" && ! -d "$NEW_SHARE" ]]; then
     log_info "Migrating share: $OLD_SHARE -> $NEW_SHARE"
     mv "$OLD_SHARE" "$NEW_SHARE"
@@ -248,7 +248,7 @@ migrate_old_paths() {
 
   # State migration
   local OLD_STATE="$HOME/.local/state/Ambxst"
-  local NEW_STATE="$HOME/.local/state/ambxst"
+  local NEW_STATE="$HOME/.local/state/ambxst+"
   if [[ -d "$OLD_STATE" && ! -d "$NEW_STATE" ]]; then
     log_info "Migrating state: $OLD_STATE -> $NEW_STATE"
     mv "$OLD_STATE" "$NEW_STATE"
@@ -256,14 +256,14 @@ migrate_old_paths() {
 
   # Cache migration
   local OLD_CACHE_DIR="$HOME/.cache/Ambxst"
-  local NEW_CACHE_DIR="$HOME/.cache/ambxst"
+  local NEW_CACHE_DIR="$HOME/.cache/ambxst+"
   if [[ -d "$OLD_CACHE_DIR" && ! -d "$NEW_CACHE_DIR" ]]; then
     log_info "Migrating cache: $OLD_CACHE_DIR -> $NEW_CACHE_DIR"
     mv "$OLD_CACHE_DIR" "$NEW_CACHE_DIR"
   fi
 
   # Legacy share -> cache migration (Wallpapers & Thumbnails)
-  local NEW_CACHE="$HOME/.cache/ambxst"
+  local NEW_CACHE="$HOME/.cache/ambxst+"
   if [[ -d "$NEW_SHARE" ]]; then
     mkdir -p "$NEW_CACHE"
 
@@ -281,7 +281,7 @@ migrate_old_paths() {
   # Config structure warning
   if [[ -f "$NEW_CONFIG/config.json" && ! -d "$NEW_CONFIG/config" ]]; then
     log_warn "Old single-file config detected."
-    log_info "Ambxst now uses a multi-file configuration in $NEW_CONFIG/config/"
+    log_info "Ambxst[+] now uses a multi-file configuration in $NEW_CONFIG/config/"
     log_info "Your old config.json remains at $NEW_CONFIG/config.json for reference."
   fi
 }
@@ -291,7 +291,7 @@ setup_repo() {
   [[ "$DISTRO" == "nixos" ]] && return
 
   if [[ ! -d "$INSTALL_PATH" ]]; then
-    log_info "Cloning Ambxst to $INSTALL_PATH..."
+    log_info "Cloning Ambxst[+] to $INSTALL_PATH..."
     mkdir -p "$(dirname "$INSTALL_PATH")"
     git clone "$REPO_URL" "$INSTALL_PATH"
     return
@@ -437,10 +437,10 @@ configure_services() {
 setup_launcher() {
   [[ "$DISTRO" == "nixos" ]] && return
 
-  [[ -f "$HOME/.local/bin/ambxst" ]] && rm -f "$HOME/.local/bin/ambxst"
+  [[ -f "$HOME/.local/bin/ambxst+" ]] && rm -f "$HOME/.local/bin/ambxst+"
 
   sudo mkdir -p "$BIN_DIR"
-  local LAUNCHER="$BIN_DIR/ambxst"
+  local LAUNCHER="$BIN_DIR/ambxst+"
 
   log_info "Creating launcher at $LAUNCHER..."
   sudo tee "$LAUNCHER" >/dev/null <<-EOF
@@ -466,4 +466,4 @@ setup_launcher
 
 echo ""
 log_success "Installation complete!"
-[[ "$DISTRO" != "nixos" ]] && echo -e "Run ${GREEN}ambxst${NC} to start."
+[[ "$DISTRO" != "nixos" ]] && echo -e "Run ${GREEN}ambxst+${NC} to start."

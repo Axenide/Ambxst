@@ -9,7 +9,7 @@ modules/lockscreen/
 ├── LockScreen.qml       # Main component (800+ lines)
 ├── FingerprintService.qml  # fprintd D-Bus communication service
 ├── FingerprintPopup.qml    # Reusable fingerprint scanning GUI
-├── ambxst-auth          # Helper script (if any)
+├── ambxst+-auth          # Helper script (if any)
 └── config/pam/          # PAM configuration
     └── password.conf    # Custom PAM rules for lockscreen
 ```

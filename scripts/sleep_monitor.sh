@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOCKFILE="/tmp/ambxst_sleep_monitor.lock"
+LOCKFILE="/tmp/ambxst+_sleep_monitor.lock"
 if [ -e "$LOCKFILE" ]; then
 	PID=$(cat "$LOCKFILE")
 	if kill -0 "$PID" 2>/dev/null; then
@@ -11,7 +11,7 @@ fi
 echo $$ >"$LOCKFILE"
 
 # Sleep Monitor - Executes commands before and after sleep
-CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst/config/system.json"
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/config/system.json"
 
 get_cmd() {
 	local type=$1
@@ -19,13 +19,13 @@ get_cmd() {
 		if [ "$type" == "before" ]; then
 			jq -r '.idle.general.before_sleep_cmd // "loginctl lock-session"' "$CONFIG_FILE"
 		else
-			jq -r '.idle.general.after_sleep_cmd // "ambxst screen on"' "$CONFIG_FILE"
+			jq -r '.idle.general.after_sleep_cmd // "ambxst+ screen on"' "$CONFIG_FILE"
 		fi
 	else
 		if [ "$type" == "before" ]; then
 			echo "loginctl lock-session"
 		else
-			echo "ambxst screen on"
+			echo "ambxst+ screen on"
 		fi
 	fi
 }

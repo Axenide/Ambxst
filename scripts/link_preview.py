@@ -342,7 +342,7 @@ def fetch_preview(url, timeout=5):
 def main():
     import argparse
 
-    parser = argparse.ArgumentParser(description="Fetch link preview metadata for Ambxst")
+    parser = argparse.ArgumentParser(description="Fetch link preview metadata for Ambxst[+]")
     parser.add_argument("url", help="URL to fetch preview for")
     parser.add_argument("timeout", nargs="?", type=int, default=5,
                         help="Timeout in seconds (default: 5)")

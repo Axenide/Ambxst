@@ -23,7 +23,7 @@ Item {
     property int leftPanelWidth: 0
 
     // Notes directory configuration
-    property string notesDir: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst-notes"
+    property string notesDir: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst+-notes"
     property string indexPath: notesDir + "/index.json"
     property string notesPath: notesDir + "/notes"
     property string noteExtension: ".html"  // Store as HTML for rich text (Markdown uses .md)

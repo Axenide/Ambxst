@@ -69,7 +69,7 @@ trap cleanup EXIT
 
 if [ "$AUDIO_OUTPUT" = true ] && [ "$AUDIO_INPUT" = true ]; then
     # Both: Create temporary mixed sink
-    SINK_NAME="ambxst_record_sink_$$"
+    SINK_NAME="ambxst+_record_sink_$$"
     
     # Load null sink
     MOD_SINK=$(pactl load-module module-null-sink media.class=Audio/Sink sink_name="$SINK_NAME" channel_map=stereo)

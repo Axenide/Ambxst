@@ -40,6 +40,6 @@ pkgs.mkShell {
   shellHook = ''
     export QML2_IMPORT_PATH="${pkgs.qt6.qtdeclarative}/qml:$QML2_IMPORT_PATH"
     export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
-    echo "Ambxst dev environment loaded."
+    echo "Ambxst[+] dev environment loaded."
   '';
 }

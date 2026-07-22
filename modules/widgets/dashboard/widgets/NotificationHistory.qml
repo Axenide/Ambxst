@@ -210,7 +210,7 @@ Item {
 
                 Image {
                     mipmap: true
-                    source: Qt.resolvedUrl("../../../../assets/ambxst/ambxst-logo.svg")
+                    source: Qt.resolvedUrl("../../../../assets/ambxst+/ambxst+-logo.svg")
                     opacity: 0.25
                     sourceSize.width: 64
                     sourceSize.height: 64

@@ -267,7 +267,7 @@ class SystemMonitor:
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="System resource monitor for Ambxst")
+    parser = argparse.ArgumentParser(description="System resource monitor for Ambxst[+]")
     parser.add_argument("interval_ms", nargs="?", type=int, default=2000,
                         help="Polling interval in milliseconds (default: 2000)")
     parser.add_argument("disks", nargs="*", default=["/"],

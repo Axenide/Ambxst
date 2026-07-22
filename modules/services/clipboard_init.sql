@@ -1,4 +1,4 @@
--- Ambxst Clipboard Database Schema
+-- Ambxst[+] Clipboard Database Schema
 -- Simplified version based on Vicinae's clipboard system
 
 CREATE TABLE IF NOT EXISTS clipboard_items (

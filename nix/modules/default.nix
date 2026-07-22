@@ -1,21 +1,21 @@
-# NixOS module for Ambxst
+# NixOS module for Ambxst[+]
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.programs.ambxst;
+  cfg = config.programs.ambxst-plus;
 in {
-  options.programs.ambxst = {
-    enable = lib.mkEnableOption "Ambxst shell";
+  options.programs.ambxst-plus = {
+    enable = lib.mkEnableOption "Ambxst[+] shell";
 
     package = lib.mkOption {
       type = lib.types.package;
-      description = "The Ambxst package to use";
+      description = "The Ambxst[+] package to use";
     };
 
     fonts.enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Whether to install Ambxst fonts (including Phosphor Icons)";
+      description = "Whether to install Ambxst[+] fonts (including Phosphor Icons)";
     };
   };
 
@@ -45,15 +45,7 @@ in {
     programs.gpu-screen-recorder.enable = lib.mkDefault true;
     networking.networkmanager.enable = lib.mkDefault true;
 
-    # Ambxst requires a Wayland compositor (Hyprland recommended)
-    wayland.enable = lib.mkDefault true;
+
   };
 
-  meta = with lib; {
-    description = "Ambxst - A customizable Quickshell desktop shell";
-    homepage = "https://github.com/git-napkin/Ambxst";
-    license = licenses.gpl3;
-    platforms = platforms.linux;
-    mainProgram = "ambxst";
-  };
 }

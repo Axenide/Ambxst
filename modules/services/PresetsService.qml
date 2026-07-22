@@ -16,7 +16,7 @@ Singleton {
     property string activePreset: ""
 
     // Config directory paths
-    readonly property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst"
+    readonly property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst+"
     readonly property string presetsDir: configDir + "/presets"
     readonly property string assetsPresetsDir: Qt.resolvedUrl("../../assets/presets").toString().replace("file://", "")
     readonly property string activePresetFile: presetsDir + "/active_preset"
@@ -117,19 +117,19 @@ Singleton {
             const jsonFile = configFile.replace('.js', '.json')
             if (root.excludedFiles.includes(jsonFile)) continue;
 
-            // The source is configDir (~/.config/Ambxst), NOT configDir/config
-            // But wait, the configDir property is defined as ~/.config/Ambxst below?
+            // The source is configDir (~/.config/ambxst+), NOT configDir/config
+            // But wait, the configDir property is defined as ~/.config/ambxst+ below?
             // Let's check the property definition.
-            // property string configDir: ... + "/Ambxst"
-            // But Config.qml says configDir is ... + "/Ambxst/config"
+            // property string configDir: ... + "/ambxst+"
+            // But Config.qml says configDir is ... + "/ambxst+/config"
             // We need to match Config.qml's path.
             
-            // In Config.qml: property string configDir: ... + "/Ambxst/config"
-            // Here: readonly property string configDir: ... + "/Ambxst"
+            // In Config.qml: property string configDir: ... + "/ambxst+/config"
+            // Here: readonly property string configDir: ... + "/ambxst+"
             // This is a mismatch!
             
             // We should use the same path as Config.qml for reading/writing config files.
-            // Let's assume the files are in .../Ambxst/config based on Config.qml and ls output.
+            // Let's assume the files are in .../ambxst+/config based on Config.qml and ls output.
             
             const srcPath = configDir + "/config/" + jsonFile 
             const dstPath = presetPath + "/" + jsonFile

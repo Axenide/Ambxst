@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Unit tests for Ambxst Python scripts."""
+"""Unit tests for Ambxst[+] Python scripts."""
 
 import json
 import os

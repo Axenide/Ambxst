@@ -11,8 +11,8 @@ import Quickshell.Io
 QtObject {
     id: root
 
-    readonly property string appId: "ambxst"
-    readonly property string ipcPipe: "/tmp/ambxst_ipc.pipe"
+    readonly property string appId: "ambxst+"
+    readonly property string ipcPipe: "/tmp/ambxst+_ipc.pipe"
 
     // Restart the IPC pipe reader if it exits unexpectedly (OOM, /tmp cleared,
     // hot-reload race, etc.) so the command channel never dies silently.
@@ -94,7 +94,7 @@ QtObject {
     }
 
     property IpcHandler ipcHandler: IpcHandler {
-        target: "ambxst"
+        target: "ambxst+"
 
         function run(command: string) {
             root.run(command);

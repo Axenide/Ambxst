@@ -64,7 +64,7 @@ PanelWindow {
 
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.namespace: "ambxst:screenCorners"
+    WlrLayershell.namespace: "ambxst+:screenCorners"
     WlrLayershell.layer: WlrLayer.Overlay
     mask: Region {
         item: null

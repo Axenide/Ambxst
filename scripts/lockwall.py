@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Lockscreen Wallpaper Frame Extractor for Ambxst
+Lockscreen Wallpaper Frame Extractor for Ambxst[+]
 Extracts first frame from video/GIF wallpapers for lockscreen background.
 Only processes video and GIF files - skips regular images.
 """
@@ -102,7 +102,7 @@ class LockscreenWallpaperGenerator:
 
     def run(self) -> int:
         """Main execution function."""
-        print("🔒 Ambxst Lockscreen Wallpaper Generator")
+        print("🔒 Ambxst[+] Lockscreen Wallpaper Generator")
         print("=" * 40)
 
         # Validate wallpaper

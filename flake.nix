@@ -1,5 +1,5 @@
 {
-  description = "Ambxst - An Axtremely customizable shell by Axenide";
+  description = "Ambxst[+] - A Quickshell desktop shell";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -12,16 +12,16 @@
 
   outputs = { self, nixpkgs, axctl, ... }:
     let
-      ambxstLib = import ./nix/lib.nix { inherit nixpkgs; };
+      ambxstPlusLib = import ./nix/lib.nix { inherit nixpkgs; };
       version = nixpkgs.lib.removeSuffix "\n" (builtins.readFile ./version);
     in {
       nixosModules.default = { pkgs, lib, ... }: {
         imports = [ ./nix/modules ];
-        programs.ambxst.enable = lib.mkDefault true;
-        programs.ambxst.package = lib.mkDefault self.packages.${pkgs.system}.default;
+        programs.ambxst-plus.enable = lib.mkDefault true;
+        programs.ambxst-plus.package = lib.mkDefault self.packages.${pkgs.system}.default;
       };
 
-      packages = ambxstLib.forAllSystems (system:
+      packages = ambxstPlusLib.forAllSystems (system:
         let
           pkgs = import nixpkgs {
             inherit system;
@@ -30,38 +30,38 @@
 
           lib = nixpkgs.lib;
 
-          Ambxst = import ./nix/packages {
+          ambxstPlus = import ./nix/packages {
             inherit pkgs lib self system axctl version;
           };
         in {
-          default = Ambxst;
-          Ambxst = Ambxst;
+          default = ambxstPlus;
+          ambxstPlus = ambxstPlus;
         }
       );
 
-      devShells = ambxstLib.forAllSystems (system:
+      devShells = ambxstPlusLib.forAllSystems (system:
         let
           pkgs = import nixpkgs { inherit system; };
-          Ambxst = self.packages.${system}.default;
+          ambxstPlus = self.packages.${system}.default;
         in {
           default = pkgs.mkShell {
-            packages = [ Ambxst ];
+            packages = [ ambxstPlus ];
             shellHook = ''
-              export QML2_IMPORT_PATH="${Ambxst}/lib/qt-6/qml:$QML2_IMPORT_PATH"
+              export QML2_IMPORT_PATH="${ambxstPlus}/lib/qt-6/qml:$QML2_IMPORT_PATH"
               export QML_IMPORT_PATH="$QML2_IMPORT_PATH"
-              echo "Ambxst dev environment loaded."
+              echo "Ambxst[+] dev environment loaded."
             '';
           };
         }
       );
 
-      apps = ambxstLib.forAllSystems (system:
+      apps = ambxstPlusLib.forAllSystems (system:
         let
-          Ambxst = self.packages.${system}.default;
+          ambxstPlus = self.packages.${system}.default;
         in {
           default = {
             type = "app";
-            program = "${Ambxst}/bin/ambxst";
+            program = "${ambxstPlus}/bin/ambxst+";
           };
         }
       );

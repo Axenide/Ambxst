@@ -6,7 +6,7 @@ function generate(paletteColors) {
         // Return a passthrough shader if no palette
         return `//!HOOK MAIN
 //!BIND HOOKED
-//!DESC Ambxst Passthrough
+//!DESC Ambxst[+] Passthrough
 void main() {
     HOOKED_col = HOOKED_tex(HOOKED_pos);
 }`;
@@ -47,7 +47,7 @@ void main() {
 
     return `//!HOOK MAIN
 //!BIND HOOKED
-//!DESC Ambxst Palette Tint
+//!DESC Ambxst[+] Palette Tint
 
 // Simple dithering function
 float noise_random(vec2 uv) {

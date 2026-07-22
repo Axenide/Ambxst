@@ -6,7 +6,7 @@ var data = {
     "hoverRegionHeight": 8,
     "keepHidden": false,
     "noMediaDisplay": "userHost",
-    "customText": "Ambxst",
+    "customText": "Ambxst[+]",
     "disableHoverExpansion": true,
     "noMediaBackground": "none",
     "noMediaBackgroundImage": "",

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Weather fetching script for Ambxst
+# Weather fetching script for Ambxst[+]
 # Usage: weather.sh [location]
 # If no location is provided, uses GeoIP to determine location
 # Output: JSON with weather data or error
@@ -10,7 +10,7 @@ LOCATION="${1:-}"
 CACHE_TTL="${2:-600}"
 MAX_RETRIES=3
 RETRY_DELAY=2
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ambxst/weather"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/Ambxst[+]/weather"
 
 # Ensure cache directory exists
 mkdir -p "$CACHE_DIR"

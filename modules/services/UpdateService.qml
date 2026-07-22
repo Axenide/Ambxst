@@ -9,10 +9,10 @@ Singleton {
     id: root
 
     readonly property string currentVersion: Config.version
-    readonly property string repoUrl: "https://api.github.com/repos/Axenide/Ambxst/tags"
-    readonly property string changelogUrl: "https://axeni.de/ambxst/changelog"
+    readonly property string repoUrl: "https://api.github.com/repos/Axenide/ambxst+/tags"
+    readonly property string changelogUrl: "https://axeni.de/ambxst+/changelog"
     // QUICKSHELL-GIT: readonly property string cacheFile: Quickshell.cachePath("update_check.json")
-    readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/ambxst/update_check.json"
+    readonly property string cacheFile: Quickshell.env("HOME") + "/.cache/ambxst+/update_check.json"
 
     property string lastDetectedVersion: ""
     property double lastCheckTime: 0
@@ -124,7 +124,7 @@ Singleton {
         if (typeof Notifications === "undefined" || !Notifications.list) return false;
         for (let i = 0; i < Notifications.list.length; i++) {
             const notif = Notifications.list[i];
-            if (notif && notif.appName === "Ambxst Update") {
+            if (notif && notif.appName === "ambxst+ Update") {
                 return true;
             }
         }
@@ -132,9 +132,9 @@ Singleton {
     }
 
     function sendUpdateNotification(newVersion) {
-        const summary = "Ambxst update available!";
+        const summary = "ambxst+ update available!";
         const body = newVersion + " available! (Installed " + root.currentVersion + ")";
-        const cmd = "notify-send -a 'Ambxst Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later' --action=update=Update";
+        const cmd = "notify-send -a 'ambxst+ Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later' --action=update=Update";
         
         notificationProcess.running = false;
         notificationProcess.command = ["bash", "-c", cmd];
@@ -154,7 +154,7 @@ Singleton {
                 root.nextCheckTime = Date.now() + 8 * 3600000;
                 root.saveCache();
             } else if (action === "update") {
-                const updateCmd = "kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty sh -c \"sleep 0.2 && kitten @ --to unix:/tmp/mykitty send-text 'ambxst update'; exec $SHELL\"";
+                const updateCmd = "kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty sh -c \"sleep 0.2 && kitten @ --to unix:/tmp/mykitty send-text 'ambxst+ update'; exec $SHELL\"";
                 Quickshell.execDetached(["bash", "-c", updateCmd]);
             }
         }

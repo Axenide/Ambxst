@@ -185,6 +185,7 @@ StyledRect {
 
     ColumnLayout {
         anchors.centerIn: parent
+        width: parent.width - 32
         spacing: 8
 
         // Disc Area (SeekBar + Cover Art)
@@ -473,7 +474,7 @@ StyledRect {
                 NumberAnimation {
                     properties: "radius"
                     duration: 300
-                    easing.type: Easing.OutQuart
+                    easing.type: Easing.OutBack
                 }
             }
 
