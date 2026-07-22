@@ -207,20 +207,6 @@ QtObject {
         });
     }
 
-    function startDeviceMonitoring() {
-        if (deviceMonitoring)
-            return;
-
-        deviceMonitoring = true;
-
-        deviceMonitorTimer.running = true;
-    }
-
-    function stopDeviceMonitoring() {
-        deviceMonitoring = false;
-        deviceMonitorTimer.running = false;
-    }
-
     function createProcess(command) {
         var proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
         proc.command = command;
@@ -233,38 +219,55 @@ QtObject {
         return collector;
     }
 
-    Timer {
-        id: deviceMonitorTimer
-        interval: 5000
-        repeat: true
-        running: false
+    property var deviceMonitorTimer: null
 
-        onTriggered: {
-            if (!available)
+    function initDeviceMonitorTimer() {
+        if (deviceMonitorTimer)
+            return;
+        deviceMonitorTimer = Qt.createQmlObject('import QtQuick; Timer { interval: 5000; repeat: true; running: false }', root);
+        deviceMonitorTimer.onTriggered.connect(function() {
+            if (!root.available)
                 return;
 
-            var proc = createProcess(["python3", scriptPath, "check"]);
-            var collector = createCollector(proc);
+            var proc = root.createProcess(["python3", root.scriptPath, "check"]);
+            var collector = root.createCollector(proc);
 
             proc.onExited.connect(function() {
                 try {
                     var data = JSON.parse(collector.text.trim());
-                    if (!data.available && available) {
-                        available = false;
-                        enrolled = false;
-                        deviceLost();
-                        stopDeviceMonitoring();
+                    if (!data.available && root.available) {
+                        root.available = false;
+                        root.enrolled = false;
+                        root.deviceLost();
+                        root.stopDeviceMonitoring();
                     }
                 } catch (e) {
-                    if (available) {
-                        available = false;
-                        enrolled = false;
-                        deviceLost();
-                        stopDeviceMonitoring();
+                    if (root.available) {
+                        root.available = false;
+                        root.enrolled = false;
+                        root.deviceLost();
+                        root.stopDeviceMonitoring();
                     }
                 }
             });
-        }
+        });
+    }
+
+    function startDeviceMonitoring() {
+        if (deviceMonitoring)
+            return;
+
+        if (!deviceMonitorTimer)
+            initDeviceMonitorTimer();
+
+        deviceMonitoring = true;
+        deviceMonitorTimer.running = true;
+    }
+
+    function stopDeviceMonitoring() {
+        deviceMonitoring = false;
+        if (deviceMonitorTimer)
+            deviceMonitorTimer.running = false;
     }
 
     Component.onCompleted: {
