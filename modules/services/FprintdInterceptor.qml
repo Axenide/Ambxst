@@ -41,9 +41,61 @@ QtObject {
         });
     }
 
+    property var dbusMonitorProc: null
+    property var authConnections: null
+
+    function initProcesses() {
+        if (dbusMonitorProc)
+            return;
+        dbusMonitorProc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["dbus-monitor", "--session", "interface=\'net.reactivated.Fprint.Device\'", "type=method_call"]; stdout: StdioCollector { id: dc; waitForEnd: false; onStreamFinished: { root.handleDbusOutput(text, dc) } } }', root);
+        dbusMonitorProc.running = false;
+        dbusMonitorProc.onExited.connect(function() {
+            if (root.monitoring)
+                dbusMonitorProc.running = true;
+        });
+        authConnections = Qt.createQmlObject('import QtQuick; Connections {}', root);
+        authConnections.target = FingerprintService;
+        authConnections.onAuthSuccess.connect(root.handleAuthSuccess);
+        authConnections.onAuthFailed.connect(root.handleAuthFailed);
+    }
+
+    function handleDbusOutput(data, collector) {
+        if (data.indexOf("VerifyStart") !== -1) {
+            requestCount++;
+            authInProgress = true;
+            currentApp = root.detectCallingApp();
+            currentWindow = root.detectCallingWindow();
+            root.authRequested(currentApp, currentWindow);
+            root.showFingerprintPopup(currentApp, currentWindow);
+        }
+        if (data.indexOf("VerifyStop") !== -1) {
+            authInProgress = false;
+            root.hideFingerprintPopup();
+        }
+    }
+
+    function handleAuthSuccess() {
+        if (root.authInProgress) {
+            root.authInProgress = false;
+            root.authCompleted(true);
+            root.hideFingerprintPopup();
+        }
+    }
+
+    function handleAuthFailed() {
+        if (root.authInProgress) {
+            root.authInProgress = false;
+            root.authCompleted(false);
+            root.hideFingerprintPopup();
+        }
+    }
+
     function startMonitoring() {
         if (monitoring)
             return;
+
+        if (!dbusMonitorProc)
+            initProcesses();
 
         monitoring = true;
         requestCount = 0;
@@ -55,7 +107,7 @@ QtObject {
     function stopMonitoring() {
         monitoring = false;
         authInProgress = false;
-        if (dbusMonitorProc.running) {
+        if (dbusMonitorProc && dbusMonitorProc.running) {
             dbusMonitorProc.kill();
         }
     }
@@ -104,59 +156,6 @@ QtObject {
     function hideFingerprintPopup() {
         if (typeof FingerprintPopup !== "undefined") {
             FingerprintPopup.close();
-        }
-    }
-
-    Process {
-        id: dbusMonitorProc
-        command: ["dbus-monitor", "--session", "interface='net.reactivated.Fprint.Device'", "type=method_call"]
-        running: false
-
-        stdout: StdioCollector {
-            id: dbusCollector
-            waitForEnd: false
-
-            onStreamFinished: {
-                var data = text;
-                if (data.indexOf("VerifyStart") !== -1) {
-                    requestCount++;
-                    authInProgress = true;
-                    currentApp = root.detectCallingApp();
-                    currentWindow = root.detectCallingWindow();
-                    root.authRequested(currentApp, currentWindow);
-                    root.showFingerprintPopup(currentApp, currentWindow);
-                }
-                if (data.indexOf("VerifyStop") !== -1) {
-                    authInProgress = false;
-                    root.hideFingerprintPopup();
-                }
-            }
-        }
-
-        onExited: {
-            if (monitoring) {
-                dbusMonitorProc.running = true;
-            }
-        }
-    }
-
-    Connections {
-        target: FingerprintService
-
-        onAuthSuccess: {
-            if (authInProgress) {
-                authInProgress = false;
-                authCompleted(true);
-                hideFingerprintPopup();
-            }
-        }
-
-        onAuthFailed: {
-            if (authInProgress) {
-                authInProgress = false;
-                authCompleted(false);
-                hideFingerprintPopup();
-            }
         }
     }
 
