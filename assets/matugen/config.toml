@@ -1,4 +1,4 @@
-[templates.ambxst+]
+[templates."ambxst+"]
 input_path = "colors.json"
 output_path = "~/.cache/ambxst+/colors.json"
 
