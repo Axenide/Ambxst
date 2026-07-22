@@ -76,7 +76,7 @@ Item {
                 id: dayDisplay
                 text: root.weatherAvailable ? WeatherService.weatherSymbol : root.currentDayAbbrev
                 color: root.popupOpen ? buttonBg.item : Colors.overBackground
-                font.pixelSize: root.weatherAvailable ? 16 : Config.theme.fontSize
+                font.pixelSize: root.weatherAvailable ? Styling.fontSize(2) : Styling.fontSize(0)
                 font.family: root.weatherAvailable ? Config.theme.font : Config.theme.font
                 font.bold: !root.weatherAvailable
             }
@@ -107,7 +107,7 @@ Item {
                 id: dayDisplayV
                 text: root.weatherAvailable ? WeatherService.weatherSymbol : root.currentDayAbbrev
                 color: root.popupOpen ? buttonBg.item : Colors.overBackground
-                font.pixelSize: root.weatherAvailable ? 16 : Config.theme.fontSize
+                font.pixelSize: root.weatherAvailable ? Styling.fontSize(2) : Styling.fontSize(0)
                 font.family: Config.theme.font
                 font.bold: !root.weatherAvailable
                 horizontalAlignment: Text.AlignHCenter
@@ -577,7 +577,7 @@ Item {
                                             Text {
                                                 anchors.centerIn: parent
                                                 text: weatherBtn.modelData.icon
-                                                font.pixelSize: 14
+                                                font.pixelSize: Styling.fontSize(0)
                                             }
 
                                             MouseArea {

@@ -15,6 +15,8 @@ import sys
 import json
 import os
 
+sys.stdout.reconfigure(line_buffering=True)
+
 try:
     import dbus
     HAS_DBUS = True

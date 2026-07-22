@@ -32,7 +32,7 @@ class SystemMonitor:
                         model = re.sub(r" with Radeon.*$", "", model)
                         model = re.sub(r" @.*$", "", model)
                         return " ".join(model.split())
-        except:
+        except Exception:
             pass
         return "Unknown CPU"
 
@@ -54,7 +54,7 @@ class SystemMonitor:
                             for line in f:
                                 if line.startswith("Model:"):
                                     gpu["name"] = line.split(":", 1)[1].strip()
-                    except:
+                    except Exception:
                         pass
                     pci_path = f"/sys/bus/pci/devices/{entry}/power/runtime_status"
                     if os.path.exists(pci_path):
@@ -91,7 +91,7 @@ class SystemMonitor:
                                 "card": card,
                             }
                         )
-                except:
+                except Exception:
                     pass
         return gpus
 
@@ -116,7 +116,7 @@ class SystemMonitor:
                                             "hdd" if f2.read().strip() == "1" else "ssd"
                                         )
                             break
-            except:
+            except Exception:
                 pass
         return types
 
@@ -138,7 +138,7 @@ class SystemMonitor:
                 return max(
                     0.0, min(100.0, ((diff_total - diff_idle) * 100.0) / diff_total)
                 )
-        except:
+        except Exception:
             return 0.0
 
     def get_cpu_temp(self):
@@ -164,7 +164,7 @@ class SystemMonitor:
                                 val = int(f.read().strip())
                                 if 10000 < val < 120000:
                                     return val // 1000
-            except:
+            except Exception:
                 continue
         return -1
 
@@ -184,7 +184,7 @@ class SystemMonitor:
                 return 0.0, 0, 0, 0
             mem_used = mem_total - mem_available
             return (mem_used * 100.0) / mem_total, mem_total, mem_used, mem_available
-        except:
+        except Exception:
             return 0.0, 0, 0, 0
 
     def get_disk_usage(self, disks):
@@ -198,7 +198,7 @@ class SystemMonitor:
                     usage_map[mount] = (used / total) * 100.0
                 else:
                     usage_map[mount] = 0.0
-            except:
+            except Exception:
                 usage_map[mount] = 0.0
         return usage_map
 
@@ -213,7 +213,7 @@ class SystemMonitor:
                     try:
                         with open(gpu["power_path"], "r") as f:
                             is_active = f.read().strip() == "active"
-                    except:
+                    except Exception:
                         pass
 
                 if is_active:
@@ -234,7 +234,7 @@ class SystemMonitor:
                         parts = out.split(",")
                         if len(parts) >= 2:
                             u, t = float(parts[0]), int(parts[1])
-                    except:
+                    except Exception:
                         pass
                 else:
                     u, t = 0.0, -1
@@ -245,7 +245,7 @@ class SystemMonitor:
                         f"/sys/class/drm/{card}/device/gpu_busy_percent", "r"
                     ) as f:
                         u = float(f.read().strip())
-                except:
+                except Exception:
                     pass
                 try:
                     hwmon_base = f"/sys/class/drm/{card}/device/hwmon"
@@ -255,7 +255,7 @@ class SystemMonitor:
                             os.path.join(hwmon_base, hwmon_dir, "temp1_input"), "r"
                         ) as f:
                             t = int(f.read().strip()) // 1000
-                except:
+                except Exception:
                     pass
             elif gpu["vendor"] == "intel":
                 pass
@@ -265,16 +265,17 @@ class SystemMonitor:
 
 
 if __name__ == "__main__":
-    # Syntax: system_monitor.py [interval_ms] [disk1] [disk2] ...
-    interval_ms = 2000
-    disks = ["/"]
+    import argparse
 
-    if len(sys.argv) > 1:
-        try:
-            interval_ms = int(sys.argv[1])
-            disks = sys.argv[2:] if len(sys.argv) > 2 else ["/"]
-        except ValueError:
-            disks = sys.argv[1:]
+    parser = argparse.ArgumentParser(description="System resource monitor for Ambxst")
+    parser.add_argument("interval_ms", nargs="?", type=int, default=2000,
+                        help="Polling interval in milliseconds (default: 2000)")
+    parser.add_argument("disks", nargs="*", default=["/"],
+                        help="Disk mount points to monitor (default: /)")
+    args = parser.parse_args()
+
+    interval_ms = args.interval_ms
+    disks = args.disks if args.disks else ["/"]
 
     monitor = SystemMonitor(disks)
     interval_sec = max(0.1, interval_ms / 1000.0)

@@ -2,5 +2,6 @@
 
 var data = {
     "location": "",
-    "unit": "C"
+    "unit": "C",
+    "cacheTtl": 600
 }

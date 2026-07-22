@@ -145,7 +145,7 @@ class ThumbnailGenerator:
             file_mtime = file_path.stat().st_mtime
             thumbnail_mtime = thumbnail_path.stat().st_mtime
             return file_mtime > thumbnail_mtime
-        except:
+        except Exception:
             return True
 
     def generate_video_thumbnail(self, video_path: Path) -> Tuple[bool, str]:

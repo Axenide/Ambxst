@@ -146,7 +146,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: 400
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -157,7 +157,7 @@ Item {
             anchors.centerIn: parent
             text: Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfile.getProfileIcon(PowerProfile.currentProfile)
             font.family: Icons.font
-            font.pixelSize: Battery.available ? 14 : 18
+            font.pixelSize: Battery.available ? Styling.fontSize(0) : Styling.fontSize(4)
             color: root.popupOpen ? buttonBg.item : Colors.overBackground
 
             Behavior on color {
@@ -228,7 +228,7 @@ Item {
                         Layout.alignment: Qt.AlignVCenter
                         text: Battery.getBatteryIcon()
                         font.family: Icons.font
-                        font.pixelSize: 24
+                        font.pixelSize: Styling.fontSize(10)
                         color: root.getBatteryColor()
                     }
 
@@ -309,7 +309,7 @@ Item {
                             anchors.centerIn: parent
                             text: PowerProfile.getProfileIcon(profileButton.modelData)
                             font.family: Icons.font
-                            font.pixelSize: 18
+                            font.pixelSize: Styling.fontSize(4)
                             color: profileButton.item
                         }
 

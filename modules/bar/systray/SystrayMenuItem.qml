@@ -85,7 +85,7 @@ Button {
                     visible: root.checkState !== Qt.Unchecked
                     text: root.checkState === Qt.PartiallyChecked ? "\u2212" : "\u2713"
                     color: Colors.overPrimary
-                    font.pixelSize: 10
+                    font.pixelSize: Styling.fontSize(-4)
                     font.bold: true
                 }
             }
@@ -124,7 +124,7 @@ Button {
                 Text {
                     text: root.iconSource
                     font.family: Icons.font
-                    font.pixelSize: 14
+                    font.pixelSize: Styling.fontSize(0)
                     color: root.hovered ? Colors.overPrimary : Colors.overBackground
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter

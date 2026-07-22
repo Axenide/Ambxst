@@ -67,7 +67,13 @@ let
   '';
 
 in pkgs.buildEnv {
-  name = "Ambxst-${version}";
-  paths = [ envAmbxst launcher ];
-  meta.mainProgram = "ambxst";
+   name = "Ambxst-${version}";
+   paths = [ envAmbxst launcher ];
+   meta = with pkgs.lib; {
+     description = "Ambxst - A customizable Quickshell desktop shell";
+     homepage = "https://github.com/git-napkin/Ambxst";
+     license = licenses.gpl3;
+     platforms = platforms.linux;
+     mainProgram = "ambxst";
+   };
 }

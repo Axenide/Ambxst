@@ -44,5 +44,16 @@ in {
     services.power-profiles-daemon.enable = lib.mkDefault true;
     programs.gpu-screen-recorder.enable = lib.mkDefault true;
     networking.networkmanager.enable = lib.mkDefault true;
+
+    # Ambxst requires a Wayland compositor (Hyprland recommended)
+    wayland.enable = lib.mkDefault true;
+  };
+
+  meta = with lib; {
+    description = "Ambxst - A customizable Quickshell desktop shell";
+    homepage = "https://github.com/git-napkin/Ambxst";
+    license = licenses.gpl3;
+    platforms = platforms.linux;
+    mainProgram = "ambxst";
   };
 }

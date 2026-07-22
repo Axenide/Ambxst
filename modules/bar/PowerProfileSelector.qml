@@ -32,7 +32,7 @@ StyledRect {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -40,7 +40,7 @@ StyledRect {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -48,16 +48,14 @@ StyledRect {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
     Component.onCompleted: {
-        // Refresh profile data after a short delay
-        Qt.callLater(() => {
-            PowerProfile.updateCurrentProfile();
-            PowerProfile.updateAvailableProfiles();
-        });
+        // Refresh profile data after component is fully initialized
+        PowerProfile.updateCurrentProfile();
+        PowerProfile.updateAvailableProfiles();
     }
 
     Item {
@@ -90,7 +88,7 @@ StyledRect {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -98,7 +96,7 @@ StyledRect {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -141,7 +139,7 @@ StyledRect {
                         text: PowerProfile.getProfileIcon(modelData)
                         color: PowerProfile.currentProfile === modelData ? Styling.srItem("primary") : Colors.overBackground
                         font.family: Icons.font
-                        font.pixelSize: 18
+                        font.pixelSize: Styling.fontSize(4)
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
 
@@ -149,7 +147,7 @@ StyledRect {
                             enabled: Config.animDuration > 0
                             ColorAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -195,7 +193,7 @@ StyledRect {
                         text: PowerProfile.getProfileIcon(modelData)
                         color: PowerProfile.currentProfile === modelData ? Styling.srItem("primary") : Colors.overBackground
                         font.family: Icons.font
-                        font.pixelSize: 18
+                        font.pixelSize: Styling.fontSize(4)
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
 
@@ -203,7 +201,7 @@ StyledRect {
                             enabled: Config.animDuration > 0
                             ColorAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }

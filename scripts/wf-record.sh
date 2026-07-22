@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 OUTPUT=""
 MODE="screen"
@@ -41,12 +42,12 @@ if [ -z "$OUTPUT" ]; then
     exit 1
 fi
 
-CMD="wf-recorder -f \"$OUTPUT\""
+CMD=(wf-recorder -f "$OUTPUT")
 
 # Geometry/Mode
 if [ "$MODE" == "region" ]; then
     if [ -n "$GEOMETRY" ]; then
-        CMD="$CMD -g \"$GEOMETRY\""
+        CMD+=(-g "$GEOMETRY")
     else
         echo "Error: Geometry required for region mode"
         exit 1
@@ -60,7 +61,7 @@ MODULE_IDS=""
 cleanup() {
     if [ -n "$MODULE_IDS" ]; then
         for id in $MODULE_IDS; do
-            pactl unload-module "$id"
+            pactl unload-module "$id" || true
         done
     fi
 }
@@ -71,7 +72,7 @@ if [ "$AUDIO_OUTPUT" = true ] && [ "$AUDIO_INPUT" = true ]; then
     SINK_NAME="ambxst_record_sink_$$"
     
     # Load null sink
-    MOD_SINK=$(pactl load-module module-null-sink media.class=Audio/Sink sink_name=$SINK_NAME channel_map=stereo)
+    MOD_SINK=$(pactl load-module module-null-sink media.class=Audio/Sink sink_name="$SINK_NAME" channel_map=stereo)
     if [ $? -eq 0 ]; then
         MODULE_IDS="$MOD_SINK"
         
@@ -80,12 +81,11 @@ if [ "$AUDIO_OUTPUT" = true ] && [ "$AUDIO_INPUT" = true ]; then
         DEFAULT_SOURCE=$(pactl get-default-source)
         
         # Loopback Output (Monitor) -> Null Sink
-        # We use don't-move=true to avoid moving streams unnecessarily? Not critical here.
-        MOD_L1=$(pactl load-module module-loopback source=$DEFAULT_SINK.monitor sink=$SINK_NAME)
+        MOD_L1=$(pactl load-module module-loopback source="$DEFAULT_SINK.monitor" sink="$SINK_NAME")
         MODULE_IDS="$MODULE_IDS $MOD_L1"
         
         # Loopback Input (Mic) -> Null Sink
-        MOD_L2=$(pactl load-module module-loopback source=$DEFAULT_SOURCE sink=$SINK_NAME)
+        MOD_L2=$(pactl load-module module-loopback source="$DEFAULT_SOURCE" sink="$SINK_NAME")
         MODULE_IDS="$MODULE_IDS $MOD_L2"
         
         AUDIO_SOURCE="$SINK_NAME.monitor"
@@ -106,14 +106,14 @@ elif [ "$AUDIO_INPUT" = true ]; then
 fi
 
 if [ -n "$AUDIO_SOURCE" ]; then
-    CMD="$CMD -a \"$AUDIO_SOURCE\""
+    CMD+=(-a "$AUDIO_SOURCE")
 fi
 
 # Use libx264rgb codec for better colors
-CMD="$CMD -c libx264rgb"
+CMD+=(-c libx264rgb)
 
 echo "Starting recording..."
-echo "Command: $CMD"
+echo "Command: ${CMD[*]}"
 
 # Execute
-eval $CMD
+"${CMD[@]}"

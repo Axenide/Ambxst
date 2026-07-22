@@ -526,7 +526,7 @@ Singleton {
         
         console.log("WeatherService: Fetching weather for '" + location + "'");
         
-        weatherProcess.command = [scriptPath, location];
+        weatherProcess.command = [scriptPath, location, String(Config.weather.cacheTtl)];
         weatherProcess.running = true;
     }
 

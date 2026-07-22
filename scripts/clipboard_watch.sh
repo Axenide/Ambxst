@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Clipboard watcher that triggers checks on clipboard changes
 # Usage: clipboard_watch.sh <check_script> <db_path> <insert_script> <data_dir>
 

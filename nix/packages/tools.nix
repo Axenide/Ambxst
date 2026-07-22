@@ -27,7 +27,9 @@ with pkgs; [
   adw-gtk3
 
    # Fingerprint authentication
-  fprintd
-  pam
-  python3Packages.dbus-python
-]
+   fprintd
+   pam
+   python3Packages.dbus-python
+   python3Packages.cryptography
+   python3Packages.pytest
+  ]

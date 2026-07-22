@@ -90,7 +90,7 @@ Item {
             anchors.centerIn: parent
             text: root.getLayoutIcon(GlobalStates.compositorLayout)
             font.family: Icons.font
-            font.pixelSize: 18
+            font.pixelSize: Styling.fontSize(4)
             color: root.popupOpen ? buttonBg.item : Styling.srItem("overprimary")
         }
 
@@ -163,7 +163,7 @@ Item {
                         Text {
                             text: root.getLayoutIcon(layoutButton.modelData)
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: layoutButton.item
                         }
 

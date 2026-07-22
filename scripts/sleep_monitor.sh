@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 LOCKFILE="/tmp/ambxst_sleep_monitor.lock"
 if [ -e "$LOCKFILE" ]; then

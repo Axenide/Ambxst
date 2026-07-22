@@ -25,10 +25,14 @@ import qs.modules.globals
 import qs.modules.shell
 import qs.config
 import qs.modules.shell.osd
-import "modules/tools"
+import qs.modules.tools
 
 ShellRoot {
     id: root
+
+    Component.onCompleted: {
+        console.log("ambxst: shell initialized (version", Config.version + ")");
+    }
 
     ContextMenu {
         id: contextMenu

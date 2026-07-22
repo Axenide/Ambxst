@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 LOCKFILE="/tmp/ambxst_loginlock.lock"
 if [ -e "$LOCKFILE" ]; then

@@ -340,15 +340,16 @@ def fetch_preview(url, timeout=5):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(json.dumps({"error": "No URL provided"}))
-        sys.exit(1)
+    import argparse
 
-    url = sys.argv[1]
-    timeout = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    parser = argparse.ArgumentParser(description="Fetch link preview metadata for Ambxst")
+    parser.add_argument("url", help="URL to fetch preview for")
+    parser.add_argument("timeout", nargs="?", type=int, default=5,
+                        help="Timeout in seconds (default: 5)")
+    args = parser.parse_args()
 
-    result = fetch_preview(url, timeout)
-    print(json.dumps(result, ensure_ascii=False))
+    result = fetch_preview(args.url, args.timeout)
+    print(json.dumps(result, ensure_ascii=False), flush=True)
 
 
 if __name__ == "__main__":

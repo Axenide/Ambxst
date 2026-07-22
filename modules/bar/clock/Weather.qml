@@ -41,7 +41,7 @@ StyledRect {
             id: symbolDisplay
             text: weatherContainer.weatherSymbol
             color: Colors.overBackground
-            font.pixelSize: 16
+            font.pixelSize: Styling.fontSize(2)
             font.family: Config.theme.font
             font.bold: true
             layer.enabled: true
@@ -74,7 +74,7 @@ StyledRect {
             id: symbolDisplayV
             text: weatherContainer.weatherSymbol
             color: Colors.overBackground
-            font.pixelSize: 16
+            font.pixelSize: Styling.fontSize(2)
             font.family: Config.theme.font
             font.bold: true
             horizontalAlignment: Text.AlignHCenter

@@ -5,6 +5,6 @@ import qs.modules.theme
 Text {
     text: Icons.clock
     color: Colors.overBackground
-    font.pixelSize: 20
+    font.pixelSize: Styling.fontSize(6)
     font.family: Icons.font
 }

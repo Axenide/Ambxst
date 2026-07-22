@@ -25,13 +25,16 @@ build step in-repo** — verification is running the live shell.
 ## Layout (read before editing)
 - `shell.qml` — entry point; registers singletons and the init sequence.
 - `config/` — reactive file-backed config system (see below).
-- `modules/` — UI (`bar`, `notch`, `dock`, `widgets`, `theme`, `services`, …).
+- `modules/` — UI (`bar`, `notch`, `dock`, `notifications`, `widgets`, `theme`, `services`,
+  `corners`, `desktop`, `frame`, `globals`, `lockscreen`, `shell`, `components`).
   Most have their own `AGENTS.md` — **read the module's `AGENTS.md` first** when
   working in that subtree instead of guessing conventions.
 - `assets/` — presets, color schemes, fonts, icons, matugen config.
 - `scripts/` — Python (output JSON) and Bash (output line-delimited text) backends
   invoked via `Quickshell.Io.Process`. They assume CLI tools are installed
   (`wl-paste`, `wl-copy`, `grim`, `slurp`, `brightnessctl`, `tesseract`, `hyprpicker`…).
+- `nix/` — Nix packaging: `packages/` (package definitions), `modules/` (NixOS module),
+  `lib.nix` (shared helpers).
 
 ## Config system (the biggest gotcha)
 - `Config.qml` is the singleton source of truth; JSON persisted to

@@ -220,14 +220,14 @@ Item {
             enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && root.orientation === "vertical"
             NumberAnimation {
                 duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
         Behavior on y {
             enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && root.orientation === "horizontal"
             NumberAnimation {
                 duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
 
@@ -235,14 +235,14 @@ Item {
             enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && root.orientation === "vertical"
             NumberAnimation {
                 duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
         Behavior on height {
             enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && root.orientation === "horizontal"
             NumberAnimation {
                 duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
 
@@ -272,7 +272,7 @@ Item {
                 enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
                 NumberAnimation {
                     duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -300,14 +300,14 @@ Item {
                     enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
                     NumberAnimation {
                         duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on y {
                     enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
                     NumberAnimation {
                         duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -429,7 +429,7 @@ Item {
                                 contentItem: Text {
                                     text: Icons.pin
                                     font.family: Icons.font
-                                    font.pixelSize: 18
+                                    font.pixelSize: Styling.fontSize(4)
                                     color: root.pinned ? pinButtonBg.item : (pinButton.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground))
                                     horizontalAlignment: Text.AlignHCenter
                                     verticalAlignment: Text.AlignVCenter
@@ -683,7 +683,7 @@ Item {
                                         contentItem: Text {
                                             text: Icons.pin
                                             font.family: Icons.font
-                                            font.pixelSize: 18
+                                            font.pixelSize: Styling.fontSize(4)
                                             color: root.pinned ? pinButtonVBg.item : (pinButtonV.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground))
                                             horizontalAlignment: Text.AlignHCenter
                                             verticalAlignment: Text.AlignVCenter

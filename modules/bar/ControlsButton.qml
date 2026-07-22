@@ -67,7 +67,7 @@ Item {
             anchors.centerIn: parent
             text: Icons.faders
             font.family: Icons.font
-            font.pixelSize: 18
+            font.pixelSize: Styling.fontSize(4)
             color: root.popupOpen ? buttonBg.item : Styling.srItem("overprimary")
         }
 

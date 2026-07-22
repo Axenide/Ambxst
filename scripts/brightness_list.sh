@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 # Script to list all monitors and their current brightness
 # Outputs format: MonitorName:Brightness
 

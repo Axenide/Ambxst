@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 # Weather fetching script for Ambxst
 # Usage: weather.sh [location]
@@ -6,8 +7,36 @@
 # Output: JSON with weather data or error
 
 LOCATION="${1:-}"
+CACHE_TTL="${2:-600}"
 MAX_RETRIES=3
 RETRY_DELAY=2
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ambxst/weather"
+
+# Ensure cache directory exists
+mkdir -p "$CACHE_DIR"
+
+# Function to check if cache is valid (not expired)
+is_cache_valid() {
+    local cache_file="$1"
+    if [[ ! -f "$cache_file" ]]; then
+        return 1
+    fi
+    local file_age
+    file_age=$(( $(date +%s) - $(stat -c %Y "$cache_file" 2>/dev/null || echo 0) ))
+    if [[ $file_age -gt $CACHE_TTL ]]; then
+        return 1
+    fi
+    return 0
+}
+
+# Function to get cache file path for a location
+get_cache_file() {
+    local key="$1"
+    # Sanitize key for filename
+    local safe_key
+    safe_key=$(echo -n "$key" | md5sum | cut -d' ' -f1)
+    echo "${CACHE_DIR}/${safe_key}.json"
+}
 
 # Function to make HTTP request with retries
 http_get() {
@@ -81,12 +110,26 @@ fetch_weather() {
 	local lat="$1"
 	local lon="$2"
 
+	local cache_file
+	cache_file=$(get_cache_file "${lat},${lon}")
+
+	# Check cache first
+	if is_cache_valid "$cache_file"; then
+		cat "$cache_file"
+		return 0
+	fi
+
 	local url="https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_max,temperature_2m_min,sunrise,sunset,weathercode&timezone=auto&forecast_days=7"
 
 	local response
 	response=$(http_get "$url")
 
 	if [[ -z "$response" ]]; then
+		# Try to return stale cache if available
+		if [[ -f "$cache_file" ]]; then
+			cat "$cache_file"
+			return 0
+		fi
 		echo '{"error": "Weather API request failed"}'
 		return 1
 	fi
@@ -100,6 +143,9 @@ fetch_weather() {
 		echo '{"error": "Invalid weather API response"}'
 		return 1
 	fi
+
+	# Cache the response
+	echo "$response" > "$cache_file"
 
 	echo "$response"
 }

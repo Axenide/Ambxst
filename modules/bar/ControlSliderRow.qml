@@ -32,28 +32,28 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
     Behavior on _animatedWavyFrequency {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
     Behavior on _animatedIconRotation {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
     Behavior on _animatedIconScale {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
 
@@ -81,7 +81,7 @@ Item {
                 anchors.centerIn: parent
                 text: root.icon
                 font.family: Icons.font
-                font.pixelSize: 18
+                font.pixelSize: Styling.fontSize(4)
                 color: iconMouseArea.containsMouse ? Styling.srItem("overprimary") : Colors.overBackground
                 rotation: root._animatedIconRotation
                 scale: root._animatedIconScale
@@ -117,7 +117,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -179,14 +179,14 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on height {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
             }

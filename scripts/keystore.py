@@ -3,7 +3,12 @@ import sqlite3
 import json
 import sys
 import os
+import base64
 from pathlib import Path
+
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
 def get_machine_id():
@@ -14,19 +19,30 @@ def get_machine_id():
         return b"ambxst-fallback-salt-82741"
 
 
-def xor_crypt(data, key):
-    return bytes([b ^ key[i % len(key)] for i, b in enumerate(data)])
+def _derive_key(machine_key, salt):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=salt,
+        iterations=600000,
+    )
+    return base64.urlsafe_b64encode(kdf.derive(machine_key))
 
 
-def encrypt(text, key):
-    encrypted = xor_crypt(text.encode("utf-8"), key)
-    return encrypted.hex()
+def encrypt(text, machine_key):
+    salt = os.urandom(16)
+    key = _derive_key(machine_key, salt)
+    token = Fernet(key).encrypt(text.encode("utf-8"))
+    return base64.b64encode(salt + token).decode("utf-8")
 
 
-def decrypt(hex_str, key):
+def decrypt(hex_str, machine_key):
     try:
-        encrypted = bytes.fromhex(hex_str)
-        return xor_crypt(encrypted, key).decode("utf-8")
+        raw = base64.b64decode(hex_str)
+        salt = raw[:16]
+        payload = raw[16:]
+        key = _derive_key(machine_key, salt)
+        return Fernet(key).decrypt(payload).decode("utf-8")
     except Exception:
         return ""
 

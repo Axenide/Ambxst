@@ -42,9 +42,14 @@ WlSessionLockSurface {
         tintEnabled: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.tintEnabled : false
 
         property string lockscreenFramePath: {
-            if (!GlobalStates.wallpaperManager)
+            if (!GlobalStates.wallpaperManager || !GlobalStates.wallpaperManager.currentWallpaper)
                 return "";
-            return GlobalStates.wallpaperManager.getLockscreenFramePath(GlobalStates.wallpaperManager.currentWallpaper);
+            try {
+                return GlobalStates.wallpaperManager.getLockscreenFramePath(GlobalStates.wallpaperManager.currentWallpaper);
+            } catch (e) {
+                console.warn("LockScreen: Failed to get lockscreen frame path:", e);
+                return "";
+            }
         }
 
         source: lockscreenFramePath ? "file://" + lockscreenFramePath : ""
@@ -91,7 +96,7 @@ WlSessionLockSurface {
     ScreencopyView {
         id: screencopyBackground
         anchors.fill: parent
-        captureSource: root.screen
+        captureSource: root.screen || null
         live: false
         paintCursor: false
         visible: startAnim  // Visible solo cuando startAnim es true
@@ -504,7 +509,7 @@ WlSessionLockSurface {
                             Layout.fillWidth: true
                             Layout.alignment: Qt.AlignVCenter
                             placeholderText: usernameCollector.text.trim()
-                            placeholderTextColor: Qt.rgba(passwordFieldBg.item.r, passwordFieldBg.item.g, passwordFieldBg.item.b, 0.5)
+                            placeholderTextColor: Styling.tint(passwordFieldBg.item, 0.5)
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(0)
                             color: passwordFieldBg.item
@@ -861,7 +866,9 @@ WlSessionLockSurface {
     // Initialize when component is created (when lock becomes active)
     Component.onCompleted: {
         // Capture screen immediately
-        screencopyBackground.captureFrame();
+        if (root.screen) {
+            screencopyBackground.captureFrame();
+        }
 
         // Start animations
         startAnim = true;

@@ -34,14 +34,14 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
     Behavior on iconScale {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: 400
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
 
@@ -74,7 +74,7 @@ Item {
         NumberAnimation {
             properties: "implicitWidth,implicitHeight,Layout.preferredWidth,Layout.preferredHeight"
             duration: 200
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
 

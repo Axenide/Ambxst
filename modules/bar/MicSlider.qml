@@ -50,7 +50,7 @@ Item {
         NumberAnimation {
             properties: "Layout.preferredWidth,Layout.preferredHeight"
             duration: Config.animDuration
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
     Layout.fillWidth: root.vertical

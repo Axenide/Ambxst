@@ -272,7 +272,7 @@ Item {
                 Text {
                     anchors.centerIn: parent
                     text: Icons.arrowCounterClockwise
-                    font.family: Icons.font; font.pixelSize: 14
+                    font.family: Icons.font; font.pixelSize: Styling.fontSize(0)
                     color: Colors.overBackground
                 }
                 MouseArea {
@@ -436,7 +436,7 @@ Item {
                             x: Config.system.pomodoro.autoStart ? parent.width - 18 : 2
                             y: 2; width: 16; height: 16; radius: 8
                             color: Colors.background
-                            Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutQuart } }
+                            Behavior on x { NumberAnimation { duration: 200; easing.type: Styling.animEasing } }
                         }
                     }
                     MouseArea {
@@ -466,7 +466,7 @@ Item {
                             x: Config.system.pomodoro.syncSpotify ? parent.width - 18 : 2
                             y: 2; width: 16; height: 16; radius: 8
                             color: Colors.background
-                            Behavior on x { NumberAnimation { duration: 200; easing.type: Easing.OutQuart } }
+                            Behavior on x { NumberAnimation { duration: 200; easing.type: Styling.animEasing } }
                         }
                     }
                     MouseArea {

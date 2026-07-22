@@ -95,7 +95,7 @@ filter_packages() {
 install_dependencies() {
   case "$DISTRO" in
   nixos)
-    local FLAKE_URI="${1:-github:Axenide/Ambxst}"
+    local FLAKE_URI="${1:-github:git-napkin/Ambxst}"
     nix profile list | grep -q "ddcutil" && nix profile remove ddcutil 2>/dev/null || true
 
     if nix profile list | grep -q "Ambxst"; then

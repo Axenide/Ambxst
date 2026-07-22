@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -euo pipefail
 
 # Kill notification daemons that may conflict
 for daemon in dunst mako swaync; do

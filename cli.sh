@@ -173,33 +173,9 @@ remove_ambxst_hyprland_block() {
 }
 
 find_ambxst_pid() {
-	# Try to find QuickShell process running shell.qml
-	# QuickShell binary can be named 'qs' or 'quickshell'
-	local pid
-
-	# First try with full path (production/flake mode)
-	pid=$(pgrep -f "qs.*${SCRIPT_DIR}/shell.qml" 2>/dev/null | head -1)
-	if [ -z "$pid" ]; then
-		pid=$(pgrep -f "quickshell.*${SCRIPT_DIR}/shell.qml" 2>/dev/null | head -1)
-	fi
-
-	# If not found, try with relative path (development mode)
-	if [ -z "$pid" ]; then
-		pid=$(pgrep -f "qs.*shell.qml" 2>/dev/null | head -1)
-	fi
-	if [ -z "$pid" ]; then
-		pid=$(pgrep -f "quickshell.*shell.qml" 2>/dev/null | head -1)
-	fi
-
-	# Last resort: find any qs/quickshell process in this directory
-	if [ -z "$pid" ]; then
-		pid=$(pgrep -a "qs" 2>/dev/null | grep -F "$SCRIPT_DIR" | awk '{print $1}' | head -1)
-	fi
-	if [ -z "$pid" ]; then
-		pid=$(pgrep -a quickshell 2>/dev/null | grep -F "$SCRIPT_DIR" | awk '{print $1}' | head -1)
-	fi
-
-	echo "$pid"
+	# Optimized: single pgrep call with alternation pattern
+	# Matches qs/quickshell processes running our shell.qml
+	pgrep -f "qs.*shell\.qml\|quickshell.*shell\.qml" 2>/dev/null | head -1
 }
 
 find_ambxst_pid_cached() {
@@ -219,8 +195,12 @@ find_ambxst_pid_cached() {
 		rm -f "$pid_file"
 	fi
 
-	# Fallback: use expensive pgrep search
+	# Fallback: use pgrep search, then ps aux as last resort
 	pid=$(find_ambxst_pid)
+	if [ -z "$pid" ]; then
+		# Last-resort fallback: ps aux grep (handles systems without pgrep)
+		pid=$(ps aux | grep -E "qs.*shell\.qml|quickshell.*shell\.qml" | grep -v grep | awk '{print $2}' | head -1)
+	fi
 	echo "$pid"
 }
 
@@ -640,6 +620,24 @@ help | --help | -h)
 	show_help
 	;;
 "")
+	# Clean up any stale Ambxst processes from an early start (e.g. systemd user service)
+	pkill -f "qs -p .*shell.qml" 2>/dev/null || true
+	pkill -f "axctl.*daemon" 2>/dev/null || true
+	pkill -f "axctl subscribe" 2>/dev/null || true
+
+	# Wait for external monitor to settle if one is physically connected.
+	# Detects non-internal monitors (non-eDP, non-LVDS, non-Virtual, non-HEADLESS)
+	# via hyprctl and waits for them to become active before launching the shell.
+	if hyprctl monitors all -j 2>/dev/null | jq -e '.[] | select(.name | test("^(eDP|LVDS|Virtual|HEADLESS)") | not)' >/dev/null 2>&1; then
+		for _ in {1..50}; do
+			if hyprctl monitors -j 2>/dev/null | jq -e '.[] | select(.name | test("^(eDP|LVDS|Virtual|HEADLESS)") | not)' >/dev/null 2>&1; then
+				sleep 1.0
+				break
+			fi
+			sleep 0.2
+		done
+	fi
+
 	# Run daemon priority script (backgrounded to not block startup)
 	bash "${SCRIPT_DIR}/scripts/daemon_priority.sh" &
 

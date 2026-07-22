@@ -1,20 +1,35 @@
 .pragma library
 
 var data = {
+    /** Enable OLED mode (true black background). @type {boolean} @default false */
     "oledMode": false,
+    /** Enable light mode. @type {boolean} @default false */
     "lightMode": false,
+    /** Base corner roundness in pixels. @type {number} @min 0 @max 100 @default 16 */
     "roundness": 16,
+    /** Default font family. @type {string} @default "Roboto Condensed" */
     "font": "Roboto Condensed",
+    /** Default font size in pixels. @type {number} @min 8 @max 72 @default 14 */
     "fontSize": 14,
+    /** Monospace font family. @type {string} @default "Iosevka Nerd Font Mono" */
     "monoFont": "Iosevka Nerd Font Mono",
+    /** Monospace font size in pixels. @type {number} @min 8 @max 72 @default 14 */
     "monoFontSize": 14,
+    /** Tint icons with theme colors. @type {boolean} @default false */
     "tintIcons": false,
+    /** Enable screen corners. @type {boolean} @default true */
     "enableCorners": true,
+    /** Animation duration in milliseconds. @type {number} @min 0 @max 2000 @default 300 */
     "animDuration": 300,
+    /** Shadow opacity. @type {number} @min 0 @max 1 @default 0.5 */
     "shadowOpacity": 0.5,
+    /** Shadow color name. @type {string} @default "shadow" */
     "shadowColor": "shadow",
+    /** Shadow X offset. @type {number} @min -100 @max 100 @default 0 */
     "shadowXOffset": 0,
+    /** Shadow Y offset. @type {number} @min -100 @max 100 @default 0 */
     "shadowYOffset": 0,
+    /** Shadow blur radius. @type {number} @min 0 @max 20 @default 1 */
     "shadowBlur": 1,
     "srBg": {
         "label": "Background",

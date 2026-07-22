@@ -53,7 +53,7 @@ Singleton {
 
     Timer {
         id: saveDebounceTimer
-        interval: 150
+        interval: 250
         repeat: false
         onTriggered: {
             var pending = root._pendingSaves;
@@ -659,7 +659,7 @@ Singleton {
             property int rows: 2
             property int columns: 5
             property real scale: 0.15
-            property real workspaceSpacing: 4
+            property real workspaceSpacing: 8
         }
     }
 
@@ -873,6 +873,7 @@ Singleton {
         adapter: JsonAdapter {
             property string location: ""
             property string unit: "C"
+            property int cacheTtl: 600
         }
     }
 
