@@ -206,9 +206,11 @@ PanelWindow {
     Item {
         id: visualContent
         anchors.fill: parent
-        layer.enabled: true
 
-    ScreenFrameContent {
+        layer.enabled: true
+        layer.effect: Shadow {}
+
+        ScreenFrameContent {
         id: frameContent
         anchors.fill: parent
         targetScreen: unifiedPanel.targetScreen
