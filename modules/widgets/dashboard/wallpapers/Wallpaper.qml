@@ -800,7 +800,7 @@ PanelWindow {
     FileView {
         id: wallpaperConfig
         // QUICKSHELL-GIT: path: Quickshell.cachePath("wallpapers.json")
-        path: Quickshell.env("HOME") + "/.cache/ambxst+/wallpapers.json"
+        path: Quickshell.env("HOME") + "/.config/ambxst+/wallpapers.json"
         watchChanges: true
 
         onLoaded: {
@@ -893,7 +893,7 @@ PanelWindow {
         id: checkWallpapersJson
         running: false
         // QUICKSHELL-GIT: command: ["test", "-f", Quickshell.cachePath("wallpapers.json")]
-        command: ["test", "-f", Quickshell.env("HOME") + "/.cache/ambxst+/wallpapers.json"]
+        command: ["test", "-f", Quickshell.env("HOME") + "/.config/ambxst+/wallpapers.json"]
 
         onExited: function (exitCode) {
             if (exitCode !== 0) {
@@ -962,7 +962,7 @@ PanelWindow {
         id: thumbnailGeneratorScript
         running: false
         // QUICKSHELL-GIT: command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../../../scripts/thumbgen.py").toString().replace("file://", "")), Quickshell.cacheDir + "/wallpapers.json", Quickshell.cacheDir, fallbackDir]
-        command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../../../scripts/thumbgen.py").toString().replace("file://", "")), Quickshell.env("HOME") + "/.cache/ambxst+/wallpapers.json", Quickshell.env("HOME") + "/.cache/ambxst+", fallbackDir]
+        command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../../../scripts/thumbgen.py").toString().replace("file://", "")), Quickshell.env("HOME") + "/.config/ambxst+/wallpapers.json", Quickshell.env("HOME") + "/.cache/ambxst+", fallbackDir]
 
         stdout: StdioCollector {
             onStreamFinished: {

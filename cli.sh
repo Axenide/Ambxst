@@ -45,6 +45,19 @@ ensure_config_files() {
 	# Create config directory if it doesn't exist
 	mkdir -p "$config_dir"
 
+	# Migrate wallpaper config from old cache path to config path
+	local new_wallpaper_config="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/wallpapers.json"
+	local old_wallpaper_config="${HOME}/.cache/ambxst/wallpapers.json"
+	if [ -f "$old_wallpaper_config" ] && [ ! -f "$new_wallpaper_config" ]; then
+		cp "$old_wallpaper_config" "$new_wallpaper_config"
+		echo "Migrated wallpaper config from $old_wallpaper_config to $new_wallpaper_config"
+	fi
+	old_wallpaper_config="${HOME}/.cache/ambxst+/wallpapers.json"
+	if [ -f "$old_wallpaper_config" ] && [ ! -f "$new_wallpaper_config" ]; then
+		cp "$old_wallpaper_config" "$new_wallpaper_config"
+		echo "Migrated wallpaper config from $old_wallpaper_config to $new_wallpaper_config"
+	fi
+
 	# Copy preset files if they don't exist (cp -n = no-clobber)
 	for file in theme bar workspaces overview notch compositor performance desktop lockscreen dock ai; do
 		cp -n "${preset_dir}/${file}.json" "${config_dir}/${file}.json" 2>/dev/null || true
