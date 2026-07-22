@@ -203,50 +203,43 @@ PanelWindow {
     // VISUAL CONTENT
     // ═══════════════════════════════════════════════════════════════
 
-    Item {
-        id: visualContent
+    ScreenFrameContent {
+        id: frameContent
         anchors.fill: parent
+        targetScreen: unifiedPanel.targetScreen
+        hasFullscreenWindow: unifiedPanel.hasFullscreenWindow
+        z: 1
+    }
 
-        layer.enabled: true
-        layer.effect: Shadow {}
+    BarContent {
+        id: barContent
+        anchors.fill: parent
+        screen: unifiedPanel.targetScreen
+        z: 2
+        visible: unifiedPanel.barEnabled
+    }
 
-        ScreenFrameContent {
-            id: frameContent
-            anchors.fill: parent
-            targetScreen: unifiedPanel.targetScreen
-            hasFullscreenWindow: unifiedPanel.hasFullscreenWindow
-            z: 1
-        }
+    DockContent {
+        id: dockContent
+        unifiedEffectActive: unifiedPanel.unifiedEffectActive
+        anchors.fill: parent
+        screen: unifiedPanel.targetScreen
+        z: 3
+        visible: unifiedPanel.dockEnabled
+    }
 
-        BarContent {
-            id: barContent
-            anchors.fill: parent
-            screen: unifiedPanel.targetScreen
-            z: 2
-            visible: unifiedPanel.barEnabled
-        }
+    NotchContent {
+        id: notchContent
+        unifiedEffectActive: unifiedPanel.unifiedEffectActive
+        anchors.fill: parent
+        screen: unifiedPanel.targetScreen
+        z: 4
+    }
 
-        DockContent {
-            id: dockContent
-            unifiedEffectActive: unifiedPanel.unifiedEffectActive
-            anchors.fill: parent
-            screen: unifiedPanel.targetScreen
-            z: 3
-            visible: unifiedPanel.dockEnabled
-        }
-
-        NotchContent {
-            id: notchContent
-            unifiedEffectActive: unifiedPanel.unifiedEffectActive
-            anchors.fill: parent
-            screen: unifiedPanel.targetScreen
-            z: 4
-        }
-
-        AssistantSidebar {
-            id: assistantSidebar
-            targetScreen: unifiedPanel.targetScreen
-            z: 1
+    AssistantSidebar {
+        id: assistantSidebar
+        targetScreen: unifiedPanel.targetScreen
+        z: 1
             
             // Respect top/bottom bar reservations so the sidebar doesn't overlap them
             anchors.topMargin: {
