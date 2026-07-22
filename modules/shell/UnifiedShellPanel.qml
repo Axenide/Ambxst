@@ -287,6 +287,6 @@ PanelWindow {
                     margin += unifiedPanel.barTargetWidth + unifiedPanel.barOuterMargin + (unifiedPanel.containBar ? Config.bar.frameThickness : 0);
                 return margin;
             }
-        }
     }
 }
+
