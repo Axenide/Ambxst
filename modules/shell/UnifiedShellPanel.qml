@@ -203,6 +203,11 @@ PanelWindow {
     // VISUAL CONTENT
     // ═══════════════════════════════════════════════════════════════
 
+    Item {
+        id: visualContent
+        anchors.fill: parent
+        layer.enabled: true
+
     ScreenFrameContent {
         id: frameContent
         anchors.fill: parent
@@ -287,6 +292,7 @@ PanelWindow {
                     margin += unifiedPanel.barTargetWidth + unifiedPanel.barOuterMargin + (unifiedPanel.containBar ? Config.bar.frameThickness : 0);
                 return margin;
             }
+    }
     }
 }
 
