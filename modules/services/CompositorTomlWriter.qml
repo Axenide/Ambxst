@@ -407,6 +407,21 @@ Singleton {
         return toml;
     }
 
+    function pushBorderColors() {
+        const borderColors = Config.compositor.syncBorderColor ? [Config.compositorBorderColor] : Config.compositor.activeBorderColor;
+        const formattedActive = formatBorderColors(borderColors || ["primary"], Config.compositor.borderAngle);
+        const formattedInactive = formatInactiveBorderColors(Config.compositor.inactiveBorderColor, Config.compositor.inactiveBorderAngle);
+
+        if (formattedActive.length > 0) {
+            reloadProcess.command = ["hyprctl", "keyword", "general:col.active_border", formattedActive[0]];
+            reloadProcess.running = true;
+        }
+        if (formattedInactive.length > 0) {
+            inactiveProcess.command = ["hyprctl", "keyword", "general:col.inactive_border", formattedInactive[0]];
+            inactiveProcess.running = true;
+        }
+    }
+
     function writeTomlFile() {
         const tomlContent = generateToml();
         const escapedPath = root.outputPath.replace(/'/g, "'\\''");
@@ -416,19 +431,7 @@ Singleton {
         writeProcess.running = true;
         console.log("CompositorTomlWriter: Written TOML to", root.outputPath);
 
-        // Apply border colors to the running axctl daemon (the TOML file alone
-        // does not trigger a daemon re-read, so we push them via IPC).
-        const borderColors = Config.compositor.syncBorderColor ? [Config.compositorBorderColor] : Config.compositor.activeBorderColor;
-        const formattedActive = formatBorderColors(borderColors || ["primary"], Config.compositor.borderAngle);
-        const formattedInactive = formatInactiveBorderColors(Config.compositor.inactiveBorderColor, Config.compositor.inactiveBorderAngle);
-        if (formattedActive.length > 0) {
-            reloadProcess.command = ["axctl", "config", "set", "border.active_color", formattedActive[0]];
-            reloadProcess.running = true;
-        }
-        if (formattedInactive.length > 0) {
-            inactiveProcess.command = ["axctl", "config", "set", "border.inactive_color", formattedInactive[0]];
-            inactiveProcess.running = true;
-        }
+        pushBorderColors();
     }
 
     function refresh() {

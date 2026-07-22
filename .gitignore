@@ -1,10 +1,10 @@
+
+# Cloned Quickshell documentation for reference (not part of the project)
+lastworkingcommit.txt
+# Local "known-good" commit marker
 .qmlls.ini
+quickshell-docs/
+result
 .ruff_cache/
 scripts/__pycache__
 .sisyphus
-
-# Cloned Quickshell documentation for reference (not part of the project)
-quickshell-docs/
-
-# Local "known-good" commit marker
-lastworkingcommit.txt
