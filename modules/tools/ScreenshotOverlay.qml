@@ -41,22 +41,18 @@ PanelWindow {
     function fileUri(path) {
         if (!path || path === "")
             return "";
-        // Encode each path segment so spaces/special chars stay valid URIs
         const parts = String(path).split("/");
-        let out = "";
+        let out = "file://";
+        let first = true;
+        if (String(path).charAt(0) === "/")
+            out += "/";
         for (let i = 0; i < parts.length; i++) {
-            if (i === 0 && parts[i] === "") {
-                out += "/";
-                continue;
-            }
-            if (i > 0)
-                out += "/";
+            if (parts[i] === "") continue;
+            if (!first) out += "/";
             out += encodeURIComponent(parts[i]);
+            first = false;
         }
-        // Absolute paths start with /
-        if (String(path).charAt(0) === "/" && out.charAt(0) !== "/")
-            out = "/" + out;
-        return "file://" + out;
+        return out;
     }
 
     function clearPreview() {
@@ -166,7 +162,8 @@ PanelWindow {
                     Drag.supportedActions: Qt.CopyAction
                     // Snapshot path — never rebind to a cleared imagePath mid-drag
                     Drag.mimeData: root.dragMimePath !== "" ? {
-                        "text/uri-list": root.fileUri(root.dragMimePath)
+                        "text/uri-list": root.fileUri(root.dragMimePath) + "\r\n",
+                        "text/plain": root.fileUri(root.dragMimePath)
                     } : {}
 
                     Drag.onDragFinished: {

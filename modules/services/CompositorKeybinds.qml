@@ -104,6 +104,21 @@ QtObject {
         };
     }
 
+    function isModifierKeyName(key) {
+        return key === "Super_L" || key === "Super_R"
+            || key === "Control_L" || key === "Control_R"
+            || key === "Alt_L" || key === "Alt_R"
+            || key === "Shift_L" || key === "Shift_R"
+            || key === "Meta" || key === "Hyper_L" || key === "Hyper_R";
+    }
+
+    function ensureReleaseFlag(flags, key) {
+        if (!isModifierKeyName(key)) return flags;
+        var f = String(flags || "");
+        if (f.indexOf("r") === -1) f += "r";
+        return f;
+    }
+
     // Build a structured bind object from a core keybind (has all fields inline).
     function resolveBindAction(action, fallback) {
         const resolved = KeybindActions.resolveAction(action || fallback);
@@ -123,7 +138,7 @@ QtObject {
             key: keybind.key || "",
             dispatcher: resolved.dispatcher,
             argument: resolved.argument,
-            flags: resolved.flags,
+            flags: ensureReleaseFlag(resolved.flags, keybind.key),
             enabled: true
         };
     }
@@ -137,7 +152,7 @@ QtObject {
             key: keyObj.key || "",
             dispatcher: resolved.dispatcher,
             argument: resolved.argument,
-            flags: resolved.flags,
+            flags: ensureReleaseFlag(resolved.flags, keyObj.key),
             enabled: true
         };
     }

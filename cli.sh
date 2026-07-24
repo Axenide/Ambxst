@@ -284,7 +284,7 @@ run)
 		exit 1
 	fi
 
-	qs ipc --pid "$PID" call ambxstPlus run "$CMD" 2>/dev/null || {
+	qs ipc --pid "$PID" call 'ambxst+' run "$CMD" 2>/dev/null || {
 		echo "Error: Could not run command '$CMD'"
 		exit 1
 	}
@@ -295,7 +295,7 @@ lock)
 		echo "Error: Ambxst[+] is not running"
 		exit 1
 	fi
-	qs ipc --pid "$PID" call ambxstPlus run lockscreen 2>/dev/null || {
+	qs ipc --pid "$PID" call 'ambxst+' run lockscreen 2>/dev/null || {
 		echo "Error: Could not activate lockscreen"
 		exit 1
 	}

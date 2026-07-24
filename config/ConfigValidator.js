@@ -36,7 +36,7 @@ var enumValidators = {
     "pillStyle": ["default", "squished"],
     "gradientType": ["linear", "radial", "halftone"],
     "noMediaDisplay": ["userHost", "compositor", "custom"],
-    "theme": ["default", "integrated"],
+    "theme": ["default", "integrated", "island"],
     "sidebarPosition": ["left", "right"],
     "sidebarWidth": null,
     "lightMode": null,
