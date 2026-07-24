@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.modules.components
@@ -33,7 +34,7 @@ Popup {
     height: 320
     visible: false
     modal: true
-    closePolicy: Popup.NoAutoKeys
+    closePolicy: Popup.NoAutoClose
     background: null
     padding: 0
 
@@ -44,11 +45,11 @@ Popup {
         enrollError = "";
         enrolling = false;
         enrollMessage = "Place your finger on the sensor";
-        Popup.open();
+        visible = true;
     }
 
     function close() {
-        Popup.close();
+        visible = false;
     }
 
     function startEnrollment() {
@@ -159,7 +160,7 @@ Popup {
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(2)
                         font.bold: true
-                        color: Colors.onSurface
+                        color: Colors.overBackground
                         horizontalAlignment: Text.AlignHCenter
                         width: parent.width
                     }
@@ -168,7 +169,7 @@ Popup {
                         text: root.enrollMessage
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(0)
-                        color: root.enrollError ? Colors.error : Colors.onSurfaceDim
+                        color: root.enrollError ? Colors.error : Colors.overSurfaceVariant
                         horizontalAlignment: Text.AlignHCenter
                         width: parent.width
                         wrapMode: Text.Wrap
@@ -201,7 +202,7 @@ Popup {
                         text: "Finger: " + root.enrollFinger.replace(/-/g, " ")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
-                        color: Colors.onSurfaceVariant
+                        color: Colors.overSurfaceVariant
                         horizontalAlignment: Text.AlignHCenter
                         width: parent.width
                         visible: !root.enrollComplete
@@ -213,6 +214,7 @@ Popup {
                         visible: !root.enrollComplete
 
                         StyledRect {
+                            id: startBtn
                             variant: "common"
                             width: 100
                             height: 36
@@ -223,7 +225,7 @@ Popup {
                                 text: root.enrolling ? "Cancel" : "Start"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
-                                color: Colors.overBackground
+                                color: startBtn.item
                             }
 
                             MouseArea {
@@ -241,6 +243,7 @@ Popup {
                         }
 
                         StyledRect {
+                            id: doneBtn
                             variant: "primary"
                             width: 100
                             height: 36
@@ -251,7 +254,7 @@ Popup {
                                 text: "Done"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
-                                color: Colors.onPrimary
+                                color: doneBtn.item
                             }
 
                             MouseArea {
@@ -266,6 +269,7 @@ Popup {
                     }
 
                     StyledRect {
+                        id: finishBtn
                         variant: "primary"
                         width: 120
                         height: 36
@@ -278,7 +282,7 @@ Popup {
                             text: "Finish"
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(0)
-                            color: Colors.onPrimary
+                            color: finishBtn.item
                         }
 
                         MouseArea {

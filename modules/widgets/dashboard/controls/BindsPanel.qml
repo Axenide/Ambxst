@@ -8,6 +8,7 @@ import qs.modules.theme
 import qs.modules.components
 import qs.config
 import "../../../../config/KeybindActions.js" as KeybindActions
+import "../../../../config/KeybindCapture.js" as KeybindCapture
 
 Item {
     id: root
@@ -18,6 +19,10 @@ Item {
 
     // Current category being viewed
     property string currentCategory: "ambxst+"
+
+    // Hotkey recording state
+    property bool recordingKey: false
+    property bool recordingSawModifier: false
 
     // Process for unbinding keybinds
     Process {
@@ -238,6 +243,7 @@ Item {
     }
 
     function openEditDialog(bind, index, isAmbxstPlus) {
+        root.stopKeyRecording();
         root.editingIndex = index;
         root.editingBind = bind;
         root.isEditingAmbxstPlus = isAmbxstPlus;
@@ -295,6 +301,7 @@ Item {
     }
 
     function closeEditDialog() {
+        root.stopKeyRecording();
         root.editMode = false;
         root.isCreatingNew = false;
         root.currentKeyPage = 0;
@@ -324,6 +331,38 @@ Item {
             newMods.push(mod);
         }
         updateCurrentKey(newMods, root.editKeys[root.currentKeyPage].key || "");
+    }
+
+    function startKeyRecording() {
+        root.recordingKey = true;
+        root.recordingSawModifier = false;
+        Qt.callLater(function () {
+            keyCaptureItem.forceActiveFocus();
+        });
+    }
+
+    function stopKeyRecording() {
+        root.recordingKey = false;
+        root.recordingSawModifier = false;
+    }
+
+    function applyCapturedBind(modifiers, key) {
+        if (!key)
+            return;
+        root.updateCurrentKey(modifiers || [], key);
+        root.stopKeyRecording();
+    }
+
+    function handleCaptureResult(result) {
+        if (!result)
+            return;
+        if (result.type === "cancel") {
+            root.stopKeyRecording();
+            return;
+        }
+        if (result.type === "capture") {
+            root.applyCapturedBind(result.modifiers || [], result.key || "");
+        }
     }
 
     function saveEdit() {
@@ -1301,7 +1340,7 @@ Item {
                                 }
                             }
 
-                            // Modifiers
+                            // Modifiers (updated automatically when recording; still clickable to tweak)
                             Flow {
                                 Layout.fillWidth: true
                                 spacing: 8
@@ -1321,6 +1360,7 @@ Item {
                                         width: modLabel.width + 32
                                         height: 40
                                         radius: Styling.radius(-2)
+                                        opacity: root.recordingKey ? 0.6 : 1
 
                                         Text {
                                             id: modLabel
@@ -1335,6 +1375,7 @@ Item {
                                         MouseArea {
                                             anchors.fill: parent
                                             hoverEnabled: true
+                                            enabled: !root.recordingKey
                                             cursorShape: Qt.PointingHandCursor
                                             onEntered: modTag.isHovered = true
                                             onExited: modTag.isHovered = false
@@ -1344,41 +1385,88 @@ Item {
                                 }
                             }
 
-                            // Key input
+                            // Hotkey recorder — captures Wayland key/mouse events into axctl key names
                             StyledRect {
+                                id: keyRecorder
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: 44
-                                variant: keyInput.activeFocus ? "focus" : "common"
+                                variant: root.recordingKey || keyCaptureItem.activeFocus ? "focus" : "common"
                                 radius: Styling.radius(-2)
 
-                                TextInput {
-                                    id: keyInput
+                                Item {
+                                    id: keyCaptureItem
                                     anchors.fill: parent
-                                    anchors.margins: 12
-                                    text: root.editKey
-                                    font.family: Config.theme.font
-                                    font.pixelSize: Styling.fontSize(0)
-                                    color: Colors.overBackground
-                                    verticalAlignment: Text.AlignVCenter
-                                    selectByMouse: true
-                                    onTextChanged: {
-                                        if (root.editKeys.length > root.currentKeyPage) {
-                                            const currentKey = root.editKeys[root.currentKeyPage];
-                                            const keyVal = currentKey.key || "";
-                                            if (keyVal !== text) {
-                                                root.updateCurrentKey(currentKey.modifiers || [], text);
-                                            }
-                                        }
+                                    focus: root.recordingKey
+                                    activeFocusOnTab: true
+
+                                    Keys.onPressed: event => {
+                                        if (!root.recordingKey)
+                                            return;
+                                        if (KeybindCapture.isModifierKey(event.key))
+                                            root.recordingSawModifier = true;
+                                        const result = KeybindCapture.interpretKeyPress(event.key, event.modifiers, event.text || "");
+                                        root.handleCaptureResult(result);
+                                        event.accepted = true;
                                     }
 
-                                    Text {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        visible: !keyInput.text && !keyInput.activeFocus
-                                        text: "e.g. R, TAB, ESCAPE, mouse:272..."
-                                        font: keyInput.font
-                                        color: Colors.overSurfaceVariant
+                                    Keys.onReleased: event => {
+                                        if (!root.recordingKey)
+                                            return;
+                                        // Tap a lone modifier (e.g. Super) to bind it
+                                        if (KeybindCapture.isModifierKey(event.key) && root.recordingSawModifier) {
+                                            const result = KeybindCapture.interpretModifierRelease(event.key, event.modifiers);
+                                            root.handleCaptureResult(result);
+                                        }
+                                        event.accepted = true;
                                     }
                                 }
+
+                                Text {
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    verticalAlignment: Text.AlignVCenter
+                                    elide: Text.ElideRight
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: root.recordingKey ? Colors.primary : Colors.overBackground
+                                    text: {
+                                        if (root.recordingKey)
+                                            return "Press a hotkey… (Esc cancels)";
+                                        const formatted = KeybindCapture.formatBind(root.editModifiers, root.editKey);
+                                        return formatted || "Click to record hotkey";
+                                    }
+                                    opacity: (!root.recordingKey && !root.editKey) ? 0.55 : 1
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton | Qt.BackButton | Qt.ForwardButton
+
+                                    onPressed: mouse => {
+                                        if (root.recordingKey) {
+                                            const result = KeybindCapture.interpretMousePress(mouse.button, mouse.modifiers);
+                                            root.handleCaptureResult(result);
+                                            mouse.accepted = true;
+                                            return;
+                                        }
+                                        if (mouse.button === Qt.LeftButton) {
+                                            root.startKeyRecording();
+                                            mouse.accepted = true;
+                                        }
+                                    }
+                                }
+                            }
+
+                            Text {
+                                visible: root.recordingKey
+                                Layout.fillWidth: true
+                                text: "Listening for keyboard or mouse… Tap Super alone to bind the Super key."
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                color: Colors.overSurfaceVariant
+                                wrapMode: Text.Wrap
                             }
                         }
 

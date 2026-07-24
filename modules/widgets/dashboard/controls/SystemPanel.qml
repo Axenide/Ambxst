@@ -18,6 +18,12 @@ Item {
 
     property string currentSection: ""
 
+    FingerprintEnrollWizard {
+        id: enrollWizard
+        anchors.centerIn: parent
+        onEnrollAccepted: FingerprintService.listFingers()
+    }
+
     component SectionButton: StyledRect {
         id: sectionBtn
         required property string text
@@ -681,19 +687,20 @@ Item {
                             Layout.topMargin: 8
                         }
 
-                        ToggleRow {
+                        Text {
+                            text: "Password authentication is always available as a lock-screen fallback."
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overSurfaceVariant
+                            opacity: 0.7
+                            wrapMode: Text.Wrap
                             Layout.fillWidth: true
-                            label: "Enable Password Auth"
-                            description: "Allow password authentication on the lock screen"
-                            checked: Config.lockscreen.enableFingerprint !== undefined ? true : true
-                            onToggled: checked => {
-                                // Password auth is always available as fallback
-                            }
                         }
 
                         StyledRect {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 36
+                            variant: "common"
                             radius: Styling.radius(-2)
 
                             RowLayout {
@@ -701,12 +708,12 @@ Item {
                                 anchors.margins: 8
                                 spacing: 8
 
-                            Text {
-                                text: Icons.keyboard
-                                font.family: Icons.font
-                                font.pixelSize: 18
-                                color: Colors.primary
-                            }
+                                Text {
+                                    text: Icons.keyboard
+                                    font.family: Icons.font
+                                    font.pixelSize: 18
+                                    color: Colors.primary
+                                }
 
                                 Text {
                                     text: "Change Password"
@@ -720,7 +727,6 @@ Item {
                                 anchors.fill: parent
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    // Open a password change dialog or run passwd command
                                     var proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
                                     proc.command = ["passwd"];
                                     proc.running = true;
@@ -758,7 +764,7 @@ Item {
                                     : "Fingerprint reader not available"
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
-                                color: FingerprintService.available ? Colors.onSurfaceDim : Colors.onSurfaceVariant
+                                color: Colors.overSurfaceVariant
                                 opacity: 0.8
                             }
                         }
@@ -962,6 +968,7 @@ Item {
                         StyledRect {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 36
+                            variant: "common"
                             radius: Styling.radius(-2)
                             visible: FingerprintService.available
                             enabled: FingerprintService.available
@@ -975,14 +982,14 @@ Item {
                                     text: Icons.plus
                                     font.family: Icons.font
                                     font.pixelSize: 16
-                                    color: parent.enabled ? Colors.primary : Colors.onSurfaceVariant
+                                    color: parent.enabled ? Colors.primary : Colors.overSurfaceVariant
                                 }
 
                                 Text {
                                     text: "Enroll New Finger"
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
-                                    color: parent.enabled ? Colors.overBackground : Colors.onSurfaceVariant
+                                    color: parent.enabled ? Colors.overBackground : Colors.overSurfaceVariant
                                 }
                             }
 
@@ -991,7 +998,7 @@ Item {
                                 cursorShape: Qt.PointingHandCursor
                                 enabled: FingerprintService.available
                                 onClicked: {
-                                    FingerprintEnrollWizard.open("right-index-finger");
+                                    enrollWizard.open("right-index-finger");
                                 }
                             }
                         }
@@ -1000,6 +1007,7 @@ Item {
                         StyledRect {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 36
+                            variant: "common"
                             radius: Styling.radius(-2)
 
                             RowLayout {

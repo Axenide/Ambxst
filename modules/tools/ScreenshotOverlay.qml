@@ -18,6 +18,9 @@ PanelWindow {
     screen: targetScreen
 
     property string imagePath: ""
+    // Snapshot of the path for an in-flight drag so hide/clear cannot empty MIME mid-drag
+    property string dragMimePath: ""
+    readonly property bool dragInProgress: dragArea.drag.active || dragTarget.Drag.active
 
     // Position: Bottom Left with margins
     anchors {
@@ -35,21 +38,50 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
+    function fileUri(path) {
+        if (!path || path === "")
+            return "";
+        // Encode each path segment so spaces/special chars stay valid URIs
+        const parts = String(path).split("/");
+        let out = "";
+        for (let i = 0; i < parts.length; i++) {
+            if (i === 0 && parts[i] === "") {
+                out += "/";
+                continue;
+            }
+            if (i > 0)
+                out += "/";
+            out += encodeURIComponent(parts[i]);
+        }
+        // Absolute paths start with /
+        if (String(path).charAt(0) === "/" && out.charAt(0) !== "/")
+            out = "/" + out;
+        return "file://" + out;
+    }
+
+    function clearPreview() {
+        if (root.dragInProgress)
+            return;
+        root.imagePath = "";
+        root.dragMimePath = "";
+    }
+
     property Process copyOverlayProcess: Process {
         id: copyOverlayProcess
         command: ["bash", "-c", "cat \"" + root.imagePath + "\" | wl-copy --type image/png"]
         onExited: exitCode => {
-            if (exitCode !== 0) console.warn("Overlay Copy Failed (Exit code: " + exitCode + ")")
+            if (exitCode !== 0)
+                console.warn("Overlay Copy Failed (Exit code: " + exitCode + ")");
         }
     }
 
-    // Timer to auto-hide after 5 seconds
+    // Timer to auto-hide after 5 seconds — paused while hovering or dragging out
     Timer {
         id: hideTimer
         interval: 5000
         repeat: false
-        running: root.visible && !mouseAreaHover.containsMouse
-        onTriggered: root.imagePath = ""
+        running: root.visible && !mouseAreaHover.containsMouse && !root.dragInProgress
+        onTriggered: root.clearPreview()
     }
 
     // MouseArea to detect hover and prevent auto-hide
@@ -68,7 +100,6 @@ PanelWindow {
             var s = root.targetScreen;
             var mx = Screenshot.selectionX;
             var my = Screenshot.selectionY;
-            var logicalW = s.width;
 
             if (mx >= s.x && mx < (s.x + s.width) && my >= s.y && my < (s.y + s.height)) {
                 root.imagePath = path;
@@ -133,10 +164,16 @@ PanelWindow {
                     Drag.active: dragArea.drag.active
                     Drag.dragType: Drag.Automatic
                     Drag.supportedActions: Qt.CopyAction
-                    Drag.mimeData: {
-                        "text/uri-list": "file://" + root.imagePath
+                    // Snapshot path — never rebind to a cleared imagePath mid-drag
+                    Drag.mimeData: root.dragMimePath !== "" ? {
+                        "text/uri-list": root.fileUri(root.dragMimePath)
+                    } : {}
+
+                    Drag.onDragFinished: {
+                        root.dragMimePath = "";
+                        // Restart auto-hide once the external drop completes
+                        hideTimer.restart();
                     }
-                    Drag.imageSource: img.source
                 }
 
                 MouseArea {
@@ -144,34 +181,40 @@ PanelWindow {
                     anchors.fill: parent
                     hoverEnabled: true
 
-                    // Show Grab Hand
                     cursorShape: Qt.DragCopyCursor
                     acceptedButtons: Qt.LeftButton | Qt.MiddleButton
 
-                    // Bind drag target to initiate the drag sequence
                     drag.target: dragTarget
+                    drag.threshold: 8
+
+                    onPressed: mouse => {
+                        if (mouse.button === Qt.LeftButton && root.imagePath !== "")
+                            root.dragMimePath = root.imagePath;
+                    }
 
                     // Click to Open (Left) or Delete (Middle)
                     onClicked: mouse => {
+                        if (root.dragInProgress)
+                            return;
                         if (mouse.button === Qt.MiddleButton) {
                             var proc = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { }', root);
                             proc.command = ["rm", root.imagePath];
                             proc.running = true;
                             root.imagePath = "";
+                            root.dragMimePath = "";
                         } else {
                             Qt.openUrlExternally("file://" + root.imagePath);
                         }
                     }
                 }
 
-                // Icon overlay on hover (optional, but requested "Icons.handGrab" context)
                 Rectangle {
                     anchors.centerIn: parent
                     width: 32
                     height: 32
                     radius: 16
                     color: Colors.background
-                    opacity: dragArea.containsMouse ? 0.8 : 0
+                    opacity: dragArea.containsMouse && !root.dragInProgress ? 0.8 : 0
                     visible: opacity > 0
                     Behavior on opacity {
                         NumberAnimation {
@@ -181,7 +224,7 @@ PanelWindow {
 
                     Text {
                         anchors.centerIn: parent
-                        text: Icons.handGrab // Assuming this exists per user request
+                        text: Icons.handGrab
                         font.family: Icons.font
                         color: Colors.overBackground
                     }
@@ -198,7 +241,7 @@ PanelWindow {
             ActionButton {
                 icon: Icons.copy
                 onTriggered: {
-                    copyOverlayProcess.running = true
+                    copyOverlayProcess.running = true;
                 }
 
                 StyledToolTip {
@@ -210,7 +253,7 @@ PanelWindow {
             ActionButton {
                 icon: Icons.disk
                 onTriggered: {
-                    root.imagePath = ""; // Hide overlay
+                    root.clearPreview();
                 }
                 StyledToolTip {
                     show: parent.containsMouse
@@ -222,11 +265,14 @@ PanelWindow {
             ActionButton {
                 icon: Icons.edit
                 onTriggered: {
-                    // Open with Gradia (native or Flatpak for Fedora) detached
+                    if (root.dragInProgress)
+                        return;
+                    var path = root.imagePath;
                     var proc = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { }', root);
-                    proc.command = ["bash", "-c", "if command -v gradia >/dev/null; then gradia \"" + root.imagePath + "\"; else flatpak run be.alexandervanhee.gradia \"" + root.imagePath + "\"; fi & disown"];
+                    proc.command = ["bash", "-c", "if command -v gradia >/dev/null; then gradia \"" + path + "\"; else flatpak run be.alexandervanhee.gradia \"" + path + "\"; fi & disown"];
                     proc.running = true;
                     root.imagePath = "";
+                    root.dragMimePath = "";
                 }
                 StyledToolTip {
                     show: parent.containsMouse
@@ -242,10 +288,13 @@ PanelWindow {
                 isTrash: true
 
                 onTriggered: {
+                    if (root.dragInProgress)
+                        return;
                     var proc = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { }', root);
                     proc.command = ["rm", root.imagePath];
                     proc.running = true;
                     root.imagePath = "";
+                    root.dragMimePath = "";
                 }
                 StyledToolTip {
                     show: parent.containsMouse
