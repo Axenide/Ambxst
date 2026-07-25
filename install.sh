@@ -40,7 +40,6 @@ log_info "Detected: $DISTRO"
 declare -A BINARY_CHECK=(
   ["matugen"]="matugen"
   ["quickshell"]="qs"
-  ["kitty"]="kitty"
   ["tmux"]="tmux"
   ["fuzzel"]="fuzzel"
   ["brightnessctl"]="brightnessctl"
@@ -116,7 +115,7 @@ install_dependencies() {
     yes | sudo dnf copr enable iucar/cran
 
     local PKGS=(
-      kitty tmux fuzzel network-manager-applet blueman
+      tmux fuzzel network-manager-applet blueman
       pipewire wireplumber easyeffects playerctl
       qt6-qtbase qt6-qtdeclarative qt6-qtwayland qt6-qtsvg qt6-qttools
       qt6-qtimageformats qt6-qtmultimedia qt6-qtshadertools
@@ -164,7 +163,7 @@ install_dependencies() {
     fi
 
     local PKGS=(
-      kitty tmux fuzzel network-manager-applet blueman
+      tmux fuzzel network-manager-applet blueman
       pipewire wireplumber pavucontrol easyeffects ffmpeg x264 playerctl
       qt6-base qt6-declarative qt6-wayland qt6-svg qt6-tools qt6-imageformats qt6-multimedia qt6-shadertools
       libwebp libavif syntax-highlighting breeze-icons hicolor-icon-theme

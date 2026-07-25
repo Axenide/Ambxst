@@ -288,22 +288,42 @@ quit)
 	;;
 screen)
 	SUB="${2:-}"
-	if [ "$SUB" = "off" ]; then
-		if command -v hyprctl &>/dev/null; then
-			hyprctl dispatch dpms off
-		else
-			notify-send "Screen Off" "Not supported on this compositor yet"
-		fi
-	elif [ "$SUB" = "on" ]; then
-		if command -v hyprctl &>/dev/null; then
-			hyprctl dispatch dpms on
-		else
-			notify-send "Screen On" "Not supported on this compositor yet"
-		fi
-	else
+	AXCTL_STATE=""
+	case "$SUB" in
+	off) AXCTL_STATE="0" ;;
+	on) AXCTL_STATE="1" ;;
+	*)
 		echo "Usage: ambxst screen [on|off]"
 		exit 1
+		;;
+	esac
+
+	if ! command -v axctl &>/dev/null; then
+		notify-send "Screen ${SUB}" "axctl is required to control the screen"
+		exit 1
 	fi
+
+	MONITORS_JSON=$(axctl monitor list 2>/dev/null) || {
+		notify-send "Screen ${SUB}" "Failed to list monitors via axctl"
+		exit 1
+	}
+
+	MONITOR_IDS=$(echo "$MONITORS_JSON" | jq -r '.[].id' 2>/dev/null) || {
+		notify-send "Screen ${SUB}" "Failed to parse monitor list"
+		exit 1
+	}
+
+	if [ -z "$MONITOR_IDS" ]; then
+		notify-send "Screen ${SUB}" "No monitors detected"
+		exit 1
+	fi
+
+	for MON_ID in $MONITOR_IDS; do
+		if ! axctl monitor set-dpms "$MON_ID" "$AXCTL_STATE" >/dev/null 2>&1; then
+			notify-send "Screen ${SUB}" "Failed to set DPMS on monitor $MON_ID"
+			exit 1
+		fi
+	done
 	;;
 suspend)
 	if command -v systemctl &>/dev/null; then
