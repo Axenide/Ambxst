@@ -636,6 +636,22 @@ help | --help | -h)
 	show_help
 	;;
 "")
+	# Robust monitor-aware startup cleanup
+	pkill -f "qs -p .*shell.qml" 2>/dev/null || true
+	pkill -f "axctl.*daemon" 2>/dev/null || true
+	pkill -f "axctl subscribe" 2>/dev/null || true
+
+	# Wait for external monitor if physically connected (non-eDP, non-LVDS, non-Virtual, non-HEADLESS)
+	if hyprctl monitors all -j 2>/dev/null | jq -e '.[] | select(.name | test("^(eDP|LVDS|Virtual|HEADLESS)") | not)' >/dev/null 2>&1; then
+		for i in {1..50}; do
+			if hyprctl monitors -j 2>/dev/null | jq -e '.[] | select(.name | test("^(eDP|LVDS|Virtual|HEADLESS)") | not)' >/dev/null 2>&1; then
+				sleep 1.0
+				break
+			fi
+			sleep 0.2
+		done
+	fi
+
 	# Run daemon priority script (backgrounded to not block startup)
 	bash "${SCRIPT_DIR}/scripts/daemon_priority.sh" &
 

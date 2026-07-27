@@ -35,9 +35,14 @@ WlSessionLockSurface {
         tintEnabled: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.tintEnabled : false
 
         property string lockscreenFramePath: {
-            if (!GlobalStates.wallpaperManager)
+            if (!GlobalStates.wallpaperManager || !GlobalStates.wallpaperManager.currentWallpaper)
                 return "";
-            return GlobalStates.wallpaperManager.getLockscreenFramePath(GlobalStates.wallpaperManager.currentWallpaper);
+            try {
+                return GlobalStates.wallpaperManager.getLockscreenFramePath(GlobalStates.wallpaperManager.currentWallpaper);
+            } catch (e) {
+                console.warn("LockScreen: Failed to get lockscreen frame path:", e);
+                return "";
+            }
         }
 
         source: lockscreenFramePath ? "file://" + lockscreenFramePath : ""
@@ -84,7 +89,7 @@ WlSessionLockSurface {
     ScreencopyView {
         id: screencopyBackground
         anchors.fill: parent
-        captureSource: root.screen
+        captureSource: root.screen || null
         live: false
         paintCursor: false
         visible: startAnim  // Visible solo cuando startAnim es true
@@ -741,7 +746,9 @@ WlSessionLockSurface {
     // Initialize when component is created (when lock becomes active)
     Component.onCompleted: {
         // Capture screen immediately
-        screencopyBackground.captureFrame();
+        if (root.screen) {
+            screencopyBackground.captureFrame();
+        }
 
         // Start animations
         startAnim = true;
