@@ -287,6 +287,7 @@ ShellRoot {
                 let _ = CaffeineService.inhibit;
                 _ = IdleService.lockCmd; // Force init
                 _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
+                _ = BatteryAlertService.enabled; 
             });
         }
     }
