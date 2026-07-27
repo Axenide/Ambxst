@@ -177,6 +177,10 @@ ShellRoot {
         id: compositorConfig
     }
 
+    CompositorKeybinds {
+        id: compositorKeybinds
+    }
+
     // Screenshot tool
     Variants {
         model: Quickshell.screens
