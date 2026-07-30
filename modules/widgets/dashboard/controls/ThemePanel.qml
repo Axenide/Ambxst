@@ -1128,6 +1128,167 @@ Item {
                             anchors.top: parent.top
                             spacing: 8
 
+                            // ── Scheme section ──
+                            Text {
+                                text: "Scheme"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                                Layout.bottomMargin: -4
+                            }
+
+                            // Light/Dark toggle
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Text {
+                                    text: "Light Mode"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                    Layout.fillWidth: true
+                                }
+
+                                Switch {
+                                    id: lightModeSwitch
+                                    checked: Config.theme.lightMode
+                                    onCheckedChanged: {
+                                        Config.theme.lightMode = checked;
+                                    }
+
+                                    indicator: Rectangle {
+                                        implicitWidth: 40
+                                        implicitHeight: 20
+                                        x: lightModeSwitch.leftPadding
+                                        y: parent.height / 2 - height / 2
+                                        radius: height / 2
+                                        color: lightModeSwitch.checked ? Styling.srItem("overprimary") : Colors.surfaceBright
+                                        border.color: lightModeSwitch.checked ? Styling.srItem("overprimary") : Colors.outline
+
+                                        Behavior on color {
+                                            enabled: Config.animDuration > 0
+                                            ColorAnimation { duration: Config.animDuration / 2 }
+                                        }
+
+                                        Rectangle {
+                                            x: lightModeSwitch.checked ? parent.width - width - 2 : 2
+                                            y: 2
+                                            width: parent.height - 4
+                                            height: width
+                                            radius: width / 2
+                                            color: lightModeSwitch.checked ? Colors.background : Colors.overSurfaceVariant
+
+                                            Behavior on x {
+                                                enabled: Config.animDuration > 0
+                                                NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+                                            }
+                                        }
+                                    }
+                                    background: null
+                                }
+                            }
+
+                            // Scheme tags
+                            readonly property var matugenSchemes: ["scheme-content", "scheme-expressive", "scheme-fidelity", "scheme-fruit-salad", "scheme-monochrome", "scheme-neutral", "scheme-rainbow", "scheme-tonal-spot"]
+
+                            function getSchemeDisplayName(scheme) {
+                                const map = {
+                                    "scheme-content": "Content",
+                                    "scheme-expressive": "Expressive",
+                                    "scheme-fidelity": "Fidelity",
+                                    "scheme-fruit-salad": "Fruit Salad",
+                                    "scheme-monochrome": "Monochrome",
+                                    "scheme-neutral": "Neutral",
+                                    "scheme-rainbow": "Rainbow",
+                                    "scheme-tonal-spot": "Tonal Spot"
+                                };
+                                return map[scheme] || scheme;
+                            }
+
+                            Flow {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Repeater {
+                                    model: variantSelectorContent.matugenSchemes
+
+                                    delegate: StyledRect {
+                                        required property string modelData
+                                        required property int index
+
+                                        property bool isSelected: wallpaperConfig.adapter.matugenScheme === modelData && !wallpaperConfig.adapter.activeColorPreset
+                                        property bool isHovered: false
+
+                                        variant: isSelected ? "primary" : "common"
+                                        enableShadow: true
+
+                                        width: tagLabel.width + 24
+                                        height: 32
+                                        radius: isSelected ? Styling.radius(0) / 2 : Styling.radius(0)
+
+                                        Behavior on width {
+                                            enabled: Config.animDuration > 0
+                                            NumberAnimation { duration: Config.animDuration / 3; easing.type: Easing.OutCubic }
+                                        }
+
+                                        Item {
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+
+                                            Text {
+                                                id: tagLabel
+                                                anchors.centerIn: parent
+                                                text: variantSelectorContent.getSchemeDisplayName(modelData)
+                                                font.family: Config.theme.font
+                                                font.pixelSize: Config.theme.fontSize
+                                                font.bold: isSelected
+                                                color: isSelected ? Styling.srItem("overprimary") : Colors.overBackground
+
+                                                Behavior on color {
+                                                    enabled: Config.animDuration > 0
+                                                    ColorAnimation { duration: Config.animDuration / 3; easing.type: Easing.OutCubic }
+                                                }
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            anchors.fill: parent
+                                            color: Styling.srItem("overprimary")
+                                            radius: parent.radius ?? 0
+                                            opacity: isHovered ? 0.15 : 0
+
+                                            Behavior on opacity {
+                                                enabled: Config.animDuration > 0
+                                                NumberAnimation { duration: Config.animDuration / 2 }
+                                            }
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+
+                                            onEntered: isHovered = true
+                                            onExited: isHovered = false
+
+                                            onClicked: {
+                                                if (GlobalStates.wallpaperManager) {
+                                                    GlobalStates.wallpaperManager.setMatugenScheme(modelData);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Separator {
+                                Layout.fillWidth: true
+                                Layout.topMargin: 4
+                                Layout.bottomMargin: 4
+                            }
+
                             Text {
                                 text: "Variant"
                                 font.family: Config.theme.font
