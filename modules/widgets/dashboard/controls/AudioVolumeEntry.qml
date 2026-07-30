@@ -91,7 +91,7 @@ Item {
                 id: volumeSlider
                 Layout.fillWidth: true
                 Layout.preferredHeight: 20
-                value: root.volume
+                value: Audio.gainToSlider(root.volume)
                 scroll: false
                 progressColor: {
                     if (root.isMuted)
@@ -102,7 +102,8 @@ Item {
                 }
 
                 onValueChanged: {
-                    if (root.node?.audio && Math.abs(value - root.volume) > 0.001) {
+                    const currentSlider = Audio.gainToSlider(root.volume);
+                    if (root.node?.audio && Math.abs(value - currentSlider) > 0.001) {
                         Audio.setNodeVolume(root.node, value);
                     }
                 }
@@ -156,7 +157,7 @@ Item {
 
             // Percentage
             Text {
-                text: `${Math.round(root.volume * 100)}%`
+                text: `${Math.round(Audio.gainToSlider(root.volume) * 100)}%`
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-2)
                 color: Colors.overSurfaceVariant

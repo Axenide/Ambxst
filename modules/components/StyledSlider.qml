@@ -53,6 +53,7 @@ Item {
 
     // Step and snap properties
     property real stepSize: 0  // 0 means no stepping
+    property real fineStepSize: 0  // finer step used when Shift is held during scroll (0 = disabled)
     property string snapMode: "none"  // "none", "always", "release"
 
     // Helper function to apply step snapping
@@ -418,7 +419,10 @@ Item {
 
         onWheel: wheel => {
             if (root.scroll) {
-                const scrollStep = root.stepSize > 0 ? root.stepSize : 0.1;
+                let scrollStep = root.stepSize > 0 ? root.stepSize : 0.1;
+                if (root.fineStepSize > 0 && (wheel.modifiers & Qt.ShiftModifier)) {
+                    scrollStep = root.fineStepSize;
+                }
                 if (wheel.angleDelta.y > 0) {
                     root.value = root.applyStep(Math.min(1, root.value + scrollStep));
                 } else {

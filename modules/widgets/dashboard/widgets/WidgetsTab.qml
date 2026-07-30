@@ -332,14 +332,15 @@ Rectangle {
                         return Icons.speakerLow;
                     return Icons.speakerHigh;
                 }
-                value: Audio.sink?.audio?.volume ?? 0
+                value: Audio.gainToSlider(Audio.sink?.audio?.volume ?? 0)
+                stepSize: Audio.tick
                 accentColor: Audio.sink?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
                 isToggleable: true
                 isToggled: !(Audio.sink?.audio?.muted ?? false)
 
                 onControlValueChanged: newValue => {
                     if (Audio.sink?.audio) {
-                        Audio.sink.audio.volume = newValue;
+                        Audio.setVolume(newValue);
                     }
                 }
 
@@ -360,14 +361,15 @@ Rectangle {
                 Layout.preferredWidth: 48
                 Layout.preferredHeight: 48
                 icon: Audio.source?.audio?.muted ? Icons.micSlash : Icons.mic
-                value: Audio.source?.audio?.volume ?? 0
+                value: Audio.gainToSlider(Audio.source?.audio?.volume ?? 0)
+                stepSize: Audio.tick
                 accentColor: Audio.source?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
                 isToggleable: true
                 isToggled: !(Audio.source?.audio?.muted ?? false)
 
                 onControlValueChanged: newValue => {
                     if (Audio.source?.audio) {
-                        Audio.source.audio.volume = newValue;
+                        Audio.setMicVolume(newValue);
                     }
                 }
 

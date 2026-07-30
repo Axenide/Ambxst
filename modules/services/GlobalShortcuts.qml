@@ -80,6 +80,11 @@ QtObject {
                 break;
             case "lockscreen": GlobalStates.lockscreenVisible = true; break;
             
+            // Audio
+            case "volume-up": Audio.incrementVolume(); break;
+            case "volume-down": Audio.decrementVolume(); break;
+            case "volume-mute": Audio.toggleMute(); break;
+
             // Media
             case "media-seek-backward": seekActivePlayer(-mediaSeekStepMs); break;
             case "media-seek-forward": seekActivePlayer(mediaSeekStepMs); break;

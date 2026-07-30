@@ -123,7 +123,8 @@ Item {
                         return Icons.speakerLow;
                     return Icons.speakerHigh;
                 }
-                sliderValue: Audio.sink?.audio?.volume ?? 0
+                sliderValue: Audio.gainToSlider(Audio.sink?.audio?.volume ?? 0)
+                scrollStep: Audio.tick
                 progressColor: Audio.sink?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
                 wavy: true
                 wavyAmplitude: Audio.sink?.audio?.muted ? 0.5 : 1.5 * sliderValue
@@ -131,7 +132,7 @@ Item {
 
                 onValueChanged: newValue => {
                     if (Audio.sink?.audio) {
-                        Audio.sink.audio.volume = newValue;
+                        Audio.setVolume(newValue);
                     }
                 }
 
@@ -146,7 +147,7 @@ Item {
                     ignoreUnknownSignals: true
                     function onVolumeChanged() {
                         if (Audio.sink?.audio) {
-                            volumeRow.sliderValue = Audio.sink.audio.volume;
+                            volumeRow.sliderValue = Audio.gainToSlider(Audio.sink.audio.volume);
                         }
                     }
                 }
@@ -160,7 +161,8 @@ Item {
                 Layout.rightMargin: 8
 
                 icon: Audio.source?.audio?.muted ? Icons.micSlash : Icons.mic
-                sliderValue: Audio.source?.audio?.volume ?? 0
+                sliderValue: Audio.gainToSlider(Audio.source?.audio?.volume ?? 0)
+                scrollStep: Audio.tick
                 progressColor: Audio.source?.audio?.muted ? Colors.outline : Styling.srItem("overprimary")
                 wavy: true
                 wavyAmplitude: Audio.source?.audio?.muted ? 0.5 : 1.5 * sliderValue
@@ -168,7 +170,7 @@ Item {
 
                 onValueChanged: newValue => {
                     if (Audio.source?.audio) {
-                        Audio.source.audio.volume = newValue;
+                        Audio.setMicVolume(newValue);
                     }
                 }
 
@@ -183,7 +185,7 @@ Item {
                     ignoreUnknownSignals: true
                     function onVolumeChanged() {
                         if (Audio.source?.audio) {
-                            micRow.sliderValue = Audio.source.audio.volume;
+                            micRow.sliderValue = Audio.gainToSlider(Audio.source.audio.volume);
                         }
                     }
                 }
@@ -243,9 +245,9 @@ Item {
     Component.onCompleted: {
         // Initialize values
         if (Audio.sink?.audio)
-            volumeRow.sliderValue = Audio.sink.audio.volume;
+            volumeRow.sliderValue = Audio.gainToSlider(Audio.sink.audio.volume);
         if (Audio.source?.audio)
-            micRow.sliderValue = Audio.source.audio.volume;
+            micRow.sliderValue = Audio.gainToSlider(Audio.source.audio.volume);
         if (brightnessRow.currentMonitor?.ready)
             brightnessRow.sliderValue = brightnessRow.currentMonitor.brightness;
     }

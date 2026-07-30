@@ -204,14 +204,14 @@ PanelWindow {
     Connections {
         target: Audio
         function onVolumeChanged(volume, muted, node) {
-            root.osdValue = volume;
+            root.osdValue = Audio.gainToSlider(volume);
             root.osdMuted = muted;
             GlobalStates.osdIndicator = "volume";
             GlobalStates.osdVisible = true;
             hideTimer.restart();
         }
         function onMicVolumeChanged(volume, muted, node) {
-            root.osdValue = volume;
+            root.osdValue = Audio.gainToSlider(volume);
             root.osdMuted = muted;
             GlobalStates.osdIndicator = "mic";
             GlobalStates.osdVisible = true;

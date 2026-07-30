@@ -21,6 +21,7 @@ StyledRect {
     signal toggled
     signal draggingChanged(bool isDragging)
 
+    property real stepSize: 0.1
     property real iconRotation: 0
     property bool enableIconRotation: false
     property real iconScale: 1.0
@@ -85,11 +86,12 @@ StyledRect {
         }
 
         onWheel: wheel => {
+            let step = root.stepSize;
             if (wheel.angleDelta.y > 0) {
-                let newValue = Math.round(Math.min(1, root.value + 0.1) * 100) / 100;
+                let newValue = Math.round(Math.min(1, root.value + step) * 1000) / 1000;
                 root.controlValueChanged(newValue);
             } else {
-                let newValue = Math.round(Math.max(0, root.value - 0.1) * 100) / 100;
+                let newValue = Math.round(Math.max(0, root.value - step) * 1000) / 1000;
                 root.controlValueChanged(newValue);
             }
         }

@@ -78,6 +78,7 @@ Commands:
     update                            Update Ambxst[+]
     refresh                           Refresh local/dev profile (for developers)
     lock                              Activate lockscreen
+    run <command>                     Send command to running shell (launcher, volume-up, etc.)
     brightness <percent> [monitor]    Set brightness (0-100)
     brightness +/-<delta> [monitor]   Adjust brightness relatively
     brightness -s [monitor]           Save current brightness

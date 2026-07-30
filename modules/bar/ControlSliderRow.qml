@@ -20,6 +20,7 @@ Item {
     property real wavyFrequency: 8
     property real iconRotation: 0
     property real iconScale: 1
+    property real scrollStep: 0.05
 
     // Internal animated properties
     property real _animatedWavyAmplitude: wavyAmplitude
@@ -222,7 +223,10 @@ Item {
                 }
 
                 onWheel: wheel => {
-                    const step = 0.05;
+                    let step = root.scrollStep;
+                    if (wheel.modifiers & Qt.ShiftModifier) {
+                        step = root.scrollStep / 4;
+                    }
                     if (wheel.angleDelta.y > 0) {
                         root.sliderValue = Math.min(1, root.sliderValue + step);
                     } else {

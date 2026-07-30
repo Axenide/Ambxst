@@ -2403,7 +2403,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%+",
+                            "argument": "ambxst+ run volume-up",
                             "flags": "le",
                             "layouts": []
                         }
@@ -2421,7 +2421,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-",
+                            "argument": "ambxst+ run volume-down",
                             "flags": "le",
                             "layouts": []
                         }
@@ -2439,7 +2439,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+                            "argument": "ambxst+ run volume-mute",
                             "flags": "le",
                             "layouts": []
                         }

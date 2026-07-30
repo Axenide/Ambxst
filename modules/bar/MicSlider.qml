@@ -56,7 +56,7 @@ Item {
     Layout.fillWidth: root.vertical
     Layout.fillHeight: !root.vertical
 
-    Component.onCompleted: micSlider.value = Audio.source?.audio?.volume ?? 0
+    Component.onCompleted: micSlider.value = Audio.gainToSlider(Audio.source?.audio?.volume ?? 0)
 
     StyledRect {
         variant: "bg"
@@ -85,10 +85,14 @@ Item {
             }
             onWheel: wheel => {
                 if (root.isExpanded) {
+                    let step = Audio.tick;
+                    if (wheel.modifiers & Qt.ShiftModifier) {
+                        step = Audio.fineTick;
+                    }
                     if (wheel.angleDelta.y > 0) {
-                        micSlider.value = Math.min(1, micSlider.value + 0.1);
+                        micSlider.value = Math.min(1, micSlider.value + step);
                     } else {
-                        micSlider.value = Math.max(0, micSlider.value - 0.1);
+                        micSlider.value = Math.max(0, micSlider.value - step);
                     }
                 }
             }
@@ -101,12 +105,13 @@ Item {
             anchors.rightMargin: root.vertical ? 8 : 16
             anchors.topMargin: root.vertical ? 16 : 8
             vertical: root.vertical
-            // size: (root.isHovered || micSlider.isDragging) ? 128 : 80
             smoothDrag: true
             value: 0
             resizeParent: false
             wavy: true
             scroll: root.isExpanded
+            stepSize: Audio.tick
+            fineStepSize: Audio.fineTick
             iconClickable: root.isExpanded
             sliderVisible: root.isExpanded || micSlider.isDragging || root.externalVolumeChange
             wavyAmplitude: (root.isExpanded || micSlider.isDragging || root.externalVolumeChange) ? (Audio.source?.audio?.muted ? 0.5 : 1.5 * value) : 0
@@ -117,7 +122,7 @@ Item {
 
             onValueChanged: {
                 if (Audio.source?.audio) {
-                    Audio.source.audio.volume = value;
+                    Audio.setMicVolume(value);
                 }
             }
 
@@ -132,7 +137,7 @@ Item {
                 ignoreUnknownSignals: true
                 function onVolumeChanged() {
                     if (Audio.source?.audio) {
-                        micSlider.value = Audio.source.audio.volume;
+                        micSlider.value = Audio.gainToSlider(Audio.source.audio.volume);
                         root.externalVolumeChange = true;
                         externalChangeTimer.restart();
                     }
@@ -142,7 +147,6 @@ Item {
             Connections {
                 target: micSlider
                 function onIconHovered(hovered) {
-                // No hacer nada aquí, el HoverHandler principal maneja todo
                 }
             }
         }
