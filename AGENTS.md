@@ -13,18 +13,22 @@ but the binary/command is lowercase `ambxst+` — use that in shell commands.
   `scripts/`). The keystore tests need the `cryptography` module installed, or that
   class errors out; there is no lint/build step.
 - CLI subcommands live in `cli.sh`. Notable: `lock`, `run <cmd>` (IPC to the running
-  shell; `run lockscreen` is what `lock` does), `brightness`, `reload`, `quit`,
-  `refresh` (Nix dev profile upgrade), `screen on|off`, `suspend`, `version`.
-  IPC-based commands talk to the **running** shell over `/tmp/ambxst+_ipc.pipe`
-  (falling back to `qs ipc --pid` with the PID cached in
-  `${XDG_RUNTIME_DIR:-/tmp}/ambxst+.pid`), so the shell must already be up — they don't
-  launch it. `cli.sh` auto-detects Vulkan vs OpenGL and sets `QT_QUICK_BACKEND`; don't
-  override it unless debugging.
+  shell; `run lockscreen` is what `lock` does), `mic-mute`, `brightness`, `reload`,
+  `quit`, `refresh` (Nix dev profile upgrade), `screen on|off`, `suspend`, `version`.
+- IPC-based commands talk to the **running** shell: fast path writes to
+  `/tmp/ambxst+_ipc.pipe`, fallback is `qs ipc --pid` with the PID found via
+  `pgrep -f shell.qml` (the launcher also caches its PID in
+  `${XDG_RUNTIME_DIR:-/tmp}/ambxst+.pid` at startup). The shell must already be up —
+  these commands don't launch it. On launch, `cli.sh` forces
+  `QT_QPA_PLATFORMTHEME=qt6ct`; don't override that.
 - `ambxst+ install hyprland` / `ambxst+ remove hyprland` (`install`/`remove` take a
   *target* argument) **mutate the user's Hyprland config** by appending/removing an
   Ambxst[+] import block in `~/.config/hypr/hyprland.lua` (or `.conf`). `remove`
   refuses symlinked configs (dotfile-managed setups). Don't run these from an agent
   session expecting a clean environment. `goodbye` uninstalls Ambxst[+] entirely.
+- `install.sh` is the standalone distro installer (Arch/Fedora/Debian/NixOS detection,
+  clones the repo to `~/.local/src/ambxst+`, symlinks `/usr/local/bin/ambxst+`);
+  the Nix flake is the alternative user install path. Neither is needed from source.
 - Packaging: the Nix flake exposes `nix build`, `nix run` (app = `ambxst+`), and a
   `nixosModule`. From source, `nix develop` then `ambxst+`.
 - `quickshell-docs/` is cloned reference docs (gitignored); useful for Quickshell APIs.
@@ -72,5 +76,7 @@ but the binary/command is lowercase `ambxst+` — use that in shell commands.
 - Singletons use `pragma Singleton` + `Singleton { id: root }`; services self-init via
   `Component.onCompleted: update()`.
 - Modify QML list/models inside `Process.onStdout` handlers only via `Qt.callLater()`.
+- This checkout is a fork: `origin` is upstream `Axenide/Ambxst`, `git-napkin` is the
+  fork's remote; work happens on the `dev` branch.
 - Submodule-specific guidance (services, scripts, theme, config, notch, …) is already
   captured in each directory's `AGENTS.md`; prefer those over duplicating here.
