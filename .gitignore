@@ -2,3 +2,5 @@
 .ruff_cache/
 scripts/__pycache__
 .sisyphus
+result
+backend/bin/

@@ -338,6 +338,21 @@ setup_repo() {
   git -C "$INSTALL_PATH" reset --hard origin/main
 }
 
+# === Backend Build ===
+build_backend() {
+  [[ "$DISTRO" == "nixos" ]] && return
+  has_cmd go || {
+    log_error "Go is required to build the Ambxst backend. Install Go (golang) first."
+    exit 1
+  }
+  log_info "Building Ambxst Go backend..."
+  (cd "$INSTALL_PATH/backend" && go build -o bin/ambxst ./cmd/ambxst) || {
+    log_error "Failed to build Ambxst backend."
+    exit 1
+  }
+  log_success "Backend built to $INSTALL_PATH/backend/bin/ambxst"
+}
+
 # === Quickshell Build ===
 install_quickshell() {
   [[ "$DISTRO" == "nixos" || "$DISTRO" == "fedora" || "$DISTRO" == "arch" ]] && return
@@ -445,7 +460,7 @@ setup_launcher() {
 		export PATH="$HOME/.local/bin:\$PATH"
 		export QML2_IMPORT_PATH="$HOME/.local/lib/qml:\$QML2_IMPORT_PATH"
 		export QML_IMPORT_PATH="\$QML2_IMPORT_PATH"
-		exec "$INSTALL_PATH/cli.sh" "\$@"
+		exec "$INSTALL_PATH/backend/bin/ambxst" "\$@"
 	EOF
   sudo chmod +x "$LAUNCHER"
   log_success "Launcher created"
@@ -456,6 +471,7 @@ migrate_old_paths
 install_dependencies "$1"
 install_axctl
 setup_repo
+build_backend
 install_quickshell
 install_python_tools
 configure_services

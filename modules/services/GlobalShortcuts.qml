@@ -33,7 +33,6 @@ QtObject {
         console.log("IPC run command received:", command);
         switch (command) {
             // Launcher (Standalone Notch Module)
-            case "launcher": toggleLauncher(); break;
             case "clipboard": toggleLauncherWithPrefix(1, Config.prefix.clipboard + " "); break;
             case "emoji": toggleLauncherWithPrefix(2, Config.prefix.emoji + " "); break;
             case "tmux": toggleLauncherWithPrefix(3, Config.prefix.tmux + " "); break;
@@ -89,6 +88,17 @@ QtObject {
         function run(command: string) {
             root.run(command);
         }
+    }
+
+    // Commands sent via `ambxst run <cmd>` go through the Go daemon now.
+    // The daemon pushes a "ui.command" event on the "ui" service stream;
+    // route it into the same runner.
+    Component.onCompleted: {
+        BackendService.addSubscription(["ui"], (service, data) => {
+            if (service === "ui.command" && typeof data === "string" && data !== "") {
+                root.run(data);
+            }
+        });
     }
 
     function toggleSettings(screenName) {

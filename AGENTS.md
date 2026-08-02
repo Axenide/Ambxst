@@ -46,10 +46,11 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 │       ├── presets/      # Theme/layout preset switcher
 │       └── tools/        # Quick utility access (OCR, recording, etc.)
 ├── assets/               # Wallpapers, color presets, AI provider configs, sounds
-├── scripts/              # Python/Bash backends (system monitor, clipboard, OCR)
+├── scripts/              # Residual Python/Bash helpers (most logic in backend/)
+├── backend/              # Go backend daemon + CLI (replaces cli.sh)
 ├── nix/                  # Nix flake, packages, and module definitions
 ├── shell.qml             # Entry point: ShellRoot, Variants, service init
-└── cli.sh                # Launch wrapper and IPC controller
+└── cli.sh                # REMOVED — replaced by Go binary `ambxst`
 ```
 
 ## WHERE TO LOOK
@@ -114,8 +115,8 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 ```bash
 # Run shell (requires Quickshell + Hyprland)
 qs -p shell.qml
-# Or via CLI wrapper:
-./cli.sh
+# Or via the Go CLI binary (spawns daemon, ensures config, execs qs):
+ambxst
 
 # Install (Arch/Fedora/NixOS)
 curl -L get.axeni.de/ambxst | sh

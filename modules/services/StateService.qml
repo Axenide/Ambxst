@@ -6,7 +6,9 @@ import Quickshell.Io
 
 /**
  * Centralized state management service
- * Handles persistent state storage for all services
+ * Handles persistent state storage for all services.
+ * Writes are owned by the Go daemon (config.stateSet under lock), which
+ * eliminates the race with GameModeService writing the same states.json.
  */
 Singleton {
     id: root
@@ -17,40 +19,6 @@ Singleton {
 
     signal stateLoaded()
 
-    property Process writeProcess: Process {
-        running: false
-        stdout: SplitParser {}
-    }
-
-    property Process readProcess: Process {
-        running: false
-        stdout: SplitParser {
-            onRead: data => {
-                try {
-                    const content = data ? data.trim() : "";
-                    if (content) {
-                        root.state = JSON.parse(content);
-                    } else {
-                        root.state = {};
-                    }
-                } catch (e) {
-                    console.warn("StateService: Failed to parse state file:", e);
-                    root.state = {};
-                }
-                root.initialized = true;
-                root.stateLoaded();
-            }
-        }
-        onExited: code => {
-            if (code !== 0) {
-                // File doesn't exist yet
-                root.state = {};
-                root.initialized = true;
-                root.stateLoaded();
-            }
-        }
-    }
-
     /**
      * Get a value from state
      * @param key - The state key
@@ -58,6 +26,7 @@ Singleton {
      * @return The stored value or defaultValue
      */
     function get(key, defaultValue) {
+        if (key === undefined || key === null) return defaultValue;
         if (root.state[key] !== undefined) {
             return root.state[key];
         }
@@ -65,7 +34,7 @@ Singleton {
     }
 
     /**
-     * Set a value in state and persist it
+     * Set a value in state and persist it via the daemon (locked RMW).
      * @param key - The state key
      * @param value - The value to store
      */
@@ -74,34 +43,36 @@ Singleton {
             console.warn("StateService: Attempted to set state before initialization");
             return;
         }
-
         root.state[key] = value;
-        save();
+        BackendService.call("config.stateSet", {key: key, value: value});
     }
 
     /**
-     * Save current state to disk
+     * Save current in-memory state to disk (whole-document merge).
      */
     function save() {
-        if (!root.initialized) {
-            return;
-        }
-
-        try {
-            const json = JSON.stringify(root.state);
-            writeProcess.command = ["sh", "-c", `printf '%s' '${json}' > "${root.stateFile}"`];
-            writeProcess.running = true;
-        } catch (e) {
-            console.warn("StateService: Failed to save state:", e);
-        }
+        if (!root.initialized) return;
+        BackendService.call("config.statesSet", {data: root.state});
     }
 
     /**
-     * Load state from disk
+     * Load state from disk via the daemon.
      */
     function load() {
-        readProcess.command = ["cat", stateFile];
-        readProcess.running = true;
+        BackendService.call("config.statesGet", {}, (result, error) => {
+            if (error) {
+                console.warn("StateService: Failed to load state:", error);
+                root.state = {};
+            } else if (result && typeof result === "object") {
+                root.state = result;
+            } else {
+                root.state = {};
+            }
+            if (!root.initialized) {
+                root.initialized = true;
+                root.stateLoaded();
+            }
+        });
     }
 
     /**

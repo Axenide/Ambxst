@@ -36,6 +36,9 @@
         in {
           default = Ambxst;
           Ambxst = Ambxst;
+          backend = import ./nix/packages/backend.nix {
+            inherit pkgs lib version;
+          };
         }
       );
 

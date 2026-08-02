@@ -18,68 +18,49 @@ QtObject {
     readonly property string schemaPath: Qt.resolvedUrl("clipboard_init.sql").toString().replace("file://", "")
     readonly property string insertScriptPath: Qt.resolvedUrl("../../scripts/clipboard_insert.sh").toString().replace("file://", "")
     readonly property string checkScriptPath: Qt.resolvedUrl("../../scripts/clipboard_check.sh").toString().replace("file://", "")
-    readonly property string watchScriptPath: Qt.resolvedUrl("../../scripts/clipboard_watch.sh").toString().replace("file://", "")
     readonly property string linkPreviewScriptPath: Qt.resolvedUrl("../../scripts/link_preview.py").toString().replace("file://", "")
 
     property bool _initialized: false
-
-    property var suspendConnections: Connections {
-        target: SuspendManager
-        function onWakingUp() {
-            // Small delay to allow wl-paste to work again after wake
-            wakeRestartTimer.restart();
-        }
-    }
-
-    property var wakeRestartTimer: Timer {
-        id: wakeRestartTimer
-        interval: 2000
-        repeat: false
-        onTriggered: {
-            if (root._initialized) {
-                root.list();
-                clipboardWatcher.running = true;
-            }
-        }
-    }
-
     signal listCompleted()
 
-    // Clipboard watcher using custom script that monitors changes
-    property Process clipboardWatcher: Process {
-        running: root._initialized && !SuspendManager.isSuspending
-        command: [watchScriptPath, checkScriptPath, dbPath, insertScriptPath, binaryDataDir]
-        
-        stdout: StdioCollector {
-            onStreamFinished: {
-                // When watcher outputs something, refresh the list
-                var lines = text.trim().split('\n');
-                for (var i = 0; i < lines.length; i++) {
-                    if (lines[i] === "REFRESH_LIST") {
-                        Qt.callLater(root.list);
-                    }
-                }
+    on_InitializedChanged: {
+        Qt.callLater(() => {
+            if (root._initialized && !root._watchBound) {
+                root.bindWatcher();
             }
+        });
+    }
+
+    // Clipboard watcher — owned by the Go daemon (wl-paste --watch in backend).
+    // The daemon detects clipboard changes, inserts new items via the shared
+    // scripts, and emits a "clipboard.refresh" event; we just re-list.
+    property int clipboardWatchHandle: -1
+    property bool _watchBound: false
+
+    property var _suspendWatch: Connections {
+        target: SuspendManager
+        function onPreparingForSleep() {
+            if (root.clipboardWatchHandle >= 0) BackendService.setSubscriptionActive(root.clipboardWatchHandle, false);
         }
-        
-        stderr: StdioCollector {
-            onStreamFinished: {
-                if (text.length > 0 && !text.includes("No selection")) {
-                    console.warn("ClipboardService: watcher stderr:", text);
+        function onWakingUp() {
+            Qt.callLater(() => {
+                if (root._initialized && !SuspendManager.isSuspending && root.clipboardWatchHandle >= 0) {
+                    BackendService.setSubscriptionActive(root.clipboardWatchHandle, true);
                 }
-            }
+            });
         }
-        
-        onExited: function(code) {
-            // Watcher should keep running, restart if it exits (unless suspending)
-            if (root._initialized && !SuspendManager.isSuspending) {
-                console.warn("ClipboardService: watcher exited with code:", code, "- restarting...");
-                Qt.callLater(function() {
-                    if (root._initialized && !SuspendManager.isSuspending) {
-                        clipboardWatcher.running = true;
-                    }
-                });
+    }
+
+    function bindWatcher() {
+        if (root._watchBound) return;
+        root._watchBound = true;
+        root.clipboardWatchHandle = BackendService.addSubscription(["clipboard"], (service, data) => {
+            if (service === "clipboard.refresh") {
+                Qt.callLater(root.list);
             }
+        });
+        if (root._initialized) {
+            BackendService.setSubscriptionActive(root.clipboardWatchHandle, true);
         }
     }
 
