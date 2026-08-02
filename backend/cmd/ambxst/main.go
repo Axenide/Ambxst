@@ -198,7 +198,7 @@ func launch() {
 }
 
 func shellDir() string {
-	// Nix installs the binary separately from shell sources; allow an override.
+	// Precedence: env override > auto-detect from binary location > path file.
 	if dir := os.Getenv("AMBXST_SHELL"); dir != "" {
 		return dir
 	}
@@ -217,6 +217,16 @@ func shellDir() string {
 		// <repo>/backend/bin/<binary> => repo = grandparent.
 		if filepath.Base(parent) == "bin" && filepath.Base(filepath.Dir(parent)) == "backend" {
 			return filepath.Dir(filepath.Dir(parent))
+		}
+	}
+	// Installed to /usr/local/bin: the installer writes the repo location so
+	// the binary can still find shell sources and scripts.
+	if p := paths.New().ShellPathFile(); p != "" {
+		if data, err := os.ReadFile(p); err == nil {
+			dir := strings.TrimSpace(string(data))
+			if fileExists(filepath.Join(dir, "shell.qml")) {
+				return dir
+			}
 		}
 	}
 	if cwd, err := os.Getwd(); err == nil && fileExists(filepath.Join(cwd, "shell.qml")) {

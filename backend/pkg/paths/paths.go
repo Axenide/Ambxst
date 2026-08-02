@@ -89,3 +89,9 @@ func (p *Paths) ActivePresetFile() string {
 func (p *Paths) KeybindsFile() string {
 	return filepath.Join(p.ConfigDir, "binds.json")
 }
+
+// ShellPathFile stores the repo location for the installed binary
+// (/usr/local/bin) to find shell sources and scripts.
+func (p *Paths) ShellPathFile() string {
+	return filepath.Join(p.DataDir, "shell_repo")
+}

@@ -122,7 +122,7 @@ install_dependencies() {
       kf6-syntax-highlighting kf6-breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig grim slurp ImageMagick jq sqlite upower
       wl-clipboard wlsunset wtype zbar glib2 pipx zenity power-profiles-daemon
-      python3.12 libnotify flatpak
+      python3.12 libnotify flatpak golang
       tesseract tesseract-langpack-eng tesseract-langpack-spa tesseract-langpack-jpn
       tesseract-langpack-chi_sim tesseract-langpack-chi_tra tesseract-langpack-kor tesseract-langpack-lat
       google-roboto-fonts google-roboto-mono-fonts dejavu-sans-fonts liberation-fonts
@@ -169,7 +169,7 @@ install_dependencies() {
       libwebp libavif syntax-highlighting breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig grim slurp imagemagick jq sqlite upower
       wl-clipboard wlsunset wtype zbar glib2 python-pipx zenity inetutils power-profiles-daemon
-      python312 libnotify
+      python312 libnotify golang
       tesseract tesseract-data-eng tesseract-data-spa tesseract-data-jpn
       tesseract-data-chi_sim tesseract-data-chi_tra tesseract-data-kor tesseract-data-lat
       ttf-roboto ttf-roboto-mono ttf-dejavu ttf-liberation noto-fonts noto-fonts-cjk noto-fonts-emoji
@@ -346,11 +346,11 @@ build_backend() {
     exit 1
   }
   log_info "Building Ambxst Go backend..."
-  (cd "$INSTALL_PATH/backend" && go build -o ../ambxst ./cmd/ambxst) || {
+  (cd "$INSTALL_PATH/backend" && go build -o /tmp/ambxst-bin ./cmd/ambxst) || {
     log_error "Failed to build Ambxst backend."
     exit 1
   }
-  log_success "Backend built to $INSTALL_PATH/ambxst"
+  log_success "Backend built to /tmp/ambxst-bin"
 }
 
 # === Quickshell Build ===
@@ -452,18 +452,15 @@ setup_launcher() {
   [[ -f "$HOME/.local/bin/ambxst" ]] && rm -f "$HOME/.local/bin/ambxst"
 
   sudo mkdir -p "$BIN_DIR"
-  local LAUNCHER="$BIN_DIR/ambxst"
 
-  log_info "Creating launcher at $LAUNCHER..."
-  sudo tee "$LAUNCHER" >/dev/null <<-EOF
-		#!/usr/bin/env bash
-		export PATH="$HOME/.local/bin:\$PATH"
-		export QML2_IMPORT_PATH="$HOME/.local/lib/qml:\$QML2_IMPORT_PATH"
-		export QML_IMPORT_PATH="\$QML2_IMPORT_PATH"
-		exec "$INSTALL_PATH/ambxst" "\$@"
-	EOF
-  sudo chmod +x "$LAUNCHER"
-  log_success "Launcher created"
+  log_info "Installing ambxst binary to $BIN_DIR/ambxst..."
+  sudo install -m 755 /tmp/ambxst-bin "$BIN_DIR/ambxst"
+  rm -f /tmp/ambxst-bin
+
+  # Record the repo location so the installed binary can find shell sources.
+  mkdir -p "$HOME/.local/share/ambxst"
+  echo "$INSTALL_PATH" >"$HOME/.local/share/ambxst/shell_repo"
+  log_success "Binary installed"
 }
 
 # === Main ===
