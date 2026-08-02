@@ -13,7 +13,7 @@ import (
 const (
 	openMeteoForecast = "https://api.open-meteo.com/v1/forecast"
 	openMeteoGeo      = "https://geocoding-api.open-meteo.com/v1/search"
-	ipapiGeo          = "https://ipapi.co/json/"
+	ipapiGeo          = "http://ip-api.com/json/"
 )
 
 // WeatherResponse mirrors the open-meteo payload consumed by WeatherService.qml.
@@ -85,18 +85,18 @@ func (c *Client) resolveCoords(location string) (float64, float64, error) {
 
 func (c *Client) geoip() (string, error) {
 	var data struct {
-		Latitude  float64          `json:"latitude"`
-		Longitude float64          `json:"longitude"`
-		Error     json.RawMessage  `json:"error"`
-		Reason    string           `json:"reason"`
+		Status  string  `json:"status"`
+		Message string  `json:"message"`
+		Latitude  float64 `json:"lat"`
+		Longitude float64 `json:"lon"`
 	}
 	if err := c.getJSON(ipapiGeo, &data); err != nil {
 		return "", err
 	}
-	if len(data.Error) > 0 && string(data.Error) != "false" {
-		msg := strings.Trim(string(data.Error), `"`)
-		if data.Reason != "" {
-			msg = data.Reason
+	if data.Status != "success" {
+		msg := data.Message
+		if msg == "" {
+			msg = "could not determine location"
 		}
 		return "", fmt.Errorf("geoip: %s", msg)
 	}
