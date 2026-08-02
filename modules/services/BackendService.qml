@@ -145,18 +145,39 @@ Singleton {
         delete root.subscriptions[key];
     }
 
+    // If the socket isn't connected yet (cold start, daemon just spawned),
+    // queue the request and drain it once connected — otherwise requests fired
+    // during startup are silently dropped ("device not open").
+    property var pendingQueue: []
+
+    function _drainQueue() {
+        if (!root.socketAvailable) return;
+        while (root.pendingQueue.length > 0) {
+            const item = root.pendingQueue.shift();
+            if (item.callback !== undefined) root.pending[item.id] = item.callback;
+            reqSocket.write(item.msg + "\n");
+            reqSocket.flush();
+        }
+    }
+
     function call(method, params, callback) {
         if (!params) params = {};
         const id = root.nextId++;
-        root.pending[id] = callback;
-        reqSocket.write(JSON.stringify({id, method, params}) + "\n");
-        reqSocket.flush();
+        const msg = JSON.stringify({id, method, params});
+        if (callback !== undefined) root.pending[id] = callback;
+        if (root.socketAvailable) {
+            reqSocket.write(msg + "\n");
+            reqSocket.flush();
+            root._drainQueue();
+        } else {
+            root.pendingQueue.push({id, msg, callback});
+            root.tryConnect();
+        }
     }
 
     function notify(method, params) {
         if (!params) params = {};
-        reqSocket.write(JSON.stringify({id: root.nextId++, method, params}) + "\n");
-        reqSocket.flush();
+        root.call(method, params, undefined);
     }
 
     Component.onCompleted: {
@@ -234,7 +255,11 @@ Singleton {
 
         onConnectionStateChanged: {
             root.socketAvailable = reqSocket.connected;
-            if (!reqSocket.connected) root.onSocketDown();
+            if (reqSocket.connected) {
+                root._drainQueue();
+            } else {
+                root.onSocketDown();
+            }
         }
     }
 
