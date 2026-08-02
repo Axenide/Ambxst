@@ -78,12 +78,14 @@ QtObject {
             p = pair().then(() => BluetoothService.connectDevice(address));
         }
 
-        return p.catch(e => {
-            root.handleError(e);
-        }).finally(() => {
+        // Qt's JS engine has no Promise.prototype.finally; use then/catch
+        const finish = () => {
             connecting = false;
             BluetoothService.queueInfoUpdate(root);
-        });
+        };
+        return p.catch(e => {
+            root.handleError(e);
+        }).then(finish, finish);
     }
 
     function setTrust(trusted: bool) {

@@ -338,7 +338,7 @@ Item {
 
             WorkspaceButton {
                 workspaceValue: getWorkspaceId(index)
-                occupied: workspaceOccupied[index]
+                occupied: workspaceOccupied[index] === true
                 active: (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == getWorkspaceId(index)
                 buttonWidth: workspaceButtonWidth
                 iconSize: workspaceIconSize
@@ -368,7 +368,7 @@ Item {
 
             WorkspaceButton {
                 workspaceValue: getWorkspaceId(index)
-                occupied: workspaceOccupied[index]
+                occupied: workspaceOccupied[index] === true
                 active: (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == getWorkspaceId(index)
                 buttonWidth: workspaceButtonWidth
                 iconSize: workspaceIconSize

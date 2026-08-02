@@ -318,25 +318,37 @@ Singleton {
 
     function connectDevice(address: string) {
         isUpdating = true;
-        return runAsync(["bluetoothctl", "connect", address]).finally(() => {
+        return runAsync(["bluetoothctl", "connect", address]).then(() => {
             updateDevices();
             isUpdating = false;
+        }).catch(e => {
+            updateDevices();
+            isUpdating = false;
+            throw e;
         });
     }
 
     function disconnectDevice(address: string) {
         isUpdating = true;
-        return runAsync(["bluetoothctl", "disconnect", address]).finally(() => {
+        return runAsync(["bluetoothctl", "disconnect", address]).then(() => {
             updateDevices();
             isUpdating = false;
+        }).catch(e => {
+            updateDevices();
+            isUpdating = false;
+            throw e;
         });
     }
 
     function pairDevice(address: string) {
         isUpdating = true;
-        return runAsync(["bluetoothctl", "pair", address]).finally(() => {
+        return runAsync(["bluetoothctl", "pair", address]).then(() => {
             updateDevices();
             isUpdating = false;
+        }).catch(e => {
+            updateDevices();
+            isUpdating = false;
+            throw e;
         });
     }
 
@@ -346,9 +358,13 @@ Singleton {
 
     function removeDevice(address: string) {
         isUpdating = true;
-        return runAsync(["bluetoothctl", "remove", address]).finally(() => {
+        return runAsync(["bluetoothctl", "remove", address]).then(() => {
             updateDevices();
             isUpdating = false;
+        }).catch(e => {
+            updateDevices();
+            isUpdating = false;
+            throw e;
         });
     }
 
