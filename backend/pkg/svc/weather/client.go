@@ -128,6 +128,14 @@ func (c *Client) httpGet(rawurl string) (*WeatherResponse, error) {
 	if len(data) == 0 || string(data) == "null" {
 		return nil, fmt.Errorf("empty response")
 	}
+	// open-meteo signals errors with {"error":true,"reason":"..."}.
+	var apiErr struct {
+		Error  bool   `json:"error"`
+		Reason string `json:"reason"`
+	}
+	if json.Unmarshal(data, &apiErr) == nil && apiErr.Error {
+		return nil, fmt.Errorf("weather api: %s", apiErr.Reason)
+	}
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, err
 	}

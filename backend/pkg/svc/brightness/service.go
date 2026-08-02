@@ -173,6 +173,10 @@ func (s *Service) targetsFor(monitorName string) []*target {
 }
 
 func (s *Service) matchTargets(name string) []*target {
+	// "backlight" matches all internal backlight devices.
+	if name == "backlight" {
+		return s.internalTargets()
+	}
 	// Internal panel names contain edp/lvds/dsi.
 	lower := strings.ToLower(name)
 	for _, t := range s.internalTargets() {
@@ -181,6 +185,14 @@ func (s *Service) matchTargets(name string) []*target {
 		}
 	}
 	// External: DDC bus entries are matched by name/order like Brightness.qml.
+	if strings.HasPrefix(lower, "ddc-") {
+		bus := strings.TrimPrefix(lower, "ddc-")
+		for _, t := range s.ddcTargets() {
+			if t.name == "ddc-"+bus {
+				return []*target{t}
+			}
+		}
+	}
 	ddc := s.ddcTargets()
 	if len(ddc) > 0 {
 		return ddc[:1]

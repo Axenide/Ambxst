@@ -11,6 +11,8 @@ import QtQuick
 
 /**
  * For managing brightness of monitors. Supports both brightnessctl and ddcutil.
+ * Write operations (set/adjust) are delegated to the Go daemon (brightness.*),
+ * keeping per-screen mapping and DDC model detection local.
  */
 Singleton {
     id: root
@@ -136,10 +138,6 @@ Singleton {
         onExited: root.ddcMonitorsChanged()
     }
 
-    Process {
-        id: setProc
-    }
-
     component BrightnessMonitor: QtObject {
         id: monitor
 
@@ -190,41 +188,26 @@ Singleton {
                 return;
             if (isDdc && !busNum)
                 return;
-            initProc.command = isDdc ? ["ddcutil", "-b", busNum, "getvcp", "10"] : ["sh", "-c", `echo "a b c $(brightnessctl g) $(brightnessctl m)"`];
-            initProc.running = true;
-        }
-
-        readonly property Process initProc: Process {
-            stdout: SplitParser {
-                onRead: data => {
-                    const trimmed = data.trim();
-                    // Try verbose format: "current value = X, max value = Y"
-                    const verboseMatch = trimmed.match(/current\s+value\s*=\s*(\d+).*max\s+value\s*=\s*(\d+)/);
-                    if (verboseMatch) {
-                        const currentRaw = parseInt(verboseMatch[1]);
-                        const maxRaw = parseInt(verboseMatch[2]);
-                        if (!isNaN(currentRaw) && !isNaN(maxRaw) && maxRaw > 0) {
-                            monitor.rawMaxBrightness = maxRaw;
-                            monitor.brightness = currentRaw / monitor.rawMaxBrightness;
-                            monitor.ready = true;
-                            root.brightnessChanged(monitor.brightness, monitor.screen);
-                        }
-                        return;
-                    }
-                    // Fallback: token-based (brief format / brightnessctl)
-                    const tokens = trimmed.split(/\s+/);
-                    if (tokens.length < 2)
-                        return;
-                    const currentRaw = parseInt(tokens[tokens.length - 2]);
-                    const maxRaw = parseInt(tokens[tokens.length - 1]);
-                    if (isNaN(currentRaw) || isNaN(maxRaw) || maxRaw <= 0)
-                        return;
-                    monitor.rawMaxBrightness = maxRaw;
-                    monitor.brightness = currentRaw / monitor.rawMaxBrightness;
+            // Read current brightness through the daemon (brightness.list).
+            BackendService.call("brightness.list", {}, (result, error) => {
+                if (error || !result || !Array.isArray(result)) {
+                    monitor.ready = true;
+                    return;
+                }
+                // Match this monitor's entry by kind+bus: brightnessctl entries
+                // have name "backlight-<dev>"; ddc entries "ddc-<bus>".
+                const target = isDdc
+                    ? result.find(e => e.kind === "ddcutil" && e.monitor === "ddc-" + monitor.busNum)
+                    : result.find(e => e.kind === "brightnessctl");
+                if (target && target.brightness !== undefined) {
+                    monitor.rawMaxBrightness = 100;
+                    monitor.brightness = target.brightness;
                     monitor.ready = true;
                     root.brightnessChanged(monitor.brightness, monitor.screen);
+                } else {
+                    monitor.ready = true;
                 }
-            }
+            });
         }
 
         // We need a delay for DDC monitors because they can be quite slow and might act weird with rapid changes
@@ -239,9 +222,11 @@ Singleton {
         function syncBrightness() {
             if (isDdc && !busNum)
                 return;
-            const rounded = Math.round(monitor.brightness * monitor.rawMaxBrightness);
-            setProc.command = isDdc ? ["ddcutil", "-b", busNum, "setvcp", "10", rounded] : ["brightnessctl", "--class", "backlight", "s", rounded, "--quiet"];
-            setProc.startDetached();
+            const value = monitor.brightness;
+            BackendService.call("brightness.set", {
+                value: value,
+                monitor: isDdc ? "ddc-" + monitor.busNum : "backlight"
+            });
         }
 
         function setBrightness(value: real): void {
