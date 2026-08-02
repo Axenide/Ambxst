@@ -413,7 +413,7 @@ Item {
                     sourceComponent: IconToggleButton {
                         id: pinButton
                         active: root.pinned
-                        icon: Icons.pin
+                        glyph: Icons.pin
                         tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
                         idleRotation: 45
 
@@ -461,7 +461,7 @@ Item {
 
                     sourceComponent: IconToggleButton {
                         id: overviewButton
-                        icon: Icons.overview
+                        glyph: Icons.overview
                         tooltipText: "Overview"
                         iconPixelSize: 18
 
@@ -491,7 +491,7 @@ Item {
                     sourceComponent: IconToggleButton {
                         id: pinButtonV
                         active: root.pinned
-                        icon: Icons.pin
+                        glyph: Icons.pin
                         tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
                         idleRotation: 45
 
@@ -539,7 +539,7 @@ Item {
 
                     sourceComponent: IconToggleButton {
                         id: overviewButtonV
-                        icon: Icons.overview
+                        glyph: Icons.overview
                         tooltipText: "Overview"
                         iconPixelSize: 18
 

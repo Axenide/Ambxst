@@ -13,7 +13,7 @@ Button {
     id: root
 
     property bool active: false
-    property string icon: ""
+    property string glyph: ""
     property string tooltipText: ""
     property real buttonSize: 32
     property real iconPixelSize: 16
@@ -62,7 +62,7 @@ Button {
     }
 
     contentItem: Text {
-        text: root.icon
+        text: root.glyph
         font.family: Icons.font
         font.pixelSize: root.iconPixelSize
         color: root.barStyle ? (root.active ? bgRect.item : (root.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground))) : (root.active ? Styling.srItem("primary") : Colors.overBackground)

@@ -95,13 +95,14 @@ Item {
             event.accepted = true;
         }
     }
-    Keys.onHomePressed: event => {
-        root.value = 0;
-        event.accepted = true;
-    }
-    Keys.onEndPressed: event => {
-        root.value = 1;
-        event.accepted = true;
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Home) {
+            root.value = 0;
+            event.accepted = true;
+        } else if (event.key === Qt.Key_End) {
+            root.value = 1;
+            event.accepted = true;
+        }
     }
 
     // Helper function to apply step snapping

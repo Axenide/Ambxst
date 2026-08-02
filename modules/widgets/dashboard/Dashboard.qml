@@ -91,6 +91,12 @@ NotchAnimationBehavior {
     // Usar el comportamiento estándar de animaciones del notch
     isVisible: GlobalStates.dashboardOpen
 
+    // The notch StackView push already scales the panel in; the base's own
+    // 0.85-scale entrance compound-animates the large dashboard surface and
+    // reads as a bounce. Enter with a plain fade instead.
+    scale: 1.0
+    slideOffset: 0
+
     // Navegar a la pestaña seleccionada cuando se abre el dashboard
     Component.onCompleted: {
         root.state.currentTab = GlobalStates.dashboardCurrentTab;

@@ -285,8 +285,7 @@ QtObject {
     // Each call gets its own instance, so concurrent requests can't clobber
     // each other's request id (the shared-process race in the old
     // getContentProcess / loadImageProcess / linkPreviewProcess).
-    Component {
-        id: requestProcComp
+    property Component requestProcComp: Component {
         Process {
             property var cmd: []
             property var onDone: null

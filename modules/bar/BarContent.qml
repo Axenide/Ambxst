@@ -391,7 +391,7 @@ Item {
                             sourceComponent: IconToggleButton {
                                 id: pinButton
                                 active: root.pinned
-                                icon: Icons.pin
+                                glyph: Icons.pin
                                 tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
                                 buttonSize: 36
                                 iconPixelSize: Styling.fontSize(4)
@@ -606,7 +606,7 @@ Item {
                                     sourceComponent: IconToggleButton {
                                         id: pinButtonV
                                         active: root.pinned
-                                        icon: Icons.pin
+                                        glyph: Icons.pin
                                         tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
                                         buttonSize: 36
                                         iconPixelSize: Styling.fontSize(4)

@@ -24,8 +24,7 @@ QtObject {
 
     // Compiled once; each single-shot system query is one self-destroying
     // instance. No Qt.createQmlObject, no leaked Process/StdioCollector.
-    Component {
-        id: singleShotProc
+    property Component singleShotProc: Component {
         Process {
             property string cmdLine: ""
             property var onDone: null
@@ -42,8 +41,7 @@ QtObject {
     }
 
     // Long-lived dbus-monitor for fprintd VerifyStart/VerifyStop calls
-    Component {
-        id: dbusMonitorComp
+    property Component dbusMonitorComp: Component {
         Process {
             command: ["dbus-monitor", "--session", "interface='net.reactivated.Fprint.Device'", "type=method_call"]
             stdout: SplitParser {
@@ -197,8 +195,7 @@ QtObject {
     // interceptor owns the single instance. (The old code relied on a
     // `typeof FingerprintPopup` check that could never be true, making the
     // whole polkit/sudo indicator dead code.)
-    Component {
-        id: fpPopupComp
+    property Component fpPopupComp: Component {
         FingerprintPopup {}
     }
 

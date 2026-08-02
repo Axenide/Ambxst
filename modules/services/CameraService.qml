@@ -15,7 +15,7 @@ import QtQuick
 Singleton {
     id: root
 
-    signal camerasChanged(var cameras)
+    signal cameraListChanged(var cameras)
     signal cameraUsageChanged(bool inUse, var users)
 
     // List of { name, node } objects, ordered by device node.
@@ -79,7 +79,7 @@ Singleton {
         const camChanged = !arrayEqual(root.cameras, newCameras);
         if (camChanged) {
             root.cameras = newCameras;
-            root.camerasChanged(newCameras);
+            root.cameraListChanged(newCameras);
         }
 
         if (newInUse !== root.cameraInUse || !arrayEqual(root.cameraUsers, newUsers)) {

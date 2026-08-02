@@ -78,8 +78,7 @@ QtObject {
     property int _pendingFreezes: 0
     property bool _freezeFailed: false
 
-    Component {
-        id: grimProcComp
+    property Component grimProcComp: Component {
         Process {
             property string monitorName: ""
             property string outputPath: ""

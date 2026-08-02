@@ -19,8 +19,7 @@ QtObject {
 
     signal infoUpdated()
 
-    Timer {
-        id: errorTimer
+    property Timer errorTimer: Timer {
         interval: 5000
         repeat: false
         onTriggered: root.lastError = ""
