@@ -133,8 +133,11 @@ Singleton {
     function generateToml() {
         let toml = "";
 
-        toml += "[startup]\n";
-        toml += "exec-once = \"ambxst+\"\n";
+        // No [startup] exec-once: the shell is launched by the ambxst-plus
+        // systemd user unit and spawns the axctl daemon itself (with -c and
+        // the correct config path). A hyprland exec-once here would start a
+        // second shell (previously "ambxst+") or a daemon on the legacy
+        // config path (a bare "axctl daemon").
 
         function tomlEscape(str) {
             if (str === null || str === undefined)
