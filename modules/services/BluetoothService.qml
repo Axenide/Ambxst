@@ -319,14 +319,30 @@ Singleton {
 
     function connectDevice(address: string) {
         isUpdating = true;
-        return runAsync(["bluetoothctl", "connect", address]).then(() => {
+        const finish = () => {
             updateDevices();
             isUpdating = false;
-        }).catch(e => {
-            updateDevices();
-            isUpdating = false;
-            throw e;
-        });
+        };
+        return runAsync(["bluetoothctl", "connect", address]).then(
+            () => finish(),
+            e => {
+                // bluetoothctl can exit non-zero while the device actually connects
+                // (e.g. spurious br-connection-create-socket on reconnect). Verify
+                // the real link state before surfacing a failure.
+                return runAsync(["bluetoothctl", "info", address])
+                    .then(info => {
+                        const connected = info.split("\n")
+                            .filter(l => /^Connected:/.test(l.trim()))
+                            .some(l => l.trim() === "Connected: yes");
+                        if (connected) return finish();
+                        throw e;
+                    })
+                    .then(() => finish(), () => {
+                        finish();
+                        throw e;
+                    });
+            }
+        );
     }
 
     function disconnectDevice(address: string) {
