@@ -203,13 +203,18 @@ func shellDir() string {
 		return dir
 	}
 	if exe, err := os.Executable(); err == nil {
-		// In dev, backend binary is at <repo>/backend or <repo>/backend/bin.
+		// In dev, the binary lives at <repo>/ambxst (repo root) or inside
+		// <repo>/backend or <repo>/backend/bin (legacy layouts).
 		parent := filepath.Dir(exe)
-		// Accept repo-relative: <repo>/backend/<binary> => repo = parent's parent.
+		// <repo>/<binary> => repo = parent.
+		if fileExists(filepath.Join(parent, "shell.qml")) {
+			return parent
+		}
+		// <repo>/backend/<binary> => repo = parent's parent.
 		if filepath.Base(parent) == "backend" {
 			return filepath.Dir(parent)
 		}
-		// Accept <repo>/backend/bin/<binary> => repo = grandparent.
+		// <repo>/backend/bin/<binary> => repo = grandparent.
 		if filepath.Base(parent) == "bin" && filepath.Base(filepath.Dir(parent)) == "backend" {
 			return filepath.Dir(filepath.Dir(parent))
 		}

@@ -113,10 +113,19 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 
 ## COMMANDS
 ```bash
-# Run shell (requires Quickshell + Hyprland)
+# Build the Go backend binary (outputs ./ambxst at repo root, gitignored)
+make build
+# Build + run the shell via the Go binary (spawns daemon, execs qs)
+make run
+# Nix package build (backend)
+make nix
+# Run the daemon standalone (headless IPC testing)
+make daemon
+
+# Run shell directly (requires Quickshell + Hyprland)
 qs -p shell.qml
 # Or via the Go CLI binary (spawns daemon, ensures config, execs qs):
-ambxst
+./ambxst
 
 # Install (Arch/Fedora/NixOS)
 curl -L get.axeni.de/ambxst | sh

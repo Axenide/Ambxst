@@ -346,11 +346,11 @@ build_backend() {
     exit 1
   }
   log_info "Building Ambxst Go backend..."
-  (cd "$INSTALL_PATH/backend" && go build -o bin/ambxst ./cmd/ambxst) || {
+  (cd "$INSTALL_PATH/backend" && go build -o ../ambxst ./cmd/ambxst) || {
     log_error "Failed to build Ambxst backend."
     exit 1
   }
-  log_success "Backend built to $INSTALL_PATH/backend/bin/ambxst"
+  log_success "Backend built to $INSTALL_PATH/ambxst"
 }
 
 # === Quickshell Build ===
@@ -460,7 +460,7 @@ setup_launcher() {
 		export PATH="$HOME/.local/bin:\$PATH"
 		export QML2_IMPORT_PATH="$HOME/.local/lib/qml:\$QML2_IMPORT_PATH"
 		export QML_IMPORT_PATH="\$QML2_IMPORT_PATH"
-		exec "$INSTALL_PATH/backend/bin/ambxst" "\$@"
+		exec "$INSTALL_PATH/ambxst" "\$@"
 	EOF
   sudo chmod +x "$LAUNCHER"
   log_success "Launcher created"

@@ -23,6 +23,7 @@ Singleton {
     property bool connected: false
 
     readonly property var daemonCandidates: [
+        Quickshell.shellDir + "/ambxst",
         Quickshell.shellDir + "/backend/ambxst",
         Quickshell.shellDir + "/backend/bin/ambxst",
         "ambxst"
