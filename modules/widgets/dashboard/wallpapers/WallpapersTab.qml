@@ -359,7 +359,7 @@ FocusScope {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -389,7 +389,7 @@ FocusScope {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -448,7 +448,7 @@ FocusScope {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
 
@@ -457,14 +457,14 @@ FocusScope {
                                         text: Icons.accept
                                         color: Styling.srItem("primary")
                                         font.family: Icons.font
-                                        font.pixelSize: 20
+                                        font.pixelSize: Styling.fontSize(6)
                                         scale: perScreenCheckbox.checked ? 1.0 : 0.0
 
                                         Behavior on scale {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -501,7 +501,7 @@ FocusScope {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -530,7 +530,7 @@ FocusScope {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -600,7 +600,7 @@ FocusScope {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
 
@@ -609,14 +609,14 @@ FocusScope {
                                         text: Icons.accept
                                         color: Styling.srItem("primary")
                                         font.family: Icons.font
-                                        font.pixelSize: 20
+                                        font.pixelSize: Styling.fontSize(6)
                                         scale: oledCheckbox.checked ? 1.0 : 0.0
 
                                         Behavior on scale {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -729,7 +729,7 @@ FocusScope {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
 
@@ -738,14 +738,14 @@ FocusScope {
                                         text: Icons.accept
                                         color: Styling.srItem("primary")
                                         font.family: Icons.font
-                                        font.pixelSize: 20
+                                        font.pixelSize: Styling.fontSize(6)
                                         scale: tintCheckbox.checked ? 1.0 : 0.0
 
                                         Behavior on scale {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -888,7 +888,7 @@ FocusScope {
                         enabled: Config.animDuration > 0 && !wallpaperGrid.isScrolling
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -896,7 +896,7 @@ FocusScope {
                         enabled: Config.animDuration > 0 && !wallpaperGrid.isScrolling
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1110,7 +1110,7 @@ FocusScope {
                                         anchors.centerIn: parent
                                         text: Icons.circleNotch
                                         font.family: Icons.font
-                                        font.pixelSize: 24
+                                        font.pixelSize: Styling.fontSize(10)
                                         color: Colors.overSurfaceVariant
                                         rotation: 0
 
@@ -1166,7 +1166,7 @@ FocusScope {
                         enabled: Config.animDuration > 0
                         ColorAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1174,7 +1174,7 @@ FocusScope {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 3
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
                 }

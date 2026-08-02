@@ -216,7 +216,7 @@ Item {
                             text: Icons.info
                             textFormat: Text.RichText
                             font.family: Icons.font
-                            font.pixelSize: 16
+                            font.pixelSize: Styling.fontSize(2)
                             color: topRow.showAppName ? Colors.outline : Styling.srItem("overprimary")
                             visible: !groupSmallAppIcon.visible
                         }

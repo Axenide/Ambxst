@@ -78,7 +78,7 @@ PanelWindow {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -104,7 +104,7 @@ PanelWindow {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -112,7 +112,7 @@ PanelWindow {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -145,7 +145,7 @@ PanelWindow {
                         anchors.centerIn: parent
                         text: Icons.overview
                         font.family: Icons.font
-                        font.pixelSize: 24
+                        font.pixelSize: Styling.fontSize(10)
                         color: Styling.srItem("overprimary")
                     }
                 }

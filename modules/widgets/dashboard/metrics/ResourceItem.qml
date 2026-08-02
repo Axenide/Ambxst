@@ -22,7 +22,7 @@ Item {
         Text {
             text: root.icon
             font.family: Icons.font
-            font.pixelSize: 18
+            font.pixelSize: Styling.fontSize(4)
             color: Colors.overBackground
             Layout.alignment: Qt.AlignVCenter
             Layout.preferredWidth: 20
@@ -51,7 +51,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
             }

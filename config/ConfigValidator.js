@@ -76,6 +76,21 @@ function validate(current, defaults, keyName) {
         return clone(defaults);
     }
 
+    // Special case: border is an array [colorName, width]. Must run before the
+    // generic array pass-through below, which would otherwise skip validation.
+    if (keyName === "border") {
+        if (!Array.isArray(defaults) || !Array.isArray(current)) {
+            return clone(defaults);
+        }
+        if (current.length !== 2 || typeof current[0] !== 'string' || typeof current[1] !== 'number') {
+            return clone(defaults);
+        }
+        if (current[1] < 0 || current[1] > 100) {
+            return clone(defaults);
+        }
+        return current;
+    }
+
     if (Array.isArray(defaults)) {
         if (!Array.isArray(current)) {
             return clone(defaults);
@@ -118,16 +133,6 @@ function validate(current, defaults, keyName) {
     if (keyName in rangeValidators && typeof current === 'number') {
         var range = rangeValidators[keyName];
         if (current < range.min || current > range.max) {
-            return defaults;
-        }
-    }
-
-    // Special case: border is an array [colorName, width]
-    if (keyName === "border" && Array.isArray(current)) {
-        if (current.length !== 2 || typeof current[0] !== 'string' || typeof current[1] !== 'number') {
-            return defaults;
-        }
-        if (current[1] < 0 || current[1] > 100) {
             return defaults;
         }
     }

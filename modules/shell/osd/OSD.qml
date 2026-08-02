@@ -91,7 +91,7 @@ PanelWindow {
                         }
                     }
                     font.family: Icons.font
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     color: Colors.overBackground
                     Layout.alignment: Qt.AlignVCenter
 

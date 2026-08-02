@@ -75,8 +75,22 @@ Singleton {
     }
 
     function checkUpdates() {
+        // If the installed version never resolved (version file unreadable),
+        // any tag would compare as "newer" — suppress false notifications.
+        if (!Config.versionResolved) {
+            console.log("[UpdateService] Installed version unknown, skipping check");
+            return;
+        }
+
         const xhr = new XMLHttpRequest();
         xhr.open("GET", root.repoUrl);
+        xhr.timeout = 15000;
+        xhr.ontimeout = function() {
+            console.log("[UpdateService] GitHub tags request timed out");
+            root.lastCheckTime = Date.now();
+            root.nextCheckTime = Date.now() + 3600000;
+            saveCache();
+        };
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 if (xhr.status === 200) {
@@ -134,7 +148,7 @@ Singleton {
     function sendUpdateNotification(newVersion) {
         const summary = "ambxst+ update available!";
         const body = newVersion + " available! (Installed " + root.currentVersion + ")";
-        const cmd = "notify-send -a 'ambxst+ Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later' --action=update=Update";
+        const cmd = "notify-send -a 'ambxst+ Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later'";
         
         notificationProcess.running = false;
         notificationProcess.command = ["bash", "-c", cmd];
@@ -153,9 +167,6 @@ Singleton {
             } else if (action === "later") {
                 root.nextCheckTime = Date.now() + 8 * 3600000;
                 root.saveCache();
-            } else if (action === "update") {
-                const updateCmd = "kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty sh -c \"sleep 0.2 && kitten @ --to unix:/tmp/mykitty send-text 'ambxst+ update'; exec $SHELL\"";
-                Quickshell.execDetached(["bash", "-c", updateCmd]);
             }
         }
     }

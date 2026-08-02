@@ -27,16 +27,25 @@ Singleton {
     id: root
 
     property string version: "0.0.0"
+    property bool versionResolved: false
 
     FileView {
         id: versionFile
         path: Qt.resolvedUrl("../version").toString().replace("file://", "")
-        onLoaded: root.version = text().trim()
+        onLoaded: {
+            root.version = text().trim();
+            root.versionResolved = true;
+        }
+        onLoadFailed: {
+            // Keep the placeholder version and flag it unresolved so services
+            // like UpdateService can suppress false update notifications.
+            console.warn("Config: failed to load version file, update checks will be suppressed");
+        }
     }
 
     property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst+/config"
     property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst+/binds.json"
-    property string presetDir: Qt.resolvedUrl("../assets/presets/ambxst+ Default").toString().replace("file://", "")
+    property string presetDir: decodeURIComponent(Qt.resolvedUrl("../assets/presets/ambxst+ Default").toString().replace("file://", ""))
 
     // First-boot migration: copy ~/.config/ambxst to ~/.config/ambxst+ if it exists
     // Only runs once, tracked by ~/.config/ambxst+/.migrated stamp file
@@ -60,7 +69,7 @@ Singleton {
         ]
     }
 
-    property bool pauseAutoSave: false
+    property int pauseAutoSave: 0 // Ref-counted: >0 = paused (see GlobalStates._syncPauseAutoSave)
 
     // Debounced auto-save: coalesces rapid adapter updates (e.g. dragging a
     // slider) into a single disk write per domain instead of one write per
@@ -116,27 +125,35 @@ Singleton {
     // ============================================
     // BATCH INITIALIZATION
     // ============================================
-    // Ensure config directory exists and copy preset files if missing
+    // Ensure config directory exists and copy preset files if missing.
+    // Failures are surfaced on stderr (logged below) instead of being
+    // swallowed with `2>/dev/null || true`, so a broken/missing preset dir
+    // can't silently leave the shell without seeded config.
     Process {
         id: ensureConfigDir
         running: true
         command: [
             "bash", "-c",
-            "mkdir -p '" + root.configDir + "' && " +
-            "cp -n '" + root.presetDir + "/theme.json' '" + root.configDir + "/theme.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/bar.json' '" + root.configDir + "/bar.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/workspaces.json' '" + root.configDir + "/workspaces.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/overview.json' '" + root.configDir + "/overview.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/notch.json' '" + root.configDir + "/notch.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/compositor.json' '" + root.configDir + "/compositor.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/performance.json' '" + root.configDir + "/performance.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/desktop.json' '" + root.configDir + "/desktop.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/lockscreen.json' '" + root.configDir + "/lockscreen.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/dock.json' '" + root.configDir + "/dock.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/ai.json' '" + root.configDir + "/ai.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/system.json' '" + root.configDir + "/system.json' 2>/dev/null || true; " +
+            "mkdir -p '" + root.configDir + "'\n" +
+            "cp -n '" + root.presetDir + "/theme.json' '" + root.configDir + "/theme.json' || echo 'ERROR: failed to seed theme.json (preset dir: " + root.presetDir + ")' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/bar.json' '" + root.configDir + "/bar.json' || echo 'ERROR: failed to seed bar.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/workspaces.json' '" + root.configDir + "/workspaces.json' || echo 'ERROR: failed to seed workspaces.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/overview.json' '" + root.configDir + "/overview.json' || echo 'ERROR: failed to seed overview.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/notch.json' '" + root.configDir + "/notch.json' || echo 'ERROR: failed to seed notch.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/compositor.json' '" + root.configDir + "/compositor.json' || echo 'ERROR: failed to seed compositor.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/performance.json' '" + root.configDir + "/performance.json' || echo 'ERROR: failed to seed performance.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/desktop.json' '" + root.configDir + "/desktop.json' || echo 'ERROR: failed to seed desktop.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/lockscreen.json' '" + root.configDir + "/lockscreen.json' || echo 'ERROR: failed to seed lockscreen.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/dock.json' '" + root.configDir + "/dock.json' || echo 'ERROR: failed to seed dock.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/ai.json' '" + root.configDir + "/ai.json' || echo 'ERROR: failed to seed ai.json' 1>&2\n" +
+            "cp -n '" + root.presetDir + "/system.json' '" + root.configDir + "/system.json' || echo 'ERROR: failed to seed system.json' 1>&2\n" +
             "echo 'Preset files copied if missing'"
         ]
+        stderr: StdioCollector {
+            onStreamFinished: {
+                if (text.trim().length > 0) console.warn("Config: preset seeding: " + text.trim());
+            }
+        }
     }
 
     // Auto-migrate hyprland.json → compositor.json for existing users
@@ -151,10 +168,12 @@ Singleton {
     // ============================================
     FileView {
         id: themeLoader
+        property bool _reloading: false
         path: root.configDir + "/theme.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.themeReady) {
                 validateModule("theme", themeLoader, ThemeDefaults.data, () => {
                     root.themeReady = true;
@@ -162,6 +181,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.themeReady) {
                 handleMissingConfig("theme", themeLoader, ThemeDefaults.data, () => {
                     root.themeReady = true;
@@ -169,13 +189,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.themeReady && !root.pauseAutoSave) {
+            if (root.themeReady && !root.pauseAutoSave && !themeLoader._reloading) {
                 root.scheduleSave(themeLoader);
             }
         }
@@ -546,10 +565,12 @@ Singleton {
     // ============================================
     FileView {
         id: barLoader
+        property bool _reloading: false
         path: root.configDir + "/bar.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.barReady) {
                 validateModule("bar", barLoader, BarDefaults.data, () => {
                     root.barReady = true;
@@ -557,6 +578,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.barReady) {
                 handleMissingConfig("bar", barLoader, BarDefaults.data, () => {
                     root.barReady = true;
@@ -564,13 +586,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.barReady && !root.pauseAutoSave) {
+            if (root.barReady && !root.pauseAutoSave && !barLoader._reloading) {
                 root.scheduleSave(barLoader);
             }
         }
@@ -605,10 +626,12 @@ Singleton {
     // ============================================
     FileView {
         id: workspacesLoader
+        property bool _reloading: false
         path: root.configDir + "/workspaces.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.workspacesReady) {
                 validateModule("workspaces", workspacesLoader, WorkspacesDefaults.data, () => {
                     root.workspacesReady = true;
@@ -616,6 +639,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.workspacesReady) {
                 handleMissingConfig("workspaces", workspacesLoader, WorkspacesDefaults.data, () => {
                     root.workspacesReady = true;
@@ -623,13 +647,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.workspacesReady && !root.pauseAutoSave) {
+            if (root.workspacesReady && !root.pauseAutoSave && !workspacesLoader._reloading) {
                 root.scheduleSave(workspacesLoader);
             }
         }
@@ -648,10 +671,12 @@ Singleton {
     // ============================================
     FileView {
         id: overviewLoader
+        property bool _reloading: false
         path: root.configDir + "/overview.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.overviewReady) {
                 validateModule("overview", overviewLoader, OverviewDefaults.data, () => {
                     root.overviewReady = true;
@@ -659,6 +684,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.overviewReady) {
                 handleMissingConfig("overview", overviewLoader, OverviewDefaults.data, () => {
                     root.overviewReady = true;
@@ -666,18 +692,18 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.overviewReady && !root.pauseAutoSave) {
+            if (root.overviewReady && !root.pauseAutoSave && !overviewLoader._reloading) {
                 root.scheduleSave(overviewLoader);
             }
         }
 
         adapter: JsonAdapter {
+            property bool enabled: true
             property int rows: 2
             property int columns: 5
             property real scale: 0.15
@@ -690,10 +716,12 @@ Singleton {
     // ============================================
     FileView {
         id: notchLoader
+        property bool _reloading: false
         path: root.configDir + "/notch.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.notchReady) {
                 validateModule("notch", notchLoader, NotchDefaults.data, () => {
                     root.notchReady = true;
@@ -701,6 +729,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.notchReady) {
                 handleMissingConfig("notch", notchLoader, NotchDefaults.data, () => {
                     root.notchReady = true;
@@ -708,13 +737,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.notchReady && !root.pauseAutoSave) {
+            if (root.notchReady && !root.pauseAutoSave && !notchLoader._reloading) {
                 root.scheduleSave(notchLoader);
             }
         }
@@ -738,10 +766,12 @@ Singleton {
     // ============================================
     FileView {
         id: compositorLoader
+        property bool _reloading: false
         path: root.configDir + "/compositor.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.compositorReady) {
                 validateModule("compositor", compositorLoader, CompositorDefaults.data, () => {
                     root.compositorReady = true;
@@ -749,6 +779,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.compositorReady) {
                 handleMissingConfig("compositor", compositorLoader, CompositorDefaults.data, () => {
                     root.compositorReady = true;
@@ -756,13 +787,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.compositorReady && !root.pauseAutoSave) {
+            if (root.compositorReady && !root.pauseAutoSave && !compositorLoader._reloading) {
                 root.scheduleSave(compositorLoader);
             }
         }
@@ -818,10 +848,12 @@ Singleton {
     // ============================================
     FileView {
         id: performanceLoader
+        property bool _reloading: false
         path: root.configDir + "/performance.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.performanceReady) {
                 validateModule("performance", performanceLoader, PerformanceDefaults.data, () => {
                     root.performanceReady = true;
@@ -829,6 +861,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.performanceReady) {
                 handleMissingConfig("performance", performanceLoader, PerformanceDefaults.data, () => {
                     root.performanceReady = true;
@@ -836,13 +869,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.performanceReady && !root.pauseAutoSave) {
+            if (root.performanceReady && !root.pauseAutoSave && !performanceLoader._reloading) {
                 root.scheduleSave(performanceLoader);
             }
         }
@@ -863,10 +895,12 @@ Singleton {
     // ============================================
     FileView {
         id: weatherLoader
+        property bool _reloading: false
         path: root.configDir + "/weather.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.weatherReady) {
                 validateModule("weather", weatherLoader, WeatherDefaults.data, () => {
                     root.weatherReady = true;
@@ -874,6 +908,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.weatherReady) {
                 handleMissingConfig("weather", weatherLoader, WeatherDefaults.data, () => {
                     root.weatherReady = true;
@@ -881,13 +916,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.weatherReady && !root.pauseAutoSave) {
+            if (root.weatherReady && !root.pauseAutoSave && !weatherLoader._reloading) {
                 root.scheduleSave(weatherLoader);
             }
         }
@@ -904,10 +938,12 @@ Singleton {
     // ============================================
     FileView {
         id: desktopLoader
+        property bool _reloading: false
         path: root.configDir + "/desktop.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.desktopReady) {
                 validateModule("desktop", desktopLoader, DesktopDefaults.data, () => {
                     root.desktopReady = true;
@@ -915,6 +951,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.desktopReady) {
                 handleMissingConfig("desktop", desktopLoader, DesktopDefaults.data, () => {
                     root.desktopReady = true;
@@ -922,13 +959,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.desktopReady && !root.pauseAutoSave) {
+            if (root.desktopReady && !root.pauseAutoSave && !desktopLoader._reloading) {
                 root.scheduleSave(desktopLoader);
             }
         }
@@ -946,10 +982,12 @@ Singleton {
     // ============================================
     FileView {
         id: lockscreenLoader
+        property bool _reloading: false
         path: root.configDir + "/lockscreen.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.lockscreenReady) {
                 validateModule("lockscreen", lockscreenLoader, LockscreenDefaults.data, () => {
                     root.lockscreenReady = true;
@@ -957,6 +995,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.lockscreenReady) {
                 handleMissingConfig("lockscreen", lockscreenLoader, LockscreenDefaults.data, () => {
                     root.lockscreenReady = true;
@@ -964,13 +1003,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.lockscreenReady && !root.pauseAutoSave) {
+            if (root.lockscreenReady && !root.pauseAutoSave && !lockscreenLoader._reloading) {
                 root.scheduleSave(lockscreenLoader);
             }
         }
@@ -992,10 +1030,12 @@ Singleton {
     // ============================================
     FileView {
         id: prefixLoader
+        property bool _reloading: false
         path: root.configDir + "/prefix.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.prefixReady) {
                 validateModule("prefix", prefixLoader, PrefixDefaults.data, () => {
                     root.prefixReady = true;
@@ -1003,6 +1043,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.prefixReady) {
                 handleMissingConfig("prefix", prefixLoader, PrefixDefaults.data, () => {
                     root.prefixReady = true;
@@ -1010,13 +1051,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.prefixReady && !root.pauseAutoSave) {
+            if (root.prefixReady && !root.pauseAutoSave && !prefixLoader._reloading) {
                 root.scheduleSave(prefixLoader);
             }
         }
@@ -1035,10 +1075,12 @@ Singleton {
     // ============================================
     FileView {
         id: systemLoader
+        property bool _reloading: false
         path: root.configDir + "/system.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.systemReady) {
                 validateModule("system", systemLoader, SystemDefaults.data, () => {
                     root.systemReady = true;
@@ -1046,6 +1088,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.systemReady) {
                 handleMissingConfig("system", systemLoader, SystemDefaults.data, () => {
                     root.systemReady = true;
@@ -1053,13 +1096,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.systemReady && !root.pauseAutoSave) {
+            if (root.systemReady && !root.pauseAutoSave && !systemLoader._reloading) {
                 root.scheduleSave(systemLoader);
             }
         }
@@ -1117,10 +1159,12 @@ Singleton {
     // ============================================
     FileView {
         id: dockLoader
+        property bool _reloading: false
         path: root.configDir + "/dock.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.dockReady) {
                 validateModule("dock", dockLoader, DockDefaults.data, () => {
                     root.dockReady = true;
@@ -1128,6 +1172,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.dockReady) {
                 handleMissingConfig("dock", dockLoader, DockDefaults.data, () => {
                     root.dockReady = true;
@@ -1135,13 +1180,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.dockReady && !root.pauseAutoSave) {
+            if (root.dockReady && !root.pauseAutoSave && !dockLoader._reloading) {
                 root.scheduleSave(dockLoader);
             }
         }
@@ -1172,10 +1216,12 @@ Singleton {
 
     FileView {
         id: pinnedAppsLoader
+        property bool _reloading: false
         path: Quickshell.dataPath("pinnedapps.json")
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.pinnedAppsReady) {
                 var raw = text();
                 if (!raw || raw.trim().length === 0) {
@@ -1186,13 +1232,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.pinnedAppsReady && !root.pauseAutoSave) {
+            if (root.pinnedAppsReady && !root.pauseAutoSave && !pinnedAppsLoader._reloading) {
                 root.scheduleSave(pinnedAppsLoader);
             }
         }
@@ -1207,10 +1252,12 @@ Singleton {
     // ============================================
     FileView {
         id: aiLoader
+        property bool _reloading: false
         path: root.configDir + "/ai.json"
         atomicWrites: true
         watchChanges: true
         onLoaded: {
+            _reloading = false;
             if (!root.aiReady) {
                 validateModule("ai", aiLoader, AiDefaults.data, () => {
                     root.aiReady = true;
@@ -1218,6 +1265,7 @@ Singleton {
             }
         }
         onLoadFailed: {
+            _reloading = false;
             if (error.toString().includes("FileNotFound") && !root.aiReady) {
                 handleMissingConfig("ai", aiLoader, AiDefaults.data, () => {
                     root.aiReady = true;
@@ -1225,13 +1273,12 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
-            root.pauseAutoSave = false;
         }
         onPathChanged: reload()
         onAdapterUpdated: {
-            if (root.aiReady && !root.pauseAutoSave) {
+            if (root.aiReady && !root.pauseAutoSave && !aiLoader._reloading) {
                 root.scheduleSave(aiLoader);
             }
         }
@@ -1244,6 +1291,8 @@ Singleton {
             property int sidebarWidth: 400
             property string sidebarPosition: "right"
             property bool sidebarPinnedOnStartup: false
+            property string customEndpoint: ""
+            property string customCurlTemplate: ""
         }
     }
 
@@ -1416,6 +1465,7 @@ Singleton {
 
     FileView {
         id: keybindsLoader
+        property bool _reloading: false
         path: keybindsPath
         atomicWrites: true
         watchChanges: true
@@ -1424,6 +1474,7 @@ Singleton {
             createKeybindsTimer.start();
         }
         onLoaded: {
+            _reloading = false;
             if (!root.keybindsInitialLoadComplete) {
                 var raw = text();
                 if (!raw || raw.trim().length === 0) {
@@ -1439,17 +1490,16 @@ Singleton {
             }
         }
         onFileChanged: {
-            root.pauseAutoSave = true;
+            _reloading = true;
             reload();
             normalizeCustomBinds();
-            root.pauseAutoSave = false;
         }
         onPathChanged: {
             reload();
             normalizeCustomBinds();
         }
         onAdapterUpdated: {
-            if (root.keybindsInitialLoadComplete) {
+            if (root.keybindsInitialLoadComplete && !keybindsLoader._reloading) {
                 root.scheduleSave(keybindsLoader);
             }
         }
@@ -2447,6 +2497,24 @@ Singleton {
                     "enabled": true
                 },
                 {
+                    "name": "Mute Microphone",
+                    "keys": [
+                        {
+                            "modifiers": [],
+                            "key": "XF86AudioMicMute"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "exec",
+                            "argument": "ambxst+ run mic-mute",
+                            "flags": "le",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
                     "name": "Brightness Up",
                     "keys": [
                         {
@@ -3396,29 +3464,57 @@ Singleton {
         }
     }
 
-    // Handle missing config files - copy from preset or create with defaults
+    // Compiled once; created per missing-config copy. Reloads the loader only
+    // after the copy has actually finished, and destroys itself on exit.
+    Component {
+        id: copyProcessComp
+        Process {
+            property string presetPath: ""
+            property string targetPath: ""
+            property string moduleName: ""
+            property var loader: null
+            property string defaultText: ""
+            property var onCompleteCb: null
+
+            command: ["cp", presetPath, targetPath]
+            running: true
+
+            onExited: (exitCode, exitStatus) => {
+                root._missingConfigInFlight[moduleName] = false;
+                if (exitCode === 0) {
+                    // Only now is the file on disk; reload so onLoaded runs
+                    // validateModule and onComplete through the normal path.
+                    loader.reload();
+                } else {
+                    console.warn(moduleName + ".json: preset copy failed (" + presetPath + "), writing defaults");
+                    loader.setText(defaultText);
+                    onCompleteCb();
+                }
+                destroy();
+            }
+        }
+    }
+
+    // Handles missing config files - copy from preset or create with defaults.
+    // Uses an in-flight guard per module so repeated load failures can't spawn
+    // concurrent copies (previous version raced a Qt.callLater against the
+    // copy, which could clobber the freshly-copied preset with defaults).
+    property var _missingConfigInFlight: ({})
     function handleMissingConfig(name, loader, defaults, onComplete) {
         var presetPath = root.presetDir + "/" + name + ".json";
         var targetPath = root.configDir + "/" + name + ".json";
         console.log(name + ".json not found, checking preset: " + presetPath);
 
-        // Create a Process component dynamically to copy the file
-        var copyProcess = Qt.createQmlObject(
-            "import QtQuick 2.0; Process { running: true; command: ['cp', '" + presetPath + "', '" + targetPath + "']; onFinished: { console.log('Copy finished for " + name + "'); } }",
-            root,
-            "copyProcess"
-        );
+        if (root._missingConfigInFlight[name]) return;
+        root._missingConfigInFlight[name] = true;
 
-        // Reload the loader to pick up the copied file
-        loader.reload();
-
-        // If still not ready after reload, use defaults as fallback
-        Qt.callLater(() => {
-            if (!root[name + "Ready"]) {
-                console.log("Using defaults for " + name + ".json");
-                loader.setText(JSON.stringify(defaults, null, 2));
-            }
-            onComplete();
+        copyProcessComp.createObject(root, {
+            presetPath: presetPath,
+            targetPath: targetPath,
+            moduleName: name,
+            loader: loader,
+            defaultText: JSON.stringify(defaults, null, 2),
+            onCompleteCb: onComplete
         });
     }
 
@@ -3431,7 +3527,7 @@ Singleton {
 
     property int roundness: theme.roundness
     property string defaultFont: theme.font
-    property int animDuration: Services.GameModeService.toggled ? 0 : theme.animDuration
+    property int animDuration: theme.animDuration
     property bool tintIcons: theme.tintIcons
 
     // Handle lightMode changes
@@ -3475,8 +3571,9 @@ Singleton {
                 } else {
                     dock.position = "left";
                 }
-                // Trigger save
-                GlobalStates.markShellChanged();
+                // Persist the adjustment immediately (never rely on a paused
+                // auto-save session that may never be applied)
+                root.saveDock();
             }
         } 
         // If notch moves top
@@ -3485,7 +3582,7 @@ Singleton {
             if (dock.position === "left" || dock.position === "right") {
                 console.log("Notch moved to top, restoring Dock to bottom...");
                 dock.position = "bottom";
-                GlobalStates.markShellChanged();
+                root.saveDock();
             }
         }
     }

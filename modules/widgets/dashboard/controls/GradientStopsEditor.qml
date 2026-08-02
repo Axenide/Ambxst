@@ -144,7 +144,7 @@ Item {
                     anchors.centerIn: parent
                     text: Icons.plus
                     font.family: Icons.font
-                    font.pixelSize: 16
+                    font.pixelSize: Styling.fontSize(2)
                     color: addButton.item
                 }
 
@@ -387,7 +387,7 @@ Item {
                     anchors.centerIn: parent
                     text: Icons.broom
                     font.family: Icons.font
-                    font.pixelSize: 16
+                    font.pixelSize: Styling.fontSize(2)
                     color: resetButton.item
                 }
 
@@ -531,7 +531,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.trash
                                 font.family: Icons.font
-                                font.pixelSize: 12
+                                font.pixelSize: Styling.fontSize(-2)
                                 color: deleteStopButton.item
                             }
 

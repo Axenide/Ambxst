@@ -65,7 +65,7 @@ Item {
                     anchors.centerIn: parent
                     text: Icons.arrowLeft
                     font.family: Icons.font
-                    font.pixelSize: 16
+                    font.pixelSize: Styling.fontSize(2)
                     color: backButton.item
                 }
 
@@ -190,7 +190,7 @@ Item {
                         anchors.centerIn: parent
                         text: Icons.picker
                         font.family: Icons.font
-                        font.pixelSize: 14
+                        font.pixelSize: Styling.fontSize(0)
                         color: pickerButton.item
                     }
 

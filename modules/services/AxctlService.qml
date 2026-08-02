@@ -107,6 +107,11 @@ Singleton {
 
     signal rawEvent(var event)
 
+    // Fired every time the subscribe stream (re)connects — the daemon always
+    // sends a State.Dump as the first event of a connection. Consumers use
+    // this to re-sync state that may have changed while the stream was down.
+    signal subscribed()
+
     // Config path for axctl daemon
     property string configPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst+/axctl.toml"
 
@@ -163,8 +168,24 @@ Singleton {
         return null;
     }
 
+    // Fingerprint of the last applied state. Every axctl event carries the full
+    // state, and most events (title changes, geometry, focus moves) touch only a
+    // handful of fields — but the old code unconditionally rebuilt and reassigned
+    // all three arrays, firing change notifications to every consumer (bar, dock,
+    // workspaces, taskbar, notch) even when nothing actually changed. This cheap
+    // string compare lets us skip the whole mapping pass when the state is
+    // bit-identical.
+    property string _stateFingerprint: ""
+
     function applyState(state) {
         if (!state) return;
+
+        // Only the three tracked collections matter for change detection; the
+        // event object may carry extra metadata that changes per event.
+        const fingerprint = JSON.stringify([state.windows, state.workspaces, state.monitors]);
+        if (fingerprint === root._stateFingerprint)
+            return;
+        root._stateFingerprint = fingerprint;
 
         // --- Windows ---
         if (state.windows) {
@@ -296,6 +317,10 @@ Singleton {
                     parsedJson.name = parsedJson.method ? parsedJson.method.split('.').pop().toLowerCase() : "";
                     parsedJson.data = parsedJson.params;
                     root.rawEvent(parsedJson);
+
+                    if (parsedJson.method === "State.Dump") {
+                        root.subscribed();
+                    }
                 } catch (e) {
                     console.error("AxctlService subscribe JSON parse error:", e);
                 }

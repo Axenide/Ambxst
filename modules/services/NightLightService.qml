@@ -63,7 +63,14 @@ Singleton {
         }
     }
     
+    property bool _synced: false
+
     function syncState() {
+        // Guard: onStateLoaded and the startup fallback timer can both fire;
+        // each call spawns a pgrep (and potentially kill/start chains).
+        if (root._synced)
+            return;
+        root._synced = true;
         checkRunningProcess.running = true
     }
 

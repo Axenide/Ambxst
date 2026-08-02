@@ -84,7 +84,7 @@ RowLayout {
                 id: iconText
                 text: actionButton.modelData.icon || ""
                 font.family: Icons.font
-                font.pixelSize: 14
+                font.pixelSize: Styling.fontSize(0)
                 color: actionButton.isLoading ? Styling.srItem("overprimary") : (actionButton.enabled ? Colors.overBackground : Colors.outline)
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
@@ -146,7 +146,7 @@ RowLayout {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
             }

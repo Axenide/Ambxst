@@ -579,15 +579,17 @@ Item {
             if (root.allItems[i].id === itemId) {
                 var item = root.allItems[i];
                 if (item.isImage && item.binaryPath) {
-                    // Copy image with correct MIME type
-                    copyProcess.command = ["sh", "-c", "cat '" + item.binaryPath + "' | wl-copy --type '" + item.mime + "'"];
+                    // Copy image with correct MIME type (paths/MIME from our own
+                    // DB — quote-escaped before shell interpolation)
+                    copyProcess.command = ["sh", "-c", "cat '" + item.binaryPath.replace(/'/g, "'\\''") + "' | wl-copy --type '" + item.mime.replace(/'/g, "") + "'"];
                 } else if (item.isFile) {
                     // Copy file URI with text/uri-list MIME type, removing carriage returns
                     copyProcess.command = ["sh", "-c", "sqlite3 '" + ClipboardService.dbPath + "' \"SELECT full_content FROM clipboard_items WHERE id = " + itemId + ";\" | tr -d '\\r' | wl-copy --type text/uri-list"];
                 } else {
                     // Optimized path for text: use the already loaded safeCurrentContent if it matches
                     if (root.contentMatchesSelection && root.currentItemId === itemId && root.currentFullContent) {
-                        copyProcess.command = ["sh", "-c", "printf '%s' " + ClipboardUtils.escapeShellArg(root.currentFullContent) + " | wl-copy"];
+                        // Array args — no shell quoting concerns for arbitrary content
+                        copyProcess.command = ["wl-copy", root.currentFullContent];
                     } else {
                         // Fallback: Copy text as plain text from DB
                         copyProcess.command = ["sh", "-c", "sqlite3 '" + ClipboardService.dbPath + "' \"SELECT full_content FROM clipboard_items WHERE id = " + itemId + ";\" | wl-copy"];
@@ -892,7 +894,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -931,7 +933,7 @@ Item {
                             text: root.clearButtonConfirmState ? Icons.alert : Icons.trash
                             textFormat: Text.RichText
                             font.family: Icons.font
-                            font.pixelSize: 20
+                            font.pixelSize: Styling.fontSize(6)
                             color: root.clearButtonConfirmState ? clearButton.item : Styling.srItem("overprimary")
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -953,7 +955,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration / 2
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1011,7 +1013,7 @@ Item {
                         enabled: Config.animDuration > 0 && resultsList.enableScrollAnimation && !resultsList.moving
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1049,7 +1051,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutCubic
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1057,7 +1059,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1089,7 +1091,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration / 2
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1118,13 +1120,13 @@ Item {
                             return baseHeight;
                         }
                         color: "transparent"
-                        radius: 16
+                        radius: Styling.radius(0)
 
                         Behavior on y {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutCubic
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1132,7 +1134,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1306,7 +1308,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1315,7 +1317,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
 
@@ -1348,14 +1350,14 @@ Item {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 3
-                                            easing.type: Easing.OutSine
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                     Behavior on idx2X {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration
-                                            easing.type: Easing.OutSine
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1370,7 +1372,7 @@ Item {
                                         width: 32
                                         height: 32
                                         color: "transparent"
-                                        radius: 6
+                                        radius: Styling.radius(-10)
                                         border.width: 0
                                         border.color: Colors.outline
                                         z: 1
@@ -1391,7 +1393,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: Icons.cancel
                                             color: cancelButton.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                            font.pixelSize: 14
+                                            font.pixelSize: Styling.fontSize(0)
                                             font.family: Icons.font
                                             textFormat: Text.RichText
 
@@ -1399,7 +1401,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 ColorAnimation {
                                                     duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutQuart
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
                                         }
@@ -1410,7 +1412,7 @@ Item {
                                         width: 32
                                         height: 32
                                         color: "transparent"
-                                        radius: 6
+                                        radius: Styling.radius(-10)
                                         z: 1
 
                                         property bool isHighlighted: root.deleteButtonIndex === 1
@@ -1429,7 +1431,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: Icons.accept
                                             color: confirmButton.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                            font.pixelSize: 14
+                                            font.pixelSize: Styling.fontSize(0)
                                             font.family: Icons.font
                                             textFormat: Text.RichText
 
@@ -1437,7 +1439,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 ColorAnimation {
                                                     duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutQuart
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
                                         }
@@ -1453,7 +1455,7 @@ Item {
                                 anchors.rightMargin: 8
                                 anchors.verticalCenter: parent.verticalCenter
                                 color: "transparent"
-                                radius: 6
+                                radius: Styling.radius(-10)
                                 opacity: isInAliasMode ? 1.0 : 0.0
                                 visible: opacity > 0
 
@@ -1464,7 +1466,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1473,7 +1475,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
 
@@ -1506,14 +1508,14 @@ Item {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 3
-                                            easing.type: Easing.OutSine
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                     Behavior on idx2X {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration
-                                            easing.type: Easing.OutSine
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1528,7 +1530,7 @@ Item {
                                         width: 32
                                         height: 32
                                         color: "transparent"
-                                        radius: 6
+                                        radius: Styling.radius(-10)
                                         z: 1
 
                                         property bool isHighlighted: root.aliasButtonIndex === 0
@@ -1547,7 +1549,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: Icons.cancel
                                             color: aliasCancelButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                            font.pixelSize: 14
+                                            font.pixelSize: Styling.fontSize(0)
                                             font.family: Icons.font
                                             textFormat: Text.RichText
 
@@ -1555,7 +1557,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 ColorAnimation {
                                                     duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutQuart
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
                                         }
@@ -1566,7 +1568,7 @@ Item {
                                         width: 32
                                         height: 32
                                         color: "transparent"
-                                        radius: 6
+                                        radius: Styling.radius(-10)
                                         z: 1
 
                                         property bool isHighlighted: root.aliasButtonIndex === 1
@@ -1585,7 +1587,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: Icons.accept
                                             color: aliasConfirmButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                            font.pixelSize: 14
+                                            font.pixelSize: Styling.fontSize(0)
                                             font.family: Icons.font
                                             textFormat: Text.RichText
 
@@ -1593,7 +1595,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 ColorAnimation {
                                                     duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutQuart
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
                                         }
@@ -1665,293 +1667,87 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
-                            ClippingRectangle {
+                            OptionsList {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: {
-                                    var count = 4; // Copy, Pin, Alias, Delete
-                                    if (modelData.isFile || ClipboardUtils.isUrl(modelData.preview)) {
-                                        count++; // Add Open
-                                    }
-                                    return 36 * Math.min(3, count);
-                                }
-                                color: Colors.background
-                                radius: Styling.radius(0)
+                                Layout.preferredHeight: preferredHeight
+                                maxRows: 3
+                                scrollable: true
 
                                 Behavior on Layout.preferredHeight {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
 
-                                ListView {
-                                    id: optionsListView
-                                    anchors.fill: parent
-                                    clip: true
-                                    interactive: true
-                                    boundsBehavior: Flickable.StopAtBounds
-
-                                    // Propiedad para detectar si está en movimiento
-                                    property bool isScrolling: dragging || flicking
-
-                                    model: {
-                                        var options = [
-                                            {
-                                                text: "Copy",
-                                                icon: Icons.copy,
-                                                highlightColor: Styling.srItem("overprimary"),
-                                                textColor: Styling.srItem("primary"),
-                                                action: function () {
-                                                    root.copyToClipboard(modelData.id);
-                                                    Visibilities.setActiveModule("");
-                                                }
-                                            }
-                                        ];
-
-                                        // Add Open option for files, images, and URLs
-                                        if (modelData.isFile || modelData.isImage || ClipboardUtils.isUrl(modelData.preview)) {
-                                            options.push({
-                                                text: "Open",
-                                                icon: Icons.popOpen,
-                                                highlightColor: Styling.srItem("overprimary"),
-                                                textColor: Styling.srItem("primary"),
-                                                action: function () {
-                                                    root.openItem(modelData.id);
-                                                }
-                                            });
-                                        }
-
-                                        options.push({
-                                            text: modelData.pinned ? "Unpin" : "Pin",
-                                            icon: modelData.pinned ? Icons.unpin : Icons.pin,
+                                model: {
+                                    var options = [
+                                        {
+                                            text: "Copy",
+                                            icon: Icons.copy,
                                             highlightColor: Styling.srItem("overprimary"),
                                             textColor: Styling.srItem("primary"),
                                             action: function () {
-                                                root.pendingItemIdToSelect = modelData.id;
-                                                ClipboardService.togglePin(modelData.id);
-                                                root.expandedItemIndex = -1;
+                                                root.copyToClipboard(modelData.id);
+                                                Visibilities.setActiveModule("");
                                             }
-                                        }, {
-                                            text: "Alias",
-                                            icon: Icons.edit,
-                                            highlightColor: Colors.secondary,
-                                            textColor: Styling.srItem("secondary"),
+                                        }
+                                    ];
+
+                                    // Add Open option for files, images, and URLs
+                                    if (modelData.isFile || modelData.isImage || ClipboardUtils.isUrl(modelData.preview)) {
+                                        options.push({
+                                            text: "Open",
+                                            icon: Icons.popOpen,
+                                            highlightColor: Styling.srItem("overprimary"),
+                                            textColor: Styling.srItem("primary"),
                                             action: function () {
-                                                root.enterAliasMode(modelData.id);
-                                                root.expandedItemIndex = -1;
-                                            }
-                                        }, {
-                                            text: "Delete",
-                                            icon: Icons.trash,
-                                            highlightColor: Colors.error,
-                                            textColor: Styling.srItem("error"),
-                                            action: function () {
-                                                root.enterDeleteMode(modelData.id);
-                                                root.expandedItemIndex = -1;
+                                                root.openItem(modelData.id);
                                             }
                                         });
-
-                                        return options;
                                     }
-                                    currentIndex: root.selectedOptionIndex
-                                    highlightFollowsCurrentItem: true
-                                    highlightRangeMode: ListView.ApplyRange
-                                    preferredHighlightBegin: 0
-                                    preferredHighlightEnd: height
 
-                                    highlight: StyledRect {
-                                        variant: {
-                                            if (optionsListView.currentIndex >= 0 && optionsListView.currentIndex < optionsListView.count) {
-                                                var item = optionsListView.model[optionsListView.currentIndex];
-                                                if (item && item.highlightColor) {
-                                                    if (item.highlightColor === Colors.error)
-                                                        return "error";
-                                                    if (item.highlightColor === Colors.secondary)
-                                                        return "secondary";
-                                                    return "primary";
-                                                }
-                                            }
-                                            return "primary";
+                                    options.push({
+                                        text: modelData.pinned ? "Unpin" : "Pin",
+                                        icon: modelData.pinned ? Icons.unpin : Icons.pin,
+                                        highlightColor: Styling.srItem("overprimary"),
+                                        textColor: Styling.srItem("primary"),
+                                        action: function () {
+                                            root.pendingItemIdToSelect = modelData.id;
+                                            ClipboardService.togglePin(modelData.id);
+                                            root.expandedItemIndex = -1;
                                         }
-                                        radius: Styling.radius(0)
-                                        visible: optionsListView.currentIndex >= 0
-                                        z: -1
-
-                                        Behavior on opacity {
-                                            enabled: Config.animDuration > 0
-                                            NumberAnimation {
-                                                duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
-                                            }
+                                    }, {
+                                        text: "Alias",
+                                        icon: Icons.edit,
+                                        highlightColor: Colors.secondary,
+                                        textColor: Styling.srItem("secondary"),
+                                        action: function () {
+                                            root.enterAliasMode(modelData.id);
+                                            root.expandedItemIndex = -1;
                                         }
-                                    }
-
-                                    highlightMoveDuration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
-                                    highlightMoveVelocity: -1
-                                    highlightResizeDuration: Config.animDuration / 2
-                                    highlightResizeVelocity: -1
-
-                                    delegate: Item {
-                                        required property var modelData
-                                        required property int index
-
-                                        property alias itemData: delegateData.modelData
-
-                                        QtObject {
-                                            id: delegateData
-                                            property var modelData: parent ? parent.modelData : null
+                                    }, {
+                                        text: "Delete",
+                                        icon: Icons.trash,
+                                        highlightColor: Colors.error,
+                                        textColor: Styling.srItem("error"),
+                                        action: function () {
+                                            root.enterDeleteMode(modelData.id);
+                                            root.expandedItemIndex = -1;
                                         }
+                                    });
 
-                                        width: optionsListView.width
-                                        height: 36
-
-                                        Rectangle {
-                                            anchors.fill: parent
-                                            color: "transparent"
-
-                                            RowLayout {
-                                                anchors.fill: parent
-                                                anchors.margins: 8
-                                                spacing: 8
-
-                                                Text {
-                                                    text: modelData && modelData.icon ? modelData.icon : ""
-                                                    font.family: Icons.font
-                                                    font.pixelSize: 14
-                                                    font.weight: Font.Bold
-                                                    textFormat: Text.RichText
-                                                    color: {
-                                                        if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
-                                                            return modelData.textColor;
-                                                        }
-                                                        return Colors.overSurface;
-                                                    }
-
-                                                    Behavior on color {
-                                                        enabled: Config.animDuration > 0
-                                                        ColorAnimation {
-                                                            duration: Config.animDuration / 2
-                                                            easing.type: Easing.OutQuart
-                                                        }
-                                                    }
-                                                }
-
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    text: modelData && modelData.text ? modelData.text : ""
-                                                    font.family: Config.theme.font
-                                                    font.pixelSize: Config.theme.fontSize
-                                                    font.weight: optionsListView.currentIndex === index ? Font.Bold : Font.Normal
-                                                    color: {
-                                                        if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
-                                                            return modelData.textColor;
-                                                        }
-                                                        return Colors.overSurface;
-                                                    }
-                                                    elide: Text.ElideRight
-                                                    maximumLineCount: 1
-
-                                                    Behavior on color {
-                                                        enabled: Config.animDuration > 0
-                                                        ColorAnimation {
-                                                            duration: Config.animDuration / 2
-                                                            easing.type: Easing.OutQuart
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            MouseArea {
-                                                anchors.fill: parent
-                                                hoverEnabled: !optionsListView.isScrolling
-                                                cursorShape: Qt.PointingHandCursor
-
-                                                onEntered: {
-                                                    if (optionsListView.isScrolling)
-                                                        return;
-                                                    optionsListView.currentIndex = index;
-                                                    root.selectedOptionIndex = index;
-                                                    root.keyboardNavigation = false;
-                                                }
-
-                                                onClicked: {
-                                                    if (optionsListView.isScrolling)
-                                                        return;
-                                                    if (modelData && modelData.action) {
-                                                        modelData.action();
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    return options;
                                 }
-
-                                // MouseArea to handle wheel events for scrolling
-                                MouseArea {
-                                    anchors.fill: parent
-                                    propagateComposedEvents: true
-                                    acceptedButtons: Qt.NoButton
-
-                                    onWheel: wheel => {
-                                        if (optionsListView.contentHeight > optionsListView.height) {
-                                            const delta = wheel.angleDelta.y;
-                                            optionsListView.contentY = Math.max(0, Math.min(optionsListView.contentHeight - optionsListView.height, optionsListView.contentY - delta));
-                                            wheel.accepted = true;
-                                        } else {
-                                            wheel.accepted = false;
-                                        }
-                                    }
-                                }
-                            }
-
-                            ScrollBar {
-                                Layout.preferredWidth: 8
-                                Layout.preferredHeight: {
-                                    var count = 4;
-                                    if (modelData.isFile || modelData.isImage || ClipboardUtils.isUrl(modelData.preview)) {
-                                        count++;
-                                    }
-                                    var listHeight = 36 * Math.min(3, count);
-                                    return Math.max(0, listHeight - 32);
-                                }
-                                Layout.alignment: Qt.AlignVCenter
-                                orientation: Qt.Vertical
-                                visible: {
-                                    var count = 4;
-                                    if (modelData.isFile || modelData.isImage || ClipboardUtils.isUrl(modelData.preview)) {
-                                        count++;
-                                    }
-                                    return count > 3;
-                                }
-
-                                position: optionsListView.contentY / optionsListView.contentHeight
-                                size: optionsListView.height / optionsListView.contentHeight
-
-                                background: Rectangle {
-                                    color: Colors.background
-                                    radius: Styling.radius(0)
-                                }
-
-                                contentItem: Rectangle {
-                                    color: Styling.srItem("overprimary")
-                                    radius: Styling.radius(0)
-                                }
-
-                                property bool scrollBarPressed: false
-
-                                onPressedChanged: {
-                                    scrollBarPressed = pressed;
-                                }
-
-                                onPositionChanged: {
-                                    if (scrollBarPressed && optionsListView.contentHeight > optionsListView.height) {
-                                        optionsListView.contentY = position * optionsListView.contentHeight;
-                                    }
+                                currentIndex: root.selectedOptionIndex
+                                onItemSelected: index => {
+                                    root.selectedOptionIndex = index;
+                                    root.keyboardNavigation = false;
                                 }
                             }
                         }
@@ -1975,7 +1771,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -2071,7 +1867,7 @@ Item {
                                         }
                                         color: iconBackground.item
                                         font.family: Icons.font
-                                        font.pixelSize: 16
+                                        font.pixelSize: Styling.fontSize(2)
                                         textFormat: Text.RichText
                                     }
                                 }
@@ -2121,7 +1917,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.pin
                                         font.family: Icons.font
-                                        font.pixelSize: 8
+                                        font.pixelSize: Styling.fontSize(-6)
                                         color: Colors.overPrimary
                                         textFormat: Text.RichText
                                     }
@@ -2249,7 +2045,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -2339,7 +2135,7 @@ Item {
                     Text {
                         text: Icons.clipboard
                         font.family: Icons.font
-                        font.pixelSize: 48
+                        font.pixelSize: Styling.fontSize(34)
                         color: Colors.surfaceBright
                         anchors.horizontalCenter: parent.horizontalCenter
                         textFormat: Text.RichText
@@ -2519,7 +2315,7 @@ Item {
                             text: Icons.image
                             textFormat: Text.RichText
                             font.family: Icons.font
-                            font.pixelSize: 48
+                            font.pixelSize: Styling.fontSize(34)
                             color: Styling.srItem("overprimary")
                         }
                     }
@@ -2561,7 +2357,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
 
@@ -2683,7 +2479,7 @@ Item {
                                             // Dark overlay
                                             Rectangle {
                                                 anchors.fill: parent
-                                                color: "#40000000"
+                                                color: Styling.tint(Colors.scrim, 0.25)
                                                 radius: videoThumbnailContainer.radius
                                             }
 
@@ -2700,7 +2496,7 @@ Item {
                                                     anchors.centerIn: parent
                                                     text: Icons.play
                                                     font.family: Icons.font
-                                                    font.pixelSize: 28
+                                                    font.pixelSize: Styling.fontSize(14)
                                                     color: Colors.overPrimary
                                                     textFormat: Text.RichText
                                                 }
@@ -2718,7 +2514,7 @@ Item {
                                                     anchors.centerIn: parent
                                                     text: Icons.spinnerGap
                                                     font.family: Icons.font
-                                                    font.pixelSize: 32
+                                                    font.pixelSize: Styling.fontSize(18)
                                                     color: Styling.srItem("overprimary")
                                                     textFormat: Text.RichText
 
@@ -2892,7 +2688,7 @@ Item {
                                                     anchors.centerIn: parent
                                                     text: Icons.spinnerGap
                                                     font.family: Icons.font
-                                                    font.pixelSize: 24
+                                                    font.pixelSize: Styling.fontSize(10)
                                                     color: Styling.srItem("overprimary")
                                                     textFormat: Text.RichText
                                                 }
@@ -2918,7 +2714,7 @@ Item {
                                     Text {
                                         text: Icons.spinnerGap
                                         font.family: Icons.font
-                                        font.pixelSize: 20
+                                        font.pixelSize: Styling.fontSize(6)
                                         color: Styling.srItem("overprimary")
                                         textFormat: Text.RichText
 
@@ -2958,7 +2754,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
 
@@ -3030,7 +2826,7 @@ Item {
                                                 visible: !previewFavicon.visible
                                                 text: Icons.globe
                                                 font.family: Icons.font
-                                                font.pixelSize: 20
+                                                font.pixelSize: Styling.fontSize(6)
                                                 color: Styling.srItem("overprimary")
                                                 textFormat: Text.RichText
                                             }
@@ -3131,7 +2927,7 @@ Item {
                                     text: Icons.file
                                     textFormat: Text.RichText
                                     font.family: Icons.font
-                                    font.pixelSize: 48
+                                    font.pixelSize: Styling.fontSize(34)
                                     color: Styling.srItem("overprimary")
                                 }
                             }
@@ -3373,7 +3169,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
 
@@ -3394,7 +3190,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.popOpen
                                     font.family: Icons.font
-                                    font.pixelSize: 20
+                                    font.pixelSize: Styling.fontSize(6)
                                     color: metadataOpenButtonMouseArea.containsMouse ? Styling.srItem("overprimary") : Colors.overBackground
                                     textFormat: Text.RichText
 
@@ -3402,7 +3198,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -3421,7 +3217,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
 
@@ -3463,7 +3259,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.handGrab
                                     font.family: Icons.font
-                                    font.pixelSize: 20
+                                    font.pixelSize: Styling.fontSize(6)
                                     color: metadataDragArea.containsMouse ? Styling.srItem("overprimary") : Colors.overBackground
                                     textFormat: Text.RichText
 
@@ -3471,7 +3267,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -3498,7 +3294,7 @@ Item {
                 Text {
                     text: Icons.cactus
                     font.family: Icons.font
-                    font.pixelSize: 48
+                    font.pixelSize: Styling.fontSize(34)
                     color: Colors.surfaceBright
                     anchors.horizontalCenter: parent.horizontalCenter
                     textFormat: Text.RichText

@@ -116,11 +116,6 @@ Singleton {
         return formatColorForCompositor(colorWithOpacity);
     }
 
-    function getBarOrientation() {
-        const position = Config.bar.position || "top";
-        return (position === "left" || position === "right") ? "vertical" : "horizontal";
-    }
-
     function calculateIgnoreAlpha() {
         let ignoreAlphaValue = 0.0;
 
@@ -434,8 +429,18 @@ Singleton {
         pushBorderColors();
     }
 
+    // Debounce gate: ~40 Config connections plus CompositorConfig all call
+    // refresh() per changed key; a file reload fires dozens of signals in a
+    // burst. Without this, every single signal spawned a bash TOML write + 2
+    // hyprctl processes. All writes now funnel through one timer.
+    property Timer debounceTimer: Timer {
+        interval: 100
+        repeat: false
+        onTriggered: writeTomlFile()
+    }
+
     function refresh() {
-        writeTomlFile();
+        debounceTimer.restart();
     }
 
     Component.onCompleted: {
@@ -455,10 +460,10 @@ Singleton {
 
     property Connections keybindsConnections: Connections {
         target: Config.keybindsLoader
-        function onLoaded() { writeTomlFile(); }
-        function onFileChanged() { writeTomlFile(); }
-        function onAdapterUpdated() { writeTomlFile(); }
-        function onPathChanged() { writeTomlFile(); }
+        function onLoaded() { refresh(); }
+        function onFileChanged() { refresh(); }
+        function onAdapterUpdated() { refresh(); }
+        function onPathChanged() { refresh(); }
     }
 
     // Compositor section connections
@@ -466,73 +471,73 @@ Singleton {
         target: Config.compositor
         
         // Border settings
-        function onBorderSizeChanged() { writeTomlFile(); }
-        function onRoundingChanged() { writeTomlFile(); }
-        function onGapsInChanged() { writeTomlFile(); }
-        function onGapsOutChanged() { writeTomlFile(); }
-        function onActiveBorderColorChanged() { writeTomlFile(); }
-        function onInactiveBorderColorChanged() { writeTomlFile(); }
-        function onBorderAngleChanged() { writeTomlFile(); }
-        function onInactiveBorderAngleChanged() { writeTomlFile(); }
+        function onBorderSizeChanged() { refresh(); }
+        function onRoundingChanged() { refresh(); }
+        function onGapsInChanged() { refresh(); }
+        function onGapsOutChanged() { refresh(); }
+        function onActiveBorderColorChanged() { refresh(); }
+        function onInactiveBorderColorChanged() { refresh(); }
+        function onBorderAngleChanged() { refresh(); }
+        function onInactiveBorderAngleChanged() { refresh(); }
         
         // Sync settings that affect derived values
-        function onSyncRoundnessChanged() { writeTomlFile(); }
-        function onSyncBorderWidthChanged() { writeTomlFile(); }
-        function onSyncBorderColorChanged() { writeTomlFile(); }
-        function onSyncShadowOpacityChanged() { writeTomlFile(); }
-        function onSyncShadowColorChanged() { writeTomlFile(); }
+        function onSyncRoundnessChanged() { refresh(); }
+        function onSyncBorderWidthChanged() { refresh(); }
+        function onSyncBorderColorChanged() { refresh(); }
+        function onSyncShadowOpacityChanged() { refresh(); }
+        function onSyncShadowColorChanged() { refresh(); }
         
         // Shadow settings
-        function onShadowEnabledChanged() { writeTomlFile(); }
-        function onShadowRangeChanged() { writeTomlFile(); }
-        function onShadowRenderPowerChanged() { writeTomlFile(); }
-        function onShadowSharpChanged() { writeTomlFile(); }
-        function onShadowIgnoreWindowChanged() { writeTomlFile(); }
-        function onShadowColorChanged() { writeTomlFile(); }
-        function onShadowColorInactiveChanged() { writeTomlFile(); }
-        function onShadowOpacityChanged() { writeTomlFile(); }
-        function onShadowOffsetChanged() { writeTomlFile(); }
-        function onShadowScaleChanged() { writeTomlFile(); }
+        function onShadowEnabledChanged() { refresh(); }
+        function onShadowRangeChanged() { refresh(); }
+        function onShadowRenderPowerChanged() { refresh(); }
+        function onShadowSharpChanged() { refresh(); }
+        function onShadowIgnoreWindowChanged() { refresh(); }
+        function onShadowColorChanged() { refresh(); }
+        function onShadowColorInactiveChanged() { refresh(); }
+        function onShadowOpacityChanged() { refresh(); }
+        function onShadowOffsetChanged() { refresh(); }
+        function onShadowScaleChanged() { refresh(); }
         
         // Blur settings
-        function onBlurEnabledChanged() { writeTomlFile(); }
-        function onBlurSizeChanged() { writeTomlFile(); }
-        function onBlurPassesChanged() { writeTomlFile(); }
-        function onBlurIgnoreOpacityChanged() { writeTomlFile(); }
-        function onBlurExplicitIgnoreAlphaChanged() { writeTomlFile(); }
-        function onBlurIgnoreAlphaValueChanged() { writeTomlFile(); }
-        function onBlurNewOptimizationsChanged() { writeTomlFile(); }
-        function onBlurXrayChanged() { writeTomlFile(); }
-        function onBlurNoiseChanged() { writeTomlFile(); }
-        function onBlurContrastChanged() { writeTomlFile(); }
-        function onBlurBrightnessChanged() { writeTomlFile(); }
-        function onBlurVibrancyChanged() { writeTomlFile(); }
-        function onBlurVibrancyDarknessChanged() { writeTomlFile(); }
-        function onBlurSpecialChanged() { writeTomlFile(); }
-        function onBlurPopupsChanged() { writeTomlFile(); }
-        function onBlurPopupsIgnorealphaChanged() { writeTomlFile(); }
-        function onBlurInputMethodsChanged() { writeTomlFile(); }
-        function onBlurInputMethodsIgnorealphaChanged() { writeTomlFile(); }
+        function onBlurEnabledChanged() { refresh(); }
+        function onBlurSizeChanged() { refresh(); }
+        function onBlurPassesChanged() { refresh(); }
+        function onBlurIgnoreOpacityChanged() { refresh(); }
+        function onBlurExplicitIgnoreAlphaChanged() { refresh(); }
+        function onBlurIgnoreAlphaValueChanged() { refresh(); }
+        function onBlurNewOptimizationsChanged() { refresh(); }
+        function onBlurXrayChanged() { refresh(); }
+        function onBlurNoiseChanged() { refresh(); }
+        function onBlurContrastChanged() { refresh(); }
+        function onBlurBrightnessChanged() { refresh(); }
+        function onBlurVibrancyChanged() { refresh(); }
+        function onBlurVibrancyDarknessChanged() { refresh(); }
+        function onBlurSpecialChanged() { refresh(); }
+        function onBlurPopupsChanged() { refresh(); }
+        function onBlurPopupsIgnorealphaChanged() { refresh(); }
+        function onBlurInputMethodsChanged() { refresh(); }
+        function onBlurInputMethodsIgnorealphaChanged() { refresh(); }
     }
 
     // Theme connections (for blur ignorealpha calculation and shadow color sync)
     property Connections themeConnections: Connections {
         target: Config.theme
-        function onSrBarBgChanged() { writeTomlFile(); }
-        function onSrBgChanged() { writeTomlFile(); }
-        function onShadowColorChanged() { writeTomlFile(); }
-        function onShadowOpacityChanged() { writeTomlFile(); }
+        function onSrBarBgChanged() { refresh(); }
+        function onSrBgChanged() { refresh(); }
+        function onShadowColorChanged() { refresh(); }
+        function onShadowOpacityChanged() { refresh(); }
     }
 
     // Bar position connection (for workspace animation orientation)
     property Connections barConnections: Connections {
         target: Config.bar
-        function onPositionChanged() { writeTomlFile(); }
+        function onPositionChanged() { refresh(); }
     }
 
     // GlobalStates connection (for layout)
     property Connections globalStatesConnections: Connections {
         target: GlobalStates
-        function onCompositorLayoutChanged() { writeTomlFile(); }
+        function onCompositorLayoutChanged() { refresh(); }
     }
 }

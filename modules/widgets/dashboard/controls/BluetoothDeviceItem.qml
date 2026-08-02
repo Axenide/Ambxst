@@ -21,7 +21,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
 
@@ -79,8 +79,8 @@ Item {
                     return Icons.bluetooth;
                 }
                 font.family: Icons.font
-                font.pixelSize: 20
-                color: root.device?.connected ? Styling.srItem("overprimary") : Colors.overBackground
+                font.pixelSize: Styling.fontSize(6)
+                color: root.device?.connected ? Styling.srItem("overprimary") : ((root.device?.connecting || root.device?.pairing) ? Colors.yellow : Colors.overBackground)
             }
 
             // Device name and status
@@ -100,10 +100,14 @@ Item {
 
                 Text {
                     Layout.fillWidth: true
-                    visible: root.device?.connected || root.device?.paired || root.expanded
+                    visible: root.device?.pairing || root.device?.connecting || root.device?.connected || root.device?.paired || root.expanded
                     text: {
                         let status = "";
-                        if (root.device?.connected) {
+                        if (root.device?.pairing) {
+                            status = "Pairing\u2026";
+                        } else if (root.device?.connecting) {
+                            status = "Connecting\u2026";
+                        } else if (root.device?.connected) {
                             status = "Connected";
                         } else if (root.device?.paired) {
                             status = "Paired";
@@ -150,7 +154,7 @@ Item {
                         return Icons.batteryEmpty;
                     }
                     font.family: Icons.font
-                    font.pixelSize: 18
+                    font.pixelSize: Styling.fontSize(4)
                     color: {
                         const battery = root.device?.battery ?? 0;
                         if (battery > 60)
@@ -165,8 +169,19 @@ Item {
             }
         }
 
+        // Error feedback
+        Text {
+            Layout.fillWidth: true
+            visible: root.device && root.device.lastError !== ""
+            text: root.device?.lastError ?? ""
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(-2)
+            color: Colors.error
+            wrapMode: Text.Wrap
+        }
+
         // Expanded content with action buttons
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             visible: root.expanded
             spacing: 8
@@ -179,62 +194,161 @@ Item {
                 }
             }
 
-            // Forget button (for paired devices)
-            Button {
-                id: forgetButton
-                visible: root.device?.paired ?? false
-                flat: true
-                implicitWidth: 80
-                implicitHeight: 32
-
-                background: StyledRect {
-                    variant: "error"
-                    radius: Styling.radius(4)
-                }
-
-                contentItem: Text {
-                    text: "Forget"
-                    font.family: Config.theme.font
-                    font.pixelSize: Styling.fontSize(-1)
-                    color: Styling.srItem("error")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
-                }
-
-                onClicked: root.device?.forget()
-            }
-
-            Item {
+            RowLayout {
                 Layout.fillWidth: true
+                spacing: 8
+
+                // Forget button (for paired devices)
+                Button {
+                    id: forgetButton
+                    visible: root.device?.paired ?? false
+                    flat: true
+                    implicitWidth: 80
+                    implicitHeight: 32
+
+                    background: StyledRect {
+                        variant: "error"
+                        radius: Styling.radius(4)
+                    }
+
+                    contentItem: Text {
+                        text: "Forget"
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        color: Styling.srItem("error")
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    onClicked: root.device?.forget()
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                }
+
+                // Pair button (unpaired devices)
+                Button {
+                    id: pairButton
+                    visible: !(root.device?.paired ?? true) && !(root.device?.pairing ?? false) && !(root.device?.connecting ?? false)
+                    flat: true
+                    implicitWidth: 80
+                    implicitHeight: 32
+
+                    background: StyledRect {
+                        variant: "focus"
+                        radius: Styling.radius(4)
+                    }
+
+                    contentItem: Text {
+                        text: "Pair"
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        color: Colors.overBackground
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    onClicked: {
+                        root.device?.pair().catch(() => {});
+                    }
+                }
+
+                // Connect/Disconnect button
+                Button {
+                    id: actionButton
+                    flat: true
+                    implicitWidth: 100
+                    implicitHeight: 32
+                    enabled: !(root.device && (root.device.connecting || root.device.pairing))
+
+                    background: StyledRect {
+                        variant: root.device?.connected ? "internalbg" : "primary"
+                        radius: Styling.radius(4)
+                        opacity: actionButton.enabled ? 1 : 0.4
+                    }
+
+                    contentItem: Text {
+                        text: root.device?.pairing ? "Pairing\u2026" : (root.device?.connecting ? "Connecting\u2026" : (root.device?.connected ? "Disconnect" : "Connect"))
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        color: root.device?.connected ? Colors.overSurfaceVariant : Styling.srItem("primary")
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+
+                    onClicked: {
+                        if (root.device?.connected) {
+                            root.device.disconnect();
+                        } else {
+                            root.device.connect();
+                        }
+                    }
+                }
             }
 
-            // Connect/Disconnect button
-            Button {
-                id: actionButton
-                flat: true
-                implicitWidth: 100
-                implicitHeight: 32
+            // Details row: MAC address and trust toggle
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
 
-                background: StyledRect {
-                    variant: root.device?.connected ? "internalbg" : "primary"
-                    radius: Styling.radius(4)
-                }
-
-                contentItem: Text {
-                    text: root.device?.connected ? "Disconnect" : "Connect"
+                Text {
+                    Layout.fillWidth: true
+                    text: root.device?.address ?? ""
                     font.family: Config.theme.font
-                    font.pixelSize: Styling.fontSize(-1)
-                    color: root.device?.connected ? Colors.overSurfaceVariant : Styling.srItem("primary")
-                    horizontalAlignment: Text.AlignHCenter
-                    verticalAlignment: Text.AlignVCenter
+                    font.pixelSize: Styling.fontSize(-2)
+                    color: Colors.outline
+                    elide: Text.ElideMiddle
                 }
 
-                onClicked: {
-                    if (root.device?.connected) {
-                        root.device.disconnect();
-                    } else {
-                        root.device.connect();
+                Text {
+                    text: "Trusted"
+                    font.family: Config.theme.font
+                    font.pixelSize: Styling.fontSize(-2)
+                    color: Colors.overSurfaceVariant
+                }
+
+                Switch {
+                    id: trustSwitch
+                    implicitWidth: 40
+                    implicitHeight: 20
+                    checked: root.device?.trusted ?? false
+                    onToggled: root.device?.setTrust(checked)
+
+                    indicator: Rectangle {
+                        implicitWidth: 40
+                        implicitHeight: 20
+                        x: trustSwitch.leftPadding
+                        y: parent.height / 2 - height / 2
+                        radius: height / 2
+                        color: trustSwitch.checked ? Styling.srItem("overprimary") : Colors.surfaceBright
+                        border.color: trustSwitch.checked ? Styling.srItem("overprimary") : Colors.outline
+
+                        Behavior on color {
+                            enabled: Config.animDuration > 0
+                            ColorAnimation {
+                                duration: Config.animDuration / 2
+                            }
+                        }
+
+                        Rectangle {
+                            x: trustSwitch.checked ? parent.width - width - 2 : 2
+                            y: 2
+                            width: parent.height - 4
+                            height: width
+                            radius: width / 2
+                            color: trustSwitch.checked ? Colors.background : Colors.overSurfaceVariant
+
+                            Behavior on x {
+                                enabled: Config.animDuration > 0
+                                NumberAnimation {
+                                    duration: Config.animDuration / 2
+                                    easing.type: Styling.animEasing
+                                }
+                            }
+                        }
                     }
+                    background: null
                 }
             }
         }

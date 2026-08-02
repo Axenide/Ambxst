@@ -145,7 +145,7 @@ Popup {
                     contentItem: Text {
                         text: Icons.picker
                         font.family: Icons.font
-                        font.pixelSize: 14
+                        font.pixelSize: Styling.fontSize(0)
                         color: Colors.overBackground
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
@@ -213,7 +213,7 @@ Popup {
                     Text {
                         text: Icons.accept
                         font.family: Icons.font
-                        font.pixelSize: 14
+                        font.pixelSize: Styling.fontSize(0)
                         color: Styling.srItem("overprimary")
                         visible: root.currentColor === colorItem.modelData
                     }

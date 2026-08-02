@@ -81,19 +81,43 @@ Singleton {
 
     /**
      * Save current state to disk
+     * Debounced: state.set() calls arrive in bursts (toggles, usage tracking);
+     * each one previously spawned a bash process immediately.
      */
     function save() {
+        if (!root.initialized) {
+            return;
+        }
+        saveTimer.restart();
+    }
+
+    Timer {
+        id: saveTimer
+        interval: 150
+        repeat: false
+        onTriggered: root._doSave()
+    }
+
+    function _doSave() {
         if (!root.initialized) {
             return;
         }
 
         try {
             const json = JSON.stringify(root.state);
-            writeProcess.command = ["sh", "-c", `printf '%s' '${json}' > "${root.stateFile}"`];
+            // Escape single quotes — the old code embedded the JSON raw, so any
+            // apostrophe in a stored value (notes, SSIDs, …) broke the file.
+            const escaped = json.replace(/'/g, "'\\''");
+            writeProcess.command = ["sh", "-c", `printf '%s' '${escaped}' > "${root.stateFile}"`];
             writeProcess.running = true;
         } catch (e) {
             console.warn("StateService: Failed to save state:", e);
         }
+    }
+
+    Component.onDestruction: {
+        saveTimer.stop();
+        root._doSave();
     }
 
     /**

@@ -53,7 +53,7 @@ Item {
             Text {
                 text: Icons.caretRight
                 font.family: Icons.font
-                font.pixelSize: 20
+                font.pixelSize: Styling.fontSize(6)
                 color: Colors.overSurfaceVariant
             }
         }
@@ -582,7 +582,7 @@ Item {
                                             anchors.centerIn: parent
                                             text: Icons.trash
                                             font.family: Icons.font
-                                            font.pixelSize: 14
+                                            font.pixelSize: Styling.fontSize(0)
                                             color: Colors.error
                                         }
 
@@ -622,7 +622,7 @@ Item {
                                     Text {
                                         text: Icons.plus
                                         font.family: Icons.font
-                                        font.pixelSize: 14
+                                        font.pixelSize: Styling.fontSize(0)
                                         color: addDiskButton.item
                                         anchors.verticalCenter: parent.verticalCenter
                                     }
@@ -711,7 +711,7 @@ Item {
                                 Text {
                                     text: Icons.keyboard
                                     font.family: Icons.font
-                                    font.pixelSize: 18
+                                    font.pixelSize: Styling.fontSize(4)
                                     color: Colors.primary
                                 }
 
@@ -729,6 +729,7 @@ Item {
                                 onClicked: {
                                     var proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
                                     proc.command = ["passwd"];
+                                    proc.onExited.connect(() => proc.destroy());
                                     proc.running = true;
                                 }
                             }
@@ -752,7 +753,7 @@ Item {
                             Text {
                                 text: FingerprintService.available ? Icons.shieldCheck : Icons.warning
                                 font.family: Icons.font
-                                font.pixelSize: 18
+                                font.pixelSize: Styling.fontSize(4)
                                 color: FingerprintService.available ? Colors.green : Colors.error
                             }
 
@@ -948,7 +949,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.trash
                                         font.family: Icons.font
-                                        font.pixelSize: 14
+                                        font.pixelSize: Styling.fontSize(0)
                                         color: deleteFingerBtn.item
                                     }
 
@@ -981,7 +982,7 @@ Item {
                                 Text {
                                     text: Icons.plus
                                     font.family: Icons.font
-                                    font.pixelSize: 16
+                                    font.pixelSize: Styling.fontSize(2)
                                     color: parent.enabled ? Colors.primary : Colors.overSurfaceVariant
                                 }
 
@@ -1018,7 +1019,7 @@ Item {
                                 Text {
                                     text: Icons.arrowCounterClockwise
                                     font.family: Icons.font
-                                    font.pixelSize: 16
+                                    font.pixelSize: Styling.fontSize(2)
                                     color: Colors.primary
                                 }
 
@@ -1499,7 +1500,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -1508,14 +1509,14 @@ Item {
                     text: Icons.accept
                     color: Styling.srItem("primary")
                     font.family: Icons.font
-                    font.pixelSize: 16
+                    font.pixelSize: Styling.fontSize(2)
                     scale: checked ? 1.0 : 0.0
 
                     Behavior on scale {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                 }

@@ -100,7 +100,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: Icons.caretDown
                 font.family: Icons.font
-                font.pixelSize: 18
+                font.pixelSize: Styling.fontSize(4)
                 color: Colors.overBackground
             }
 
@@ -298,7 +298,7 @@ Item {
             contentItem: Text {
                 text: Icons.picker
                 font.family: Icons.font
-                font.pixelSize: 18
+                font.pixelSize: Styling.fontSize(4)
                 color: Colors.overBackground
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter

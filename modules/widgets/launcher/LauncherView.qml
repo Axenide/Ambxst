@@ -365,7 +365,7 @@ NotchAnimationBehavior {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -581,7 +581,7 @@ NotchAnimationBehavior {
                     enabled: Config.animDuration > 0 && resultsList.enableScrollAnimation && !resultsList.moving
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -631,13 +631,13 @@ NotchAnimationBehavior {
                         return baseHeight;
                     }
                     color: "transparent"
-                    radius: 16
+                    radius: Styling.radius(0)
 
                     Behavior on height {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -747,7 +747,7 @@ NotchAnimationBehavior {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutCubic
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -773,7 +773,7 @@ NotchAnimationBehavior {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutCubic
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -796,177 +796,58 @@ NotchAnimationBehavior {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
-                        ClippingRectangle {
+                        OptionsList {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 36 * 3 // Always 3 options
-                            color: Colors.background
-                            radius: Styling.radius(0)
-
-                            ListView {
-                                id: optionsListView
-                                anchors.fill: parent
-                                clip: true
-                                interactive: false
-                                boundsBehavior: Flickable.StopAtBounds
-                                model: [
-                                    {
-                                        text: "Launch",
-                                        icon: Icons.launch,
-                                        highlightColor: Styling.srItem("overprimary"),
-                                        textColor: Styling.srItem("primary"),
-                                        action: function () {
-                                            appLauncher.executeApp(appId);
-                                            Visibilities.setActiveModule("");
-                                        }
-                                    },
-                                    {
-                                        text: TaskbarApps.isPinned(appId) ? "Unpin from Dock" : "Pin to Dock",
-                                        icon: TaskbarApps.isPinned(appId) ? Icons.unpin : Icons.pin,
-                                        highlightColor: TaskbarApps.isPinned(appId) ? Colors.error : Colors.tertiary,
-                                        textColor: TaskbarApps.isPinned(appId) ? Styling.srItem("error") : Styling.srItem("tertiary"),
-                                        action: function () {
-                                            TaskbarApps.togglePin(appId);
-                                            appLauncher.expandedItemIndex = -1;
-                                        }
-                                    },
-                                    {
-                                        text: "Create Shortcut",
-                                        icon: Icons.shortcut,
-                                        highlightColor: Colors.secondary,
-                                        textColor: Styling.srItem("secondary"),
-                                        action: function () {
-                                            let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
-                                            let timestamp = Date.now();
-                                            let fileName = appId + "-" + timestamp + ".desktop";
-                                            let filePath = desktopDir + "/" + fileName;
-
-                                            let desktopContent = "[Desktop Entry]\n" + "Version=1.0\n" + "Type=Application\n" + "Name=" + appName + "\n" + "Exec=" + appExecString + "\n" + "Icon=" + appIcon + "\n" + (appComment ? "Comment=" + appComment + "\n" : "") + (appCategories.length > 0 ? "Categories=" + appCategories.join(";") + ";\n" : "") + (appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
-
-                                            let writeCmd = "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > \"" + filePath + "\" && chmod 755 \"" + filePath + "\" && gio set \"" + filePath + "\" metadata::trusted true";
-                                            copyProcess.command = ["sh", "-c", writeCmd];
-                                            copyProcess.running = true;
-                                            appLauncher.expandedItemIndex = -1;
-                                        }
+                            Layout.preferredHeight: preferredHeight
+                            model: [
+                                {
+                                    text: "Launch",
+                                    icon: Icons.launch,
+                                    highlightColor: Styling.srItem("overprimary"),
+                                    textColor: Styling.srItem("primary"),
+                                    action: function () {
+                                        appLauncher.executeApp(appId);
+                                        Visibilities.setActiveModule("");
                                     }
-                                ]
-                                currentIndex: appLauncher.selectedOptionIndex
-                                highlightFollowsCurrentItem: true
-                                highlightRangeMode: ListView.ApplyRange
-                                preferredHighlightBegin: 0
-                                preferredHighlightEnd: height
-
-                                highlight: StyledRect {
-                                    variant: {
-                                        if (optionsListView.currentIndex >= 0 && optionsListView.currentIndex < optionsListView.count) {
-                                            var item = optionsListView.model[optionsListView.currentIndex];
-                                            if (item && item.highlightColor) {
-                                                if (item.highlightColor === Colors.secondary)
-                                                    return "secondary";
-                                                if (item.highlightColor === Colors.tertiary)
-                                                    return "tertiary";
-                                                if (item.highlightColor === Colors.error)
-                                                    return "error";
-                                                return "primary";
-                                            }
-                                        }
-                                        return "primary";
+                                },
+                                {
+                                    text: TaskbarApps.isPinned(appId) ? "Unpin from Dock" : "Pin to Dock",
+                                    icon: TaskbarApps.isPinned(appId) ? Icons.unpin : Icons.pin,
+                                    highlightColor: TaskbarApps.isPinned(appId) ? Colors.error : Colors.tertiary,
+                                    textColor: TaskbarApps.isPinned(appId) ? Styling.srItem("error") : Styling.srItem("tertiary"),
+                                    action: function () {
+                                        TaskbarApps.togglePin(appId);
+                                        appLauncher.expandedItemIndex = -1;
                                     }
-                                    radius: Styling.radius(0)
-                                    visible: optionsListView.currentIndex >= 0
-                                    z: -1
-                                }
+                                },
+                                {
+                                    text: "Create Shortcut",
+                                    icon: Icons.shortcut,
+                                    highlightColor: Colors.secondary,
+                                    textColor: Styling.srItem("secondary"),
+                                    action: function () {
+                                        let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
+                                        let timestamp = Date.now();
+                                        let fileName = appId + "-" + timestamp + ".desktop";
+                                        let filePath = desktopDir + "/" + fileName;
 
-                                highlightMoveDuration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
-                                highlightMoveVelocity: -1
-                                highlightResizeDuration: Config.animDuration / 2
-                                highlightResizeVelocity: -1
+                                        let desktopContent = "[Desktop Entry]\n" + "Version=1.0\n" + "Type=Application\n" + "Name=" + appName + "\n" + "Exec=" + appExecString + "\n" + "Icon=" + appIcon + "\n" + (appComment ? "Comment=" + appComment + "\n" : "") + (appCategories.length > 0 ? "Categories=" + appCategories.join(";") + ";\n" : "") + (appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
 
-                                delegate: Item {
-                                    required property var modelData
-                                    required property int index
-
-                                    width: optionsListView.width
-                                    height: 36
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: "transparent"
-
-                                        RowLayout {
-                                            anchors.fill: parent
-                                            anchors.margins: 8
-                                            spacing: 8
-
-                                            Text {
-                                                text: modelData && modelData.icon ? modelData.icon : ""
-                                                font.family: Icons.font
-                                                font.pixelSize: 14
-                                                font.weight: Font.Bold
-                                                textFormat: Text.RichText
-                                                color: {
-                                                    if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
-                                                        return modelData.textColor;
-                                                    }
-                                                    return Colors.overSurface;
-                                                }
-
-                                                Behavior on color {
-                                                    enabled: Config.animDuration > 0
-                                                    ColorAnimation {
-                                                        duration: Config.animDuration / 2
-                                                        easing.type: Easing.OutQuart
-                                                    }
-                                                }
-                                            }
-
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: modelData && modelData.text ? modelData.text : ""
-                                                font.family: Config.theme.font
-                                                font.pixelSize: Config.theme.fontSize
-                                                font.weight: optionsListView.currentIndex === index ? Font.Bold : Font.Normal
-                                                color: {
-                                                    if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
-                                                        return modelData.textColor;
-                                                    }
-                                                    return Colors.overSurface;
-                                                }
-                                                elide: Text.ElideRight
-                                                maximumLineCount: 1
-
-                                                Behavior on color {
-                                                    enabled: Config.animDuration > 0
-                                                    ColorAnimation {
-                                                        duration: Config.animDuration / 2
-                                                        easing.type: Easing.OutQuart
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        MouseArea {
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-
-                                            onEntered: {
-                                                optionsListView.currentIndex = index;
-                                                appLauncher.selectedOptionIndex = index;
-                                                appLauncher.keyboardNavigation = false;
-                                            }
-
-                                            onClicked: {
-                                                if (modelData && modelData.action) {
-                                                    modelData.action();
-                                                }
-                                            }
-                                        }
+                                        let writeCmd = "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > \"" + filePath + "\" && chmod 755 \"" + filePath + "\" && gio set \"" + filePath + "\" metadata::trusted true";
+                                        copyProcess.command = ["sh", "-c", writeCmd];
+                                        copyProcess.running = true;
+                                        appLauncher.expandedItemIndex = -1;
                                     }
                                 }
+                            ]
+                            currentIndex: appLauncher.selectedOptionIndex
+                            onItemSelected: index => {
+                                appLauncher.selectedOptionIndex = index;
+                                appLauncher.keyboardNavigation = false;
                             }
                         }
                     }
@@ -1001,7 +882,7 @@ NotchAnimationBehavior {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1009,7 +890,7 @@ NotchAnimationBehavior {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 

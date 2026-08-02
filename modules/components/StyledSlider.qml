@@ -56,6 +56,54 @@ Item {
     property real fineStepSize: 0  // finer step used when Shift is held during scroll (0 = disabled)
     property string snapMode: "none"  // "none", "always", "release"
 
+    // Keyboard accessibility: arrows adjust by the current step (stepSize, or
+    // 0.1 like wheel scrolling), Home/End jump to the ends. The slider grabs
+    // active focus on press, so arrows work immediately after clicking it;
+    // Tab navigation reaches it via activeFocusOnTab.
+    activeFocusOnTab: true
+
+    function _adjust(direction: int): void {
+        const step = root.stepSize > 0 ? root.stepSize : 0.1;
+        if (direction > 0) {
+            root.value = root.applyStep(Math.min(1, root.value + step));
+        } else {
+            root.value = root.applyStep(Math.max(0, root.value - step));
+        }
+    }
+
+    Keys.onLeftPressed: event => {
+        if (!root.vertical) {
+            root._adjust(-1);
+            event.accepted = true;
+        }
+    }
+    Keys.onRightPressed: event => {
+        if (!root.vertical) {
+            root._adjust(1);
+            event.accepted = true;
+        }
+    }
+    Keys.onUpPressed: event => {
+        if (root.vertical) {
+            root._adjust(1);
+            event.accepted = true;
+        }
+    }
+    Keys.onDownPressed: event => {
+        if (root.vertical) {
+            root._adjust(-1);
+            event.accepted = true;
+        }
+    }
+    Keys.onHomePressed: event => {
+        root.value = 0;
+        event.accepted = true;
+    }
+    Keys.onEndPressed: event => {
+        root.value = 1;
+        event.accepted = true;
+    }
+
     // Helper function to apply step snapping
     function applyStep(val: real): real {
         if (stepSize <= 0)
@@ -308,7 +356,7 @@ Item {
         visible: root.icon !== ""
         text: root.icon
         font.family: Icons.font
-        font.pixelSize: 18
+        font.pixelSize: Styling.fontSize(4)
         color: Colors.overBackground
         rotation: root.iconRotation
         scale: root.iconScale
@@ -377,6 +425,7 @@ Item {
                 mouse.accepted = false;
                 return;
             }
+            root.forceActiveFocus();
             root.isDragging = true;
             let pos = calculatePosition(mouse.x, mouse.y);
             if (root.snapMode === "always") {

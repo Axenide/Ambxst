@@ -52,19 +52,35 @@ Item {
                 }
             }
 
-            dynamicWorkspaceIds = occupiedIds;
-            workspaceOccupied = Array.from({
+            // Short-circuit: this recomputes up to 10x/sec from compositor
+            // events; don't churn the Repeaters/Behaviors when nothing changed.
+            if (!_sameArray(dynamicWorkspaceIds, occupiedIds))
+                dynamicWorkspaceIds = occupiedIds;
+            const occupied = Array.from({
                 length: dynamicWorkspaceIds.length
             }, (_, i) => CompositorData.workspaceOccupationMap[dynamicWorkspaceIds[i]]);
+            if (!_sameArray(workspaceOccupied, occupied))
+                workspaceOccupied = occupied;
         } else {
-            workspaceOccupied = Array.from({
+            const occupied = Array.from({
                 length: Config.workspaces.shown
             }, (_, i) => {
                 const wsId = workspaceGroup * Config.workspaces.shown + i + 1;
                 return CompositorData.workspaceOccupationMap[wsId];
             });
+            if (!_sameArray(workspaceOccupied, occupied))
+                workspaceOccupied = occupied;
         }
         updateOccupiedRanges();
+    }
+
+    function _sameArray(a, b) {
+        if (a === b) return true;
+        if (!a || !b || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
     }
 
     function updateOccupiedRanges() {
@@ -96,7 +112,10 @@ Item {
             });
         }
 
-        occupiedRanges = ranges;
+        // Avoid churning the range-highlight Repeater (6 Behaviors per item)
+        // when the computed ranges didn't actually change.
+        if (!_sameArray(occupiedRanges, ranges))
+            occupiedRanges = ranges;
     }
 
     function workspaceLabelFontSize(value) {
@@ -185,8 +204,7 @@ Item {
     }
 
     Item {
-        id: rowLayout
-        visible: orientation === "horizontal"
+        id: rangesLayer
         z: 1
 
         anchors.fill: parent
@@ -200,118 +218,81 @@ Item {
                 required property int index
                 required property var modelData
                 z: 1
-                width: (modelData.end - modelData.start + 1) * workspaceButtonWidth
-                height: workspaceButtonWidth
+                width: workspacesWidget.orientation === "vertical" ? workspaceButtonWidth : (modelData.end - modelData.start + 1) * workspaceButtonWidth
+                height: workspacesWidget.orientation === "vertical" ? (modelData.end - modelData.start + 1) * workspaceButtonWidth : workspaceButtonWidth
 
                 radius: workspacesWidget.startRadius > 0 ? Math.max(workspacesWidget.startRadius - widgetPadding, 0) : 0
 
                 opacity: Config.theme.srFocus.opacity
 
-                x: modelData.start * workspaceButtonWidth
-                y: 0
+                x: workspacesWidget.orientation === "vertical" ? 0 : modelData.start * workspaceButtonWidth
+                y: workspacesWidget.orientation === "vertical" ? modelData.start * workspaceButtonWidth : 0
 
                 Behavior on opacity {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Math.max(0, Config.animDuration - 100)
-                        easing.type: Easing.OutQuad
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on x {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Math.max(0, Config.animDuration - 100)
-                        easing.type: Easing.OutQuad
-                    }
-                }
-                Behavior on width {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
-                        easing.type: Easing.OutQuad
-                    }
-                }
-            }
-        }
-    }
-
-    Item {
-        id: columnLayout
-        visible: orientation === "vertical"
-        z: 1
-
-        anchors.fill: parent
-        anchors.margins: widgetPadding
-
-        Repeater {
-            model: occupiedRanges
-
-            StyledRect {
-                variant: "focus"
-                required property int index
-                required property var modelData
-                z: 1
-                width: workspaceButtonWidth
-                height: (modelData.end - modelData.start + 1) * workspaceButtonWidth
-
-                radius: workspacesWidget.startRadius > 0 ? Math.max(workspacesWidget.startRadius - widgetPadding, 0) : 0
-
-                opacity: Config.theme.srFocus.opacity
-
-                x: 0
-                y: modelData.start * workspaceButtonWidth
-
-                Behavior on opacity {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation {
-                        duration: Math.max(0, Config.animDuration - 100)
-                        easing.type: Easing.OutQuad
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on y {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Math.max(0, Config.animDuration - 100)
-                        easing.type: Easing.OutQuad
+                        easing.type: Styling.animEasing
+                    }
+                }
+                Behavior on width {
+                    enabled: Config.animDuration > 0
+                    NumberAnimation {
+                        duration: Math.max(0, Config.animDuration - 100)
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on height {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Math.max(0, Config.animDuration - 100)
-                        easing.type: Easing.OutQuad
+                        easing.type: Styling.animEasing
                     }
                 }
             }
         }
     }
 
-    // Horizontal active workspace highlight
+    // Active workspace highlight (stretchy transition via two animated indices)
     StyledRect {
-        id: activeHighlightH
+        id: activeHighlight
         variant: "primary"
-        visible: orientation === "horizontal"
         z: 2
         property real activeWorkspaceMargin: 4
         // Two animated indices to create a stretchy transition effect
         property real idx1: workspaceIndexInGroup
         property real idx2: workspaceIndexInGroup
 
-        implicitWidth: Math.abs(idx1 - idx2) * workspaceButtonWidth + workspaceButtonWidth - activeWorkspaceMargin * 2
-        implicitHeight: workspaceButtonWidth - activeWorkspaceMargin * 2
+        implicitWidth: orientation === "vertical" ? workspaceButtonWidth - activeWorkspaceMargin * 2 : Math.abs(idx1 - idx2) * workspaceButtonWidth + workspaceButtonWidth - activeWorkspaceMargin * 2
+        implicitHeight: orientation === "vertical" ? Math.abs(idx1 - idx2) * workspaceButtonWidth + workspaceButtonWidth - activeWorkspaceMargin * 2 : workspaceButtonWidth - activeWorkspaceMargin * 2
 
         radius: {
             const activeWorkspaceId = (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1;
             const currentWorkspaceHasWindows = CompositorData.workspaceOccupationMap[activeWorkspaceId];
             if (workspacesWidget.radius === 0)
                 return 0;
-            return currentWorkspaceHasWindows ? workspacesWidget.radius > 0 ? Math.max(workspacesWidget.radius - parent.widgetPadding - activeWorkspaceMargin, 0) : 0 : implicitHeight / 2;
+            return currentWorkspaceHasWindows ? workspacesWidget.radius > 0 ? Math.max(workspacesWidget.radius - widgetPadding - activeWorkspaceMargin, 0) : 0 : Math.min(implicitWidth, implicitHeight) / 2;
         }
 
-        anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenter: orientation === "horizontal" ? parent.verticalCenter : undefined
+        anchors.horizontalCenter: orientation === "vertical" ? parent.horizontalCenter : undefined
 
-        x: Math.min(idx1, idx2) * workspaceButtonWidth + activeWorkspaceMargin + widgetPadding
-        y: parent.height / 2 - implicitHeight / 2
+        x: orientation === "vertical" ? parent.width / 2 - implicitWidth / 2 : Math.min(idx1, idx2) * workspaceButtonWidth + activeWorkspaceMargin + widgetPadding
+        y: orientation === "vertical" ? Math.min(idx1, idx2) * workspaceButtonWidth + activeWorkspaceMargin + widgetPadding : parent.height / 2 - implicitHeight / 2
 
         Behavior on activeWorkspaceMargin {
 
@@ -319,7 +300,7 @@ Item {
 
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuad
+                easing.type: Styling.animEasing
             }
         }
         Behavior on idx1 {
@@ -328,7 +309,7 @@ Item {
 
             NumberAnimation {
                 duration: Config.animDuration / 3
-                easing.type: Easing.OutSine
+                easing.type: Styling.animEasing
             }
         }
         Behavior on idx2 {
@@ -337,63 +318,7 @@ Item {
 
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutSine
-            }
-        }
-    }
-
-    // Vertical active workspace highlight
-    StyledRect {
-        id: activeHighlightV
-        variant: "primary"
-        visible: orientation === "vertical"
-        z: 2
-        property real activeWorkspaceMargin: 4
-        // Two animated indices to create a stretchy transition effect
-        property real idx1: workspaceIndexInGroup
-        property real idx2: workspaceIndexInGroup
-
-        implicitWidth: workspaceButtonWidth - activeWorkspaceMargin * 2
-        implicitHeight: Math.abs(idx1 - idx2) * workspaceButtonWidth + workspaceButtonWidth - activeWorkspaceMargin * 2
-
-        radius: {
-            const activeWorkspaceId = (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1;
-            const currentWorkspaceHasWindows = CompositorData.workspaceOccupationMap[activeWorkspaceId];
-            if (workspacesWidget.radius === 0)
-                return 0;
-            return currentWorkspaceHasWindows ? workspacesWidget.radius > 0 ? Math.max(workspacesWidget.radius - parent.widgetPadding - activeWorkspaceMargin, 0) : 0 : implicitWidth / 2;
-        }
-
-        anchors.horizontalCenter: parent.horizontalCenter
-
-        x: parent.width / 2 - implicitWidth / 2
-        y: Math.min(idx1, idx2) * workspaceButtonWidth + activeWorkspaceMargin + widgetPadding
-
-        Behavior on activeWorkspaceMargin {
-
-            enabled: Config.animDuration > 0
-
-            NumberAnimation {
-                duration: Config.animDuration / 2
-                easing.type: Easing.OutQuad
-            }
-        }
-        Behavior on idx1 {
-
-            enabled: Config.animDuration > 0
-
-            NumberAnimation {
-                duration: Config.animDuration / 3
-                easing.type: Easing.OutSine
-            }
-        }
-        Behavior on idx2 {
-
-            enabled: Config.animDuration > 0
-
-            NumberAnimation {
-                duration: Config.animDuration
-                easing.type: Easing.OutSine
+                easing.type: Styling.animEasing
             }
         }
     }
@@ -411,126 +336,19 @@ Item {
         Repeater {
             model: effectiveWorkspaceCount
 
-            Button {
-                id: button
-                property int workspaceValue: getWorkspaceId(index)
+            WorkspaceButton {
+                workspaceValue: getWorkspaceId(index)
+                occupied: workspaceOccupied[index]
+                active: (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == getWorkspaceId(index)
+                buttonWidth: workspaceButtonWidth
+                iconSize: workspaceIconSize
+                iconSizeShrinked: workspaceIconSizeShrinked
+                iconOpacityShrinked: workspaceIconOpacityShrinked
+                iconMarginShrinked: workspaceIconMarginShrinked
+                labelFontSize: workspaceLabelFontSize
                 Layout.fillHeight: true
-                onPressed: AxctlService.dispatch(`workspace ${workspaceValue}`)
                 width: workspaceButtonWidth
-
-                background: Item {
-                    id: workspaceButtonBackground
-                    implicitWidth: workspaceButtonWidth
-                    implicitHeight: workspaceButtonWidth
-                    property var focusedWindow: {
-                        const windowsInThisWorkspace = CompositorData.workspaceWindowsMap[button.workspaceValue] || [];
-                        if (windowsInThisWorkspace.length === 0)
-                            return null;
-                        // Get the window with the lowest focusHistoryID (most recently focused)
-                        return windowsInThisWorkspace.reduce((best, win) => {
-                            const bestFocus = (best && best.focusHistoryID !== undefined ? best.focusHistoryID : Infinity);
-                            const winFocus = (win && win.focusHistoryID !== undefined ? win.focusHistoryID : Infinity);
-                            return winFocus < bestFocus ? win : best;
-                        }, null);
-                    }
-                    readonly property var focusedDesktopEntry: focusedWindow ? DesktopEntries.heuristicLookup(focusedWindow.class) : null
-                    property var mainAppIconSource: {
-                        if (focusedDesktopEntry && focusedDesktopEntry.icon) {
-                            return Quickshell.iconPath(focusedDesktopEntry.icon, "image-missing");
-                        }
-                        return Quickshell.iconPath(AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined), "image-missing");
-                    }
-
-                    Text {
-                        opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackground.focusedWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
-                        z: 3
-
-                        anchors.centerIn: parent
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.family: Config.theme.font
-                        font.pixelSize: workspaceLabelFontSize(text)
-                        text: `${button.workspaceValue}`
-                        elide: Text.ElideRight
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
-
-                        Behavior on opacity {
-                            enabled: Config.animDuration > 0
-                            NumberAnimation {
-                                duration: 150
-                                easing.type: Easing.OutQuad
-                            }
-                        }
-                    }
-                    Rectangle {
-                        opacity: (Config.workspaces.showNumbers || Config.workspaces.alwaysShowNumbers || (Config.workspaces.showAppIcons && workspaceButtonBackground.focusedWindow)) ? 0 : (((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) || workspaceOccupied[index] ? 1 : 0.5)
-                        visible: opacity > 0
-                        anchors.centerIn: parent
-                        width: workspaceButtonWidth * 0.2
-                        height: width
-                        radius: width / 2
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == button.workspaceValue) ? Styling.srItem("primary") : Colors.overBackground
-
-                        Behavior on opacity {
-                            enabled: Config.animDuration > 0
-                            NumberAnimation {
-                                duration: 150
-                                easing.type: Easing.OutQuad
-                            }
-                        }
-                    }
-                    Item {
-                        anchors.centerIn: parent
-                        width: workspaceButtonWidth
-                        height: workspaceButtonWidth
-                        opacity: !Config.workspaces.showAppIcons ? 0 : (workspaceButtonBackground.focusedWindow && !Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? 1 : workspaceButtonBackground.focusedWindow ? workspaceIconOpacityShrinked : 0
-                        visible: opacity > 0
-                        IconImage {
-                            id: mainAppIcon
-                            anchors.bottom: parent.bottom
-                            anchors.right: parent.right
-                            anchors.bottomMargin: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? Math.round((workspaceButtonWidth - workspaceIconSize) / 2) : workspaceIconMarginShrinked
-                            anchors.rightMargin: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? Math.round((workspaceButtonWidth - workspaceIconSize) / 2) : workspaceIconMarginShrinked
-
-                            source: workspaceButtonBackground.mainAppIconSource
-                            implicitSize: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? workspaceIconSize : workspaceIconSizeShrinked
-
-                            Behavior on opacity {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                            Behavior on anchors.bottomMargin {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                            Behavior on anchors.rightMargin {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                            Behavior on implicitSize {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                        }
-
-                        Tinted {
-                            sourceItem: mainAppIcon
-                            anchors.fill: mainAppIcon
-                        }
-                    }
-                }
+                onClicked: AxctlService.dispatch(`workspace ${workspaceValue}`)
             }
         }
     }
@@ -548,126 +366,19 @@ Item {
         Repeater {
             model: effectiveWorkspaceCount
 
-            Button {
-                id: buttonVert
-                property int workspaceValue: getWorkspaceId(index)
+            WorkspaceButton {
+                workspaceValue: getWorkspaceId(index)
+                occupied: workspaceOccupied[index]
+                active: (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == getWorkspaceId(index)
+                buttonWidth: workspaceButtonWidth
+                iconSize: workspaceIconSize
+                iconSizeShrinked: workspaceIconSizeShrinked
+                iconOpacityShrinked: workspaceIconOpacityShrinked
+                iconMarginShrinked: workspaceIconMarginShrinked
+                labelFontSize: workspaceLabelFontSize
                 Layout.fillWidth: true
-                onPressed: AxctlService.dispatch(`workspace ${workspaceValue}`)
                 height: workspaceButtonWidth
-
-                background: Item {
-                    id: workspaceButtonBackgroundVert
-                    implicitWidth: workspaceButtonWidth
-                    implicitHeight: workspaceButtonWidth
-                    property var focusedWindow: {
-                        const windowsInThisWorkspace = CompositorData.workspaceWindowsMap[buttonVert.workspaceValue] || [];
-                        if (windowsInThisWorkspace.length === 0)
-                            return null;
-                        // Get the window with the lowest focusHistoryID (most recently focused)
-                        return windowsInThisWorkspace.reduce((best, win) => {
-                            const bestFocus = (best && best.focusHistoryID !== undefined ? best.focusHistoryID : Infinity);
-                            const winFocus = (win && win.focusHistoryID !== undefined ? win.focusHistoryID : Infinity);
-                            return winFocus < bestFocus ? win : best;
-                        }, null);
-                    }
-                    readonly property var focusedDesktopEntry: focusedWindow ? DesktopEntries.heuristicLookup(focusedWindow.class) : null
-                    property var mainAppIconSource: {
-                        if (focusedDesktopEntry && focusedDesktopEntry.icon) {
-                            return Quickshell.iconPath(focusedDesktopEntry.icon, "image-missing");
-                        }
-                        return Quickshell.iconPath(AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined), "image-missing");
-                    }
-
-                    Text {
-                        opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackgroundVert.focusedWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
-                        z: 3
-
-                        anchors.centerIn: parent
-                        horizontalAlignment: Text.AlignHCenter
-                        verticalAlignment: Text.AlignVCenter
-                        font.family: Config.theme.font
-                        font.pixelSize: workspaceLabelFontSize(text)
-                        text: `${buttonVert.workspaceValue}`
-                        elide: Text.ElideRight
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) ? Styling.srItem("primary") : (workspaceOccupied[index] ? Colors.overBackground : Colors.overSecondaryFixedVariant)
-
-                        Behavior on opacity {
-                            enabled: Config.animDuration > 0
-                            NumberAnimation {
-                                duration: 150
-                                easing.type: Easing.OutQuad
-                            }
-                        }
-                    }
-                    Rectangle {
-                        opacity: (Config.workspaces.showNumbers || Config.workspaces.alwaysShowNumbers || (Config.workspaces.showAppIcons && workspaceButtonBackgroundVert.focusedWindow)) ? 0 : (((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) || workspaceOccupied[index] ? 1 : 0.5)
-                        visible: opacity > 0
-                        anchors.centerIn: parent
-                        width: workspaceButtonWidth * 0.2
-                        height: width
-                        radius: width / 2
-                        color: ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) == buttonVert.workspaceValue) ? Styling.srItem("primary") : Colors.overBackground
-
-                        Behavior on opacity {
-                            enabled: Config.animDuration > 0
-                            NumberAnimation {
-                                duration: 150
-                                easing.type: Easing.OutQuad
-                            }
-                        }
-                    }
-                    Item {
-                        anchors.centerIn: parent
-                        width: workspaceButtonWidth
-                        height: workspaceButtonWidth
-                        opacity: !Config.workspaces.showAppIcons ? 0 : (workspaceButtonBackgroundVert.focusedWindow && !Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? 1 : workspaceButtonBackgroundVert.focusedWindow ? workspaceIconOpacityShrinked : 0
-                        visible: opacity > 0
-                        IconImage {
-                            id: mainAppIconVert
-                            anchors.bottom: parent.bottom
-                            anchors.right: parent.right
-                            anchors.bottomMargin: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? Math.round((workspaceButtonWidth - workspaceIconSize) / 2) : workspaceIconMarginShrinked
-                            anchors.rightMargin: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? Math.round((workspaceButtonWidth - workspaceIconSize) / 2) : workspaceIconMarginShrinked
-
-                            source: workspaceButtonBackgroundVert.mainAppIconSource
-                            implicitSize: (!Config.workspaces.alwaysShowNumbers && Config.workspaces.showAppIcons) ? workspaceIconSize : workspaceIconSizeShrinked
-
-                            Behavior on opacity {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                            Behavior on anchors.bottomMargin {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                            Behavior on anchors.rightMargin {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                            Behavior on implicitSize {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: 150
-                                    easing.type: Easing.OutQuad
-                                }
-                            }
-                        }
-
-                        Tinted {
-                            sourceItem: mainAppIconVert
-                            anchors.fill: mainAppIconVert
-                        }
-                    }
-                }
+                onClicked: AxctlService.dispatch(`workspace ${workspaceValue}`)
             }
         }
     }

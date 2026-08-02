@@ -29,7 +29,10 @@ Item {
         id: initialUpdateTimer
         interval: 300
         repeat: false
-        onTriggered: BluetoothService.updateDevices()
+        onTriggered: {
+            BluetoothService.updateStatus();
+            BluetoothService.updateDevices();
+        }
     }
 
     Component.onDestruction: {
@@ -56,6 +59,7 @@ Item {
                 width: root.contentWidth
                 anchors.horizontalCenter: parent.horizontalCenter
                 title: "Bluetooth"
+                statusText: BluetoothService.connectedDevices > 0 ? BluetoothService.connectedDevices + " connected" : ""
                 showToggle: true
                 toggleChecked: BluetoothService.enabled
 
@@ -73,7 +77,11 @@ Item {
                         enabled: BluetoothService.enabled,
                         loading: BluetoothService.discovering || BluetoothService.isUpdating,
                         onClicked: function () {
-                            BluetoothService.startDiscovery();
+                            if (BluetoothService.discovering) {
+                                BluetoothService.stopDiscovery();
+                            } else {
+                                BluetoothService.startDiscovery();
+                            }
                         }
                     }
                 ]
@@ -103,8 +111,12 @@ Item {
         // Empty state
         Text {
             anchors.centerIn: parent
-            visible: deviceList.count === 0 && !BluetoothService.discovering
-            text: BluetoothService.enabled ? "No devices found" : "Bluetooth is disabled"
+            visible: deviceList.count === 0
+            text: {
+                if (!BluetoothService.enabled) return "Bluetooth is disabled";
+                if (BluetoothService.discovering) return "Searching for devices\u2026";
+                return "No devices found";
+            }
             font.family: Config.theme.font
             font.pixelSize: Config.theme.fontSize
             color: Colors.overSurfaceVariant

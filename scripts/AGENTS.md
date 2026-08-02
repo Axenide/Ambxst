@@ -24,6 +24,7 @@ Python and Bash backend utilities invoked by QML services via `Quickshell.Io.Pro
 | `sleep_monitor.sh` | Bash | `SuspendManager` | Monitors system sleep/wake events |
 | `loginlock.sh` | Bash | `LockScreen` | Login lock coordination |
 | `daemon_priority.sh` | Bash | Shell init | Process priority adjustment |
+| `camera_monitor.py` | Python | `CameraService.qml` | Camera enumeration + in-use detection via /proc fd scan |
 
 ## CONVENTIONS
 - **Communication**: Scripts output to stdout; QML reads via `Process` + `SplitParser` or `StdioCollector`.

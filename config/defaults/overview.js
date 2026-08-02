@@ -1,6 +1,8 @@
 .pragma library
 
 var data = {
+    /** Whether the overview popup is enabled at all. @type {boolean} @default true */
+    "enabled": true,
     /** Number of rows in the workspace grid. @type {number} @min 1 @max 20 @default 2 */
     "rows": 2,
     /** Number of columns in the workspace grid. @type {number} @min 1 @max 20 @default 5 */

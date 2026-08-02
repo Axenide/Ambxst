@@ -100,7 +100,8 @@ Singleton {
     component NotifTimer: Timer {
         required property int id
         property bool isPaused: false
-        property real startTime: Date.now()
+        property real _startedAt: 0
+        property real _elapsedMs: 0
 
         property var suspendConnections: Connections {
             target: SuspendManager
@@ -117,11 +118,34 @@ Singleton {
             interval: 1000
             repeat: false
             onTriggered: if (!isPaused)
-                parent.start()
+                parent.startWithRemaining()
         }
 
         running: !isPaused && !SuspendManager.isSuspending && interval > 0
+        onRunningChanged: {
+            if (running) {
+                // Fresh or resumed start — begin counting from now.
+                _elapsedMs = 0;
+                _startedAt = Date.now();
+            } else if (_startedAt > 0) {
+                // Stopped (suspend/pause/expired) — remember how long it ran so
+                // a resume continues from where it left off instead of granting
+                // a full fresh timeout (e.g. 4s visible + suspend would
+                // otherwise yield another full timeout after wake).
+                _elapsedMs = Date.now() - _startedAt;
+                _startedAt = 0;
+            }
+        }
         onTriggered: root.timeoutNotification(id)
+
+        // Restart with only the remaining time left (elapsed time is tracked by
+        // onRunningChanged above, e.g. time spent visible before suspend).
+        function startWithRemaining() {
+            if (isPaused || SuspendManager.isSuspending) return;
+            const remaining = Math.max(1, interval - _elapsedMs);
+            interval = remaining;
+            start();
+        }
 
         function pause() {
             isPaused = true;
@@ -131,7 +155,7 @@ Singleton {
         function resume() {
             isPaused = false;
             if (!SuspendManager.isSuspending && interval > 0) {
-                start();
+                startWithRemaining();
             }
         }
     }

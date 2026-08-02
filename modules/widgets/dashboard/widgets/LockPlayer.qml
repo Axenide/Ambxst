@@ -32,7 +32,7 @@ StyledRect {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -65,7 +65,7 @@ StyledRect {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -126,7 +126,7 @@ StyledRect {
                     enabled: Config.animDuration > 0
                     ColorAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -186,7 +186,7 @@ StyledRect {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -200,7 +200,7 @@ StyledRect {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -212,7 +212,7 @@ StyledRect {
                 text: lockPlayer.isPlaying ? Icons.pause : Icons.play
                 textFormat: Text.RichText
                 color: Styling.srItem("overprimary")
-                font.pixelSize: 24
+                font.pixelSize: Styling.fontSize(10)
                 font.family: Icons.font
                 opacity: playPauseHover.hovered ? 1.0 : 0.0
                 visible: MprisController.canTogglePlaying
@@ -221,7 +221,7 @@ StyledRect {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -287,7 +287,7 @@ StyledRect {
                     text: Icons.previous
                     textFormat: Text.RichText
                     color: previousHover.hovered ? Styling.srItem("overprimary") : Colors.overBackground
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     font.family: Icons.font
                     opacity: MprisController.canGoPrevious ? 1.0 : 0.3
 
@@ -295,7 +295,7 @@ StyledRect {
                         enabled: Config.animDuration > 0
                         ColorAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -327,7 +327,7 @@ StyledRect {
                     text: Icons.next
                     textFormat: Text.RichText
                     color: nextHover.hovered ? Styling.srItem("overprimary") : Colors.overBackground
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     font.family: Icons.font
                     opacity: MprisController.canGoNext ? 1.0 : 0.3
 
@@ -335,7 +335,7 @@ StyledRect {
                         enabled: Config.animDuration > 0
                         ColorAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -367,7 +367,7 @@ StyledRect {
                     }
                     textFormat: Text.RichText
                     color: modeHover.hovered ? Styling.srItem("overprimary") : Colors.overBackground
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     font.family: Icons.font
                     opacity: {
                         if (!(MprisController.shuffleSupported || MprisController.loopSupported))
@@ -381,7 +381,7 @@ StyledRect {
                         enabled: Config.animDuration > 0
                         ColorAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -429,7 +429,7 @@ StyledRect {
                     }
                     textFormat: Text.RichText
                     color: playerIconHover.hovered ? Styling.srItem("overprimary") : Colors.overBackground
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     font.family: Icons.font
                     opacity: MprisController.activePlayer ? 1.0 : 0.3
 
@@ -437,7 +437,7 @@ StyledRect {
                         enabled: Config.animDuration > 0
                         ColorAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 

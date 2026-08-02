@@ -161,14 +161,14 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
         Behavior on y {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
 
@@ -176,7 +176,7 @@ Item {
             enabled: Config.animDuration > 0 && root.isVertical
             NumberAnimation {
                 duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
 
@@ -184,7 +184,7 @@ Item {
             enabled: Config.animDuration > 0 && !root.isVertical
             NumberAnimation {
                 duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
 
@@ -228,14 +228,14 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 4
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
             Behavior on y {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 4
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -245,7 +245,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -257,14 +257,14 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on y {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -281,7 +281,6 @@ Item {
                     anchors.fill: parent
 
                     variant: "bg"
-                    // enableShadow: true
                     enableBorder: false
 
                     readonly property int fullRadius: Styling.radius(4)
@@ -393,7 +392,6 @@ Item {
                 visible: root.isFloating
                 anchors.fill: parent
                 variant: "bg"
-                // enableShadow: true
                 radius: Styling.radius(4)
                 enableBorder: !root.unifiedEffectActive
             }
@@ -412,49 +410,14 @@ Item {
                     visible: active
                     Layout.alignment: Qt.AlignVCenter
 
-                    sourceComponent: Button {
+                    sourceComponent: IconToggleButton {
                         id: pinButton
-                        implicitWidth: 32
-                        implicitHeight: 32
-
-                        background: StyledRect {
-                            visible: root.pinned || pinButton.hovered
-                            variant: root.pinned ? "primary" : "focus"
-                            radius: Styling.radius(-2)
-                            enableShadow: false
-                            enableBorder: false
-                        }
-
-                        contentItem: Text {
-                            text: Icons.pin
-                            font.family: Icons.font
-                            font.pixelSize: 16
-                            color: root.pinned ? Styling.srItem("primary") : Colors.overBackground
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-
-                            rotation: root.pinned ? 0 : 45
-                            Behavior on rotation {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: Config.animDuration / 2
-                                }
-                            }
-
-                            Behavior on color {
-                                enabled: Config.animDuration > 0
-                                ColorAnimation {
-                                    duration: Config.animDuration / 2
-                                }
-                            }
-                        }
+                        active: root.pinned
+                        icon: Icons.pin
+                        tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
+                        idleRotation: 45
 
                         onClicked: root.pinned = !root.pinned
-
-                        StyledToolTip {
-                            show: pinButton.hovered
-                            tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
-                        }
                     }
                 }
 
@@ -496,38 +459,17 @@ Item {
                     visible: active
                     Layout.alignment: Qt.AlignVCenter
 
-                    sourceComponent: Button {
+                    sourceComponent: IconToggleButton {
                         id: overviewButton
-                        implicitWidth: 32
-                        implicitHeight: 32
-
-                        background: StyledRect {
-                            visible: overviewButton.hovered
-                            variant: "focus"
-                            radius: Styling.radius(-2)
-                            enableShadow: false
-                            enableBorder: false
-                        }
-
-                        contentItem: Text {
-                            text: Icons.overview
-                            font.family: Icons.font
-                            font.pixelSize: 18
-                            color: Colors.overBackground
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
+                        icon: Icons.overview
+                        tooltipText: "Overview"
+                        iconPixelSize: 18
 
                         onClicked: {
-                            let visibilities = Visibilities.getForScreen(root.screen.name);
+                            let visibilities = Visibilities.ensureForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;
                             }
-                        }
-
-                        StyledToolTip {
-                            show: overviewButton.hovered
-                            tooltipText: "Overview"
                         }
                     }
                 }
@@ -546,49 +488,14 @@ Item {
                     visible: active
                     Layout.alignment: Qt.AlignHCenter
 
-                    sourceComponent: Button {
+                    sourceComponent: IconToggleButton {
                         id: pinButtonV
-                        implicitWidth: 32
-                        implicitHeight: 32
-
-                        background: StyledRect {
-                            visible: root.pinned || pinButtonV.hovered
-                            variant: root.pinned ? "primary" : "focus"
-                            radius: Styling.radius(-2)
-                            enableShadow: false
-                            enableBorder: false
-                        }
-
-                        contentItem: Text {
-                            text: Icons.pin
-                            font.family: Icons.font
-                            font.pixelSize: 16
-                            color: root.pinned ? Styling.srItem("primary") : Colors.overBackground
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-
-                            rotation: root.pinned ? 0 : 45
-                            Behavior on rotation {
-                                enabled: Config.animDuration > 0
-                                NumberAnimation {
-                                    duration: Config.animDuration / 2
-                                }
-                            }
-
-                            Behavior on color {
-                                enabled: Config.animDuration > 0
-                                ColorAnimation {
-                                    duration: Config.animDuration / 2
-                                }
-                            }
-                        }
+                        active: root.pinned
+                        icon: Icons.pin
+                        tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
+                        idleRotation: 45
 
                         onClicked: root.pinned = !root.pinned
-
-                        StyledToolTip {
-                            show: pinButtonV.hovered
-                            tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
-                        }
                     }
                 }
 
@@ -630,38 +537,17 @@ Item {
                     visible: active
                     Layout.alignment: Qt.AlignHCenter
 
-                    sourceComponent: Button {
+                    sourceComponent: IconToggleButton {
                         id: overviewButtonV
-                        implicitWidth: 32
-                        implicitHeight: 32
-
-                        background: StyledRect {
-                            visible: overviewButtonV.hovered
-                            variant: "focus"
-                            radius: Styling.radius(-2)
-                            enableShadow: false
-                            enableBorder: false
-                        }
-
-                        contentItem: Text {
-                            text: Icons.overview
-                            font.family: Icons.font
-                            font.pixelSize: 18
-                            color: Colors.overBackground
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
+                        icon: Icons.overview
+                        tooltipText: "Overview"
+                        iconPixelSize: 18
 
                         onClicked: {
-                            let visibilities = Visibilities.getForScreen(root.screen.name);
+                            let visibilities = Visibilities.ensureForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;
                             }
-                        }
-
-                        StyledToolTip {
-                            show: overviewButtonV.hovered
-                            tooltipText: "Overview"
                         }
                     }
                 }

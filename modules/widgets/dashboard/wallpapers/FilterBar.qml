@@ -152,7 +152,7 @@ FocusScope {
         NumberAnimation on contentX {
             id: scrollAnimation
             duration: Config.animDuration / 2
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
 
         // Modelo de filtros
@@ -265,7 +265,7 @@ FocusScope {
                                     id: filterIcon
                                     text: Icons.accept
                                     font.family: Icons.font
-                                    font.pixelSize: 16
+                                    font.pixelSize: Styling.fontSize(2)
                                     color: filterTag.item
                                     visible: isActive
                                     opacity: isActive ? 1 : 0
@@ -274,7 +274,7 @@ FocusScope {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 3
-                                            easing.type: Easing.OutCubic
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -283,7 +283,7 @@ FocusScope {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration / 3
-                                        easing.type: Easing.OutCubic
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -299,7 +299,7 @@ FocusScope {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 3
-                                        easing.type: Easing.OutCubic
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -333,7 +333,7 @@ FocusScope {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 3
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
                 }

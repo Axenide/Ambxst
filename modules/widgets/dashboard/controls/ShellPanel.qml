@@ -78,7 +78,7 @@ Item {
             Text {
                 text: Icons.caretRight
                 font.family: Icons.font
-                font.pixelSize: 20
+                font.pixelSize: Styling.fontSize(6)
                 color: Colors.overSurfaceVariant
             }
         }
@@ -114,7 +114,7 @@ Item {
             Text {
                 text: actionBtn.icon
                 font.family: Icons.font
-                font.pixelSize: 20
+                font.pixelSize: Styling.fontSize(6)
                 color: Colors.overSurfaceVariant
                 visible: actionBtn.icon !== ""
             }
@@ -131,7 +131,7 @@ Item {
             Text {
                 text: Icons.arrowSquareOut
                 font.family: Icons.font
-                font.pixelSize: 18
+                font.pixelSize: Styling.fontSize(4)
                 color: Colors.overSurfaceVariant
             }
         }
@@ -213,7 +213,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -428,7 +428,7 @@ Item {
                 anchors.centerIn: parent
                 text: Icons.folder
                 font.family: Icons.font
-                font.pixelSize: 16
+                font.pixelSize: Styling.fontSize(2)
                 color: Colors.overSurfaceVariant
             }
 
@@ -513,7 +513,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         text: optionButton.modelData.icon ?? ""
                         font.family: Icons.font
-                        font.pixelSize: 14
+                        font.pixelSize: Styling.fontSize(0)
                         color: optionButton.item
                         visible: (optionButton.modelData.icon ?? "") !== ""
                     }
@@ -644,7 +644,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -653,7 +653,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -2142,7 +2142,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -2151,7 +2151,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 

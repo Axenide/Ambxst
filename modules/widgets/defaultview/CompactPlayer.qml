@@ -188,7 +188,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -222,7 +222,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -236,7 +236,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -255,14 +255,14 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
             Behavior on spacing {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -297,7 +297,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -311,7 +311,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -322,7 +322,7 @@ Item {
                         text: compactPlayer.isPlaying ? Icons.pause : Icons.play
                         textFormat: Text.RichText
                         color: playPauseHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : ((compactPlayer.hasBackground) ? Colors.overBackground : Colors.overBackground)
-                        font.pixelSize: 16
+                        font.pixelSize: Styling.fontSize(2)
                         font.family: Icons.font
                         opacity: (compactPlayer.player?.canPause ?? false) && compactPlayer.notchHovered ? 1.0 : 0.0
                         scale: 1.0
@@ -333,21 +333,21 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                         Behavior on color {
                             enabled: Config.animDuration > 0
                             ColorAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                         Behavior on scale {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                         HoverHandler {
@@ -378,7 +378,7 @@ Item {
                 text: Icons.previous
                 textFormat: Text.RichText
                 color: previousHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
-                font.pixelSize: 16
+                font.pixelSize: Styling.fontSize(2)
                 font.family: Icons.font
                 opacity: compactPlayer.player?.canGoPrevious ?? false ? 1.0 : 0.3
                 visible: compactPlayer.player !== null && compactPlayer.notchHovered && (compactPlayer.player?.canGoPrevious ?? false)
@@ -390,21 +390,21 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on color {
                     enabled: Config.animDuration > 0
                     ColorAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on scale {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 HoverHandler {
@@ -444,7 +444,7 @@ Item {
                 text: Icons.next
                 textFormat: Text.RichText
                 color: nextHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
-                font.pixelSize: 16
+                font.pixelSize: Styling.fontSize(2)
                 font.family: Icons.font
                 opacity: compactPlayer.player?.canGoNext ?? false ? 1.0 : 0.3
                 clip: true
@@ -456,21 +456,21 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on color {
                     enabled: Config.animDuration > 0
                     ColorAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on scale {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 HoverHandler {
@@ -511,7 +511,7 @@ Item {
                 textFormat: Text.RichText
                 color: modeBtn.modeHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
                 property alias modeHover: modeHover
-                font.pixelSize: 16
+                font.pixelSize: Styling.fontSize(2)
                 font.family: Icons.font
                 opacity: {
                     if (!(MprisController.shuffleSupported || MprisController.loopSupported))
@@ -529,21 +529,21 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on color {
                     enabled: Config.animDuration > 0
                     ColorAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on scale {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 HoverHandler {
@@ -581,7 +581,7 @@ Item {
                 text: compactPlayer.getPlayerIcon(compactPlayer.player)
                 textFormat: Text.RichText
                 color: playerIconHover.hovered ? ((compactPlayer.hasBackground) ? Styling.srItem("overprimary") : Styling.srItem("overprimary")) : Colors.overBackground
-                font.pixelSize: 20
+                font.pixelSize: Styling.fontSize(6)
                 font.family: Icons.font
                 verticalAlignment: Text.AlignVCenter
                 visible: compactPlayer.notchHovered
@@ -591,21 +591,21 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on Layout.rightMargin {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on color {
                     enabled: Config.animDuration > 0
                     ColorAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 HoverHandler {
@@ -675,7 +675,7 @@ Item {
                         Text {
                             text: compactPlayer.getPlayerIcon(playerItem.modelData)
                             font.family: Icons.font
-                            font.pixelSize: 16
+                            font.pixelSize: Styling.fontSize(2)
                             color: playerItem.item
                         }
 

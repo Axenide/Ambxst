@@ -130,7 +130,7 @@ Singleton {
 
     function getNotchOpen(screenName) {
         let visibilities = Visibilities.getForScreen(screenName);
-        return visibilities.launcher || visibilities.dashboard || visibilities.overview || visibilities.presets;
+        return visibilities ? (visibilities.launcher || visibilities.dashboard || visibilities.overview || visibilities.presets) : false;
     }
 
     function getActiveLauncher() {
@@ -337,9 +337,10 @@ Singleton {
 
     // Keep Config.pauseAutoSave in sync with all active edit sessions so that
     // applying/discarding one flow does not prematurely un-pause another, and
-    // an interrupted flow cannot leave auto-save stuck off.
+    // an interrupted flow cannot leave auto-save stuck off. Ref-counted so a
+    // boolean OR from several independent flows can't drop the pause too early.
     function _syncPauseAutoSave() {
-        Config.pauseAutoSave = themeHasChanges || shellHasChanges || compositorHasChanges;
+        Config.pauseAutoSave = (themeHasChanges ? 1 : 0) + (shellHasChanges ? 1 : 0) + (compositorHasChanges ? 1 : 0);
     }
 
     function markThemeChanged() {

@@ -11,6 +11,34 @@ import qs.config
 Item {
     id: notchContainer
 
+    // Shared animation components (dedup of the 10 corner/geometry Behaviors
+    // and 6 StackView transitions below)
+    component NotchRadiusAnimation: NumberAnimation {
+        duration: Config.animDuration
+        easing.type: Styling.animEasing
+    }
+    component FadeScaleTransition: Transition {
+        id: fadeScale
+        property real fromScale: 0.8
+        property real toScale: 1
+        property bool entering: true
+
+        PropertyAnimation {
+            property: "opacity"
+            from: fadeScale.entering ? 0 : 1
+            to: fadeScale.entering ? 1 : 0
+            duration: Config.animDuration
+            easing.type: Styling.animEasing
+        }
+        PropertyAnimation {
+            property: "scale"
+            from: fadeScale.fromScale
+            to: fadeScale.toScale
+            duration: Config.animDuration
+            easing.type: Styling.animEasing
+        }
+    }
+
     property bool unifiedEffectActive: false
     z: 1000
 
@@ -59,18 +87,12 @@ Item {
 
     Behavior on implicitWidth {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
-        NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
-        }
+        NotchRadiusAnimation {}
     }
 
     Behavior on implicitHeight {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
-        NumberAnimation {
-            duration: Config.animDuration
-            easing.type: Easing.OutQuart
-        }
+        NotchRadiusAnimation {}
     }
 
     // StyledRect extendido que cubre todo (notch + corners) para usar como máscara
@@ -94,34 +116,22 @@ Item {
 
         Behavior on bottomLeftRadius {
             enabled: Config.animDuration > 0
-            NumberAnimation {
-                duration: Config.animDuration
-            easing.type: Easing.OutQuart
-            }
+            NotchRadiusAnimation {}
         }
 
         Behavior on bottomRightRadius {
             enabled: Config.animDuration > 0
-            NumberAnimation {
-                duration: Config.animDuration
-            easing.type: Easing.OutQuart
-            }
+            NotchRadiusAnimation {}
         }
 
         Behavior on topLeftRadius {
             enabled: Config.animDuration > 0
-            NumberAnimation {
-                duration: Config.animDuration
-            easing.type: Easing.OutQuart
-            }
+            NotchRadiusAnimation {}
         }
 
         Behavior on topRightRadius {
             enabled: Config.animDuration > 0
-            NumberAnimation {
-                duration: Config.animDuration
-            easing.type: Easing.OutQuart
-            }
+            NotchRadiusAnimation {}
         }
 
         layer.enabled: true
@@ -243,34 +253,22 @@ Item {
 
             Behavior on topLeftRadius {
                 enabled: Config.animDuration > 0
-                NumberAnimation {
-                    duration: Config.animDuration
-            easing.type: Easing.OutQuart
-                }
+                NotchRadiusAnimation {}
             }
 
             Behavior on topRightRadius {
                 enabled: Config.animDuration > 0
-                NumberAnimation {
-                    duration: Config.animDuration
-            easing.type: Easing.OutQuart
-                }
+                NotchRadiusAnimation {}
             }
 
             Behavior on bottomLeftRadius {
                 enabled: Config.animDuration > 0
-                NumberAnimation {
-                    duration: Config.animDuration
-            easing.type: Easing.OutQuart
-                }
+                NotchRadiusAnimation {}
             }
 
             Behavior on bottomRightRadius {
                 enabled: Config.animDuration > 0
-                NumberAnimation {
-                    duration: Config.animDuration
-            easing.type: Easing.OutQuart
-                }
+                NotchRadiusAnimation {}
             }
         }
 
@@ -310,7 +308,7 @@ Item {
                 from: 1.0
                 to: 0.0
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
 
             StackView {
@@ -336,106 +334,40 @@ Item {
                     }
                 }
 
-                pushEnter: Transition {
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 0
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        property: "scale"
-                        from: 0.8
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                pushEnter: FadeScaleTransition {
+                    fromScale: 0.8
+                    toScale: 1
+                    entering: true
                 }
 
-                pushExit: Transition {
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 1
-                        to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        property: "scale"
-                        from: 1
-                        to: 1.05
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                pushExit: FadeScaleTransition {
+                    fromScale: 1
+                    toScale: 1.05
+                    entering: false
                 }
 
-                popEnter: Transition {
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 0
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        property: "scale"
-                        from: 1.05
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                popEnter: FadeScaleTransition {
+                    fromScale: 1.05
+                    toScale: 1
+                    entering: true
                 }
 
-                popExit: Transition {
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 1
-                        to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        property: "scale"
-                        from: 1
-                        to: 0.95
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                popExit: FadeScaleTransition {
+                    fromScale: 1
+                    toScale: 0.95
+                    entering: false
                 }
 
-                replaceEnter: Transition {
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 0
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        property: "scale"
-                        from: 0.8
-                        to: 1
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                replaceEnter: FadeScaleTransition {
+                    fromScale: 0.8
+                    toScale: 1
+                    entering: true
                 }
 
-                replaceExit: Transition {
-                    PropertyAnimation {
-                        property: "opacity"
-                        from: 1
-                        to: 0
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        property: "scale"
-                        from: 1
-                        to: 1.05
-                        duration: Config.animDuration
-                        easing.type: Easing.OutQuart
-                    }
+                replaceExit: FadeScaleTransition {
+                    fromScale: 1
+                    toScale: 1.05
+                    entering: false
                 }
             }
         }

@@ -216,7 +216,7 @@ Rectangle {
                             anchors.centerIn: parent
                             text: Icons.user
                             font.family: Icons.font
-                            font.pixelSize: 48
+                            font.pixelSize: Styling.fontSize(34)
                             color: Colors.overSurfaceVariant
                             visible: userAvatar.status !== Image.Ready
                         }
@@ -846,7 +846,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 text: Icons.glassMinus
                                 font.family: Icons.font
-                                font.pixelSize: 18
+                                font.pixelSize: Styling.fontSize(4)
                                 color: Colors.overBackground
                             }
                         }
@@ -884,7 +884,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 text: Icons.glassPlus
                                 font.family: Icons.font
-                                font.pixelSize: 18
+                                font.pixelSize: Styling.fontSize(4)
                                 color: Colors.overBackground
                             }
                         }
@@ -910,7 +910,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 text: Icons.minus
                                 font.family: Icons.font
-                                font.pixelSize: 18
+                                font.pixelSize: Styling.fontSize(4)
                                 color: Colors.overBackground
                             }
 
@@ -930,7 +930,7 @@ Rectangle {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -956,7 +956,7 @@ Rectangle {
                                 anchors.centerIn: parent
                                 text: Icons.plus
                                 font.family: Icons.font
-                                font.pixelSize: 18
+                                font.pixelSize: Styling.fontSize(4)
                                 color: Colors.overBackground
                             }
 
@@ -976,7 +976,7 @@ Rectangle {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }

@@ -9,7 +9,6 @@ Dynamic island UI with StackView navigation, themes (default/island), and notifi
 |------|---------|
 | `Notch.qml` | Core dynamic island: StackView, rounded corners with mask, theme rendering, animations |
 | `NotchContent.qml` | Screen-specific wrapper: hover detection, reveal logic, persistent Loaders, visibility bindings |
-| `NotchWindow.qml` | PanelWindow wrapper (disabled, commented out) |
 | `NotchAnimationBehavior.qml` | Reusable animation behavior component |
 | `NotchNotificationView.qml` | Notification display with StackView navigation, timestamps, hover states |
 

@@ -72,30 +72,45 @@ QtObject {
         command: ["mkdir", "-p", root.screenshotsDir]
     }
 
-    // Dynamic list of freeze processes, managed via bash for simplicity?
-    // Or we can use a single shell script that forks grim for each monitor.
-    // "grim -o name1 path1 & grim -o name2 path2 & wait"
-    property Process freezeProcess: Process {
-        id: freezeProcess
-        // Command built dynamically
-        command: [] 
-        onExited: exitCode => {
-            root._freezing = false; // Reset lock flag
-            if (exitCode === 0) {
-                // Notify all monitors that their screenshot is ready
-                // We assume if the batch command finished, all are done.
-                for (var i = 0; i < root.monitors.length; i++) {
-                    var m = root.monitors[i];
-                    var path = root.tempPathBase + "_" + m.name + ".png";
-                    root.monitorScreenshotReady(m.name, path);
+    // One grim process per monitor, all started in parallel; completion is
+    // tracked via _pendingFreezes so we never string-build shell commands
+    // with untrusted monitor names.
+    property int _pendingFreezes: 0
+    property bool _freezeFailed: false
+
+    Component {
+        id: grimProcComp
+        Process {
+            property string monitorName: ""
+            property string outputPath: ""
+            command: ["grim", "-o", monitorName, outputPath]
+            running: true
+            onExited: (exitCode, exitStatus) => {
+                if (exitCode !== 0) root._freezeFailed = true;
+                root._pendingFreezes--;
+                destroy();
+                if (root._pendingFreezes === 0) {
+                    root.freezeBatchFinished();
                 }
-                // Also emit generic for compatibility?
-                root.screenshotCaptured(root.tempPathBase + "_ALL.png") // Dummy path?
-            } else {
-                root.errorOccurred("Failed to capture screen (grim)")
-                root._freezing = false;
             }
         }
+    }
+
+    function freezeBatchFinished() {
+        root._freezing = false;
+        if (root._freezeFailed) {
+            root._freezeFailed = false;
+            root.errorOccurred("Failed to capture screen (grim)");
+            return;
+        }
+        // Notify all monitors that their screenshot is ready
+        for (var i = 0; i < root.monitors.length; i++) {
+            var m = root.monitors[i];
+            var path = root.tempPathBase + "_" + m.name + ".png";
+            root.monitorScreenshotReady(m.name, path);
+        }
+        // Also emit generic for compatibility?
+        root.screenshotCaptured(root.tempPathBase + "_ALL.png") // Dummy path?
     }
     
     // Process for fetching monitors
@@ -268,20 +283,18 @@ QtObject {
             return;
         }
         
-        // Build a single command string to run grim for all monitors in parallel
-        // cmd: grim -o output1 path1 & grim -o output2 path2 & wait
-        var cmd = "";
+        // Run grim for all monitors in parallel, one array-arg Process each
+        root._pendingFreezes = 0;
+        root._freezeFailed = false;
         for (var i = 0; i < root.monitors.length; i++) {
             var m = root.monitors[i];
             var path = root.tempPathBase + "_" + m.name + ".png";
-            // Ensure path is quoted safely
-            cmd += `grim -o "${m.name}" "${path}" & `;
+            root._pendingFreezes++;
+            grimProcComp.createObject(root, {
+                monitorName: m.name,
+                outputPath: path
+            });
         }
-        cmd += "wait";
-        
-        console.log("Screenshot: Executing freeze batch: " + cmd);
-        freezeProcess.command = ["bash", "-c", cmd];
-        freezeProcess.running = true;
     }
 
     function getTimestamp() {

@@ -48,7 +48,7 @@ Item {
             Text {
                 text: Icons.caretRight
                 font.family: Icons.font
-                font.pixelSize: 20
+                font.pixelSize: Styling.fontSize(6)
                 color: Colors.overSurfaceVariant
             }
         }
@@ -163,7 +163,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -427,7 +427,7 @@ Item {
                     anchors.centerIn: parent
                     text: Icons.plus
                     font.family: Icons.font
-                    font.pixelSize: 16
+                    font.pixelSize: Styling.fontSize(2)
                     color: Colors.overSurfaceVariant
                 }
 
@@ -496,7 +496,7 @@ Item {
                 visible: tabBtn.icon !== "" && tabBtn.image === ""
                 text: tabBtn.icon
                 font.family: Icons.font
-                font.pixelSize: 14
+                font.pixelSize: Styling.fontSize(0)
                 color: tabBtn.item
             }
 
@@ -529,7 +529,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -538,7 +538,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -1134,7 +1134,7 @@ Item {
                             Text {
                                 text: Icons.clock
                                 font.family: Icons.font
-                                font.pixelSize: 64
+                                font.pixelSize: Styling.fontSize(50)
                                 color: Colors.surfaceVariant
                                 Layout.alignment: Qt.AlignHCenter
                             }
@@ -1178,7 +1178,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -1187,7 +1187,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 

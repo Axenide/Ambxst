@@ -28,6 +28,10 @@ Item {
     // Popup visibility state
     property bool popupOpen: clockPopup.isOpen
 
+    // Shared popup content width (weather widget, calendar and pomodoro all
+    // align to this; wrappers add 16 for the popup padding)
+    property real popupContentWidth: 300
+
     readonly property bool weatherAvailable: WeatherService.dataAvailable
 
     Layout.preferredWidth: vertical ? 36 : buttonBg.implicitWidth
@@ -182,7 +186,7 @@ Item {
                 variant: "popup"
                 radius: Styling.radius(8)
                 enableShadow: false
-                width: 300 + 16 // Match popupWrapper width
+                width: root.popupContentWidth + 16 // Match popupWrapper width
                 height: calendarContent.height + 32
 
                 property date currentDate: new Date()
@@ -333,7 +337,7 @@ Item {
                     // Weather widget with sun arc
                     WeatherWidget {
                         id: weatherWidget
-                        width: 300
+                        width: root.popupContentWidth
                         height: 140
                         showDebugControls: true
                         animationsEnabled: clockPopup.isOpen
@@ -370,7 +374,7 @@ Item {
                                         Column {
                                             id: forecastDay
                                             spacing: 2
-                                            width: (weatherWidget.width - 16 - (4 * 4) - (4 * 6)) / 5
+                                            width: (root.popupContentWidth - 16 - (4 * 4) - (4 * 6)) / 5
 
                                             // Day name
                                             Text {
@@ -608,13 +612,13 @@ Item {
                 variant: "popup"
                 radius: Styling.radius(8)
                 enableShadow: false
-                width: 300 + 16 // Match weather popup width
+                width: root.popupContentWidth + 16 // Match weather popup width
                 height: pomodoroWidget.height + 16
 
                 Pomodoro {
                     id: pomodoroWidget
                     anchors.centerIn: parent
-                    width: 300
+                    width: root.popupContentWidth
                     onRequestPopupOpen: clockPopup.open()
                 }
             }

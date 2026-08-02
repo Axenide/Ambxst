@@ -22,54 +22,106 @@ QtObject {
     signal authCompleted(bool success)
     signal monitorError(string error)
 
+    // Compiled once; each single-shot system query is one self-destroying
+    // instance. No Qt.createQmlObject, no leaked Process/StdioCollector.
+    Component {
+        id: singleShotProc
+        Process {
+            property string cmdLine: ""
+            property var onDone: null
+            command: ["sh", "-c", cmdLine]
+            stdout: StdioCollector {
+                waitForEnd: true
+            }
+            running: true
+            onExited: (exitCode, exitStatus) => {
+                if (onDone) onDone(exitCode, stdout.text);
+                destroy();
+            }
+        }
+    }
+
+    // Long-lived dbus-monitor for fprintd VerifyStart/VerifyStop calls
+    Component {
+        id: dbusMonitorComp
+        Process {
+            command: ["dbus-monitor", "--session", "interface='net.reactivated.Fprint.Device'", "type=method_call"]
+            stdout: SplitParser {
+                onRead: root.handleDbusLine(data)
+            }
+            onExited: (exitCode, exitStatus) => {
+                if (root.monitoring)
+                    monitorRestartTimer.restart();
+            }
+        }
+    }
+
+    property Timer monitorRestartTimer: Timer {
+        interval: 1000
+        repeat: false
+        onTriggered: root.startMonitorProcess()
+    }
+
+    property var dbusMonitorProc: null
+
+    property var authConnections: Connections {
+        target: FingerprintService
+        function onAuthSuccess() { root.handleAuthSuccess(); }
+        function onAuthFailed() { root.handleAuthFailed(); }
+    }
+
+    // Start monitoring as soon as fprintd is detected + fingerprint auth is
+    // enabled — not only when the user toggles the setting.
+    onActiveChanged: {
+        if (active && Config.lockscreen.enableFingerprint && !root.monitoring) {
+            root.startMonitoring();
+        } else if (!active && root.monitoring) {
+            root.stopMonitoring();
+        }
+    }
+
     function update() {
-        if (!Config.initialLoadComplete)
+        if (!Config.initialLoadComplete) {
+            // Retry until config has fully loaded (no-op otherwise)
+            Qt.callLater(update);
             return;
+        }
         checkFprintdRunning();
     }
 
     function checkFprintdRunning() {
-        var proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
-        proc.command = ["busctl", "list", "--no-pager"];
-        proc.running = true;
-
-        var collector = Qt.createQmlObject('import Quickshell.Io; StdioCollector {}', proc);
-        collector.waitForEnd = true;
-
-        proc.onExited.connect(function() {
-            active = collector.text.indexOf("net.reactivated.Fprint") !== -1;
+        singleShotProc.createObject(root, {
+            cmdLine: "busctl list --no-pager",
+            onDone: (exitCode, output) => {
+                root.active = output.indexOf("net.reactivated.Fprint") !== -1;
+            }
         });
     }
 
-    property var dbusMonitorProc: null
-    property var authConnections: null
-
-    function initProcesses() {
-        if (dbusMonitorProc)
-            return;
-        dbusMonitorProc = Qt.createQmlObject('import Quickshell.Io; Process { command: ["dbus-monitor", "--session", "interface=\'net.reactivated.Fprint.Device\'", "type=method_call"]; stdout: StdioCollector { id: dc; waitForEnd: false; onStreamFinished: { root.handleDbusOutput(text, dc) } } }', root);
-        dbusMonitorProc.running = false;
-        dbusMonitorProc.onExited.connect(function() {
-            if (root.monitoring)
-                dbusMonitorProc.running = true;
-        });
-        authConnections = Qt.createQmlObject('import QtQuick; Connections {}', root);
-        authConnections.target = FingerprintService;
-        authConnections.onAuthSuccess.connect(root.handleAuthSuccess);
-        authConnections.onAuthFailed.connect(root.handleAuthFailed);
+    function startMonitorProcess() {
+        if (!dbusMonitorProc) {
+            dbusMonitorProc = dbusMonitorComp.createObject(root);
+        }
+        dbusMonitorProc.running = true;
     }
 
-    function handleDbusOutput(data, collector) {
+    function handleDbusLine(data) {
         if (data.indexOf("VerifyStart") !== -1) {
-            requestCount++;
-            authInProgress = true;
-            currentApp = root.detectCallingApp();
-            currentWindow = root.detectCallingWindow();
-            root.authRequested(currentApp, currentWindow);
-            root.showFingerprintPopup(currentApp, currentWindow);
+            root.requestCount++;
+            root.authInProgress = true;
+            // Detection is async (process-based), so it's callback-driven:
+            // the popup only opens once both the app and window resolved.
+            root.detectCallingApp((app) => {
+                root.detectCallingWindow((window) => {
+                    root.currentApp = app;
+                    root.currentWindow = window;
+                    root.authRequested(app, window);
+                    root.showFingerprintPopup(app, window);
+                });
+            });
         }
         if (data.indexOf("VerifyStop") !== -1) {
-            authInProgress = false;
+            root.authInProgress = false;
             root.hideFingerprintPopup();
         }
     }
@@ -91,71 +143,76 @@ QtObject {
     }
 
     function startMonitoring() {
-        if (monitoring)
+        if (root.monitoring)
             return;
 
-        if (!dbusMonitorProc)
-            initProcesses();
+        root.monitoring = true;
+        root.requestCount = 0;
+        root.authInProgress = false;
 
-        monitoring = true;
-        requestCount = 0;
-        authInProgress = false;
-
-        dbusMonitorProc.running = true;
+        root.startMonitorProcess();
     }
 
     function stopMonitoring() {
-        monitoring = false;
-        authInProgress = false;
+        root.monitoring = false;
+        root.authInProgress = false;
         if (dbusMonitorProc && dbusMonitorProc.running) {
-            dbusMonitorProc.kill();
+            // Process has no kill() — SIGTERM via running=false terminates
+            // dbus-monitor (and monitoring is already false, so onExited
+            // won't restart it).
+            dbusMonitorProc.running = false;
         }
     }
 
-    function detectCallingApp() {
-        var proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
-        proc.command = ["bash", "-c", "ps -eo pid,comm --no-headers | tail -5 | head -1 | awk '{print $2}'"];
-        proc.running = true;
-
-        var collector = Qt.createQmlObject('import Quickshell.Io; StdioCollector {}', proc);
-        collector.waitForEnd = true;
-
-        var result = "unknown";
-        proc.onExited.connect(function() {
-            result = collector.text.trim() || "unknown";
+    function detectCallingApp(callback) {
+        singleShotProc.createObject(root, {
+            cmdLine: "ps -eo pid,comm --no-headers | tail -5 | head -1 | awk '{print $2}'",
+            onDone: (exitCode, output) => callback(output.trim() || "unknown")
         });
-
-        return result;
     }
 
-    function detectCallingWindow() {
-        var proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
-        proc.command = ["bash", "-c", "xdotool getwindowfocus getwindowname 2>/dev/null || echo 'unknown'"];
-        proc.running = true;
-
-        var collector = Qt.createQmlObject('import Quickshell.Io; StdioCollector {}', proc);
-        collector.waitForEnd = true;
-
-        var result = "unknown";
-        proc.onExited.connect(function() {
-            result = collector.text.trim() || "unknown";
+    function detectCallingWindow(callback) {
+        singleShotProc.createObject(root, {
+            cmdLine: "xdotool getwindowfocus getwindowname 2>/dev/null || echo 'unknown'",
+            onDone: (exitCode, output) => callback(output.trim() || "unknown")
         });
-
-        return result;
     }
 
     function showFingerprintPopup(app, window) {
-        if (typeof FingerprintPopup !== "undefined") {
-            FingerprintPopup.title = "Fingerprint Authentication";
-            FingerprintPopup.message = "App: " + app + "\nPlace your finger on the sensor";
-            FingerprintPopup.open();
-            FingerprintPopup.startScanning();
-        }
+        ensurePopup();
+        if (!root.fpPopup)
+            return;
+        root.fpPopup.title = "Fingerprint Authentication";
+        root.fpPopup.message = "App: " + app + "\nPlace your finger on the sensor";
+        root.fpPopup.open();
+        root.fpPopup.startScanning();
     }
 
     function hideFingerprintPopup() {
-        if (typeof FingerprintPopup !== "undefined") {
-            FingerprintPopup.close();
+        if (root.fpPopup)
+            root.fpPopup.close();
+    }
+
+    // The popup is a PanelWindow — it can't live as a QML-global, so the
+    // interceptor owns the single instance. (The old code relied on a
+    // `typeof FingerprintPopup` check that could never be true, making the
+    // whole polkit/sudo indicator dead code.)
+    Component {
+        id: fpPopupComp
+        FingerprintPopup {}
+    }
+
+    property var fpPopup: null
+
+    function ensurePopup() {
+        if (!root.fpPopup)
+            root.fpPopup = fpPopupComp.createObject(root);
+    }
+
+    Component.onDestruction: {
+        if (root.fpPopup) {
+            root.fpPopup.destroy();
+            root.fpPopup = null;
         }
     }
 

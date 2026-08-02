@@ -33,7 +33,7 @@ StyledRect {
         text: root.iconName
         color: root.item
         font.family: Icons.font
-        font.pixelSize: 18
+        font.pixelSize: Styling.fontSize(4)
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
 
@@ -41,7 +41,7 @@ StyledRect {
             enabled: Config.animDuration > 0
             ColorAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
     }

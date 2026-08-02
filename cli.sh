@@ -6,7 +6,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Use environment variables if set by flake, otherwise fall back to PATH
-QS_BIN="${AMBXST_PLUS_QS:-qs}"
+QS_BIN="${AMBXST_PLUS_QS:-${AMBXST_QS:-qs}}"
 NIXGL_BIN="${AMBXST_PLUS_NIXGL:-}"
 
 if [ -z "${QML2_IMPORT_PATH:-}" ]; then
@@ -75,10 +75,10 @@ Usage: ambxst+ [COMMAND]
 
 Commands:
     (none)                            Launch Ambxst[+]
-    update                            Update Ambxst[+]
     refresh                           Refresh local/dev profile (for developers)
     lock                              Activate lockscreen
     run <command>                     Send command to running shell (launcher, volume-up, etc.)
+    mic-mute                          Toggle microphone mute (with OSD feedback)
     brightness <percent> [monitor]    Set brightness (0-100)
     brightness +/-<delta> [monitor]   Adjust brightness relatively
     brightness -s [monitor]           Save current brightness
@@ -142,6 +142,22 @@ append_ambxst_plus_hyprland_block() {
 	echo "Added Ambxst[+] Hyprland block to $conf"
 }
 
+ensure_ambxst_plus_hyprland_source() {
+	# The block we append sources ~/.local/share/ambxst+/hyprland.conf (or
+	# .lua). Hyprland errors on a missing source file, so create it (with a
+	# user-overrides header) if it does not exist yet.
+	local file="$1"
+	local header="$2"
+
+	if [ ! -f "$file" ]; then
+		mkdir -p "$(dirname "$file")"
+		printf "%s\n" "$header" >"$file"
+		echo "Created $file"
+	else
+		echo "$file already exists"
+	fi
+}
+
 remove_ambxst_plus_hyprland_block() {
 	local conf="$1"
 	local source="$2"
@@ -149,6 +165,14 @@ remove_ambxst_plus_hyprland_block() {
 	if [ ! -f "$conf" ]; then
 		echo "$conf does not exist"
 		return 0
+	fi
+
+	# Refuse symlinked configs: `mv` would replace the symlink with a regular
+	# file, silently breaking dotfile-managed setups (chezmoi, git, ...).
+	if [ -L "$conf" ]; then
+		echo "Refusing to modify symlinked config: $conf -> $(readlink "$conf")"
+		echo "Remove the Ambxst[+] block manually from the target file instead."
+		return 1
 	fi
 
 	awk -v source="$source" '
@@ -177,7 +201,7 @@ remove_ambxst_plus_hyprland_block() {
 				print line
 			}
 		}
-	' "$conf" >"${conf}.tmp" && mv "${conf}.tmp" "$conf"
+	' "$conf" >"${conf}.tmp" && chmod --reference="$conf" "${conf}.tmp" && mv "${conf}.tmp" "$conf"
 
 	echo "Removed Ambxst[+] Hyprland block from $conf"
 }
@@ -214,18 +238,21 @@ find_ambxst_plus_pid() {
 
 find_ambxst_plus_pid_cached() {
 	# Optimized PID lookup: check cache file first, then fall back to pgrep
-	local pid_file="/tmp/ambxst+.pid"
+	local pid_file="${XDG_RUNTIME_DIR:-/tmp}/ambxst+.pid"
 	local pid=""
 
 	# Check if cache file exists and process is alive
-	if [ -f "$pid_file" ]; then
+	if [ -f "$pid_file" ] && [ -O "$pid_file" ]; then
 		pid=$(<"$pid_file" 2>/dev/null)
-		# Verify process still exists using kill -0 (no signal, just test)
-		if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+		# Verify the PID is numeric, still alive, and really is our shell
+		# (cmdline contains shell.qml) before trusting it
+		if [ -n "$pid" ] && [[ "$pid" =~ ^[0-9]+$ ]] \
+			&& [ -r "/proc/$pid/cmdline" ] \
+			&& tr '\0' ' ' <"/proc/$pid/cmdline" | grep -q "shell.qml"; then
 			echo "$pid"
 			return 0
 		fi
-		# PID is stale, remove cache file
+		# PID is stale or untrusted, remove cache file
 		rm -f "$pid_file"
 	fi
 
@@ -254,14 +281,11 @@ restart_ambxst_plus() {
 }
 
 case "${1:-}" in
-update)
-	echo "Updating Ambxst[+]..."
-	curl -fsSL get.axeni.de/ambxst+ | sh
-	restart_ambxst_plus
-	;;
 refresh)
 	echo "Refreshing Ambxst[+] profile..."
-	exec nix profile upgrade ambxst-plus --refresh --impure
+	# The profile element is named after the derivation (ambxst+-<version>),
+	# so match any ambxst* variant rather than a stale exact name
+	exec nix profile upgrade 'ambxst.*' --refresh --impure
 	;;
 run)
 	CMD="${2:-}"
@@ -300,6 +324,11 @@ lock)
 		echo "Error: Could not activate lockscreen"
 		exit 1
 	}
+	;;
+mic-mute)
+	# Convenience alias for `ambxst+ run mic-mute`
+	shift
+	exec "${BASH_SOURCE[0]}" run mic-mute "$@"
 	;;
 reload)
 	restart_ambxst_plus
@@ -367,20 +396,14 @@ suspend)
 	fi
 	;;
 brightness)
-		PID=$(find_ambxst_plus_pid_cached)
-	if [ -z "$PID" ]; then
-		echo "Error: Ambxst[+] is not running"
-		exit 1
-	fi
-
-	BRIGHTNESS_SAVE_FILE="/tmp/ambxst+_brightness_saved.txt"
+	BRIGHTNESS_SAVE_FILE="${XDG_RUNTIME_DIR:-/tmp}/ambxst+_brightness_saved.txt"
 
 	# Parse arguments
 	ARG2="${2:-}"
 	ARG3="${3:-}"
 	ARG4="${4:-}"
 
-	# Handle list flag
+	# Handle list flag (no IPC needed)
 	if [ "$ARG2" = "-l" ] || [ "$ARG2" = "--list" ]; then
 		echo "Monitors:"
 		if command -v hyprctl &>/dev/null; then
@@ -395,9 +418,54 @@ brightness)
 		exit 0
 	fi
 
+	# Handle save-only flag (no IPC needed)
+	if [ "$ARG2" = "-s" ] || [ "$ARG2" = "--save" ]; then
+		# Just save, no value change
+		MONITOR="${ARG3:-}"
+		if [ -z "$MONITOR" ]; then
+			# Save all monitors
+			bash "${SCRIPT_DIR}/scripts/brightness_list.sh" >"${BRIGHTNESS_SAVE_FILE}.tmp" 2>/dev/null || {
+				echo "Warning: Could not query current brightness"
+			}
+			if [ -f "${BRIGHTNESS_SAVE_FILE}.tmp" ]; then
+				while IFS=: read -r name bright method; do
+					if [ -n "$name" ] && [ -n "$bright" ]; then
+						echo "${name}:${bright}"
+					fi
+				done <"${BRIGHTNESS_SAVE_FILE}.tmp" >"$BRIGHTNESS_SAVE_FILE"
+				rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
+				echo "Saved current brightness for all monitors"
+			fi
+		else
+			# Save specific monitor
+			CURRENT_LINE=$(bash "${SCRIPT_DIR}/scripts/brightness_list.sh" 2>/dev/null | grep "^${MONITOR}:")
+			if [ -z "$CURRENT_LINE" ]; then
+				echo "Error: Monitor $MONITOR not found"
+				exit 1
+			fi
+			CURRENT=$(echo "$CURRENT_LINE" | cut -d: -f2)
+			if [ -f "$BRIGHTNESS_SAVE_FILE" ]; then
+				grep -v "^${MONITOR}:" "$BRIGHTNESS_SAVE_FILE" >"${BRIGHTNESS_SAVE_FILE}.tmp" 2>/dev/null || true
+				echo "${MONITOR}:${CURRENT}" >>"${BRIGHTNESS_SAVE_FILE}.tmp"
+				mv "${BRIGHTNESS_SAVE_FILE}.tmp" "$BRIGHTNESS_SAVE_FILE"
+			else
+				echo "${MONITOR}:${CURRENT}" >"$BRIGHTNESS_SAVE_FILE"
+			fi
+			echo "Saved current brightness for $MONITOR (${CURRENT}%)"
+		fi
+		exit 0
+	fi
+
+	# Everything below talks to the running shell over IPC
+	PID=$(find_ambxst_plus_pid_cached)
+	if [ -z "$PID" ]; then
+		echo "Error: Ambxst[+] is not running"
+		exit 1
+	fi
+
 	# Handle restore flag
 	if [ "$ARG2" = "-r" ] || [ "$ARG2" = "--restore" ]; then
-		if [ ! -f "$BRIGHTNESS_SAVE_FILE" ]; then
+		if [ ! -f "$BRIGHTNESS_SAVE_FILE" ] || [ ! -O "$BRIGHTNESS_SAVE_FILE" ]; then
 			echo "Error: No saved brightness found. Use -s to save first."
 			exit 1
 		fi
@@ -461,41 +529,6 @@ brightness)
 		elif [ "$ARG3" = "-s" ] || [ "$ARG3" = "--save" ]; then
 			SAVE_FLAG=true
 		fi
-	elif [ "$ARG2" = "-s" ] || [ "$ARG2" = "--save" ]; then
-		# Just save, no value change
-		MONITOR="${ARG3:-}"
-		if [ -z "$MONITOR" ]; then
-			# Save all monitors
-			bash "${SCRIPT_DIR}/scripts/brightness_list.sh" >"${BRIGHTNESS_SAVE_FILE}.tmp" 2>/dev/null || {
-				echo "Warning: Could not query current brightness"
-			}
-			if [ -f "${BRIGHTNESS_SAVE_FILE}.tmp" ]; then
-				while IFS=: read -r name bright method; do
-					if [ -n "$name" ] && [ -n "$bright" ]; then
-						echo "${name}:${bright}"
-					fi
-				done <"${BRIGHTNESS_SAVE_FILE}.tmp" >"$BRIGHTNESS_SAVE_FILE"
-				rm -f "${BRIGHTNESS_SAVE_FILE}.tmp"
-				echo "Saved current brightness for all monitors"
-			fi
-		else
-			# Save specific monitor
-			CURRENT_LINE=$(bash "${SCRIPT_DIR}/scripts/brightness_list.sh" 2>/dev/null | grep "^${MONITOR}:")
-			if [ -z "$CURRENT_LINE" ]; then
-				echo "Error: Monitor $MONITOR not found"
-				exit 1
-			fi
-			CURRENT=$(echo "$CURRENT_LINE" | cut -d: -f2)
-			if [ -f "$BRIGHTNESS_SAVE_FILE" ]; then
-				grep -v "^${MONITOR}:" "$BRIGHTNESS_SAVE_FILE" >"${BRIGHTNESS_SAVE_FILE}.tmp" 2>/dev/null || true
-				echo "${MONITOR}:${CURRENT}" >>"${BRIGHTNESS_SAVE_FILE}.tmp"
-				mv "${BRIGHTNESS_SAVE_FILE}.tmp" "$BRIGHTNESS_SAVE_FILE"
-			else
-				echo "${MONITOR}:${CURRENT}" >"$BRIGHTNESS_SAVE_FILE"
-			fi
-			echo "Saved current brightness for $MONITOR (${CURRENT}%)"
-		fi
-		exit 0
 	else
 		echo "Error: Invalid brightness value. Must be 0-100 or +/-delta."
 		echo "Run 'ambxst+ help' for usage information"
@@ -601,8 +634,10 @@ install)
 
 		if [ -f "$HYPR_LUA" ] || [ ! -f "$HYPR_CONF" ]; then
 			append_ambxst_plus_hyprland_block "$HYPR_LUA" "$AMBXST_PLUS_HYPR_LUA_SOURCE" "$AMBXST_PLUS_HYPR_LUA_BLOCK"
+			ensure_ambxst_plus_hyprland_source "$HOME/.local/share/ambxst+/hyprland.lua" "-- Ambxst[+] user overrides"
 		else
 			append_ambxst_plus_hyprland_block "$HYPR_CONF" "$AMBXST_PLUS_HYPR_CONF_SOURCE" "$AMBXST_PLUS_HYPR_CONF_BLOCK"
+			ensure_ambxst_plus_hyprland_source "$HOME/.local/share/ambxst+/hyprland.conf" "# Ambxst[+] user overrides"
 		fi
 	else
 		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
@@ -634,14 +669,17 @@ goodbye)
 	fi
 
 	if [ -f /etc/NIXOS ]; then
-		if nix profile list 2>/dev/null | grep -q "ambxst-plus"; then
+		if nix profile list 2>/dev/null | grep -q "ambxst"; then
 			echo "Removing from nix profile..."
-			nix profile remove ambxst-plus
+			nix profile remove 'ambxst.*'
 		elif command -v ambxst+ >/dev/null 2>&1; then
 			echo "Ambxst[+] was declared in this system. Please remove it from your configuration in order to uninstall."
 		else
 			echo "Ambxst[+] is not installed."
 		fi
+		# Remove the Hyprland import block if one was installed
+		remove_ambxst_plus_hyprland_block "$HOME/.config/hypr/hyprland.lua" "$AMBXST_PLUS_HYPR_LUA_SOURCE" 2>/dev/null || true
+		remove_ambxst_plus_hyprland_block "$HOME/.config/hypr/hyprland.conf" "$AMBXST_PLUS_HYPR_CONF_SOURCE" 2>/dev/null || true
 		exit 0
 	fi
 
@@ -651,6 +689,13 @@ goodbye)
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
 		REMOVE_CONFIG=true
 	fi
+
+	# Remove the Hyprland import block if one was installed
+	remove_ambxst_plus_hyprland_block "$HOME/.config/hypr/hyprland.lua" "$AMBXST_PLUS_HYPR_LUA_SOURCE" 2>/dev/null || true
+	remove_ambxst_plus_hyprland_block "$HOME/.config/hypr/hyprland.conf" "$AMBXST_PLUS_HYPR_CONF_SOURCE" 2>/dev/null || true
+
+	# Remove launcher installed by the curl installer (may need root)
+	rm -f /usr/local/bin/ambxst+ 2>/dev/null || echo "Note: could not remove /usr/local/bin/ambxst+ (run as root if needed)"
 
 	rm -rf "$HOME/.local/src/ambxst+"
 	rm -rf "$HOME/.local/share/ambxst+"
@@ -682,14 +727,15 @@ help | --help | -h)
 	unset HL_INITIAL_WORKSPACE_TOKEN
 
 	# Cache this script's PID before exec (for fast PID lookups in future CLI calls)
-	echo $$ >/tmp/ambxst+.pid
+	# In the runtime dir: user-owned (0700) and not world-writable, unlike /tmp
+	echo $$ >"${XDG_RUNTIME_DIR:-/tmp}/ambxst+.pid"
 
 	# Launch QuickShell with the main shell.qml
 	# If NIXGL_BIN is set (NixOS/Nix setup), use it. Otherwise, just run qs directly.
 	if [ -n "$NIXGL_BIN" ]; then
 		exec "$NIXGL_BIN" "$QS_BIN" -p "${SCRIPT_DIR}/shell.qml"
 	else
-		exec qs -p "${SCRIPT_DIR}/shell.qml"
+		exec "$QS_BIN" -p "${SCRIPT_DIR}/shell.qml"
 	fi
 	;;
 *)

@@ -143,6 +143,7 @@ def verify_finger():
         success = False
         timeout_count = 0
         max_timeout = 30
+        last_hint = None
 
         while not done and timeout_count < max_timeout:
             try:
@@ -152,7 +153,19 @@ def verify_finger():
                         args = msg.get_args_list()
                         if len(args) >= 2:
                             done = bool(args[0])
-                            success = bool(args[1])
+                            # fprintd >= 1.90: (done, result); < 1.90: (done, result_code)
+                            result_code = args[1] if isinstance(args[1], int) else None
+                            if done:
+                                # VERIFY_SUCCESS is 1 (older signature) — in the
+                                # string-signature version done==True always
+                                # means a match.
+                                success = (result_code == 1) if result_code is not None else True
+                            else:
+                                hint = ENROLL_HINTS.get(result_code)
+                                if hint and hint != last_hint:
+                                    print(json.dumps({"status": "hint", "message": hint}))
+                                    sys.stdout.flush()
+                                last_hint = hint
                     msg = bus.pop_message()
 
                 if not done:
@@ -180,6 +193,17 @@ def verify_finger():
         result["error"] = str(e)
 
     print(json.dumps(result))
+
+
+ENROLL_HINTS = {
+    2: "Scan failed — try again",
+    3: "Retry the scan",
+    4: "Finger moved too quickly — try again",
+    5: "Center your finger on the sensor",
+    6: "Lift your finger and try again",
+    7: "Swipe was too short — try again",
+    8: "Sensor disconnected",
+}
 
 
 def enroll_finger(finger):
@@ -222,13 +246,15 @@ def enroll_finger(finger):
             print(json.dumps(result))
             return
 
-        print(json.dumps({"status": "enrolling", "finger": finger}))
+        print(json.dumps({"status": "enrolling", "finger": finger, "stage": 0}))
         sys.stdout.flush()
 
         done = False
         success = False
+        stage = 0
         timeout_count = 0
-        max_timeout = 60
+        max_timeout = 120
+        last_hint = None
 
         while not done and timeout_count < max_timeout:
             try:
@@ -238,7 +264,27 @@ def enroll_finger(finger):
                         args = msg.get_args_list()
                         if len(args) >= 2:
                             done = bool(args[0])
-                            success = bool(args[1])
+                            # fprintd >= 1.90: (done, result, result_code)
+                            # fprintd < 1.90:  (done, result_code, result)
+                            result_code = None
+                            if len(args) >= 3 and isinstance(args[2], int):
+                                result_code = int(args[2])
+                            elif isinstance(args[1], int):
+                                result_code = int(args[1])
+
+                            if done:
+                                success = (result_code == 0 if result_code is not None else True)
+                            elif result_code == 1:
+                                # ENROLL_STAGE_PASSED — one full scan done
+                                stage += 1
+                                print(json.dumps({"status": "scanning", "stage": stage, "message": "Lift and replace your finger"}))
+                                sys.stdout.flush()
+                            else:
+                                hint = ENROLL_HINTS.get(result_code)
+                                if hint and hint != last_hint:
+                                    print(json.dumps({"status": "hint", "stage": stage, "message": hint}))
+                                    sys.stdout.flush()
+                                last_hint = hint
                     msg = bus.pop_message()
 
                 if not done:
@@ -252,6 +298,7 @@ def enroll_finger(finger):
 
         if done:
             result["success"] = success
+            result["stage"] = stage
             if not success:
                 result["error"] = "Enrollment failed"
         else:

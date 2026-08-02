@@ -5,7 +5,7 @@ set -euo pipefail
 
 # Check for internal displays using brightnessctl (backlight devices only)
 if command -v brightnessctl &> /dev/null; then
-    DEVICES=$(brightnessctl -l 2>/dev/null | grep "backlight" | awk -F"'" '{print $2}')
+    DEVICES=$(brightnessctl -l 2>/dev/null | grep "backlight" | awk -F"'" '{print $2}' || true)
     for device in $DEVICES; do
         CURRENT=$(brightnessctl -d "$device" g 2>/dev/null)
         MAX=$(brightnessctl -d "$device" m 2>/dev/null)
@@ -13,7 +13,7 @@ if command -v brightnessctl &> /dev/null; then
             PERCENT=$(( CURRENT * 100 / MAX ))
             # Try to map backlight device to Hyprland monitor name
             # Most internal displays are eDP, so we use that as fallback
-            MONITOR_NAME=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.name | contains("eDP")) | .name' | head -1)
+            MONITOR_NAME=$(hyprctl monitors -j 2>/dev/null | jq -r '.[] | select(.name | contains("eDP")) | .name' | head -1 || true)
             if [ -z "$MONITOR_NAME" ]; then
                 MONITOR_NAME="eDP-1"
             fi
@@ -34,7 +34,7 @@ if command -v ddcutil &> /dev/null; then
             CURRENT_CONNECTOR="${BASH_REMATCH[1]}"
         elif [[ "$line" =~ ^$ ]] && [ -n "$CURRENT_BUS" ] && [ -n "$CURRENT_CONNECTOR" ]; then
             # End of display block, get brightness
-            BRIGHTNESS=$(ddcutil -b "$CURRENT_BUS" getvcp 10 --brief 2>/dev/null | awk '{print $4}')
+            BRIGHTNESS=$(ddcutil -b "$CURRENT_BUS" getvcp 10 --brief 2>/dev/null | awk '{print $4}' || true)
             if [ -n "$BRIGHTNESS" ]; then
                 echo "${CURRENT_CONNECTOR}:${BRIGHTNESS}"
             fi

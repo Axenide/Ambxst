@@ -295,36 +295,25 @@ ShellRoot {
         }
     }
 
-    // Init clipboard service
-    Connections {
-        target: ClipboardService
-        function onListCompleted() {
-        // Service initialized and ready
-        }
-    }
-
-    // Force service init at startup but defer it slightly so it doesn't block the UI
+    // Explicit service-init list. Referencing each singleton forces its load;
+    // every service self-inits via its own Component.onCompleted / state-load
+    // hook (FprintdInterceptor.update retries until Config is loaded).
+    // Replaces the previous property-read hacks + 2s Timer.
     QtObject {
         id: serviceInitializer
 
         Component.onCompleted: {
-            // Critical services — init immediately (next tick)
             Qt.callLater(() => {
-                let _ = CaffeineService.inhibit;
-                _ = IdleService.lockCmd; // Force init
-                _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
+                // Critical services — init immediately (next tick)
+                CaffeineService.toggleInhibit.toString();
+                IdleService.executeCommand.toString();
+                GlobalShortcuts.run.toString();
+                // Non-critical services
+                NightLightService.toggle.toString();
+                GameModeService.toggle.toString();
+                CameraService.update.toString();
+                FprintdInterceptor.update.toString();
             });
-        }
-    }
-
-    // Non-critical services — defer 2s after startup
-    Timer {
-        interval: 2000
-        running: true
-        onTriggered: {
-            let _ = NightLightService.active;
-            _ = GameModeService.toggled;
-            _ = FprintdInterceptor.active; // Force init fingerprint interceptor
         }
     }
 

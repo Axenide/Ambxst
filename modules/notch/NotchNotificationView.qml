@@ -22,7 +22,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -297,14 +297,14 @@ Item {
                             from: notificationStack.height
                             to: 0
                             duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                         PropertyAnimation {
                             property: "opacity"
                             from: 0
                             to: 1
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -314,14 +314,14 @@ Item {
                             from: 0
                             to: -notificationStack.height
                             duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                         PropertyAnimation {
                             property: "opacity"
                             from: 1
                             to: 0
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -331,14 +331,14 @@ Item {
                             from: -notificationStack.height
                             to: 0
                             duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                         PropertyAnimation {
                             property: "opacity"
                             from: 0
                             to: 1
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -348,14 +348,14 @@ Item {
                             from: 0
                             to: notificationStack.height
                             duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                         PropertyAnimation {
                             property: "opacity"
                             from: 1
                             to: 0
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -379,7 +379,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -393,7 +393,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
 
@@ -439,7 +439,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 NumberAnimation {
                                                     duration: Config.animDuration
-                                                    easing.type: Easing.OutQuart
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
                                         }
@@ -612,7 +612,7 @@ Item {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
 
@@ -657,7 +657,7 @@ Item {
                                                     text: Icons.cancel
                                                     textFormat: Text.RichText
                                                     font.family: Icons.font
-                                                    font.pixelSize: 16
+                                                    font.pixelSize: Styling.fontSize(2)
                                                     color: notchDismissBg.iconColor
                                                     horizontalAlignment: Text.AlignHCenter
                                                     verticalAlignment: Text.AlignVCenter
@@ -763,7 +763,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -799,7 +799,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -817,7 +817,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -828,7 +828,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }

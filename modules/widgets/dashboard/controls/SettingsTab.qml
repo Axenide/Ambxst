@@ -385,7 +385,7 @@ Rectangle {
                         enabled: Config.animDuration > 0 && !sidebarFlickable.moving
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -412,7 +412,7 @@ Rectangle {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutCubic
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -450,7 +450,7 @@ Rectangle {
                                         id: iconText
                                         text: sidebarButton.modelData.isIcon ? sidebarButton.modelData.icon : ""
                                         font.family: Icons.font
-                                        font.pixelSize: 20
+                                        font.pixelSize: Styling.fontSize(6)
                                         color: sidebarButton.isActive ? Styling.srItem("overprimary") : Styling.srItem("common")
                                         anchors.verticalCenter: parent.verticalCenter
                                         leftPadding: 10
@@ -460,7 +460,7 @@ Rectangle {
                                             enabled: Config.animDuration > 0
                                             ColorAnimation {
                                                 duration: Config.animDuration
-                                                easing.type: Easing.OutCubic
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -507,7 +507,7 @@ Rectangle {
                                                 enabled: Config.animDuration > 0
                                                 ColorAnimation {
                                                     duration: Config.animDuration
-                                                    easing.type: Easing.OutCubic
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
                                         }
@@ -630,7 +630,7 @@ Rectangle {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
 

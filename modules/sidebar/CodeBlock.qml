@@ -42,7 +42,7 @@ ColumnLayout {
                 text: root.language || "text"
                 color: Colors.outline
                 font.family: Config.theme.font
-                font.pixelSize: 12
+                font.pixelSize: Styling.fontSize(-2)
                 font.weight: Font.Bold
             }
 
@@ -60,7 +60,7 @@ ColumnLayout {
                     text: Icons.copy
                     font.family: Icons.font
                     color: parent.hovered ? Styling.srItem("overprimary") : Colors.outline
-                    font.pixelSize: 14
+                    font.pixelSize: Styling.fontSize(0)
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
@@ -68,8 +68,7 @@ ColumnLayout {
                 background: null
 
                 onClicked: {
-                    let p = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { command: ["wl-copy", "' + root.code.replace(/"/g, '\\"') + '"] }', parent);
-                    p.running = true;
+                    CopyProcess.createObject(parent, { content: root.code });
                     // Optional: Show "Copied" feedback
                     copyFeedback.visible = true;
                     copyFeedbackTimer.restart();
@@ -79,7 +78,7 @@ ColumnLayout {
                     id: copyFeedback
                     text: "Copied!"
                     font.family: Config.theme.font
-                    font.pixelSize: 10
+                    font.pixelSize: Styling.fontSize(-4)
                     color: Colors.success
                     visible: false
                     anchors.right: parent.left
@@ -114,7 +113,7 @@ ColumnLayout {
             anchors.margins: 8
             text: root.code
             font.family: "Monospace"
-            font.pixelSize: 13
+            font.pixelSize: Styling.monoFontSize(-1)
             color: Colors.overSurface
             readOnly: true
             selectByMouse: true

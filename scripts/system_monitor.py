@@ -15,6 +15,64 @@ class SystemMonitor:
         self.cpu_model = self._detect_cpu_model()
         self.gpu_info = self._detect_gpus()
         self.disk_types = self._detect_disk_types(disks)
+        # Cache filesystem paths discovered once at init instead of re-walking
+        # /sys/class/hwmon and /sys/class/drm on every poll.
+        self.cpu_temp_path = self._find_cpu_temp_path()
+        self.amd_temp_paths = self._find_amd_temp_paths()
+        # nvidia-smi is expensive (a full driver query); only re-run it every
+        # N polls (20s at the default 2s interval) and serve the cached values
+        # in between. The cheap /proc power-state check still runs every poll.
+        self._nvidia_poll_counter = 0
+        self._nvidia_poll_every = 10
+        self._nvidia_cache = {}
+
+    def _find_cpu_temp_path(self):
+        base = "/sys/class/hwmon"
+        if not os.path.exists(base):
+            return None
+        for hwmon in os.listdir(base):
+            path = os.path.join(base, hwmon)
+            try:
+                with open(os.path.join(path, "name"), "r") as f:
+                    name = f.read().strip()
+                if name in [
+                    "coretemp",
+                    "k10temp",
+                    "zenpower",
+                    "cpu_thermal",
+                    "x86_pkg_temp",
+                    "amd_energy",
+                ]:
+                    for item in os.listdir(path):
+                        if item.endswith("_input") and item.startswith("temp"):
+                            candidate = os.path.join(path, item)
+                            try:
+                                with open(candidate, "r") as f:
+                                    val = int(f.read().strip())
+                                if 10000 < val < 120000:
+                                    return candidate
+                            except Exception:
+                                continue
+            except Exception:
+                continue
+        return None
+
+    def _find_amd_temp_paths(self):
+        paths = {}
+        for gpu in self.gpu_info:
+            if gpu["vendor"] != "amd":
+                continue
+            card = gpu["card"]
+            try:
+                hwmon_base = f"/sys/class/drm/{card}/device/hwmon"
+                if os.path.exists(hwmon_base):
+                    hwmon_dir = os.listdir(hwmon_base)[0]
+                    paths[card] = os.path.join(
+                        hwmon_base, hwmon_dir, "temp1_input"
+                    )
+            except Exception:
+                pass
+        return paths
 
     def _detect_cpu_model(self):
         try:
@@ -142,30 +200,15 @@ class SystemMonitor:
             return 0.0
 
     def get_cpu_temp(self):
-        base = "/sys/class/hwmon"
-        if not os.path.exists(base):
+        if self.cpu_temp_path is None:
             return -1
-        for hwmon in os.listdir(base):
-            path = os.path.join(base, hwmon)
-            try:
-                with open(os.path.join(path, "name"), "r") as f:
-                    name = f.read().strip()
-                if name in [
-                    "coretemp",
-                    "k10temp",
-                    "zenpower",
-                    "cpu_thermal",
-                    "x86_pkg_temp",
-                    "amd_energy",
-                ]:
-                    for item in os.listdir(path):
-                        if item.endswith("_input") and item.startswith("temp"):
-                            with open(os.path.join(path, item), "r") as f:
-                                val = int(f.read().strip())
-                                if 10000 < val < 120000:
-                                    return val // 1000
-            except Exception:
-                continue
+        try:
+            with open(self.cpu_temp_path, "r") as f:
+                val = int(f.read().strip())
+                if 10000 < val < 120000:
+                    return val // 1000
+        except Exception:
+            pass
         return -1
 
     def get_mem(self):
@@ -205,6 +248,10 @@ class SystemMonitor:
     def get_gpu_stats(self):
         usages = []
         temps = []
+        refresh_nvidia = (
+            self._nvidia_poll_counter % self._nvidia_poll_every == 0
+        )
+        self._nvidia_poll_counter += 1
         for gpu in self.gpu_info:
             u, t = 0.0, -1
             if gpu["vendor"] == "nvidia":
@@ -217,27 +264,34 @@ class SystemMonitor:
                         pass
 
                 if is_active:
-                    try:
-                        out = (
-                            subprocess.check_output(
-                                [
-                                    "nvidia-smi",
-                                    "-i",
-                                    gpu["pci_id"],
-                                    "--query-gpu=utilization.gpu,temperature.gpu",
-                                    "--format=csv,noheader,nounits",
-                                ]
+                    if refresh_nvidia:
+                        try:
+                            out = (
+                                subprocess.check_output(
+                                    [
+                                        "nvidia-smi",
+                                        "-i",
+                                        gpu["pci_id"],
+                                        "--query-gpu=utilization.gpu,temperature.gpu",
+                                        "--format=csv,noheader,nounits",
+                                    ]
+                                )
+                                .decode("utf-8")
+                                .strip()
                             )
-                            .decode("utf-8")
-                            .strip()
-                        )
-                        parts = out.split(",")
-                        if len(parts) >= 2:
-                            u, t = float(parts[0]), int(parts[1])
-                    except Exception:
-                        pass
+                            parts = out.split(",")
+                            if len(parts) >= 2:
+                                self._nvidia_cache[gpu["pci_id"]] = (
+                                    float(parts[0]),
+                                    int(parts[1]),
+                                )
+                        except Exception:
+                            pass
                 else:
-                    u, t = 0.0, -1
+                    self._nvidia_cache[gpu["pci_id"]] = (0.0, -1)
+                cached = self._nvidia_cache.get(gpu["pci_id"])
+                if cached is not None:
+                    u, t = cached
             elif gpu["vendor"] == "amd":
                 card = gpu["card"]
                 try:
@@ -247,16 +301,13 @@ class SystemMonitor:
                         u = float(f.read().strip())
                 except Exception:
                     pass
-                try:
-                    hwmon_base = f"/sys/class/drm/{card}/device/hwmon"
-                    if os.path.exists(hwmon_base):
-                        hwmon_dir = os.listdir(hwmon_base)[0]
-                        with open(
-                            os.path.join(hwmon_base, hwmon_dir, "temp1_input"), "r"
-                        ) as f:
+                temp_path = self.amd_temp_paths.get(card)
+                if temp_path:
+                    try:
+                        with open(temp_path, "r") as f:
                             t = int(f.read().strip()) // 1000
-                except Exception:
-                    pass
+                    except Exception:
+                        pass
             elif gpu["vendor"] == "intel":
                 pass
             usages.append(u)

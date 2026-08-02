@@ -131,7 +131,7 @@ StyledRect {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
     }
@@ -161,7 +161,7 @@ StyledRect {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
     }
@@ -482,7 +482,7 @@ StyledRect {
                 anchors.centerIn: parent
                 text: !player.hasActivePlayer ? Icons.stop : (player.isPlaying ? Icons.pause : Icons.play)
                 font.family: Icons.font
-                font.pixelSize: 22
+                font.pixelSize: Styling.fontSize(8)
                 color: playPauseBtn.item
             }
 
@@ -586,7 +586,7 @@ StyledRect {
                     width: playersListView.width
                     height: 40
                     variant: delegateMouseArea.containsMouse ? "focus" : "transparent"
-                    radius: 4
+                    radius: Styling.radius(-12)
 
                     RowLayout {
                         anchors.fill: parent
@@ -596,7 +596,7 @@ StyledRect {
                         Text {
                             text: player.getPlayerIcon(modelData)
                             font.family: Icons.font
-                            font.pixelSize: 18
+                            font.pixelSize: Styling.fontSize(4)
                             color: Colors.overBackground
                         }
 
@@ -631,7 +631,7 @@ StyledRect {
 
         text: icon
         font.family: Icons.font
-        font.pixelSize: 20
+        font.pixelSize: Styling.fontSize(6)
         color: mouseArea.containsMouse ? Colors.primary : Colors.overBackground
 
         Behavior on color {

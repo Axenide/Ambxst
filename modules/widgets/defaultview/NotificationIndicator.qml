@@ -25,7 +25,7 @@ Item {
                 property: "rotation"
                 to: -15
                 duration: 50
-                easing.type: Easing.OutQuad
+                easing.type: Styling.animEasing
             }
             NumberAnimation {
                 target: shakeContainer
@@ -53,7 +53,7 @@ Item {
                 property: "rotation"
                 to: 0
                 duration: 50
-                easing.type: Easing.InQuad
+                easing.type: Styling.animEasing
             }
         }
 
@@ -63,7 +63,7 @@ Item {
             text: Notifications.silent ? Icons.bellZ : (Notifications.list.length > 0 ? Icons.bellRinging : Icons.bell)
             textFormat: Text.RichText
             font.family: Icons.font
-            font.pixelSize: 18
+            font.pixelSize: Styling.fontSize(4)
             color: hovered ? Styling.srItem("overprimary") : (Notifications.list.length > 0 ? Colors.error : Colors.overBackground)
 
             HoverHandler {

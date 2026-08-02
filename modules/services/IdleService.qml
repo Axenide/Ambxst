@@ -15,11 +15,21 @@ Singleton {
     property string afterSleepCmd: Config.system.idle.general.after_sleep_cmd ?? "ambxst+ screen on"
 
     // Login Lock Daemon
-    // Helper script that listens to Lock signal and executes lockCmd from config
+    // Helper script that listens to Lock signal and reports LOCK events;
+    // IdleService owns execution of the configured lock command.
     property var loginLockProc: Process {
         id: loginLockProc
         running: true
         command: ["bash", Qt.resolvedUrl("../../scripts/loginlock.sh").toString().replace("file://", "")]
+
+        stdout: SplitParser {
+            onRead: data => {
+                if (data.trim() === "LOCK") {
+                    root.executeCommand(root.lockCmd);
+                }
+            }
+        }
+
         onExited: exitCode => {
             if (exitCode !== 0) {
                 console.warn("loginlock.sh exited with code " + exitCode + ". Restarting...");
@@ -36,7 +46,8 @@ Singleton {
     }
 
     // Sleep Monitor Daemon
-    // Helper script that listens to PrepareForSleep signal and executes sleep commands from config
+    // Helper script that listens to PrepareForSleep signal and emits SUSPEND/WAKE
+    // events; IdleService owns execution of the configured sleep commands.
     property var sleepMonitorProc: Process {
         id: sleepMonitorProc
         running: true
@@ -49,6 +60,7 @@ Singleton {
                     root.lockBeforeSleep();
                     SuspendManager.onPrepareForSleep();
                 } else if (signal === "WAKE") {
+                    root.executeCommand(root.afterSleepCmd);
                     SuspendManager.onWakingUp();
                 }
             }
@@ -99,24 +111,22 @@ Singleton {
         }
     }
 
+    // Compiled once, instantiated per trigger with the configured command.
+    // No template-string QML; destroys itself on exit (long-running commands
+    // keep the Process alive until they actually exit).
+    Component {
+        id: commandProcessComp
+        Process {
+            property string cmd: ""
+            command: ["sh", "-c", cmd]
+            running: true
+            onExited: destroy()
+        }
+    }
+
     function executeCommand(cmd) {
         if (!cmd) return;
-        
-        // Escape backslashes and quotes for the QML string
-        let escapedCmd = cmd.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-        
-        try {
-            let proc = Qt.createQmlObject(`
-                import Quickshell.Io
-                Process {
-                    command: ["sh", "-c", "${escapedCmd}"]
-                    running: true
-                    onExited: destroy()
-                }
-            `, root, "dynamicProc");
-        } catch (e) {
-            console.error("Failed to create process for command:", cmd, e);
-        }
+        commandProcessComp.createObject(root, { cmd: cmd });
     }
 
     function shouldUseInternalSleepLock() {
@@ -129,6 +139,8 @@ Singleton {
     function lockBeforeSleep() {
         if (root.shouldUseInternalSleepLock()) {
             LockscreenService.lock();
+        } else {
+            root.executeCommand(root.beforeSleepCmd);
         }
     }
 

@@ -127,7 +127,7 @@ Item {
                             text: Notifications.silent ? Icons.bellZ : Icons.bell
                             textFormat: Text.RichText
                             font.family: Icons.font
-                            font.pixelSize: 18
+                            font.pixelSize: Styling.fontSize(4)
                             color: dndToggle.dndItem
                         }
 
@@ -154,7 +154,7 @@ Item {
                             text: Icons.broom
                             textFormat: Text.RichText
                             font.family: Icons.font
-                            font.pixelSize: 18
+                            font.pixelSize: Styling.fontSize(4)
                             color: clearButton.clearItem
                         }
 

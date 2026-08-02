@@ -24,6 +24,8 @@ QtObject {
     signal authSuccess()
     signal authFailed(string error)
     signal authProgress(string message)
+    // Per-scan progress during enrollment: stage = successful scans so far.
+    signal enrollProgress(int stage, string message)
     signal deviceLost()
     signal deviceRestored()
     signal retryAttempt(int attempt, int maxRetries)
@@ -43,6 +45,7 @@ QtObject {
 
         var proc = createProcess(["python3", scriptPath, "check"]);
         var collector = createCollector(proc);
+        proc.running = true;
 
         proc.onExited.connect(function() {
             try {
@@ -86,14 +89,36 @@ QtObject {
 
     function startVerifyProcess() {
         var proc = createProcess(["python3", scriptPath, "verify"]);
-        var collector = createCollector(proc);
+        var buffer = "";
+        proc.stdout = createParser(proc);
+        proc.running = true;
+        proc.stdout.onRead.connect(function(data) {
+            if (!data)
+                return;
+            buffer += data + "\n";
+            // The script emits a scanning line immediately, then one JSON
+            // result line at the end — stream both as they arrive.
+            var line = data.trim();
+            if (!line)
+                return;
+            try {
+                var obj = JSON.parse(line);
+                if (obj.status === "scanning") {
+                    authProgress(obj.message || "Place your finger on the sensor");
+                } else if (obj.status === "hint") {
+                    authProgress(obj.message || "Try again");
+                }
+            } catch (e) {
+                // Partial JSON — wait for the rest.
+            }
+        });
 
         proc.onExited.connect(function() {
             if (!scanning)
                 return;
 
             scanning = false;
-            var lines = collector.text.trim().split("\n");
+            var lines = buffer.trim().split("\n");
             var lastLine = lines[lines.length - 1];
 
             try {
@@ -152,13 +177,34 @@ QtObject {
         }
 
         status = "enrolling";
+        currentFinger = finger;
         authProgress("Place your finger on the sensor to enroll");
 
         var proc = createProcess(["python3", scriptPath, "enroll", finger]);
-        var collector = createCollector(proc);
+        var buffer = "";
+        proc.stdout = createParser(proc);
+        proc.running = true;
+        proc.stdout.onRead.connect(function(data) {
+            if (!data)
+                return;
+            buffer += data + "\n";
+            var line = data.trim();
+            if (!line)
+                return;
+            try {
+                var obj = JSON.parse(line);
+                if (obj.status === "scanning" || obj.status === "enrolling") {
+                    root.enrollProgress(obj.stage || 0, obj.message || "Place your finger on the sensor");
+                } else if (obj.status === "hint") {
+                    root.enrollProgress(obj.stage || 0, obj.message || "Try again");
+                }
+            } catch (e) {
+                // Partial JSON — wait for the rest.
+            }
+        });
 
         proc.onExited.connect(function() {
-            var lines = collector.text.trim().split("\n");
+            var lines = buffer.trim().split("\n");
             var lastLine = lines[lines.length - 1];
 
             try {
@@ -194,6 +240,7 @@ QtObject {
     function listFingers() {
         var proc = createProcess(["python3", scriptPath, "list"]);
         var collector = createCollector(proc);
+        proc.running = true;
 
         proc.onExited.connect(function() {
             try {
@@ -213,43 +260,52 @@ QtObject {
         return proc;
     }
 
+    // NOTE: Quickshell only reads process output when the parser is explicitly
+    // assigned to Process.stdout — the old code created the collector as a
+    // child object without assigning it, so stdout was never read and every
+    // verify/enroll/check silently failed. Both helpers below assign explicitly.
     function createCollector(proc) {
         var collector = Qt.createQmlObject('import Quickshell.Io; StdioCollector {}', proc);
         collector.waitForEnd = true;
+        proc.stdout = collector;
         return collector;
     }
 
-    property var deviceMonitorTimer: null
+    function createParser(proc) {
+        var parser = Qt.createQmlObject('import Quickshell.Io; SplitParser {}', proc);
+        proc.stdout = parser;
+        return parser;
+    }
 
-    function initDeviceMonitorTimer() {
-        if (deviceMonitorTimer)
+    // Event-driven device monitoring: a long-lived dbus-monitor on the fprint
+    // D-Bus interface fires checkAvailability() on real events (device added/
+    // removed, fingers enrolled/deleted) instead of spawning a python process
+    // every 5 seconds. A 30s fallback poll keeps state honest if a signal is
+    // ever missed (e.g. the fprintd service dies silently).
+    property var deviceMonitorProcess: null
+    property var deviceMonitorFallbackTimer: null
+
+    function initDeviceMonitor() {
+        if (deviceMonitorProcess)
             return;
-        deviceMonitorTimer = Qt.createQmlObject('import QtQuick; Timer { interval: 5000; repeat: true; running: false }', root);
-        deviceMonitorTimer.onTriggered.connect(function() {
-            if (!root.available)
+
+        deviceMonitorProcess = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+        deviceMonitorProcess.command = ["dbus-monitor", "--session", "type='signal',interface='net.reactivated.Fprint'"];
+        deviceMonitorProcess.stdout = createParser(deviceMonitorProcess);
+        deviceMonitorProcess.stdout.onRead.connect(function(data) {
+            if (!data)
                 return;
+            if (root.available)
+                root.checkAvailability();
+        });
+        deviceMonitorProcess.onExited.connect(function() {
+            deviceMonitorProcess.destroy();
+            deviceMonitorProcess = null;
+        });
 
-            var proc = root.createProcess(["python3", root.scriptPath, "check"]);
-            var collector = root.createCollector(proc);
-
-            proc.onExited.connect(function() {
-                try {
-                    var data = JSON.parse(collector.text.trim());
-                    if (!data.available && root.available) {
-                        root.available = false;
-                        root.enrolled = false;
-                        root.deviceLost();
-                        root.stopDeviceMonitoring();
-                    }
-                } catch (e) {
-                    if (root.available) {
-                        root.available = false;
-                        root.enrolled = false;
-                        root.deviceLost();
-                        root.stopDeviceMonitoring();
-                    }
-                }
-            });
+        deviceMonitorFallbackTimer = Qt.createQmlObject('import QtQuick; Timer { interval: 30000; repeat: true; running: false }', root);
+        deviceMonitorFallbackTimer.onTriggered.connect(function() {
+            root.checkAvailability();
         });
     }
 
@@ -257,17 +313,21 @@ QtObject {
         if (deviceMonitoring)
             return;
 
-        if (!deviceMonitorTimer)
-            initDeviceMonitorTimer();
+        initDeviceMonitor();
 
         deviceMonitoring = true;
-        deviceMonitorTimer.running = true;
+        if (deviceMonitorProcess)
+            deviceMonitorProcess.running = true;
+        if (deviceMonitorFallbackTimer)
+            deviceMonitorFallbackTimer.running = true;
     }
 
     function stopDeviceMonitoring() {
         deviceMonitoring = false;
-        if (deviceMonitorTimer)
-            deviceMonitorTimer.running = false;
+        if (deviceMonitorProcess)
+            deviceMonitorProcess.running = false;
+        if (deviceMonitorFallbackTimer)
+            deviceMonitorFallbackTimer.running = false;
     }
 
     Component.onCompleted: {

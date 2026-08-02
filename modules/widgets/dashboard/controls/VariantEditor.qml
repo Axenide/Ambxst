@@ -106,7 +106,7 @@ Item {
                             }
                         }
                         font.family: Icons.font
-                        font.pixelSize: 14
+                        font.pixelSize: Styling.fontSize(0)
                         color: typeButton.itemColor
                     }
 
@@ -328,7 +328,7 @@ Item {
                 Text {
                     text: Icons.arrowDown
                     font.family: Icons.font
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     color: Styling.srItem("overprimary")
                     rotation: root.variantConfig ? root.variantConfig.gradientAngle : 0
 
@@ -336,7 +336,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -563,7 +563,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.arrowDown
                                 font.family: Icons.font
-                                font.pixelSize: 18
+                                font.pixelSize: Styling.fontSize(4)
                                 color: Styling.srItem("overprimary")
                                 rotation: root.variantConfig ? root.variantConfig.gradientAngle : 0
 
@@ -571,7 +571,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -628,7 +628,7 @@ Item {
                         Text {
                             text: Icons.circle
                             font.family: Icons.font
-                            font.pixelSize: 18
+                            font.pixelSize: Styling.fontSize(4)
                             color: Styling.srItem("overprimary")
                             Layout.preferredWidth: 24
                         }
@@ -721,7 +721,7 @@ Item {
                         Text {
                             text: Icons.range
                             font.family: Icons.font
-                            font.pixelSize: 18
+                            font.pixelSize: Styling.fontSize(4)
                             color: Styling.srItem("overprimary")
                             Layout.preferredWidth: 24
                         }

@@ -595,7 +595,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -604,7 +604,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -675,7 +675,7 @@ Item {
                             Text {
                                 text: categoryTag.modelData.icon
                                 font.family: Icons.font
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 color: categoryTag.item
                                 anchors.verticalCenter: parent.verticalCenter
                             }
@@ -726,7 +726,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -735,7 +735,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -863,7 +863,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
         }
@@ -872,7 +872,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -924,7 +924,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.caretLeft
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 color: backButton.item
                             }
 
@@ -960,7 +960,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.trash
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 color: Colors.error
                             }
 
@@ -995,7 +995,7 @@ Item {
                                 Text {
                                     text: Icons.arrowCounterClockwise
                                     font.family: Icons.font
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     color: Styling.srItem(resetButton.variant)
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -1060,7 +1060,7 @@ Item {
                                 Text {
                                     text: Icons.accept
                                     font.family: Icons.font
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     color: saveButton.item
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -1228,7 +1228,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.trash
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: Colors.error
                                     }
 
@@ -1260,7 +1260,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.caretLeft
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: prevKeyBtn.item
                                     }
 
@@ -1291,7 +1291,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.caretRight
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: nextKeyBtn.item
                                     }
 
@@ -1321,7 +1321,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.plus
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: addKeyBtn.item
                                     }
 
@@ -1514,7 +1514,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.trash
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: Colors.error
                                     }
 
@@ -1546,7 +1546,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.caretLeft
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: prevActionBtn.item
                                     }
 
@@ -1577,7 +1577,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.caretRight
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: nextActionBtn.item
                                     }
 
@@ -1607,7 +1607,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.plus
                                         font.family: Icons.font
-                                        font.pixelSize: 12
+                                        font.pixelSize: Styling.fontSize(-2)
                                         color: addActionBtn.item
                                     }
 
@@ -1659,7 +1659,7 @@ Item {
                                     Text {
                                         text: Icons.caretDown
                                         font.family: Icons.font
-                                        font.pixelSize: 14
+                                        font.pixelSize: Styling.fontSize(0)
                                         color: Colors.overSurfaceVariant
                                         verticalAlignment: Text.AlignVCenter
                                     }
@@ -1818,7 +1818,7 @@ Item {
                                             enabled: (Config.animDuration ?? 0) > 0
                                             NumberAnimation {
                                                 duration: (Config.animDuration ?? 0) / 3
-                                                easing.type: Easing.OutCubic
+                                                easing.type: Styling.animEasing
                                             }
                                         }
 
@@ -1835,7 +1835,7 @@ Item {
                                                     id: layoutCheckIcon
                                                     text: Icons.accept
                                                     font.family: Icons.font
-                                                    font.pixelSize: 14
+                                                    font.pixelSize: Styling.fontSize(0)
                                                     color: layoutTag.item
                                                     visible: layoutTag.isSelected
                                                     opacity: layoutTag.isSelected ? 1 : 0
@@ -1844,7 +1844,7 @@ Item {
                                                         enabled: (Config.animDuration ?? 0) > 0
                                                         NumberAnimation {
                                                             duration: (Config.animDuration ?? 0) / 3
-                                                            easing.type: Easing.OutCubic
+                                                            easing.type: Styling.animEasing
                                                         }
                                                     }
                                                 }
@@ -1853,7 +1853,7 @@ Item {
                                                     enabled: (Config.animDuration ?? 0) > 0
                                                     NumberAnimation {
                                                         duration: (Config.animDuration ?? 0) / 3
-                                                        easing.type: Easing.OutCubic
+                                                        easing.type: Styling.animEasing
                                                     }
                                                 }
                                             }
@@ -2003,7 +2003,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -2012,14 +2012,14 @@ Item {
                             text: Icons.accept
                             color: Styling.srItem("primary")
                             font.family: Icons.font
-                            font.pixelSize: 16
+                            font.pixelSize: Styling.fontSize(2)
                             scale: bindItem.isEnabled ? 1.0 : 0.0
 
                             Behavior on scale {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration / 2
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -2071,7 +2071,7 @@ Item {
                                 property bool isHovered: false
                                 width: layoutBadgeText.width + 8
                                 height: 16
-                                radius: 4
+                                radius: Styling.radius(-12)
                                 color: Styling.srItem("overprimary")
                                 opacity: isHovered ? 1.0 : 0.8
 

@@ -165,7 +165,7 @@ Singleton {
     function changePassword(network: WifiAccessPoint, password: string): void {
         network.askingPassword = false;
         isUpdating = true;
-        runAsync(["bash", "-c", `nmcli connection modify "${network.ssid}" wifi-sec.psk "$PASSWORD"`], { "PASSWORD": password }).then(() => {
+        runAsync(["nmcli", "connection", "modify", network.ssid, "wifi-sec.psk", password]).then(() => {
             connectToWifiNetwork(network);
         }).then(() => {
             isUpdating = false;
@@ -208,13 +208,30 @@ Singleton {
         const uiOpen = GlobalStates.dashboardOpen || GlobalStates.launcherOpen || GlobalStates.overviewOpen;
         
         isUpdating = true;
-        updateConnectionType.startCheck();
-        wifiStatusProcess.running = true;
-        updateNetworkName.running = true;
-        
-        if (uiOpen) {
-            updateNetworkStrength.running = true;
+        startStatusUpdate(uiOpen);
+    }
+
+    // Combined status query. The old code spawned up to FOUR separate nmcli
+    // processes per monitor event (nmcli is a Python CLI — each spawn is
+    // ~30-100ms), with no in-flight guard so bursts of events overlapped
+    // process runs. Everything now runs in a single shell invocation, with a
+    // pending-flag so bursts coalesce instead of overlapping.
+    property bool _statusUpdatePending: false
+
+    function startStatusUpdate(includeStrength) {
+        if (updateStatusProcess.running) {
+            root._statusUpdatePending = true;
+            return;
         }
+        updateStatusProcess.buffer = "";
+        const strengthQuery = (includeStrength === undefined ? (GlobalStates.dashboardOpen || GlobalStates.launcherOpen || GlobalStates.overviewOpen) : includeStrength)
+            ? "; echo '==='; nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"
+            : "";
+        updateStatusProcess.command = [
+            "sh", "-c",
+            "nmcli -t -f TYPE,STATE d status; nmcli -t -f CONNECTIVITY g; echo '==='; nmcli radio wifi; echo '==='; nmcli -t -f NAME c show --active | head -1" + strengthQuery
+        ];
+        updateStatusProcess.running = true;
     }
 
     // Restart the event monitor if it exits (dbus drop, nmcli crash, missing
@@ -242,87 +259,77 @@ Singleton {
     }
 
     Process {
-        id: updateConnectionType
+        id: updateStatusProcess
         property string buffer: ""
-        command: ["sh", "-c", "nmcli -t -f TYPE,STATE d status && nmcli -t -f CONNECTIVITY g"]
-        running: true
-        function startCheck() {
-            buffer = "";
-            updateConnectionType.running = true;
-        }
-        stdout: SplitParser {
-            onRead: data => {
-                updateConnectionType.buffer += data + "\n";
-            }
-        }
-        onExited: (exitCode, exitStatus) => {
-            const lines = updateConnectionType.buffer.trim().split('\n');
-            const connectivity = lines.pop();
-            let hasEthernet = false;
-            let hasWifi = false;
-            let wifiStatus = "disconnected";
-            lines.forEach(line => {
-                if (line.includes("ethernet") && line.includes("connected"))
-                    hasEthernet = true;
-                else if (line.includes("wifi:")) {
-                    if (line.includes("disconnected")) {
-                        wifiStatus = "disconnected";
-                    } else if (line.includes("connected")) {
-                        hasWifi = true;
-                        wifiStatus = "connected";
-                        if (connectivity === "limited") {
-                            hasWifi = false;
-                            wifiStatus = "limited";
-                        }
-                    } else if (line.includes("connecting")) {
-                        wifiStatus = "connecting";
-                    } else if (line.includes("unavailable")) {
-                        wifiStatus = "disabled";
-                    }
-                }
-            });
-            root.wifiStatus = wifiStatus;
-            root.ethernet = hasEthernet;
-            root.wifi = hasWifi;
-            root.isUpdating = false;
-        }
-    }
-
-    Process {
-        id: updateNetworkName
-        command: ["sh", "-c", "nmcli -t -f NAME c show --active | head -1"]
-        running: true
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkName = data;
-            }
-        }
-    }
-
-    Process {
-        id: updateNetworkStrength
-        running: true
-        command: ["sh", "-c", "nmcli -f IN-USE,SIGNAL,SSID device wifi | awk '/^\\*/{if (NR!=1) {print $2}}'"]
-        stdout: SplitParser {
-            onRead: data => {
-                root.networkStrength = parseInt(data) || 0;
-            }
-        }
-    }
-
-    Process {
-        id: wifiStatusProcess
-        command: ["nmcli", "radio", "wifi"]
-        running: true
+        running: false
         environment: ({
             LANG: "C.UTF-8",
             LC_ALL: "C.UTF-8"
         })
         stdout: SplitParser {
             onRead: data => {
-                root.wifiEnabled = data.trim() === "enabled";
+                updateStatusProcess.buffer += data + "\n";
             }
         }
+        onExited: (exitCode, exitStatus) => {
+            root._parseStatus(updateStatusProcess.buffer);
+            updateStatusProcess.buffer = "";
+            root.isUpdating = false;
+            // Converge on the latest state if events arrived while running.
+            if (root._statusUpdatePending) {
+                root._statusUpdatePending = false;
+                root.startStatusUpdate();
+            }
+        }
+    }
+
+    function _parseStatus(buffer) {
+        // Sections separated by '===':
+        //   0: device status lines, last line = connectivity (full/limited/…)
+        //   1: wifi radio state (enabled/disabled)
+        //   2: active connection name (first line)
+        //   3: signal strength (first line, only when the UI is open)
+        const sections = buffer.trim().split("===");
+
+        const statusLines = (sections[0] || "").trim().split("\n");
+        const connectivity = statusLines.pop() || "";
+        let hasEthernet = false;
+        let hasWifi = false;
+        let wifiStatus = "disconnected";
+        statusLines.forEach(line => {
+            if (line.includes("ethernet") && line.includes("connected"))
+                hasEthernet = true;
+            else if (line.includes("wifi:")) {
+                if (line.includes("disconnected")) {
+                    wifiStatus = "disconnected";
+                } else if (line.includes("connected")) {
+                    hasWifi = true;
+                    wifiStatus = "connected";
+                    if (connectivity === "limited") {
+                        hasWifi = false;
+                        wifiStatus = "limited";
+                    }
+                } else if (line.includes("connecting")) {
+                    wifiStatus = "connecting";
+                } else if (line.includes("unavailable")) {
+                    wifiStatus = "disabled";
+                }
+            }
+        });
+        root.wifiStatus = wifiStatus;
+        root.ethernet = hasEthernet;
+        root.wifi = hasWifi;
+
+        const radio = ((sections[1] || "").trim().split("\n")[0] || "").trim();
+        root.wifiEnabled = radio === "enabled";
+
+        // Unconditional so the name clears when the connection drops instead of
+        // showing a stale network after disconnecting.
+        root.networkName = ((sections[2] || "").trim().split("\n")[0] || "").trim();
+
+        const strengthSection = (sections[3] || "").trim();
+        if (strengthSection)
+            root.networkStrength = parseInt(strengthSection.split("\n")[0]) || 0;
     }
 
     Process {
@@ -382,11 +389,19 @@ Singleton {
                 const wifiNetworksData = Array.from(networkMap.values());
                 const rNetworks = root.wifiNetworks;
 
-                // Sync with new data
+                // Index existing networks once (O(n)) so both sync passes below
+                // are O(1) lookups instead of O(n²) scans per rebuild.
+                const existingMap = new Map();
+                for (let i = 0; i < rNetworks.length; i++) {
+                    const rn = rNetworks[i];
+                    existingMap.set(rn.frequency + "|" + rn.ssid + "|" + rn.bssid, { index: i, network: rn });
+                }
+
                 // 1. Remove gone networks
                 for (let i = rNetworks.length - 1; i >= 0; i--) {
                     const rn = rNetworks[i];
-                    const found = wifiNetworksData.find(n => n.frequency === rn.frequency && n.ssid === rn.ssid && n.bssid === rn.bssid);
+                    const key = rn.frequency + "|" + rn.ssid + "|" + rn.bssid;
+                    const found = wifiNetworksData.some(n => n.frequency + "|" + n.ssid + "|" + n.bssid === key);
                     if (!found) {
                         rNetworks.splice(i, 1);
                         rn.destroy();
@@ -396,9 +411,10 @@ Singleton {
                 // 2. Add/update networks
                 for (let i = 0; i < wifiNetworksData.length; i++) {
                     const data = wifiNetworksData[i];
-                    const existing = rNetworks.find(n => n.frequency === data.frequency && n.ssid === data.ssid && n.bssid === data.bssid);
+                    const key = data.frequency + "|" + data.ssid + "|" + data.bssid;
+                    const existing = existingMap.get(key);
                     if (existing) {
-                        existing.lastIpcObject = data;
+                        existing.network.lastIpcObject = data;
                     } else {
                         rNetworks.push(apComp.createObject(root, {
                             lastIpcObject: data
@@ -418,6 +434,5 @@ Singleton {
 
     Component.onCompleted: {
         update();
-        wifiStatusProcess.running = true;
     }
 }

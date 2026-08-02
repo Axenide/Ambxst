@@ -31,7 +31,7 @@ Related: `modules/widgets/dashboard/widgets/LockPlayer.qml` (music player on loc
 | Symbol | Location | Role |
 |--------|----------|------|
 | `FingerprintService` | `FingerprintService.qml` | Singleton; fprintd D-Bus communication via Python script |
-| `FingerprintPopup` | `FingerprintPopup.qml` | Reusable fingerprint scanning GUI component |
+| `FingerprintPopup` | `FingerprintPopup.qml` | Floating PanelWindow scan indicator, instantiated/driven by `FprintdInterceptor` (polkit/sudo coverage) |
 | `FingerprintEnrollWizard` | `FingerprintEnrollWizard.qml` | Guided enrollment flow with visual feedback |
 | `DashboardAuthGate` | `DashboardAuthGate.qml` | Auth prompt for dashboard access (fingerprint/password) |
 | `startFingerprintAuth()` | `LockScreen.qml` | Starts fingerprint verification, sets scanning state |

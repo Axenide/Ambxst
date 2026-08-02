@@ -153,7 +153,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -299,7 +299,7 @@ Item {
                             text: Icons.sun
                             color: Config.theme.lightMode ? Styling.srItem("primary") : Colors.overBackground
                             font.family: Icons.font
-                            font.pixelSize: 20
+                            font.pixelSize: Styling.fontSize(6)
                         }
 
                         Text {
@@ -310,7 +310,7 @@ Item {
                             text: Icons.moon
                             color: Config.theme.lightMode ? Colors.overBackground : Styling.srItem("primary")
                             font.family: Icons.font
-                            font.pixelSize: 20
+                            font.pixelSize: Styling.fontSize(6)
                         }
 
                         StyledRect {
@@ -326,7 +326,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: 200
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -404,7 +404,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -451,7 +451,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -459,7 +459,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -467,7 +467,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                 }

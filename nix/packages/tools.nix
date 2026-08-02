@@ -3,6 +3,7 @@
 
 with pkgs; [
   brightnessctl
+  curl
   ddcutil
   fontconfig
   glib
@@ -21,6 +22,7 @@ with pkgs; [
   wl-clipboard
   wlsunset
   wtype
+  xdg-utils
   zbar
   zenity
   inetutils
@@ -31,5 +33,4 @@ with pkgs; [
    pam
    python3Packages.dbus-python
    python3Packages.cryptography
-   python3Packages.pytest
   ]

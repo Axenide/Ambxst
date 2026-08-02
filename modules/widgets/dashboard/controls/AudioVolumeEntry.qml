@@ -62,7 +62,7 @@ Item {
                             return Icons.speakerHigh;
                         }
                         font.family: Icons.font
-                        font.pixelSize: 16
+                        font.pixelSize: Styling.fontSize(2)
                         color: root.isMuted ? Colors.error : Colors.overBackground
 
                         Behavior on color {
@@ -140,7 +140,7 @@ Item {
                 visible: Audio.protectionTriggered && root.isMainDevice
                 text: Icons.shieldCheck
                 font.family: Icons.font
-                font.pixelSize: 12
+                font.pixelSize: Styling.fontSize(-2)
                 color: Colors.warning
 
                 StyledToolTip {

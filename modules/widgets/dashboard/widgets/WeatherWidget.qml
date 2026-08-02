@@ -12,7 +12,7 @@ ClippingRectangle {
     id: root
 
     // Configurable properties
-    property bool showDebugControls: true
+    property bool showDebugControls: false
     
     // GPU optimization: animations only run when this widget is actually visible to user
     // Parent components (popups, loaders) should bind this to their open/visible state
@@ -40,21 +40,18 @@ ClippingRectangle {
         return Qt.rgba(r, g, b, 1);
     }
 
-    // Color definitions for each time of day
-    // Day colors (sky blue)
-    readonly property color dayTop: "#87CEEB"
-    readonly property color dayMid: "#B0E0E6"
-    readonly property color dayBot: "#E0F6FF"
+    // Color definitions for each time of day (theme-derived, tinted)
+    readonly property color dayTop: Styling.tint(Colors.primary, 0.85)
+    readonly property color dayMid: Styling.tint(Colors.primary, 0.7)
+    readonly property color dayBot: Styling.tint(Colors.primary, 0.5)
 
-    // Evening colors (sunset)
-    readonly property color eveningTop: "#1a1a2e"
-    readonly property color eveningMid: "#e94560"
-    readonly property color eveningBot: "#ffeaa7"
+    readonly property color eveningTop: Styling.tint(Colors.background, 0.95)
+    readonly property color eveningMid: Styling.tint(Colors.primary, 0.85)
+    readonly property color eveningBot: Styling.tint(Colors.tertiary, 0.9)
 
-    // Night colors (dark blue)
-    readonly property color nightTop: "#0f0f23"
-    readonly property color nightMid: "#1a1a3a"
-    readonly property color nightBot: "#2d2d5a"
+    readonly property color nightTop: Colors.background
+    readonly property color nightMid: Styling.tint(Colors.blueContainer, 0.55)
+    readonly property color nightBot: Styling.tint(Colors.blueContainer, 0.85)
 
     // Blended colors based on time
     readonly property var blend: WeatherService.effectiveTimeBlend
@@ -146,18 +143,28 @@ ClippingRectangle {
 
             Rectangle {
                 id: star
-                property real baseX: Math.random() * starsEffect.width
-                property real baseY: Math.random() * (starsEffect.height * 0.7)  // Upper 70%
-                property real baseSize: 1 + Math.random() * 2
-                property real twinkleSpeed: 1500 + Math.random() * 2000
-                property real baseOpacity: 0.4 + Math.random() * 0.4
+                property real baseX: 0
+                property real baseY: 0
+                property real baseSize: 1
+                property real twinkleSpeed: 2000
+                property real baseOpacity: 0.6
+
+                // One-time random placement (not a binding, so stars never
+                // jump when the effect resizes)
+                Component.onCompleted: {
+                    baseX = Math.random() * starsEffect.width;
+                    baseY = Math.random() * (starsEffect.height * 0.7);
+                    baseSize = 1 + Math.random() * 2;
+                    twinkleSpeed = 1500 + Math.random() * 2000;
+                    baseOpacity = 0.4 + Math.random() * 0.4;
+                }
 
                 x: baseX
                 y: baseY
                 width: baseSize
                 height: baseSize
                 radius: baseSize / 2
-                color: "#FFFFFF"
+                color: Styling.tint(Colors.overSurface, 0.9)
                 opacity: baseOpacity
 
                 SequentialAnimation on opacity {
@@ -222,11 +229,11 @@ ClippingRectangle {
                     orientation: Gradient.Horizontal
                     GradientStop {
                         position: 0.0
-                        color: Qt.rgba(1, 0.95, 0.7, 0.9)
+                        color: Styling.tint(Colors.tertiary, 0.9)
                     }
                     GradientStop {
                         position: 1.0
-                        color: Qt.rgba(1, 0.95, 0.7, 0)
+                        color: Styling.tint(Colors.tertiary, 0)
                     }
                 }
 
@@ -491,18 +498,24 @@ ClippingRectangle {
 
             Rectangle {
                 id: rainDrop
-                property real initialX: Math.random() * (rainEffect.width + 50) - 25
+                property real initialX: 0
                 property real fallDistance: rainEffect.height + 40
                 property real horizontalDrift: fallDistance * Math.tan(rainEffect.angleRad)
-                property real fallSpeed: 400 + Math.random() * 200
-                property real delay: Math.random() * fallSpeed
+                property real fallSpeed: 500
+                property real delay: 0
+
+                Component.onCompleted: {
+                    initialX = Math.random() * (rainEffect.width + 50) - 25;
+                    fallSpeed = 400 + Math.random() * 200;
+                    delay = Math.random() * fallSpeed;
+                }
 
                 x: initialX
                 y: -20
                 width: root.weatherEffect === "drizzle" ? 1 : 2
                 height: root.weatherEffect === "drizzle" ? 8 : 12
                 radius: 1
-                color: Qt.rgba(0.7, 0.85, 1, 0.6)
+                color: Styling.tint(Colors.overSurface, 0.6)
                 rotation: -rainEffect.angle
 
                 SequentialAnimation {
@@ -555,17 +568,27 @@ ClippingRectangle {
 
             Rectangle {
                 id: snowFlake
-                property real startX: Math.random() * snowEffect.width
+                property real startX: 0
                 property real startY: -10
-                property real fallSpeed: 3000 + Math.random() * 2000
-                property real swayAmount: 20 + Math.random() * 30
+                property real fallSpeed: 4000
+                property real swayAmount: 35
+                property real flakeSize: 4
+                property real flakeOpacity: 0.85
+
+                Component.onCompleted: {
+                    startX = Math.random() * snowEffect.width;
+                    fallSpeed = 3000 + Math.random() * 2000;
+                    swayAmount = 20 + Math.random() * 30;
+                    flakeSize = 3 + Math.random() * 3;
+                    flakeOpacity = 0.7 + Math.random() * 0.3;
+                }
 
                 x: startX
                 y: startY
-                width: 3 + Math.random() * 3
+                width: flakeSize
                 height: width
                 radius: width / 2
-                color: Qt.rgba(1, 1, 1, 0.7 + Math.random() * 0.3)
+                color: Styling.tint(Colors.overSurface, flakeOpacity)
 
                 SequentialAnimation on y {
                     loops: Animation.Infinite
@@ -618,18 +641,24 @@ ClippingRectangle {
 
             Rectangle {
                 id: stormRainDrop
-                property real initialX: Math.random() * (thunderstormEffect.width + 60) - 30
+                property real initialX: 0
                 property real fallDistance: thunderstormEffect.height + 50
                 property real horizontalDrift: fallDistance * Math.tan(thunderstormEffect.angleRad)
-                property real fallSpeed: 500 + Math.random() * 300
-                property real delay: Math.random() * fallSpeed
+                property real fallSpeed: 650
+                property real delay: 0
+
+                Component.onCompleted: {
+                    initialX = Math.random() * (thunderstormEffect.width + 60) - 30;
+                    fallSpeed = 500 + Math.random() * 300;
+                    delay = Math.random() * fallSpeed;
+                }
 
                 x: initialX
                 y: -25
                 width: 2
                 height: 15
                 radius: 1
-                color: Qt.rgba(0.7, 0.85, 1, 0.7)
+                color: Styling.tint(Colors.overSurface, 0.7)
                 rotation: -thunderstormEffect.angle
 
                 SequentialAnimation {
@@ -807,28 +836,28 @@ ClippingRectangle {
             Behavior on x {
                 NumberAnimation {
                     duration: 300
-                    easing.type: Easing.OutQuad
+                    easing.type: Styling.animEasing
                 }
             }
             Behavior on y {
                 NumberAnimation {
                     duration: 300
-                    easing.type: Easing.OutQuad
+                    easing.type: Styling.animEasing
                 }
             }
 
             gradient: Gradient {
                 GradientStop {
                     position: 0.0
-                    color: WeatherService.effectiveIsDay ? "#FFF9C4" : "#FFFFFF"
+                    color: WeatherService.effectiveIsDay ? Styling.tint(Colors.tertiary, 0.95) : Colors.overBackground
                 }
                 GradientStop {
                     position: 0.5
-                    color: WeatherService.effectiveIsDay ? "#FFE082" : "#E8E8E8"
+                    color: WeatherService.effectiveIsDay ? Styling.tint(Colors.tertiary, 0.8) : Styling.tint(Colors.overBackground, 0.85)
                 }
                 GradientStop {
                     position: 1.0
-                    color: WeatherService.effectiveIsDay ? "#FFB74D" : "#C0C0C0"
+                    color: WeatherService.effectiveIsDay ? Styling.tint(Colors.tertiary, 0.7) : Styling.tint(Colors.overBackground, 0.7)
                 }
             }
 
@@ -839,7 +868,7 @@ ClippingRectangle {
                 height: parent.height + 12
                 radius: width / 2
                 color: "transparent"
-                border.color: WeatherService.effectiveIsDay ? Qt.rgba(1, 0.95, 0.7, 0.4) : Qt.rgba(1, 1, 1, 0.2)
+                border.color: WeatherService.effectiveIsDay ? Styling.tint(Colors.tertiary, 0.4) : Styling.tint(Colors.overBackground, 0.2)
                 border.width: 3
                 z: -1
             }
@@ -851,7 +880,7 @@ ClippingRectangle {
                 height: parent.height + 6
                 radius: width / 2
                 color: "transparent"
-                border.color: WeatherService.effectiveIsDay ? Qt.rgba(1, 0.95, 0.7, 0.6) : Qt.rgba(1, 1, 1, 0.3)
+                border.color: WeatherService.effectiveIsDay ? Styling.tint(Colors.tertiary, 0.6) : Styling.tint(Colors.overBackground, 0.3)
                 border.width: 2
                 z: -1
             }
@@ -876,8 +905,8 @@ ClippingRectangle {
             id: tempText
             visible: WeatherService.dataAvailable
             text: Math.round(WeatherService.currentTemp) + "°" + Config.weather.unit
-            color: "#FFFFFF"
-            font.family: "Noto Sans"
+            color: Colors.overBackground
+            font.family: Config.theme.font
             font.pixelSize: Config.theme.fontSize + 10
             font.weight: Font.Bold
         }
@@ -888,10 +917,10 @@ ClippingRectangle {
             text: Icons.alert
             font.family: Icons.font
             font.pixelSize: Config.theme.fontSize + 10
-            color: "#FFFFFF"
+            color: Colors.overBackground
         }
 
-        layer.enabled: true
+        layer.enabled: root.visible
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: Qt.rgba(0, 0, 0, 0.5)
@@ -913,13 +942,13 @@ ClippingRectangle {
         Text {
             id: descText
             text: WeatherService.dataAvailable ? WeatherService.effectiveWeatherDescription : "Error"
-            color: Qt.rgba(1, 1, 1, 0.85)
-            font.family: "Noto Sans"
+            color: Styling.tint(Colors.overBackground, 0.85)
+            font.family: Config.theme.font
             font.pixelSize: Config.theme.fontSize - 2
             font.weight: Font.Bold
         }
 
-        layer.enabled: true
+        layer.enabled: root.visible
         layer.effect: MultiEffect {
             shadowEnabled: true
             shadowColor: Qt.rgba(0, 0, 0, 0.5)
@@ -942,7 +971,7 @@ ClippingRectangle {
         width: 20
         height: 20
         radius: 10
-        color: WeatherService.debugMode ? Styling.srItem("overprimary") : "#555"
+        color: WeatherService.debugMode ? Styling.srItem("overprimary") : Styling.tint(Colors.overSurface, 0.6)
         opacity: (debugButtonHover.containsMouse || WeatherService.debugMode) ? 0.8 : 0
         visible: root.showDebugControls
 
@@ -956,9 +985,9 @@ ClippingRectangle {
         Text {
             anchors.centerIn: parent
             text: "D"
-            font.pixelSize: 10
+            font.pixelSize: Styling.fontSize(-4)
             font.bold: true
-            color: "#fff"
+            color: Colors.overBackground
         }
 
         MouseArea {

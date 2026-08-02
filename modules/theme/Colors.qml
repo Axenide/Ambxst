@@ -11,9 +11,28 @@ FileView {
     preload: true
     watchChanges: true
     onFileChanged: {
-        reload();
-        generationTimer.restart();
+        // Debounce: matugen and other writers often write colors.json in
+        // multiple partial writes, firing one fileChanged per write. Each
+        // reload() re-parses the JSON and re-evaluates ~90 adapter colors,
+        // cascading to every Colors.* consumer in the shell — coalescing the
+        // burst into a single reload saves a lot of churn.
+        reloadDebounceTimer.restart();
     }
+
+    property Timer reloadDebounceTimer: Timer {
+        interval: 50
+        repeat: false
+        onTriggered: {
+            colors.reload();
+            generationTimer.restart();
+        }
+    }
+
+    // Fingerprint of the last generator run's inputs. Generation writes six
+    // external theme files (GTK, kitty, pywal, Discord, …); a no-op rewrite of
+    // colors.json (common with matugen re-running on the same image) must not
+    // trigger six more file writes + app reloads.
+    property string _lastGenerationInput: ""
 
     property Connections oledWatcher: Connections {
         target: Config
@@ -58,6 +77,10 @@ FileView {
         interval: 100
         repeat: false
         onTriggered: {
+            const input = (colors.text() || "") + "|oled:" + Config.oledMode + "|bg:" + (Config.theme.srBg ? Config.theme.srBg.opacity : 0);
+            if (input !== "" && input === root._lastGenerationInput)
+                return;
+            root._lastGenerationInput = input;
             qtCtGenerator.generate(colors);
             gtkGenerator.generate(colors);
             pywalGenerator.generate(colors);

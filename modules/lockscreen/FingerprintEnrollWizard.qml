@@ -31,7 +31,7 @@ Popup {
     signal enrollRejected()
 
     width: 420
-    height: 320
+    height: 430
     visible: false
     modal: true
     closePolicy: Popup.NoAutoClose
@@ -54,20 +54,15 @@ Popup {
 
     function startEnrollment() {
         enrolling = true;
-        enrollStage = 1;
+        enrollStage = 0;
         enrollError = "";
-        enrollMessage = "Scanning... (stage " + enrollStage + " of " + enrollTotalStages + ")";
+        enrollMessage = "Place your finger on the sensor to enroll";
         FingerprintService.enrollFinger(enrollFinger);
     }
 
     function updateStage(stage) {
         enrollStage = stage;
-        if (stage < enrollTotalStages) {
-            enrollMessage = "Lift and replace your finger... (stage " + stage + " of " + enrollTotalStages + ")";
-        } else {
-            enrollMessage = "Enrollment complete!";
-            enrollComplete = true;
-        }
+        enrollMessage = "Lift and replace your finger... (scan " + stage + " of ~" + enrollTotalStages + ")";
     }
 
     function setError(error) {
@@ -87,13 +82,20 @@ Popup {
     Connections {
         target: FingerprintService
 
+        // Real per-scan progress: each successful scan emits enrollProgress.
+        // (The old code counted authSuccess signals — which fire exactly once
+        // at the end — so the wizard froze at "stage 2 of 5" forever.)
+        onEnrollProgress: {
+            if (root.enrolling) {
+                root.updateStage(stage);
+            }
+        }
+
         onAuthSuccess: {
             if (root.enrolling) {
-                root.updateStage(root.enrollStage + 1);
-                if (root.enrollStage >= root.enrollTotalStages) {
-                    root.enrollComplete = true;
-                    root.enrolling = false;
-                }
+                root.enrollComplete = true;
+                root.enrolling = false;
+                root.enrollMessage = "Enrollment complete!";
             }
         }
 
@@ -149,7 +151,7 @@ Popup {
                             anchors.centerIn: parent
                             text: root.enrollComplete ? Icons.shieldCheck : (root.enrollError ? Icons.warning : Icons.fingerprint)
                             font.family: Icons.font
-                            font.pixelSize: 48
+                            font.pixelSize: Styling.fontSize(34)
                             color: root.enrollComplete ? Colors.green : (root.enrollError ? Colors.error : Colors.primary)
                             visible: !root.enrolling
                         }
@@ -192,20 +194,57 @@ Popup {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
                     }
 
-                    Text {
-                        text: "Finger: " + root.enrollFinger.replace(/-/g, " ")
-                        font.family: Config.theme.font
-                        font.pixelSize: Styling.fontSize(-1)
-                        color: Colors.overSurfaceVariant
-                        horizontalAlignment: Text.AlignHCenter
+                    Column {
                         width: parent.width
-                        visible: !root.enrollComplete
+                        spacing: 8
+                        visible: !root.enrolling && !root.enrollComplete
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "Choose a finger:"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            color: Colors.overSurfaceVariant
+                        }
+
+                        Flow {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: 340
+                            spacing: 6
+
+                            Repeater {
+                                model: root.fingerOptions
+
+                                StyledRect {
+                                    required property string modelData
+                                    variant: root.enrollFinger === modelData ? "primary" : "common"
+                                    width: 106
+                                    height: 28
+                                    radius: Styling.radius(-3)
+
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData.replace(/-/g, " ")
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        elide: Text.ElideRight
+                                        color: parent.variant === "primary" ? parent.item : Colors.overSurfaceVariant
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.enrollFinger = modelData
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     Row {

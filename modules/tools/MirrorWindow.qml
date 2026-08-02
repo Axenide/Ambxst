@@ -131,7 +131,7 @@ PanelWindow {
                         text: root.isSquare ? Icons.arrowsOut : Icons.crop
                         font.family: Icons.font
                         color: Colors.overBackground
-                        font.pixelSize: 20
+                        font.pixelSize: Styling.fontSize(6)
                     }
 
                     MouseArea {
@@ -163,7 +163,7 @@ PanelWindow {
                         text: Icons.flipX
                         font.family: Icons.font
                         color: Colors.overBackground
-                        font.pixelSize: 20
+                        font.pixelSize: Styling.fontSize(6)
                     }
 
                     MouseArea {
@@ -185,7 +185,7 @@ PanelWindow {
                         text: Icons.cancel
                         font.family: Icons.font
                         color: Styling.srItem("error")
-                        font.pixelSize: 20
+                        font.pixelSize: Styling.fontSize(6)
                     }
 
                     MouseArea {
@@ -322,7 +322,7 @@ PanelWindow {
             rotation: mode == 0 ? -45 : mode == 1 ? 45 : mode == 2 ? -135 : 135
             font.family: Icons.font
             color: Styling.srItem("overprimary")
-            font.pixelSize: 12
+            font.pixelSize: Styling.fontSize(-2)
             opacity: (dragArea.containsMouse || parent.containsMouse) ? 0.8 : 0
         }
     }

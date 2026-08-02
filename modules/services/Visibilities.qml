@@ -25,7 +25,15 @@ Singleton {
         contextMenu = menu;
     }
 
+    // Pure getter — never creates state. Callers that need to write (or that
+    // require a non-null object) must use ensureForScreen().
     function getForScreen(screenName) {
+        return screens[screenName] || null;
+    }
+
+    // State-creating variant for writers: returns (creating if needed) the
+    // per-screen visibility state object.
+    function ensureForScreen(screenName) {
         if (!screens[screenName]) {
             screens[screenName] = screenPropertiesComponent.createObject(root, {
                 screenName: screenName
@@ -38,7 +46,31 @@ Singleton {
         if (!AxctlService.focusedMonitor) {
             return null;
         }
-        return getForScreen(AxctlService.focusedMonitor.name);
+        return screens[AxctlService.focusedMonitor.name] || null;
+    }
+
+    // Destroy per-screen state when its screen is unplugged, so stale entries
+    // can't keep popups/loaders alive or leak forever.
+    function pruneStaleScreens() {
+        const current = {};
+        const qsScreens = Quickshell.screens;
+        for (let i = 0; i < qsScreens.length; i++) {
+            current[qsScreens[i].name] = true;
+        }
+        for (const name in screens) {
+            if (!current[name]) {
+                screens[name].destroy();
+                screens = _updateMap(screens, name, null);
+            }
+        }
+    }
+
+    Connections {
+        target: Quickshell
+        ignoreUnknownSignals: true
+        function onScreensChanged() {
+            root.pruneStaleScreens();
+        }
     }
 
     // Helper to clone map and trigger update
@@ -209,7 +241,7 @@ Singleton {
         if (!currentActiveModule)
             return;
 
-        const screenProps = getForScreen(screenName);
+        const screenProps = ensureForScreen(screenName);
         if (moduleNames.indexOf(currentActiveModule) !== -1) {
             screenProps[currentActiveModule] = true;
         }

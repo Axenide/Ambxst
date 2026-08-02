@@ -122,7 +122,7 @@ Rectangle {
                             anchors.centerIn: parent
                             text: iconContainer.showingSyncFeedback ? Icons.sync : Icons.sun
                             font.family: Icons.font
-                            font.pixelSize: 18
+                            font.pixelSize: Styling.fontSize(4)
                             color: Brightness.syncBrightness ? Styling.srItem("primary") : Colors.overBackground
                             rotation: iconContainer.showingSyncFeedback ? syncIconRotation : brightnessIconRotation
                             scale: iconContainer.showingSyncFeedback ? 1 : brightnessIconScale
@@ -141,7 +141,7 @@ Rectangle {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration / 2
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -149,7 +149,7 @@ Rectangle {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: 150
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -157,7 +157,7 @@ Rectangle {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: 400
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -165,7 +165,7 @@ Rectangle {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: 400
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }

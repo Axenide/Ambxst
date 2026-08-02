@@ -11,9 +11,12 @@ import qs.modules.theme
  * Default Pipewire audio sink/source wrapper.
  * Handles volume, mute, app nodes, and devices.
  *
- * macOS-style volume curve: slider_to_gain uses a 40 dB exponential
- * range (0.01–1.0 linear gain), so each of the 16 grid steps adds
- * exactly 2.5 dB — equal perceptual loudness per tick.
+ * Volume curve: piecewise-linear-in-dB mapping so the percentage
+ * shown tracks perceived loudness instead of raw gain.
+ * 0–85% spans −30 → −2.5 dB (≈0.32 dB per %), the top band
+ * 85–100% spans −2.5 → 0 dB (≈0.17 dB per %) — the last few
+ * percent are deliberately shallow so 94→96% and 99→100% are
+ * barely-audible steps, not volume jumps.
  *
  * Includes "ear-bang" protection against volume spikes.
  */
@@ -29,11 +32,11 @@ Singleton {
     // macOS 16-step grid constants
     readonly property real gridSteps: 16
     readonly property real tick: 1.0 / 16           // 0.0625
-    readonly property real fineTick: 1.0 / 64       // 0.015625 (quarter-step)
+    readonly property real fineTick: 1.0 / 32       // 0.03125 (half-step, 32 grid steps)
 
     // Volume protection (persisted)
     property bool protectionEnabled: true
-    readonly property real maxVolumeJump: 0.15  // 15% max jump in slider-space
+    readonly property real maxVolumeJump: 0.15  // 15% max jump in gain-space
     property bool protectionTriggered: false
 
     // Load state
@@ -121,28 +124,40 @@ Singleton {
     readonly property list<var> outputDevices: root.devices(true)
     readonly property list<var> inputDevices: root.devices(false)
 
-    // ── macOS volume curve ──────────────────────────────────────────
+    // ── Perceptual volume curve ───────────────────────────────────
 
     // Maps perceptual slider position (0-1) to linear gain.
-    // 40 dB range: each of the 16 steps adds exactly 2.5 dB.
-    // gain = 10 ^ (minDB * (1 - slider) / 20)
-    // slider 0 → gain 0.01  (−40 dB)
-    // slider 1 → gain 1.00  ( 0 dB)
+    // Piecewise-linear in dB with a soft knee at 85%:
+    //   slider 0.00 → gain 0.032  (−30 dB)
+    //   slider 0.85 → gain 0.750  (−2.5 dB)
+    //   slider 1.00 → gain 1.000  ( 0 dB)
+    // The top 15% of the slider carries only 2.5 dB, so the last
+    // percentages move perceived loudness gently instead of dumping
+    // most of the range into 94–100%.
     function sliderToGain(sliderValue: real): real {
         const v = Math.max(0, Math.min(1, sliderValue));
-        const minDB = -40;
-        const dB = minDB * (1 - v);
+        const rangeDB = 30;
+        const knee = 0.85;
+        const kneeDB = 2.5;
+        const dB = v <= knee
+            ? -rangeDB + (rangeDB - kneeDB) * (v / knee)
+            : -kneeDB * ((1 - v) / (1 - knee));
         return Math.pow(10, dB / 20);
     }
 
     // Reverse: linear gain → perceptual slider position (0-1).
-    // Clamped so gain values above 1.0 map to slider 1.0.
+    // Gains below the −30 dB floor map to 0; gains above 1.0 clamp to 1.
     function gainToSlider(gain: real): real {
         if (gain <= 0.001) return 0;
         if (gain >= 1.0) return 1.0;
-        const minDB = -40;
+        const rangeDB = 30;
+        const knee = 0.85;
+        const kneeDB = 2.5;
         const dB = 20 * Math.log10(gain);
-        return Math.max(0, Math.min(1, 1 - dB / minDB));
+        const slider = dB >= -kneeDB
+            ? 1 + (dB * (1 - knee)) / kneeDB
+            : (knee * (rangeDB + dB)) / (rangeDB - kneeDB);
+        return Math.max(0, Math.min(1, slider));
     }
 
     // ── Volume jump limiter (applied in gain-space) ─────────────────
@@ -208,6 +223,27 @@ Singleton {
     function decrementVolume() {
         if (sink?.audio) {
             const newSlider = Math.max(0, currentSlider() - tick);
+            const targetGain = sliderToGain(newSlider);
+            const currentGain = sink.audio.volume;
+            const safeGain = protectedSetVolume(sink, targetGain, currentGain);
+            sink.audio.volume = Math.max(0, Math.min(hardMaxValue, safeGain));
+        }
+    }
+
+    // Fine 32-step grid (3.125% per step), bound to Shift+volume keys.
+    function incrementVolumeFine() {
+        if (sink?.audio) {
+            const newSlider = Math.min(1, currentSlider() + fineTick);
+            const targetGain = sliderToGain(newSlider);
+            const currentGain = sink.audio.volume;
+            const safeGain = protectedSetVolume(sink, targetGain, currentGain);
+            sink.audio.volume = Math.max(0, Math.min(hardMaxValue, safeGain));
+        }
+    }
+
+    function decrementVolumeFine() {
+        if (sink?.audio) {
+            const newSlider = Math.max(0, currentSlider() - fineTick);
             const targetGain = sliderToGain(newSlider);
             const currentGain = sink.audio.volume;
             const safeGain = protectedSetVolume(sink, targetGain, currentGain);

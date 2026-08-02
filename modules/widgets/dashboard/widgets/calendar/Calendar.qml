@@ -90,7 +90,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.caretLeft
                             font.family: Icons.font
-                            font.pixelSize: 16
+                            font.pixelSize: Styling.fontSize(2)
                             color: leftButton.buttonItem
                         }
 
@@ -116,7 +116,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.caretRight
                             font.family: Icons.font
-                            font.pixelSize: 16
+                            font.pixelSize: Styling.fontSize(2)
                             color: rightButton.buttonItem
                         }
 

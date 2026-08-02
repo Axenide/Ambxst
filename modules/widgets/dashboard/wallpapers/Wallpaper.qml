@@ -1383,14 +1383,14 @@ PanelWindow {
                     property: "scale"
                     to: 1.01
                     duration: Config.animDuration
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
                 NumberAnimation {
                     target: wallImage
                     property: "opacity"
                     to: 0.5
                     duration: Config.animDuration
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -1400,14 +1400,14 @@ PanelWindow {
                     property: "scale"
                     to: 1.0
                     duration: Config.animDuration
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
                 NumberAnimation {
                     target: wallImage
                     property: "opacity"
                     to: 1.0
                     duration: Config.animDuration
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
         }

@@ -349,7 +349,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -759,7 +759,7 @@ Item {
                     enabled: Config.animDuration > 0 && resultsList.enableScrollAnimation && !resultsList.moving
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -803,13 +803,13 @@ Item {
                         return baseHeight;
                     }
                     color: "transparent"
-                    radius: 16
+                    radius: Styling.radius(0)
 
                     Behavior on y {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -817,7 +817,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                     clip: true
@@ -978,7 +978,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -992,7 +992,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -1061,7 +1061,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1097,7 +1097,7 @@ Item {
                                             Text {
                                                 text: modelData && modelData.icon ? modelData.icon : ""
                                                 font.family: Icons.font
-                                                font.pixelSize: 14
+                                                font.pixelSize: Styling.fontSize(0)
                                                 font.weight: Font.Bold
                                                 textFormat: Text.RichText
                                                 color: {
@@ -1111,7 +1111,7 @@ Item {
                                                     enabled: Config.animDuration > 0
                                                     ColorAnimation {
                                                         duration: Config.animDuration / 2
-                                                        easing.type: Easing.OutQuart
+                                                        easing.type: Styling.animEasing
                                                     }
                                                 }
                                             }
@@ -1135,7 +1135,7 @@ Item {
                                                     enabled: Config.animDuration > 0
                                                     ColorAnimation {
                                                         duration: Config.animDuration / 2
-                                                        easing.type: Easing.OutQuart
+                                                        easing.type: Styling.animEasing
                                                     }
                                                 }
                                             }
@@ -1183,7 +1183,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1192,7 +1192,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1225,14 +1225,14 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration / 3
-                                    easing.type: Easing.OutSine
+                                    easing.type: Styling.animEasing
                                 }
                             }
                             Behavior on idx2X {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutSine
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1248,7 +1248,7 @@ Item {
                                 width: 32
                                 height: 32
                                 color: "transparent"
-                                radius: 6
+                                radius: Styling.radius(-10)
                                 border.width: 0
                                 border.color: Colors.outline
                                 z: 1
@@ -1269,7 +1269,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.cancel
                                     color: renameCancelButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     font.family: Icons.font
                                     textFormat: Text.RichText
 
@@ -1277,7 +1277,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1288,7 +1288,7 @@ Item {
                                 width: 32
                                 height: 32
                                 color: "transparent"
-                                radius: 6
+                                radius: Styling.radius(-10)
                                 z: 1
 
                                 property bool isHighlighted: root.renameButtonIndex === 1
@@ -1307,7 +1307,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.accept
                                     color: renameConfirmButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     font.family: Icons.font
                                     textFormat: Text.RichText
 
@@ -1315,7 +1315,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1337,7 +1337,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1375,7 +1375,7 @@ Item {
                                 }
                                 color: iconBackground.item
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 textFormat: Text.RichText
                             }
                         }
@@ -1479,7 +1479,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1488,7 +1488,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1521,14 +1521,14 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration / 3
-                                    easing.type: Easing.OutSine
+                                    easing.type: Styling.animEasing
                                 }
                             }
                             Behavior on idx2X {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutSine
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1544,7 +1544,7 @@ Item {
                                 width: 32
                                 height: 32
                                 color: "transparent"
-                                radius: 6
+                                radius: Styling.radius(-10)
                                 border.width: 0
                                 border.color: Colors.outline
                                 z: 1
@@ -1565,7 +1565,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.cancel
                                     color: cancelButton.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     font.family: Icons.font
                                     textFormat: Text.RichText
 
@@ -1573,7 +1573,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1584,7 +1584,7 @@ Item {
                                 width: 32
                                 height: 32
                                 color: "transparent"
-                                radius: 6
+                                radius: Styling.radius(-10)
                                 z: 1
 
                                 property bool isHighlighted: root.deleteButtonIndex === 1
@@ -1603,7 +1603,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.accept
                                     color: confirmButton.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     font.family: Icons.font
                                     textFormat: Text.RichText
 
@@ -1611,7 +1611,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1631,7 +1631,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1639,7 +1639,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1674,7 +1674,7 @@ Item {
                             enabled: Config.animDuration > 0
                             ColorAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1682,7 +1682,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -1872,7 +1872,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
 
@@ -1880,7 +1880,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1906,7 +1906,7 @@ Item {
                                             enabled: Config.animDuration > 0
                                             ColorAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -1925,7 +1925,7 @@ Item {
                                             enabled: Config.animDuration > 0
                                             ColorAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -1942,7 +1942,7 @@ Item {
                             Text {
                                 text: Icons.terminalWindow
                                 font.family: Icons.font
-                                font.pixelSize: 32
+                                font.pixelSize: Styling.fontSize(18)
                                 color: Colors.outline
                                 anchors.horizontalCenter: parent.horizontalCenter
                                 textFormat: Text.RichText
@@ -1970,7 +1970,7 @@ Item {
                                 Text {
                                     text: Icons.spinnerGap
                                     font.family: Icons.font
-                                    font.pixelSize: 20
+                                    font.pixelSize: Styling.fontSize(6)
                                     color: Styling.srItem("overprimary")
                                     textFormat: Text.RichText
 
@@ -2087,7 +2087,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 ColorAnimation {
                                                     duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutQuart
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
                                         }
@@ -2116,7 +2116,7 @@ Item {
                 Text {
                     text: Icons.terminalWindow
                     font.family: Icons.font
-                    font.pixelSize: 48
+                    font.pixelSize: Styling.fontSize(34)
                     color: Colors.surfaceBright
                     anchors.horizontalCenter: parent.horizontalCenter
                     textFormat: Text.RichText

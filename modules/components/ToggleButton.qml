@@ -64,7 +64,7 @@ Button {
             text: root.buttonIcon
             textFormat: Text.RichText
             font.family: Icons.font
-            font.pixelSize: 18
+            font.pixelSize: Styling.fontSize(4)
             color: root.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground)
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter

@@ -59,7 +59,14 @@ Singleton {
     }
 
     function updateFriendlyList() {
-        friendlyDeviceList = [...devices].sort((a, b) => {
+        let count = 0;
+        const devs = root.devices;
+        for (let i = 0; i < devs.length; i++) {
+            if (devs[i].connected) count++;
+        }
+        root.connectedDevices = count;
+        root.connected = count > 0;
+        friendlyDeviceList = [...devs].sort((a, b) => {
             // Connected devices first
             if (a.connected && !b.connected) return -1;
             if (!a.connected && b.connected) return 1;
@@ -69,6 +76,124 @@ Singleton {
             // Then by name
             return (a.name || "").localeCompare(b.name || "");
         });
+    }
+
+    function deviceByAddress(address: string) {
+        const target = address.toUpperCase();
+        const devs = root.devices;
+        for (let i = 0; i < devs.length; i++) {
+            if (devs[i].address.toUpperCase() === target) return devs[i];
+        }
+        return null;
+    }
+
+    function ensureDevice(address: string, name: string) {
+        const existing = root.deviceByAddress(address);
+        if (existing) {
+            if (name && name !== "Unknown" && existing.name !== name) {
+                existing.name = name;
+            }
+            return existing;
+        }
+        const newDevice = deviceComp.createObject(root, {
+            address: address,
+            name: name || "Unknown"
+        });
+        root.devices.push(newDevice);
+        root.updateFriendlyList();
+        root.queueInfoUpdate(newDevice);
+        return newDevice;
+    }
+
+    function removeDeviceByAddress(address: string): void {
+        const target = address.toUpperCase();
+        for (let i = root.devices.length - 1; i >= 0; i--) {
+            const d = root.devices[i];
+            if (d.address.toUpperCase() === target) {
+                root.devices.splice(i, 1);
+                d.destroy();
+            }
+        }
+        root.updateFriendlyList();
+    }
+
+    // Real-time event feed from `bluetoothctl --monitor` (bluetoothd D-Bus signals)
+    function handleMonitorLine(line: string): void {
+        // Strip ANSI colors/cursor codes, CRs and prompt artifacts from bluetoothctl's TTY-style output
+        const clean = line.replace(/\x1b\[[0-9;]*[A-Za-z]|\r/g, "");
+        const m = clean.match(/\[(NEW|CHG|DEL)\] (Device|Controller) ([0-9A-Fa-f:]{17})(?:\s+(.*))?/);
+        if (!m) return;
+        const event = m[1];
+        const kind = m[2];
+        const address = m[3].toUpperCase();
+        // Trailing prompt fragments (e.g. "[WH-1000XM6]> ") get appended to event lines
+        const rest = (m[4] || "").replace(/\[[^\]]*\]>\s*$/, "").trim();
+
+        if (kind === "Controller") {
+            if (event !== "CHG") return;
+            if (rest.includes("Powered:")) {
+                const powered = rest.includes("Powered: yes");
+                root.enabled = powered;
+                if (!powered) {
+                    root.discovering = false;
+                    for (let i = 0; i < root.devices.length; i++) {
+                        root.devices[i].connected = false;
+                        root.devices[i].connecting = false;
+                    }
+                    root.updateFriendlyList();
+                }
+            } else if (rest.includes("Discovering:")) {
+                root.discovering = rest.includes("Discovering: yes");
+            }
+            return;
+        }
+
+        if (event === "DEL") {
+            root.removeDeviceByAddress(address);
+            return;
+        }
+
+        if (event === "NEW") {
+            root.ensureDevice(address, rest || "Unknown");
+            return;
+        }
+
+        // CHG for a device
+        const dev = root.deviceByAddress(address);
+        const pm = rest.match(/^(Name|Icon|Connected|Paired|Trusted)\s*:\s*(.+)$/);
+        if (pm) {
+            const prop = pm[1];
+            const value = pm[2].trim();
+            if (!dev) {
+                root.ensureDevice(address, prop === "Name" ? value : "Unknown");
+                return;
+            }
+            switch (prop) {
+                case "Name":
+                    if (value !== "Unknown") dev.name = value;
+                    break;
+                case "Icon":
+                    dev.icon = value;
+                    break;
+                case "Connected":
+                    dev.connected = value === "yes";
+                    if (dev.connected) dev.connecting = false;
+                    break;
+                case "Paired":
+                    dev.paired = value === "yes";
+                    break;
+                case "Trusted":
+                    dev.trusted = value === "yes";
+                    break;
+            }
+            root.updateFriendlyList();
+            return;
+        }
+
+        const bm = rest.match(/^Battery Percentage\s*:\s*\((\d+)\)/);
+        if (bm && dev) {
+            dev.battery = parseInt(bm[1]) || -1;
+        }
     }
 
     // Batch process info updates with delay between each
@@ -147,6 +272,16 @@ Singleton {
     }
 
     // Control functions
+    function notifyError(deviceName: string, message: string): void {
+        Notifications.notifyInternal({
+            "appName": "Bluetooth",
+            "summary": (deviceName ? deviceName + " \u2014 " : "") + message,
+            "replaceKey": "bluetooth-error",
+            "expireTimeout": 6000,
+            "historyPriority": 1
+        });
+    }
+
     function setEnabled(value: bool): void {
         if (SuspendManager.isSuspending) return;
         isUpdating = true;
@@ -181,46 +316,38 @@ Singleton {
         }).catch(e => {});
     }
 
-    function connectDevice(address: string): void {
+    function connectDevice(address: string) {
         isUpdating = true;
-        runAsync(["bluetoothctl", "connect", address]).then(() => {
+        return runAsync(["bluetoothctl", "connect", address]).finally(() => {
             updateDevices();
-            isUpdating = false;
-        }).catch(e => {
             isUpdating = false;
         });
     }
 
-    function disconnectDevice(address: string): void {
+    function disconnectDevice(address: string) {
         isUpdating = true;
-        runAsync(["bluetoothctl", "disconnect", address]).then(() => {
+        return runAsync(["bluetoothctl", "disconnect", address]).finally(() => {
             updateDevices();
-            isUpdating = false;
-        }).catch(e => {
             isUpdating = false;
         });
     }
 
-    function pairDevice(address: string): void {
+    function pairDevice(address: string) {
         isUpdating = true;
-        runAsync(["bluetoothctl", "pair", address]).then(() => {
+        return runAsync(["bluetoothctl", "pair", address]).finally(() => {
             updateDevices();
-            isUpdating = false;
-        }).catch(e => {
             isUpdating = false;
         });
     }
 
-    function trustDevice(address: string): void {
-        runAsync(["bluetoothctl", "trust", address]).catch(e => {});
+    function trustDevice(address: string) {
+        return runAsync(["bluetoothctl", "trust", address]);
     }
 
-    function removeDevice(address: string): void {
+    function removeDevice(address: string) {
         isUpdating = true;
-        runAsync(["bluetoothctl", "remove", address]).then(() => {
+        return runAsync(["bluetoothctl", "remove", address]).finally(() => {
             updateDevices();
-            isUpdating = false;
-        }).catch(e => {
             isUpdating = false;
         });
     }
@@ -245,8 +372,8 @@ Singleton {
     // Timers
     Timer {
         id: updateTimer
-        interval: 5000
-        // Only poll when interface is visible
+        interval: 30000
+        // Fallback resync only when interface is visible — real-time events come from the monitor
         running: root.enabled && !SuspendManager.isSuspending && (GlobalStates.dashboardOpen || GlobalStates.launcherOpen || GlobalStates.overviewOpen)
         repeat: true
         onTriggered: root.updateDevices()
@@ -269,34 +396,31 @@ Singleton {
             onRead: (data) => {
                 const output = data ? data.trim() : "";
                 root.enabled = output === "yes";
-                
+
                 if (root.enabled) {
-                    checkConnectedProcess.running = true;
+                    root.updateDevices();
                 } else {
-                    root.connected = false;
-                    root.connectedDevices = 0;
+                    for (let i = 0; i < root.devices.length; i++) {
+                        root.devices[i].connected = false;
+                        root.devices[i].connecting = false;
+                    }
+                    root.updateFriendlyList();
                     root.discovering = false;
-                    root.isUpdating = false;
                 }
             }
         }
-    }
-
-    Process {
-        id: checkConnectedProcess
-        command: ["bash", "-c", "bluetoothctl devices Connected | wc -l"]
-        running: false
-        stdout: SplitParser {
-            onRead: (data) => {
-                const output = data ? data.trim() : "0";
-                root.connectedDevices = parseInt(output) || 0;
-                root.connected = root.connectedDevices > 0;
-                root.isUpdating = false;
-            }
+        onExited: (exitCode, exitStatus) => {
+            root.isUpdating = false;
         }
     }
 
+    property bool devicesSyncPending: false
+
     function updateDevices() {
+        if (getDevicesProcess.running) {
+            devicesSyncPending = true;
+            return;
+        }
         getDevicesProcess.running = true;
     }
 
@@ -317,54 +441,103 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             const text = getDevicesProcess.buffer;
             getDevicesProcess.buffer = "";
-            
+            const wasPending = root.devicesSyncPending;
+            root.devicesSyncPending = false;
+
             Qt.callLater(() => {
                 const deviceLines = text.trim().split("\n").filter(l => l.startsWith("Device "));
-                const deviceDataList = [];
+                const addresses = [];
                 for (let i = 0; i < deviceLines.length; i++) {
-                    const line = deviceLines[i];
-                    const parts = line.split(" ");
+                    const parts = deviceLines[i].split(" ");
                     if (parts.length < 2) continue;
-                    deviceDataList.push({
-                        address: parts[1],
-                        name: parts.slice(2).join(" ") || "Unknown"
-                    });
-                }
-
-                const rDevices = root.devices;
-                
-                // 1. Remove gone devices
-                for (let i = rDevices.length - 1; i >= 0; i--) {
-                    const rd = rDevices[i];
-                    if (!deviceDataList.find(d => d.address === rd.address)) {
-                        rDevices.splice(i, 1);
-                        rd.destroy();
-                    }
-                }
-                
-                // 2. Add or update devices
-                for (let i = 0; i < deviceDataList.length; i++) {
-                    const data = deviceDataList[i];
-                    const existing = rDevices.find(d => d.address === data.address);
+                    const address = parts[1];
+                    addresses.push(address);
+                    const name = parts.slice(2).join(" ") || "Unknown";
+                    const existing = root.deviceByAddress(address);
                     if (existing) {
-                        if (existing.name !== data.name) {
-                            existing.name = data.name;
+                        if (existing.name !== name) {
+                            existing.name = name;
                         }
                         root.queueInfoUpdate(existing);
                     } else {
-                        const newDevice = deviceComp.createObject(root, {
-                            address: data.address,
-                            name: data.name
-                        });
-                        rDevices.push(newDevice);
-                        root.queueInfoUpdate(newDevice);
+                        root.ensureDevice(address, name);
                     }
                 }
-                
-                if (deviceDataList.length === 0) {
-                    root.updateFriendlyList();
+
+                // Remove devices bluetoothd no longer knows about
+                for (let i = root.devices.length - 1; i >= 0; i--) {
+                    const d = root.devices[i];
+                    if (!addresses.includes(d.address)) {
+                        root.devices.splice(i, 1);
+                        d.destroy();
+                    }
+                }
+
+                root.updateFriendlyList();
+
+                if (wasPending) {
+                    root.updateDevices();
                 }
             });
+        }
+    }
+
+    // Long-lived `bluetoothctl --monitor` process — real-time device/state events.
+    // Restart with bounded exponential backoff (1s doubling up to the cap) and a
+    // stability reset, so a broken monitor (bluetoothd down, missing tool) can't
+    // spawn a process every 2 seconds forever.
+    property int _monitorRestartDelay: 1000
+    readonly property int _maxMonitorRestartDelay: 30000
+
+    Timer {
+        id: monitorRestartTimer
+        interval: root._monitorRestartDelay
+        repeat: false
+        onTriggered: {
+            if (!monitorProcess.running) {
+                monitorProcess.running = true;
+            }
+        }
+    }
+
+    // Resets the backoff after a stable run, so an occasional hiccup restarts
+    // quickly instead of staying throttled at the max delay forever.
+    Timer {
+        id: monitorStabilityTimer
+        interval: 60000
+        repeat: false
+        onTriggered: {
+            root._monitorRestartDelay = 1000;
+        }
+    }
+
+    Process {
+        id: monitorProcess
+        command: ["bluetoothctl", "--monitor"]
+        running: false
+        environment: ({
+            LANG: "C.UTF-8",
+            LC_ALL: "C.UTF-8"
+        })
+        // Without stdinEnabled the child's stdin is closed (EOF), so the
+        // interactive monitor exits right after startup and only a device
+        // snapshot is ever seen — which is what the old fixed 2s restart loop
+        // was papering over. Keeping the pipe open makes bluetoothctl block on
+        // stdin and stream events continuously.
+        stdinEnabled: true
+        stdout: SplitParser {
+            onRead: data => {
+                const line = data ? data.trim() : "";
+                if (line) root.handleMonitorLine(line);
+            }
+        }
+        onRunningChanged: {
+            if (running) monitorStabilityTimer.restart();
+        }
+        onExited: (exitCode, exitStatus) => {
+            root._monitorRestartDelay = Math.min(root._monitorRestartDelay * 2, root._maxMonitorRestartDelay);
+            console.warn("BluetoothService: monitor exited with code", exitCode, "- restarting in", root._monitorRestartDelay, "ms");
+            monitorRestartTimer.restart();
         }
     }
 
@@ -379,5 +552,10 @@ Singleton {
         if (_initialized) return;
         _initialized = true;
         updateStatus();
+        if (!monitorProcess.running) {
+            monitorProcess.running = true;
+        }
     }
+
+    Component.onCompleted: root.initialize()
 }

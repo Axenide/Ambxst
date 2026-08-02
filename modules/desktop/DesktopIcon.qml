@@ -165,7 +165,7 @@ Item {
                 color: "transparent"
                 border.color: Colors.outline
                 border.width: parent.status === Image.Error ? 1 : 0
-                radius: 4
+                radius: Styling.radius(-12)
 
                 Text {
                     anchors.centerIn: parent

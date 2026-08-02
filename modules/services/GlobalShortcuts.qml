@@ -83,7 +83,10 @@ QtObject {
             // Audio
             case "volume-up": Audio.incrementVolume(); break;
             case "volume-down": Audio.decrementVolume(); break;
+            case "volume-up-fine": Audio.incrementVolumeFine(); break;
+            case "volume-down-fine": Audio.decrementVolumeFine(); break;
             case "volume-mute": Audio.toggleMute(); break;
+            case "mic-mute": Audio.toggleMicMute(); break;
 
             // Media
             case "media-seek-backward": seekActivePlayer(-mediaSeekStepMs); break;

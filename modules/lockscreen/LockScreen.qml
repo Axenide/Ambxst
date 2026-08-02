@@ -62,7 +62,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutQuint
+                easing.type: Styling.animEasing
             }
         }
 
@@ -87,7 +87,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutExpo
+                easing.type: Styling.animEasing
             }
         }
     }
@@ -115,7 +115,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutExpo
+                easing.type: Styling.animEasing
             }
         }
     }
@@ -141,7 +141,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutQuint
+                easing.type: Styling.animEasing
             }
         }
 
@@ -149,7 +149,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutExpo
+                easing.type: Styling.animEasing
             }
         }
     }
@@ -172,8 +172,8 @@ WlSessionLockSurface {
             Text {
                 id: hoursText
                 text: Config.bar.use12hFormat ? (clockContainer.currentTime.getHours() % 12 || 12).toString() : Qt.formatTime(clockContainer.currentTime, "hh")
-                font.family: "League Gothic"
-                font.pixelSize: 240
+                font.family: Config.theme.font
+                font.pixelSize: Styling.fontSize(226)
                 color: Colors.primaryFixed
                 antialiasing: true
                 opacity: startAnim ? 1 : 0
@@ -191,7 +191,7 @@ WlSessionLockSurface {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration * 2
-                        easing.type: Easing.OutExpo
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -199,7 +199,7 @@ WlSessionLockSurface {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration * 2
-                        easing.type: Easing.OutExpo
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -207,8 +207,8 @@ WlSessionLockSurface {
             Text {
                 id: minutesText
                 text: Qt.formatTime(clockContainer.currentTime, "mm")
-                font.family: "League Gothic"
-                font.pixelSize: 240
+                font.family: Config.theme.font
+                font.pixelSize: Styling.fontSize(226)
                 color: Colors.primaryFixedDim
                 antialiasing: true
                 anchors.verticalCenter: undefined
@@ -229,7 +229,7 @@ WlSessionLockSurface {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration * 2
-                        easing.type: Easing.OutExpo
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -237,7 +237,7 @@ WlSessionLockSurface {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration * 2
-                        easing.type: Easing.OutExpo
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -245,8 +245,8 @@ WlSessionLockSurface {
             Text {
                 id: amPmText
                 text: Config.bar.use12hFormat ? Qt.formatTime(clockContainer.currentTime, "ap").toLowerCase() : ""
-                font.family: "League Gothic"
-                font.pixelSize: 100
+                font.family: Config.theme.font
+                font.pixelSize: Styling.fontSize(86)
                 color: hoursText.color
                 antialiasing: true
                 anchors.top: hoursText.top
@@ -267,7 +267,7 @@ WlSessionLockSurface {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration * 2
-                        easing.type: Easing.OutExpo
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -275,7 +275,7 @@ WlSessionLockSurface {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration * 2
-                        easing.type: Easing.OutExpo
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -314,7 +314,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutExpo
+                easing.type: Styling.animEasing
             }
         }
 
@@ -322,7 +322,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutQuad
+                easing.type: Styling.animEasing
             }
         }
 
@@ -356,7 +356,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutExpo
+                easing.type: Styling.animEasing
             }
         }
 
@@ -364,7 +364,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutExpo
+                easing.type: Styling.animEasing
             }
         }
 
@@ -372,7 +372,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutQuad
+                easing.type: Styling.animEasing
             }
         }
 
@@ -380,7 +380,7 @@ WlSessionLockSurface {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration * 2
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
             }
         }
 
@@ -445,7 +445,7 @@ WlSessionLockSurface {
                     Text {
                         anchors.centerIn: parent
                         text: "👤"
-                        font.pixelSize: 32
+                        font.pixelSize: Styling.fontSize(18)
                         visible: userAvatar.status !== Image.Ready
                     }
                 }
@@ -470,7 +470,7 @@ WlSessionLockSurface {
                             id: userIcon
                             text: authenticating ? Icons.circleNotch : Icons.user
                             font.family: Icons.font
-                            font.pixelSize: 24
+                            font.pixelSize: Styling.fontSize(10)
                             color: passwordFieldBg.item
                             Layout.preferredWidth: 24
                             Layout.preferredHeight: 24
@@ -482,18 +482,17 @@ WlSessionLockSurface {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
-                            Timer {
-                                id: spinnerTimer
-                                interval: 100
-                                repeat: true
+                            RotationAnimation on rotation {
                                 running: authenticating
-                                onTriggered: {
-                                    userIcon.rotation = (userIcon.rotation + 45) % 360;
-                                }
+                                from: 0
+                                to: 360
+                                duration: 800
+                                loops: Animation.Infinite
+                                easing.type: Easing.Linear
                             }
 
                             onTextChanged: {
@@ -522,7 +521,7 @@ WlSessionLockSurface {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -530,7 +529,7 @@ WlSessionLockSurface {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuad
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -561,7 +560,7 @@ WlSessionLockSurface {
                             anchors.centerIn: parent
                             text: fingerprintActive ? Icons.circleNotch : (fingerprintFailed ? Icons.warning : Icons.fingerprint)
                             font.family: Icons.font
-                            font.pixelSize: 28
+                            font.pixelSize: Styling.fontSize(14)
                             color: fingerprintFailed ? Colors.error : (fingerprintActive ? Colors.primary : Colors.onSurfaceDim)
                             rotation: fingerprintActive ? fingerprintRotation.value : 0
 
@@ -577,7 +576,7 @@ WlSessionLockSurface {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }

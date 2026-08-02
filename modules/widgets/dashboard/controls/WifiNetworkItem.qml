@@ -21,7 +21,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutCubic
+            easing.type: Styling.animEasing
         }
     }
 
@@ -72,7 +72,7 @@ Item {
                         return Icons.wifiNone;
                     }
                     font.family: Icons.font
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     color: root.network?.active ? Styling.srItem("overprimary") : Colors.overBackground
                 }
 
@@ -84,7 +84,7 @@ Item {
                     visible: root.network?.isSecure ?? false
                     text: Icons.lock
                     font.family: Icons.font
-                    font.pixelSize: 10
+                    font.pixelSize: Styling.fontSize(-4)
                     color: Colors.overSurfaceVariant
                 }
             }
@@ -140,7 +140,7 @@ Item {
                     anchors.centerIn: parent
                     text: "5G"
                     font.family: Config.theme.font
-                    font.pixelSize: 10
+                    font.pixelSize: Styling.fontSize(-4)
                     font.weight: Font.Bold
                     color: Colors.overSurfaceVariant
                 }

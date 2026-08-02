@@ -62,7 +62,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
         }
     }
 
@@ -80,7 +80,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: Styling.animEasing
         }
     }
 
@@ -202,7 +202,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
             }

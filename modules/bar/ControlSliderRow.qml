@@ -225,7 +225,7 @@ Item {
                 onWheel: wheel => {
                     let step = root.scrollStep;
                     if (wheel.modifiers & Qt.ShiftModifier) {
-                        step = root.scrollStep / 4;
+                        step = root.scrollStep / 2;
                     }
                     if (wheel.angleDelta.y > 0) {
                         root.sliderValue = Math.min(1, root.sliderValue + step);

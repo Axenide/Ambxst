@@ -240,7 +240,7 @@ PanelWindow {
         Text {
             anchors.centerIn: parent
             text: "Loading desktop..."
-            color: "white"
+            color: Colors.overBackground
             font.family: Config.defaultFont
             font.pixelSize: Styling.fontSize(0)
         }

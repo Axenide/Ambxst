@@ -49,7 +49,15 @@ QtObject {
     property Process clipboardWatcher: Process {
         running: root._initialized && !SuspendManager.isSuspending
         command: [watchScriptPath, checkScriptPath, dbPath, insertScriptPath, binaryDataDir]
-        
+
+        onRunningChanged: {
+            if (running) {
+                // Watcher started — arm the stability reset (fires only if it
+                // stays alive long enough to prove it's not crash-looping).
+                watcherStabilityTimer.restart();
+            }
+        }
+
         stdout: StdioCollector {
             onStreamFinished: {
                 // When watcher outputs something, refresh the list
@@ -71,17 +79,49 @@ QtObject {
         }
         
         onExited: function(code) {
-            // Watcher should keep running, restart if it exits (unless suspending)
+            // Watcher should keep running, but restart with bounded exponential
+            // backoff and a crash-loop cap so a broken watcher can't spawn a
+            // process every few seconds forever. The backoff resets after the
+            // watcher stays alive for a stable period.
             if (root._initialized && !SuspendManager.isSuspending) {
-                console.warn("ClipboardService: watcher exited with code:", code, "- restarting...");
-                Qt.callLater(function() {
-                    if (root._initialized && !SuspendManager.isSuspending) {
-                        clipboardWatcher.running = true;
-                    }
-                });
+                console.warn("ClipboardService: watcher exited with code:", code, "- restarting in", root._watcherRestartDelay, "ms");
+                root._watcherRestartCount++;
+                root._watcherRestartDelay = Math.min(root._watcherRestartDelay * 2, root._maxWatcherRestartDelay);
+                if (root._watcherRestartCount >= root._watcherRestartCap) {
+                    console.warn("ClipboardService: watcher restart cap reached (" + root._watcherRestartCap + "), giving up until the next init/suspend cycle");
+                    return;
+                }
+                watcherRestartTimer.restart();
             }
         }
     }
+
+    // Bounded backoff restart for the clipboard watcher (see onExited above).
+    property Timer watcherRestartTimer: Timer {
+        interval: root._watcherRestartDelay
+        repeat: false
+        onTriggered: {
+            if (root._initialized && !SuspendManager.isSuspending && root._watcherRestartCount < root._watcherRestartCap) {
+                clipboardWatcher.running = true;
+            }
+        }
+    }
+
+    // Resets the watcher backoff after a stable run, so an occasional hiccup
+    // restarts quickly again instead of staying throttled forever.
+    property Timer watcherStabilityTimer: Timer {
+        interval: 60000
+        repeat: false
+        onTriggered: {
+            root._watcherRestartCount = 0;
+            root._watcherRestartDelay = 1000;
+        }
+    }
+
+    property int _watcherRestartCount: 0
+    property int _watcherRestartDelay: 1000
+    readonly property int _watcherRestartCap: 10
+    readonly property int _maxWatcherRestartDelay: 30000
 
     // Initialize database
     property Process initDbProcess: Process {
@@ -240,24 +280,38 @@ QtObject {
         }
     }
 
+    // One-shot request process: array arguments (no shell wrapper), collects
+    // stdout, calls onDone(code, text) exactly once, then destroys itself.
+    // Each call gets its own instance, so concurrent requests can't clobber
+    // each other's request id (the shared-process race in the old
+    // getContentProcess / loadImageProcess / linkPreviewProcess).
+    Component {
+        id: requestProcComp
+        Process {
+            property var cmd: []
+            property var onDone: null
+            command: cmd
+            running: true
+            stdout: StdioCollector {
+                waitForEnd: true
+            }
+            onExited: (code) => {
+                if (onDone) onDone(code, stdout.text || "");
+                destroy();
+            }
+        }
+    }
+
+    function _runRequest(cmd, onDone) {
+        requestProcComp.createObject(root, { cmd: cmd, onDone: onDone });
+    }
+
     // Get full content of an item
-    property Process getContentProcess: Process {
-        property string itemId: ""
-        running: false
-        
-        stdout: StdioCollector {
-            waitForEnd: true
-            
-            onStreamFinished: {
-                root.fullContentRetrieved(getContentProcess.itemId, text);
-            }
-        }
-        
-        onExited: function(code) {
-            if (code !== 0) {
-                root.fullContentRetrieved(getContentProcess.itemId, "");
-            }
-        }
+    function getFullContent(id) {
+        if (!_initialized) return;
+        _runRequest(["sh", "-c", "sqlite3 '" + dbPath + "' '.timeout 5000' 'SELECT full_content FROM clipboard_items WHERE id = " + id + ";'"], (code, text) => {
+            root.fullContentRetrieved(id, code === 0 ? text : "");
+        });
     }
 
     // Delete item
@@ -335,6 +389,11 @@ QtObject {
                 Qt.callLater(root.list);
                 // Clean binary data directory (will only remove files not referenced by pinned items)
                 cleanBinaryDataDirProcess.running = true;
+                // Clear the system clipboard (array args, no shell wrapper)
+                var wlClearProc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+                wlClearProc.command = ["wl-copy", "--clear"];
+                wlClearProc.onExited.connect(() => wlClearProc.destroy());
+                wlClearProc.running = true;
             }
         }
     }
@@ -396,68 +455,62 @@ QtObject {
     }
 
     // Load image data
-    property Process loadImageProcess: Process {
-        property string itemId: ""
-        property string mimeType: ""
-        running: false
+    function decodeToDataUrl(id, mime) {
+        if (imageDataById[id]) {
+            return;
+        }
         
-        stdout: StdioCollector {
-            waitForEnd: true
-            
-            onStreamFinished: {
-                if (text.length > 0) {
-                    var cleanBase64 = text.replace(/\s/g, '');
-                    var dataUrl = "data:" + loadImageProcess.mimeType + ";base64," + cleanBase64;
-                    root.imageDataById[loadImageProcess.itemId] = dataUrl;
-                    root.revision++;
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].id === id) {
+                var binaryPath = items[i].binaryPath;
+                if (binaryPath && binaryPath.length > 0) {
+                    _runRequest(["base64", "-w", "0", binaryPath], (code, text) => {
+                        if (code === 0 && text.length > 0) {
+                            var cleanBase64 = text.replace(/\s/g, '');
+                            root.imageDataById[id] = "data:" + mime + ";base64," + cleanBase64;
+                            root.revision++;
+                        }
+                    });
                 }
+                break;
             }
         }
     }
     
-    // Link preview metadata fetcher
-    property Process linkPreviewProcess: Process {
-        property string requestUrl: ""
-        property string requestItemId: ""
-        running: false
+    // Link preview metadata fetcher — one process per request so a slow fetch
+    // can't be clobbered by a later one (url/itemId are per-call, not shared).
+    function fetchLinkPreview(url, itemId) {
+        if (!_initialized) return;
         
-        stdout: StdioCollector {
-            waitForEnd: true
-            
-            onStreamFinished: {
-                try {
-                    var metadata = JSON.parse(text);
-                    // Use request_url from the response - this is the original URL we requested
-                    // This is crucial because requestUrl property may have been overwritten
-                    // by a subsequent request before this response arrived
-                    var responseUrl = metadata.request_url || metadata.url || linkPreviewProcess.requestUrl;
-                    
-                    // Cache the result if successful, using the URL from the response
-                    if (!metadata.error && responseUrl) {
-                        root.linkPreviewCache[responseUrl] = metadata;
-                    }
-                    // Note: requestItemId may also be stale, but the receiver validates it
-                    root.linkPreviewFetched(responseUrl, metadata, linkPreviewProcess.requestItemId);
-                } catch (e) {
-                    console.warn("ClipboardService: Failed to parse link preview:", e);
-                    root.linkPreviewFetched(linkPreviewProcess.requestUrl, {'error': 'Failed to parse response'}, linkPreviewProcess.requestItemId);
-                }
-            }
+        // Check cache first
+        if (linkPreviewCache[url]) {
+            Qt.callLater(function() {
+                root.linkPreviewFetched(url, linkPreviewCache[url], itemId);
+            });
+            return;
         }
         
-        stderr: StdioCollector {
-            onStreamFinished: {
-                if (text.length > 0) {
-                    console.warn("ClipboardService: linkPreviewProcess stderr:", text);
-                }
-            }
-        }
-        
-        onExited: function(code) {
+        _runRequest(["python3", linkPreviewScriptPath, url, "5"], (code, text) => {
             if (code !== 0) {
-                root.linkPreviewFetched(linkPreviewProcess.requestUrl, {'error': 'Failed to fetch preview'}, linkPreviewProcess.requestItemId);
+                root.linkPreviewFetched(url, {'error': 'Failed to fetch preview'}, itemId);
+                return;
             }
-        }
+            try {
+                var metadata = JSON.parse(text);
+                // Use request_url from the response - this is the original URL we
+                // requested (per-call now, so no cross-request clobbering)
+                var responseUrl = metadata.request_url || metadata.url || url;
+                
+                // Cache the result if successful, using the URL from the response
+                if (!metadata.error && responseUrl) {
+                    root.linkPreviewCache[responseUrl] = metadata;
+                }
+                root.linkPreviewFetched(responseUrl, metadata, itemId);
+            } catch (e) {
+                console.warn("ClipboardService: Failed to parse link preview:", e);
+                root.linkPreviewFetched(url, {'error': 'Failed to parse response'}, itemId);
+            }
+        });
     }
 
     signal fullContentRetrieved(string itemId, string content)
@@ -531,13 +584,6 @@ QtObject {
         listProcess.running = true;
     }
 
-    function getFullContent(id) {
-        if (!_initialized) return;
-        getContentProcess.itemId = id;
-        getContentProcess.command = ["sh", "-c", "sqlite3 '" + dbPath + "' '.timeout 5000' 'SELECT full_content FROM clipboard_items WHERE id = " + id + ";'"];
-        getContentProcess.running = true;
-    }
-
     function deleteItem(id) {
         if (!_initialized) return;
         _operationInProgress = true;
@@ -554,10 +600,7 @@ QtObject {
 
     function clear() {
         if (!_initialized) return;
-        clearProcess.command = ["sh", "-c", 
-            "sqlite3 '" + dbPath + "' '.timeout 5000' 'DELETE FROM clipboard_items WHERE pinned = 0;'; " +
-            "wl-copy --clear 2>/dev/null || true"
-        ];
+        clearProcess.command = ["sqlite3", dbPath, ".timeout 5000", "DELETE FROM clipboard_items WHERE pinned = 0;"];
         clearProcess.running = true;
     }
 
@@ -609,44 +652,8 @@ QtObject {
         setAliasProcess.running = true;
     }
 
-    function decodeToDataUrl(id, mime) {
-        if (imageDataById[id]) {
-            return;
-        }
-        
-        for (var i = 0; i < items.length; i++) {
-            if (items[i].id === id) {
-                var binaryPath = items[i].binaryPath;
-                if (binaryPath && binaryPath.length > 0) {
-                    loadImageProcess.itemId = id;
-                    loadImageProcess.mimeType = mime;
-                    loadImageProcess.command = ["base64", "-w", "0", binaryPath];
-                    loadImageProcess.running = true;
-                }
-                break;
-            }
-        }
-    }
-
     function getImageData(id) {
         return imageDataById[id] || "";
-    }
-    
-    function fetchLinkPreview(url, itemId) {
-        if (!_initialized) return;
-        
-        // Check cache first
-        if (linkPreviewCache[url]) {
-            Qt.callLater(function() {
-                root.linkPreviewFetched(url, linkPreviewCache[url], itemId);
-            });
-            return;
-        }
-        
-        linkPreviewProcess.requestUrl = url;
-        linkPreviewProcess.requestItemId = itemId;
-        linkPreviewProcess.command = ["python3", linkPreviewScriptPath, url, "5"];
-        linkPreviewProcess.running = true;
     }
     
     // Reorder item by moving it to a new index
@@ -854,10 +861,10 @@ QtObject {
     
     // Function to copy and paste emoji via Ctrl+V
     function copyAndTypeEmoji(emojiText) {
-        // Copy to clipboard
-        var copyCmd = ["bash", "-c", "echo -n '" + emojiText.replace(/'/g, "'\\''") + "' | wl-copy"];
+        // Copy to clipboard (array args — no shell quoting issues)
         var copyProc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
-        copyProc.command = copyCmd;
+        copyProc.command = ["wl-copy", emojiText];
+        copyProc.onExited.connect(() => copyProc.destroy());
         copyProc.running = true;
         
         // Schedule Ctrl+V paste

@@ -17,10 +17,30 @@ in {
       default = true;
       description = "Whether to install Ambxst[+] fonts (including Phosphor Icons)";
     };
+
+    autostart = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether to autostart Ambxst[+] with the graphical session";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [ cfg.package ];
+
+    # Autostart the shell with the graphical session
+    systemd.user.services.ambxst-plus = lib.mkIf cfg.autostart {
+      description = "Ambxst[+] shell";
+      wantedBy = [ "graphical-session.target" ];
+      partOf = [ "graphical-session.target" ];
+      after = [ "graphical-session.target" ];
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = "${cfg.package}/bin/ambxst+";
+        Restart = "on-failure";
+        RestartSec = 2;
+      };
+    };
 
     # Register fonts with fontconfig (NixOS handles this via fonts.packages)
     fonts.packages = lib.mkIf cfg.fonts.enable (with pkgs; [

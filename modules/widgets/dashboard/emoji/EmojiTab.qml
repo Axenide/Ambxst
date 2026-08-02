@@ -325,7 +325,7 @@ Rectangle {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -482,7 +482,7 @@ Rectangle {
                 Behavior on width {
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -515,7 +515,7 @@ Rectangle {
                         height: parent.height
                         text: root.clearButtonConfirmState ? Icons.xeyes : Icons.broom
                         font.family: Icons.font
-                        font.pixelSize: 20
+                        font.pixelSize: Styling.fontSize(6)
                         color: root.clearButtonConfirmState ? clearButton.item : Styling.srItem("overprimary")
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
@@ -534,7 +534,7 @@ Rectangle {
                         Behavior on opacity {
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -578,7 +578,7 @@ Rectangle {
                 enabled: Config.animDuration > 0 && emojiList.enableScrollAnimation && !emojiList.moving
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -655,7 +655,7 @@ Rectangle {
                                 enabled: Config.animDuration > 0 && horizontalRecent.enableScrollAnimation && !horizontalRecent.moving
                                 NumberAnimation {
                                     duration: Config.animDuration / 2
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -710,7 +710,7 @@ Rectangle {
                                 Text {
                                     anchors.centerIn: parent
                                     text: model.emojiData.emoji
-                                    font.pixelSize: 24
+                                    font.pixelSize: Styling.fontSize(10)
                                     color: Colors.overSurface
                                 }
 
@@ -767,7 +767,7 @@ Rectangle {
                                 Text {
                                     anchors.centerIn: parent
                                     text: emojiData.emoji
-                                    font.pixelSize: 24
+                                    font.pixelSize: Styling.fontSize(10)
                                     color: iconBg.item
                                 }
                             }
@@ -796,7 +796,7 @@ Rectangle {
                             Behavior on opacity {
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -825,7 +825,7 @@ Rectangle {
                                             spacing: 8
                                             Text {
                                                 text: emojiData.emoji + modelData.modifier
-                                                font.pixelSize: 20
+                                                font.pixelSize: Styling.fontSize(6)
                                             }
                                             Text {
                                                 Layout.fillWidth: true
@@ -887,25 +887,25 @@ Rectangle {
                     enabled: Config.animDuration > 0 && !emojiList.moving
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on y {
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on width {
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on height {
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
 

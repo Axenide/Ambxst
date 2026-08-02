@@ -262,10 +262,6 @@ Item {
                 rightMargin: (root.barPosition === "right" || root.orientation === "horizontal") ? (root.frameOffset + root.rightOuterMargin) : 0
             }
 
-
-            // layer.enabled: true
-            // layer.effect: Shadow {}
-
             // Opacity animation
             opacity: root.reveal ? 1 : 0
             Behavior on opacity {
@@ -392,70 +388,23 @@ Item {
                             visible: active
                             Layout.alignment: Qt.AlignVCenter
 
-                            sourceComponent: Button {
+                            sourceComponent: IconToggleButton {
                                 id: pinButton
-                                implicitWidth: 36
-                                implicitHeight: 36
-
-                                background: StyledRect {
-                                    id: pinButtonBg
-                                    variant: root.pinned ? "primary" : "bg"
-                                    enableShadow: root.shadowsEnabled
-                                    
-                                    // PinButton is typically last in group 1 (unless IntegratedDock follows at start)
-                                    property real startRadius: root.innerRadius
-                                    property real endRadius: root.dockAtStart ? root.innerRadius : root.outerRadius
-                                    
-                                    topLeftRadius: startRadius
-                                    bottomLeftRadius: startRadius
-                                    topRightRadius: endRadius
-                                    bottomRightRadius: endRadius
-
-                                    Rectangle {
-                                        anchors.fill: parent
-                                        color: Styling.srItem("overprimary")
-                                        opacity: root.pinned ? 0 : (pinButton.pressed ? 0.5 : (pinButton.hovered ? 0.25 : 0))
-                                        radius: (parent.radius !== undefined ? parent.radius : 0)
-
-                                        Behavior on opacity {
-                                            enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                                            NumberAnimation {
-                                                duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                                            }
-                                        }
-                                    }
-                                }
-
-                                contentItem: Text {
-                                    text: Icons.pin
-                                    font.family: Icons.font
-                                    font.pixelSize: Styling.fontSize(4)
-                                    color: root.pinned ? pinButtonBg.item : (pinButton.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground))
-                                    horizontalAlignment: Text.AlignHCenter
-                                    verticalAlignment: Text.AlignVCenter
-
-                                    rotation: root.pinned ? 0 : 45
-                                    Behavior on rotation {
-                                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                                        NumberAnimation {
-                                            duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                                        }
-                                    }
-
-                                    Behavior on color {
-                                        enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                                        ColorAnimation {
-                                            duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                                        }
-                                    }
-                                }
+                                active: root.pinned
+                                icon: Icons.pin
+                                tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                buttonSize: 36
+                                iconPixelSize: Styling.fontSize(4)
+                                barStyle: true
+                                enableShadow: root.shadowsEnabled
+                                idleRotation: 45
+                                // PinButton is typically last in group 1 (unless IntegratedDock follows at start)
+                                tlRadius: root.innerRadius
+                                blRadius: root.innerRadius
+                                trRadius: root.dockAtStart ? root.innerRadius : root.outerRadius
+                                brRadius: root.dockAtStart ? root.innerRadius : root.outerRadius
 
                                 onClicked: root.pinned = !root.pinned
-
-                                StyledToolTip {
-                                    show: pinButton.hovered
-                                    tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
-                                }
                             }
                         }
 
@@ -530,6 +479,14 @@ Item {
 
                         Bar.BatteryIndicator {
                             id: batteryIndicator
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        Bar.CameraIndicator {
+                            id: cameraIndicator
                             bar: root
                             layerEnabled: root.shadowsEnabled
                             startRadius: root.innerRadius
@@ -646,70 +603,23 @@ Item {
                                     visible: active
                                     Layout.alignment: Qt.AlignHCenter
                             
-                                    sourceComponent: Button {
+                                    sourceComponent: IconToggleButton {
                                         id: pinButtonV
-                                        implicitWidth: 36
-                                        implicitHeight: 36
-                            
-                                        background: StyledRect {
-                                            id: pinButtonVBg
-                                            variant: root.pinned ? "primary" : "bg"
-                                            enableShadow: root.shadowsEnabled
-                                        
-                                            property real startRadius: root.innerRadius
-                                            // In vertical, dock is always appended to this group if enabled
-                                            property real endRadius: root.integratedDockEnabled ? root.innerRadius : root.outerRadius
-                                        
-                                            topLeftRadius: startRadius
-                                            topRightRadius: startRadius
-                                            bottomLeftRadius: endRadius
-                                            bottomRightRadius: endRadius
-
-                                            Rectangle {
-                                                anchors.fill: parent
-                                                color: Styling.srItem("overprimary")
-                                                opacity: root.pinned ? 0 : (pinButtonV.pressed ? 0.5 : (pinButtonV.hovered ? 0.25 : 0))
-                                                radius: (parent.radius !== undefined ? parent.radius : 0)
-
-                                                Behavior on opacity {
-                                                    enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                                                    NumberAnimation {
-                                                        duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        contentItem: Text {
-                                            text: Icons.pin
-                                            font.family: Icons.font
-                                            font.pixelSize: Styling.fontSize(4)
-                                            color: root.pinned ? pinButtonVBg.item : (pinButtonV.pressed ? Colors.background : (Styling.srItem("overprimary") || Colors.foreground))
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-
-                                            rotation: root.pinned ? 0 : 45
-                                            Behavior on rotation {
-                                                enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                                                NumberAnimation {
-                                                    duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                                                }
-                                            }
-
-                                            Behavior on color {
-                                                enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
-                                                ColorAnimation {
-                                                    duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-                                                }
-                                            }
-                                        }
+                                        active: root.pinned
+                                        icon: Icons.pin
+                                        tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                        buttonSize: 36
+                                        iconPixelSize: Styling.fontSize(4)
+                                        barStyle: true
+                                        enableShadow: root.shadowsEnabled
+                                        idleRotation: 45
+                                        tlRadius: root.innerRadius
+                                        trRadius: root.innerRadius
+                                        // In vertical, dock is always appended to this group if enabled
+                                        blRadius: root.integratedDockEnabled ? root.innerRadius : root.outerRadius
+                                        brRadius: root.integratedDockEnabled ? root.innerRadius : root.outerRadius
 
                                         onClicked: root.pinned = !root.pinned
-
-                                        StyledToolTip {
-                                            show: pinButtonV.hovered
-                                            tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
-                                        }
                                     }
                                 }
                             }
@@ -737,6 +647,14 @@ Item {
 
                         Bar.BatteryIndicator {
                             id: batteryIndicatorVert
+                            bar: root
+                            layerEnabled: root.shadowsEnabled
+                            startRadius: root.innerRadius
+                            endRadius: root.innerRadius
+                        }
+
+                        Bar.CameraIndicator {
+                            id: cameraIndicatorVert
                             bar: root
                             layerEnabled: root.shadowsEnabled
                             startRadius: root.innerRadius

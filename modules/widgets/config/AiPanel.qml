@@ -30,7 +30,7 @@ Item {
             Text {
                 text: "AI & API Keys"
                 font.family: Config.theme.font
-                font.pixelSize: 24
+                font.pixelSize: Styling.fontSize(10)
                 font.weight: Font.Bold
                 color: Colors.overSurface
                 Layout.fillWidth: true
@@ -60,7 +60,7 @@ Item {
                             Text {
                                 text: modelData.charAt(0).toUpperCase() + modelData.slice(1)
                                 font.family: Config.theme.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 font.weight: Font.Bold
                                 color: Colors.overSurface
                                 Layout.fillWidth: true
@@ -68,7 +68,7 @@ Item {
                             Text {
                                 text: KeyStore.hasKey(modelData) ? "Key Configured" : "Not Configured"
                                 font.family: Config.theme.font
-                                font.pixelSize: 12
+                                font.pixelSize: Styling.fontSize(-2)
                                 color: KeyStore.hasKey(modelData) ? Colors.success : Colors.outline
                             }
                         }
@@ -180,7 +180,7 @@ Item {
             Text {
                 text: "Custom Provider"
                 font.family: Config.theme.font
-                font.pixelSize: 20
+                font.pixelSize: Styling.fontSize(6)
                 font.weight: Font.Bold
                 color: Colors.overSurface
                 Layout.fillWidth: true
@@ -205,7 +205,7 @@ Item {
                         Text {
                             text: "Custom Provider API Key"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.weight: Font.Bold
                             color: Colors.overSurface
                             Layout.fillWidth: true
@@ -213,7 +213,7 @@ Item {
                         Text {
                             text: KeyStore.hasKey("custom") ? "Key Configured" : "Not Configured"
                             font.family: Config.theme.font
-                            font.pixelSize: 12
+                            font.pixelSize: Styling.fontSize(-2)
                             color: KeyStore.hasKey("custom") ? Colors.success : Colors.outline
                         }
                     }
@@ -326,7 +326,7 @@ Item {
                     Text {
                         text: "Custom Endpoint"
                         font.family: Config.theme.font
-                        font.pixelSize: 14
+                        font.pixelSize: Styling.fontSize(0)
                         color: Colors.overSurface
                     }
                     
@@ -361,7 +361,7 @@ Item {
                     Text {
                         text: "Custom cURL Template"
                         font.family: Config.theme.font
-                        font.pixelSize: 14
+                        font.pixelSize: Styling.fontSize(0)
                         color: Colors.overSurface
                         Layout.topMargin: 8
                     }
@@ -369,7 +369,7 @@ Item {
                     Text {
                         text: "Placeholders: {{ENDPOINT}}, {{API_KEY}}, {{BODY_PATH}}"
                         font.family: Config.theme.font
-                        font.pixelSize: 12
+                        font.pixelSize: Styling.fontSize(-2)
                         color: Colors.outline
                     }
                     
@@ -378,7 +378,7 @@ Item {
                         Layout.fillWidth: true
                         text: Config.ai.customCurlTemplate !== undefined ? Config.ai.customCurlTemplate : ""
                         placeholderText: "curl -X POST {{ENDPOINT}} -H 'Authorization: Bearer {{API_KEY}}' -d @{{BODY_PATH}}"
-                        font.family: "Monospace"
+                        font.family: Config.theme.monoFont
                         color: Colors.overSurface
                         padding: 6
                         

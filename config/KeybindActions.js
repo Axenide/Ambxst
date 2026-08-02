@@ -107,7 +107,10 @@ var ACTION_CATALOG = [
 
     { id: "audio.volume-up", label: "Volume Up", category: "Audio", dispatcher: "exec", argument: "ambxst+ run volume-up", flags: "le" },
     { id: "audio.volume-down", label: "Volume Down", category: "Audio", dispatcher: "exec", argument: "ambxst+ run volume-down", flags: "le" },
+    { id: "audio.volume-up-fine", label: "Volume Up (Fine)", category: "Audio", dispatcher: "exec", argument: "ambxst+ run volume-up-fine", flags: "le" },
+    { id: "audio.volume-down-fine", label: "Volume Down (Fine)", category: "Audio", dispatcher: "exec", argument: "ambxst+ run volume-down-fine", flags: "le" },
     { id: "audio.mute-toggle", label: "Mute Audio", category: "Audio", dispatcher: "exec", argument: "ambxst+ run volume-mute", flags: "le" },
+    { id: "audio.mic-mute-toggle", label: "Mute Microphone", category: "Audio", dispatcher: "exec", argument: "ambxst+ run mic-mute", flags: "le" },
 
     { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "ambxst+ brightness +5", flags: "le" },
     { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "ambxst+ brightness -5", flags: "le" },
@@ -275,9 +278,12 @@ function actionFromLegacy(dispatcher, argument, flags) {
         if (arg === "playerctl previous") return { id: "media.prev", args: {} };
         if (arg === "playerctl next") return { id: "media.next", args: {} };
         if (arg === "playerctl stop" && flags === "l") return { id: "media.stop-locked", args: {} };
+        if (arg.indexOf("ambxst+ run volume-up-fine") === 0) return { id: "audio.volume-up-fine", args: {} };
+        if (arg.indexOf("ambxst+ run volume-down-fine") === 0) return { id: "audio.volume-down-fine", args: {} };
         if (arg.indexOf("ambxst+ run volume-up") === 0) return { id: "audio.volume-up", args: {} };
         if (arg.indexOf("ambxst+ run volume-down") === 0) return { id: "audio.volume-down", args: {} };
         if (arg.indexOf("ambxst+ run volume-mute") === 0) return { id: "audio.mute-toggle", args: {} };
+        if (arg.indexOf("ambxst+ run mic-mute") === 0) return { id: "audio.mic-mute-toggle", args: {} };
         if (arg.indexOf("ambxst+ brightness +5") === 0) return { id: "brightness.up", args: {} };
         if (arg.indexOf("ambxst+ brightness -5") === 0) return { id: "brightness.down", args: {} };
         if (arg === "notify-send \"Soon\"") return { id: "system.calculator", args: {} };

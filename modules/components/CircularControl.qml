@@ -199,7 +199,7 @@ StyledRect {
         text: root.icon
         color: Colors.overBackground
         font.family: Icons.font
-        font.pixelSize: 18
+        font.pixelSize: Styling.fontSize(4)
         rotation: root.enableIconRotation ? root.iconRotation : 0
         scale: root.iconScale
 

@@ -51,6 +51,10 @@ Singleton {
     property var _appCache: ({})
     property var _previousKeys: []
 
+    // Cached ignored-app regexes (keyed by the source string list)
+    property var _ignoredRegexKey: null
+    property var _ignoredRegexCache: null
+
     // Combined app list
     property list<var> apps: []
 
@@ -99,7 +103,15 @@ Singleton {
         // Get config
         const pinnedApps = Config.pinnedApps?.apps ?? [];
         const ignoredRegexStrings = Config.dock?.ignoredAppRegexes ?? [];
-        const ignoredRegexes = ignoredRegexStrings.map(pattern => new RegExp(pattern, "i"));
+
+        // Cache compiled regexes keyed on the config array; recompiling on every
+        // rebuild (up to 10x/sec during window churn) is pure waste.
+        let ignoredRegexes = root._ignoredRegexCache;
+        if (!ignoredRegexes || root._ignoredRegexKey !== ignoredRegexStrings) {
+            ignoredRegexes = ignoredRegexStrings.map(pattern => new RegExp(pattern, "i"));
+            root._ignoredRegexKey = ignoredRegexStrings;
+            root._ignoredRegexCache = ignoredRegexes;
+        }
 
         // Add pinned
         for (const appId of pinnedApps) {
@@ -114,7 +126,7 @@ Singleton {
         }
 
         // Collect unpinned
-        var unpinnedRunningApps = [];
+        var unpinnedRunningApps = new Map();
         const toplevels = ToplevelManager.toplevels.values;
         for (let i = 0; i < toplevels.length; i++) {
             const toplevel = toplevels[i];
@@ -128,10 +140,11 @@ Singleton {
                 // Add to pinned app
                 map.get(key).toplevels.push(toplevel);
             } else {
-                // Track unpinned
-                const existing = unpinnedRunningApps.find(app => app.key === key);
+                // Track unpinned (Map lookup is O(1), not O(n) like the old
+                // linear scan over the array of unique apps)
+                const existing = unpinnedRunningApps.get(key);
                 if (!existing) {
-                    unpinnedRunningApps.push({
+                    unpinnedRunningApps.set(key, {
                         key: key,
                         appId: toplevel.appId,
                         toplevels: [toplevel]
@@ -152,8 +165,8 @@ Singleton {
         }
 
         // Add unpinned to map
-        for (const app of unpinnedRunningApps) {
-            map.set(app.key, {
+        for (const [appKey, app] of unpinnedRunningApps) {
+            map.set(appKey, {
                 appId: app.appId,
                 pinned: false,
                 toplevels: app.toplevels
@@ -175,9 +188,15 @@ Singleton {
         var values = [];
         for (const [key, value] of map) {
             if (_appCache[key]) {
-                // Update entry
-                _appCache[key].toplevels = value.toplevels;
-                _appCache[key].pinned = value.pinned;
+                // Update entry — only assign when content actually changed, so
+                // consumers don't get spurious change notifications on every
+                // rebuild (rebuilds run up to 10x/sec during window churn).
+                if (!_arraysEqual(_appCache[key].toplevels, value.toplevels)) {
+                    _appCache[key].toplevels = value.toplevels;
+                }
+                if (_appCache[key].pinned !== value.pinned) {
+                    _appCache[key].pinned = value.pinned;
+                }
                 values.push(_appCache[key]);
             } else {
                 // Create entry
@@ -192,7 +211,30 @@ Singleton {
         }
 
         _previousKeys = newKeys;
-        apps = values;
+
+        // Reassign `apps` only when the entry list itself changed (add/remove/
+        // reorder); per-entry updates propagate via their own change signals.
+        // This avoids a full model re-evaluation cascade on every rebuild.
+        let listChanged = root.apps.length !== values.length;
+        if (!listChanged) {
+            for (let i = 0; i < root.apps.length; i++) {
+                if (root.apps[i] !== values[i]) {
+                    listChanged = true;
+                    break;
+                }
+            }
+        }
+        if (listChanged)
+            root.apps = values;
+    }
+
+    function _arraysEqual(a, b) {
+        if (a === b) return true;
+        if (!a || !b || a.length !== b.length) return false;
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] !== b[i]) return false;
+        }
+        return true;
     }
 
     // App entry component

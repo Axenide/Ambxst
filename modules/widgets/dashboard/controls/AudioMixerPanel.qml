@@ -83,7 +83,7 @@ Item {
                                 Text {
                                     text: Icons.speakerHigh
                                     font.family: Icons.font
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     color: outputBtn.item
                                     anchors.verticalCenter: parent.verticalCenter
                                 }
@@ -127,7 +127,7 @@ Item {
                                 Text {
                                     text: Icons.mic
                                     font.family: Icons.font
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     color: inputBtn.item
                                     anchors.verticalCenter: parent.verticalCenter
                                 }

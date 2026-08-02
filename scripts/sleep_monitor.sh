@@ -1,36 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-LOCKFILE="/tmp/ambxst+_sleep_monitor.lock"
-if [ -e "$LOCKFILE" ]; then
-	PID=$(cat "$LOCKFILE")
-	if kill -0 "$PID" 2>/dev/null; then
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+LOCKFILE="$RUNTIME_DIR/ambxst+_sleep_monitor.pid"
+set -C
+if ! (echo $$ >"$LOCKFILE") 2>/dev/null; then
+	PID=$(cat "$LOCKFILE" 2>/dev/null || echo "")
+	if [ -n "$PID" ] && [ -O "$LOCKFILE" ] && kill -0 "$PID" 2>/dev/null; then
 		exit 0
 	fi
+	set +C
+	rm -f "$LOCKFILE"
+	set -C
+	echo $$ >"$LOCKFILE"
 fi
-echo $$ >"$LOCKFILE"
+set +C
 
-# Sleep Monitor - Executes commands before and after sleep
-CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/ambxst+/config/system.json"
-
-get_cmd() {
-	local type=$1
-	if [ -f "$CONFIG_FILE" ]; then
-		if [ "$type" == "before" ]; then
-			jq -r '.idle.general.before_sleep_cmd // "loginctl lock-session"' "$CONFIG_FILE"
-		else
-			jq -r '.idle.general.after_sleep_cmd // "ambxst+ screen on"' "$CONFIG_FILE"
-		fi
-	else
-		if [ "$type" == "before" ]; then
-			echo "loginctl lock-session"
-		else
-			echo "ambxst+ screen on"
-		fi
-	fi
-}
-
-# Monitor logind's PrepareForSleep signal
+# Sleep Monitor - Reports PrepareForSleep events. Command execution is owned
+# by IdleService in the shell (QML side), which avoids double-locking and
+# shell-eval injection.
+#
 # We use grep --line-buffered to reliably capture the boolean argument
 # which indicates start (true) or end (false) of sleep
 dbus-monitor --system "type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'" |
@@ -39,16 +28,8 @@ dbus-monitor --system "type='signal',interface='org.freedesktop.login1.Manager',
 		if echo "$line" | grep -q "true"; then
 			# Going to sleep
 			echo "SUSPEND"
-			CMD=$(get_cmd "before")
-			if [ -n "$CMD" ]; then
-				eval "$CMD" &
-			fi
 		elif echo "$line" | grep -q "false"; then
 			# Waking up
 			echo "WAKE"
-			CMD=$(get_cmd "after")
-			if [ -n "$CMD" ]; then
-				eval "$CMD" &
-			fi
 		fi
 	done

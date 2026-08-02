@@ -190,7 +190,7 @@ Item {
                             contentItem: Text {
                                 text: Icons.list
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 color: root.menuExpanded ? Styling.srItem("overprimary") : Colors.overSurface
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
@@ -216,7 +216,7 @@ Item {
                             contentItem: Text {
                                 text: Icons.edit
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 color: Colors.overSurface
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
@@ -246,7 +246,7 @@ Item {
                             contentItem: Text {
                                 text: Icons.pin
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 color: GlobalStates.assistantPinned ? Styling.srItem("overprimary") : Colors.overSurface
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
@@ -283,7 +283,7 @@ Item {
                             contentItem: Text {
                                 text: GlobalStates.assistantPosition === "right" ? Icons.caretRight : Icons.caretLeft
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 color: Colors.overSurface
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
@@ -416,7 +416,7 @@ Item {
                                     text: "Chat History"
                                     color: Colors.overSurface
                                     font.family: Config.theme.font
-                                    font.pixelSize: 18
+                                    font.pixelSize: Styling.fontSize(4)
                                     font.weight: Font.Bold
                                 }
 
@@ -447,7 +447,7 @@ Item {
                                                     text: modelData.title || "New Chat"
                                                     color: Ai.currentChatId === modelData.id ? Styling.srItem("primary") : Colors.overSurface
                                                     font.family: Config.theme.font
-                                                    font.pixelSize: 14
+                                                    font.pixelSize: Styling.fontSize(0)
                                                     font.weight: Font.Medium
                                                     elide: Text.ElideRight
                                                     width: parent.width
@@ -460,7 +460,7 @@ Item {
                                                     }
                                                     color: Ai.currentChatId === modelData.id ? Styling.srItem("primary") : Colors.outline
                                                     font.family: Config.theme.font
-                                                    font.pixelSize: 11
+                                                    font.pixelSize: Styling.fontSize(-3)
                                                     elide: Text.ElideRight
                                                     width: parent.width
                                                 }
@@ -476,7 +476,7 @@ Item {
                                                     text: Icons.trash
                                                     font.family: Icons.font
                                                     color: parent.hovered ? Colors.error : Colors.outline
-                                                    font.pixelSize: 14
+                                                    font.pixelSize: Styling.fontSize(0)
                                                     horizontalAlignment: Text.AlignHCenter
                                                     verticalAlignment: Text.AlignVCenter
                                                 }
@@ -649,7 +649,7 @@ Item {
                             Text {
                                 text: "Hello, <font color='" + Styling.srItem("overprimary") + "'>" + mainChatArea.username + "</font>."
                                 font.family: Config.theme.font
-                                font.pixelSize: 32
+                                font.pixelSize: Styling.fontSize(18)
                                 font.weight: Font.Bold
                                 textFormat: Text.StyledText
                                 Layout.alignment: Qt.AlignHCenter
@@ -669,7 +669,7 @@ Item {
                                     text: Ai.currentModel ? Ai.currentModel.name : ""
                                     color: Colors.overBackground
                                     font.family: Config.theme.font
-                                    font.pixelSize: 16
+                                    font.pixelSize: Styling.fontSize(2)
                                     font.weight: Font.Bold
                                 }
 
@@ -736,7 +736,7 @@ Item {
                                                     text: Icons.robot
                                                     font.family: Icons.font
                                                     color: Colors.overPrimary
-                                                    font.pixelSize: 20
+                                                    font.pixelSize: Styling.fontSize(6)
                                                 }
                                             }
 
@@ -842,8 +842,7 @@ Item {
                                                     }
 
                                                     onClicked: {
-                                                        let p = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { command: ["wl-copy", "' + modelData.content.replace(/"/g, '\\"') + '"] }', parent);
-                                                        p.running = true;
+                                                        CopyProcess.createObject(parent, { content: modelData.content || "" });
                                                     }
                                                 }
 
@@ -943,7 +942,7 @@ Item {
                                                                         textFormat: Text.MarkdownText
                                                                         color: isSystem ? Colors.outline : (isUser ? Styling.srItem("primary") : Styling.srItem("secondary"))
                                                                         font.family: Config.theme.font
-                                                                        font.pixelSize: 14
+                                                                        font.pixelSize: Styling.fontSize(0)
                                                                         wrapMode: Text.Wrap
                                                                         readOnly: true
                                                                         selectByMouse: true
@@ -971,7 +970,7 @@ Item {
                                                         textFormat: Text.PlainText
                                                         color: isSystem ? Colors.outline : (isUser ? Styling.srItem("primary") : Styling.srItem("secondary"))
                                                         font.family: Config.theme.font
-                                                        font.pixelSize: 14
+                                                        font.pixelSize: Styling.fontSize(0)
                                                         wrapMode: Text.Wrap
                                                         readOnly: !messageDelegate.isEditing
                                                         selectByMouse: true
@@ -995,7 +994,7 @@ Item {
                                                             color: Styling.srItem("overprimary")
                                                             font.family: Config.theme.font
                                                             font.weight: Font.Bold
-                                                            font.pixelSize: 12
+                                                            font.pixelSize: Styling.fontSize(-2)
                                                         }
 
                                                         StyledRect {
@@ -1067,14 +1066,14 @@ Item {
                                                             visible: modelData.functionApproved === true
                                                             text: "Command Approved"
                                                             color: Colors.success
-                                                            font.pixelSize: 12
+                                                            font.pixelSize: Styling.fontSize(-2)
                                                         }
 
                                                         Text {
                                                             visible: modelData.functionApproved === false && !modelData.functionPending
                                                             text: "Command Rejected"
                                                             color: Colors.error
-                                                            font.pixelSize: 12
+                                                            font.pixelSize: Styling.fontSize(-2)
                                                         }
                                                     }
                                                 }
@@ -1290,7 +1289,7 @@ Item {
                                                         contentItem: Text {
                                                             text: Icons.cancel
                                                             font.family: Icons.font
-                                                            font.pixelSize: 10
+                                                            font.pixelSize: Styling.fontSize(-4)
                                                             color: Colors.overSurface
                                                             horizontalAlignment: Text.AlignHCenter
                                                             verticalAlignment: Text.AlignVCenter
@@ -1298,7 +1297,7 @@ Item {
 
                                                         background: Rectangle {
                                                             color: Colors.surfaceBright
-                                                            radius: 8
+                                                            radius: Styling.radius(-8)
                                                         }
 
                                                         onClicked: mainChatArea.removeAttachment(index)
@@ -1415,7 +1414,7 @@ Item {
                                             activeFocusOnTab: true
                                             placeholderText: mainChatArea.isWelcome ? "Ask AI or type /help..." : "Message AI..."
                                             placeholderTextColor: Colors.outline
-                                            font.pixelSize: 14
+                                            font.pixelSize: Styling.fontSize(0)
                                             color: Colors.overBackground
                                             wrapMode: TextEdit.Wrap
 
@@ -1488,7 +1487,7 @@ Item {
                                         contentItem: Text {
                                             text: Icons.plus
                                             font.family: Icons.font
-                                            font.pixelSize: 20
+                                            font.pixelSize: Styling.fontSize(6)
                                             color: Colors.outline
                                             horizontalAlignment: Text.AlignHCenter
                                             verticalAlignment: Text.AlignVCenter
@@ -1496,7 +1495,7 @@ Item {
 
                                         background: Rectangle {
                                             color: parent.hovered ? Colors.surfaceBright : "transparent"
-                                            radius: 16
+                                            radius: Styling.radius(0)
                                         }
 
                                         onClicked: zenityProcess.running = true
@@ -1510,7 +1509,7 @@ Item {
                                         contentItem: Text {
                                             text: Icons.paperPlane
                                             font.family: Icons.font
-                                            font.pixelSize: 20
+                                            font.pixelSize: Styling.fontSize(6)
                                             color: Styling.srItem("overprimary")
                                             horizontalAlignment: Text.AlignHCenter
                                             verticalAlignment: Text.AlignVCenter
@@ -1518,7 +1517,7 @@ Item {
 
                                         background: Rectangle {
                                             color: parent.hovered ? Colors.surfaceBright : "transparent"
-                                            radius: 16
+                                            radius: Styling.radius(0)
                                         }
 
                                         onClicked: {

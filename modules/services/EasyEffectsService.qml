@@ -21,38 +21,65 @@ Singleton {
     property string activeOutputPreset: ""
     property string activeInputPreset: ""
 
+    // True when the EasyEffects D-Bus service is actually registered. Every
+    // `easyeffects` CLI invocation is a gapplication call that auto-activates
+    // the GTK app if it's not running, so state queries are gated on this
+    // (checked with a NameHasOwner busctl call, which never activates it).
+    property bool isRunning: false
+
     // Toggle bypass state
     function toggleBypass() {
+        if (!root.isRunning) {
+            console.warn("EasyEffectsService: not running, ignoring bypass toggle");
+            return;
+        }
         bypassToggleProcess.command = ["easyeffects", "-b", bypassed ? "2" : "1"];
         bypassToggleProcess.running = true;
     }
     
     function setBypass(enable: bool) {
+        if (!root.isRunning) {
+            console.warn("EasyEffectsService: not running, ignoring bypass change");
+            return;
+        }
         bypassToggleProcess.command = ["easyeffects", "-b", enable ? "1" : "2"];
         bypassToggleProcess.running = true;
     }
 
-    // Load preset (optimistic)
+    // Load preset (optimistic) — one process per load so rapid preset switching
+    // can't clobber an in-flight load's preset name.
+    Component {
+        id: presetLoadComp
+        Process {
+            property string presetName: ""
+            command: ["easyeffects", "-l", presetName]
+            running: true
+            onExited: {
+                // Delay for preset application
+                refreshDelayTimer.restart();
+                destroy();
+            }
+        }
+    }
+
     function loadOutputPreset(name: string) {
         root.activeOutputPreset = name;  // Optimistic
-        loadPresetProcess.command = ["easyeffects", "-l", name];
-        loadPresetProcess.running = true;
+        presetLoadComp.createObject(root, { presetName: name });
     }
 
     function loadInputPreset(name: string) {
         root.activeInputPreset = name;  // Optimistic
-        loadPresetProcess.command = ["easyeffects", "-l", name];
-        loadPresetProcess.running = true;
+        presetLoadComp.createObject(root, { presetName: name });
     }
 
     // Compatibility legacy function
     function loadPreset(name: string) {
-        loadPresetProcess.command = ["easyeffects", "-l", name];
-        loadPresetProcess.running = true;
+        presetLoadComp.createObject(root, { presetName: name });
     }
 
     // Refresh all data
     function refresh() {
+        root._refreshPresets = true;
         checkAvailableProcess.running = true;
     }
 
@@ -77,10 +104,37 @@ Singleton {
         onExited: (exitCode, exitStatus) => {
             root.available = (exitCode === 0);
             if (root.available) {
-                // Fetch initial state
+                // Don't query state directly — that would auto-launch the app.
+                // Gate everything behind the D-Bus registration check.
+                runningCheckProcess.running = true;
+            }
+        }
+    }
+
+    // D-Bus registration check (NameHasOwner never activates the service).
+    // State queries run only when it confirms the app is actually running.
+    property bool _wasRunning: false
+    property bool _refreshPresets: false
+
+    Process {
+        id: runningCheckProcess
+        command: ["busctl", "--user", "--no-pager", "call", "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameHasOwner", "s", "com.github.wwmm.easyeffects"]
+        running: false
+        stdout: SplitParser {
+            onRead: data => {
+                root.isRunning = data.trim().toLowerCase().includes("true");
+            }
+        }
+        onExited: (code) => {
+            const wasRunning = root._wasRunning;
+            root._wasRunning = root.isRunning;
+            if (code === 0 && root.isRunning) {
                 bypassStateProcess.running = true;
-                presetsProcess.running = true;
                 activePresetsProcess.running = true;
+                if (!wasRunning || root._refreshPresets) {
+                    root._refreshPresets = false;
+                    presetsProcess.running = true;
+                }
             }
         }
     }
@@ -105,16 +159,6 @@ Singleton {
         running: false
         onExited: {
             bypassStateProcess.running = true;
-        }
-    }
-
-    // Load preset
-    Process {
-        id: loadPresetProcess
-        running: false
-        onExited: {
-            // Delay for preset application
-            refreshDelayTimer.restart();
         }
     }
 
@@ -214,14 +258,15 @@ Singleton {
         }
     }
 
-    // Periodically poll state
+    // Periodically check state — but only query bypass/active presets if the
+    // D-Bus service is registered, so the poll can never auto-launch the GTK
+    // app (every `easyeffects` invocation is a gapplication activation).
     property var pollTimer: Timer {
         interval: 5000
         running: root.available && !SuspendManager.isSuspending
         repeat: true
         onTriggered: {
-            bypassStateProcess.running = true;
-            activePresetsProcess.running = true;
+            runningCheckProcess.running = true;
         }
     }
 }

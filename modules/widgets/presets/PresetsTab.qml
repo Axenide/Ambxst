@@ -413,7 +413,7 @@ Item {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -546,7 +546,7 @@ Item {
                 enabled: Config.animDuration > 0 && resultsList.enableScrollAnimation && !resultsList.moving
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -606,13 +606,13 @@ Item {
                     return baseHeight;
                 }
                 color: "transparent"
-                radius: 16
+                radius: Styling.radius(0)
 
                 Behavior on y {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -620,7 +620,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
                 clip: true
@@ -734,135 +734,18 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
-                    ClippingRectangle {
+                    OptionsList {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 36 * optionsListView.count
-                        color: Colors.background
-                        radius: Styling.radius(0)
-
-                        ListView {
-                            id: optionsListView
-                            anchors.fill: parent
-                            clip: true
-                            interactive: false
-                            boundsBehavior: Flickable.StopAtBounds
-                            model: root.getPresetOptions(modelData)
-                            currentIndex: root.selectedOptionIndex
-                            highlightFollowsCurrentItem: true
-                            highlightRangeMode: ListView.ApplyRange
-                            preferredHighlightBegin: 0
-                            preferredHighlightEnd: height
-
-                            highlight: StyledRect {
-                                variant: {
-                                    if (optionsListView.currentIndex >= 0 && optionsListView.currentIndex < optionsListView.count) {
-                                        var item = optionsListView.model[optionsListView.currentIndex];
-                                        if (item && item.highlightColor) {
-                                            if (item.highlightColor === Colors.error)
-                                                return "error";
-                                            if (item.highlightColor === Colors.secondary)
-                                                return "secondary";
-                                            if (item.highlightColor === Colors.tertiary)
-                                                return "tertiary";
-                                            return "primary";
-                                        }
-                                    }
-                                    return "primary";
-                                }
-                                radius: Styling.radius(0)
-                                visible: optionsListView.currentIndex >= 0
-                                z: -1
-                            }
-
-                            highlightMoveDuration: Config.animDuration > 0 ? Config.animDuration / 2 : 0
-                            highlightMoveVelocity: -1
-
-                            delegate: Item {
-                                required property var modelData
-                                required property int index
-
-                                width: optionsListView.width
-                                height: 36
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: "transparent"
-
-                                    RowLayout {
-                                        anchors.fill: parent
-                                        anchors.margins: 8
-                                        spacing: 8
-
-                                        Text {
-                                            text: modelData && modelData.icon ? modelData.icon : ""
-                                            font.family: Icons.font
-                                            font.pixelSize: 14
-                                            font.weight: Font.Bold
-                                            textFormat: Text.RichText
-                                            color: {
-                                                if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
-                                                    return modelData.textColor;
-                                                }
-                                                return Colors.overSurface;
-                                            }
-
-                                            Behavior on color {
-                                                enabled: Config.animDuration > 0
-                                                ColorAnimation {
-                                                    duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutQuart
-                                                }
-                                            }
-                                        }
-
-                                        Text {
-                                            Layout.fillWidth: true
-                                            text: modelData && modelData.text ? modelData.text : ""
-                                            font.family: Config.theme.font
-                                            font.pixelSize: Config.theme.fontSize
-                                            font.weight: optionsListView.currentIndex === index ? Font.Bold : Font.Normal
-                                            color: {
-                                                if (optionsListView.currentIndex === index && modelData && modelData.textColor) {
-                                                    return modelData.textColor;
-                                                }
-                                                return Colors.overSurface;
-                                            }
-                                            elide: Text.ElideRight
-                                            maximumLineCount: 1
-
-                                            Behavior on color {
-                                                enabled: Config.animDuration > 0
-                                                ColorAnimation {
-                                                    duration: Config.animDuration / 2
-                                                    easing.type: Easing.OutQuart
-                                                }
-                                            }
-                                        }
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-
-                                        onEntered: {
-                                            optionsListView.currentIndex = index;
-                                            root.selectedOptionIndex = index;
-                                            root.keyboardNavigation = false;
-                                        }
-
-                                        onClicked: {
-                                            if (modelData && modelData.action) {
-                                                modelData.action();
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                        Layout.preferredHeight: preferredHeight
+                        model: root.getPresetOptions(modelData)
+                        currentIndex: root.selectedOptionIndex
+                        onItemSelected: index => {
+                            root.selectedOptionIndex = index;
+                            root.keyboardNavigation = false;
                         }
                     }
                 }
@@ -887,7 +770,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -896,7 +779,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -920,14 +803,14 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 3
-                                easing.type: Easing.OutSine
+                                easing.type: Styling.animEasing
                             }
                         }
                         Behavior on idx2X {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutSine
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -941,7 +824,7 @@ Item {
                             width: 32
                             height: 32
                             color: "transparent"
-                            radius: 6
+                            radius: Styling.radius(-10)
                             z: 1
                             property bool isHighlighted: root.renameButtonIndex === 0
 
@@ -956,7 +839,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.cancel
                                 color: renameCancelButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 font.family: Icons.font
                                 textFormat: Text.RichText
 
@@ -964,7 +847,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -975,7 +858,7 @@ Item {
                             width: 32
                             height: 32
                             color: "transparent"
-                            radius: 6
+                            radius: Styling.radius(-10)
                             z: 1
                             property bool isHighlighted: root.renameButtonIndex === 1
 
@@ -990,7 +873,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.accept
                                 color: renameConfirmButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 font.family: Icons.font
                                 textFormat: Text.RichText
 
@@ -998,7 +881,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -1026,7 +909,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -1035,7 +918,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1059,14 +942,14 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 3
-                                easing.type: Easing.OutSine
+                                easing.type: Styling.animEasing
                             }
                         }
                         Behavior on idx2X {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutSine
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -1080,7 +963,7 @@ Item {
                             width: 32
                             height: 32
                             color: "transparent"
-                            radius: 6
+                            radius: Styling.radius(-10)
                             z: 1
                             property bool isHighlighted: root.deleteButtonIndex === 0
 
@@ -1095,7 +978,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.cancel
                                 color: deleteCancelButton.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 font.family: Icons.font
                                 textFormat: Text.RichText
 
@@ -1103,7 +986,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -1114,7 +997,7 @@ Item {
                             width: 32
                             height: 32
                             color: "transparent"
-                            radius: 6
+                            radius: Styling.radius(-10)
                             z: 1
                             property bool isHighlighted: root.deleteButtonIndex === 1
 
@@ -1129,7 +1012,7 @@ Item {
                                 anchors.centerIn: parent
                                 text: Icons.accept
                                 color: deleteConfirmButton.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 font.family: Icons.font
                                 textFormat: Text.RichText
 
@@ -1137,7 +1020,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -1160,7 +1043,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1200,7 +1083,7 @@ Item {
                             }
                             color: iconBackground.item
                             font.family: Icons.font
-                            font.pixelSize: 16
+                            font.pixelSize: Styling.fontSize(2)
                             textFormat: Text.RichText
                         }
                     }
@@ -1307,13 +1190,13 @@ Item {
                             Layout.preferredHeight: 20
                             Layout.preferredWidth: 65
                             variant: "pane"
-                            radius: 10
+                            radius: Styling.radius(-6)
 
                             Text {
                                 anchors.centerIn: parent
                                 text: "OFFICIAL"
                                 font.family: Config.theme.font
-                                font.pixelSize: 10
+                                font.pixelSize: Styling.fontSize(-4)
                                 font.weight: Font.Bold
                                 color: Styling.srItem("pane")
                             }
@@ -1326,13 +1209,13 @@ Item {
                         Layout.preferredHeight: 20
                         Layout.preferredWidth: 60
                         variant: root.selectedIndex === index ? "overprimary" : "primary"
-                        radius: 10
+                        radius: Styling.radius(-6)
 
                         Text {
                             anchors.centerIn: parent
                             text: "ACTIVE"
                             font.family: Config.theme.font
-                            font.pixelSize: 10
+                            font.pixelSize: Styling.fontSize(-4)
                             font.weight: Font.Bold
                             color: root.selectedIndex === index ? activeBadge.item : Styling.srItem("primary")
                         }
@@ -1372,7 +1255,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -1380,7 +1263,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -1412,7 +1295,7 @@ Item {
                         enabled: Config.animDuration > 0
                         ColorAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -1525,7 +1408,7 @@ Item {
         anchors.fill: parent
         color: Colors.background
         visible: updateMode
-        radius: 20
+        radius: Styling.radius(4)
 
         MouseArea {
             anchors.fill: parent
@@ -1550,7 +1433,7 @@ Item {
                         anchors.centerIn: parent
                         text: Icons.arrowCounterClockwise
                         font.family: Icons.font
-                        font.pixelSize: 16
+                        font.pixelSize: Styling.fontSize(2)
                         color: Styling.srItem("overtertiary")
                     }
                 }
@@ -1612,7 +1495,7 @@ Item {
                                 Layout.preferredWidth: 18
                                 Layout.preferredHeight: 18
                                 variant: fileDelegate.checked ? "tertiary" : "pane"
-                                radius: 4
+                                radius: Styling.radius(-12)
                                 border.width: fileDelegate.checked ? 0 : 1
                                 border.color: Colors.outline
 
@@ -1622,7 +1505,7 @@ Item {
                                     font.family: Icons.font
                                     visible: fileDelegate.checked
                                     color: Styling.srItem("tertiary")
-                                    font.pixelSize: 12
+                                    font.pixelSize: Styling.fontSize(-2)
                                 }
                             }
 
@@ -1647,7 +1530,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     variant: "pane"
-                    radius: 4
+                    radius: Styling.radius(-12)
 
                     Text {
                         anchors.centerIn: parent
@@ -1666,7 +1549,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
                     variant: "tertiary"
-                    radius: 4
+                    radius: Styling.radius(-12)
                     opacity: root.selectedConfigFiles.length > 0 ? 1 : 0.5
 
                     Text {

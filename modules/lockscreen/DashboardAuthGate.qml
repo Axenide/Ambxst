@@ -133,7 +133,7 @@ Popup {
                             anchors.centerIn: parent
                             text: root.authSuccess ? Icons.shieldCheck : Icons.lock
                             font.family: Icons.font
-                            font.pixelSize: 32
+                            font.pixelSize: Styling.fontSize(18)
                             color: root.authSuccess ? Colors.green : Colors.primary
                         }
                     }
@@ -247,7 +247,7 @@ Popup {
                             anchors.centerIn: parent
                             text: Icons.fingerprint
                             font.family: Icons.font
-                            font.pixelSize: 20
+                            font.pixelSize: Styling.fontSize(6)
                             color: Colors.primary
                         }
 

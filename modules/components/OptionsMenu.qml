@@ -242,7 +242,7 @@ Menu {
                                     return root.normalTextColor;
                                 }
                                 font.family: Icons.font
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 font.weight: Font.Bold
                                 anchors.centerIn: parent
                                 textFormat: Text.RichText

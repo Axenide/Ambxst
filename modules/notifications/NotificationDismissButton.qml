@@ -45,7 +45,7 @@ Button {
         text: Icons.cancel
         textFormat: Text.RichText
         font.family: Icons.font
-        font.pixelSize: 16
+        font.pixelSize: Styling.fontSize(2)
         color: root.background.iconColor
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter

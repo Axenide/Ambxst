@@ -212,14 +212,14 @@ NotchAnimationBehavior {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 3
-                        easing.type: Easing.OutSine
+                        easing.type: Styling.animEasing
                     }
                 }
                 Behavior on animatedY2 {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutSine
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -259,7 +259,7 @@ NotchAnimationBehavior {
                             // font.family: Config.theme.font
                             font.family: Icons.font
                             // font.pixelSize: Config.theme.fontSize
-                            font.pixelSize: 20
+                            font.pixelSize: Styling.fontSize(6)
                             font.weight: Font.Medium
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -268,7 +268,7 @@ NotchAnimationBehavior {
                                 enabled: Config.animDuration > 0
                                 ColorAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutCubic
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -295,7 +295,7 @@ NotchAnimationBehavior {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -317,7 +317,7 @@ NotchAnimationBehavior {
                 contentItem: Text {
                     text: Icons.gear
                     font.family: Icons.font
-                    font.pixelSize: 20
+                    font.pixelSize: Styling.fontSize(6)
                     font.weight: Font.Medium
                     color: GlobalStates.settingsWindowVisible ? Styling.srItem("primary") : Colors.overBackground
                     horizontalAlignment: Text.AlignHCenter
@@ -327,7 +327,7 @@ NotchAnimationBehavior {
                         enabled: Config.animDuration > 0
                         ColorAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
                 }
@@ -404,13 +404,13 @@ NotchAnimationBehavior {
                         y: visible ? 0 : (root.state.currentTab > index ? -20 : 20)
                         Behavior on y {
                              enabled: Config.animDuration > 0
-                             NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart } 
+                             NumberAnimation { duration: Config.animDuration; easing.type: Styling.animEasing } 
                         }
                     }
 
                     Behavior on opacity {
                         enabled: Config.animDuration > 0
-                        NumberAnimation { duration: Config.animDuration; easing.type: Easing.OutQuart }
+                        NumberAnimation { duration: Config.animDuration; easing.type: Styling.animEasing }
                     }
 
                     // Forward focus
@@ -549,7 +549,7 @@ NotchAnimationBehavior {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -557,7 +557,7 @@ NotchAnimationBehavior {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 

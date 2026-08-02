@@ -162,6 +162,7 @@ SPECIAL_KEYS[Key_Bar] = "BAR";
 SPECIAL_KEYS[Key_BraceRight] = "BRACERIGHT";
 SPECIAL_KEYS[Key_AsciiTilde] = "ASCIITILDE";
 SPECIAL_KEYS[Key_VolumeMute] = "XF86AudioMute";
+SPECIAL_KEYS[Key_MicMute] = "XF86AudioMicMute";
 SPECIAL_KEYS[Key_VolumeDown] = "XF86AudioLowerVolume";
 SPECIAL_KEYS[Key_VolumeUp] = "XF86AudioRaiseVolume";
 SPECIAL_KEYS[Key_MediaPlay] = "XF86AudioPlay";

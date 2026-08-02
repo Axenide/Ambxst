@@ -75,7 +75,7 @@ Button {
                 anchors.centerIn: parent
                 width: 14
                 height: 14
-                radius: 3
+                radius: Styling.radius(-13)
                 color: root.checkState === Qt.Unchecked ? "transparent" : Colors.primary
                 border.color: root.checkState === Qt.Unchecked ? Colors.outline : Colors.primary
                 border.width: 1.5

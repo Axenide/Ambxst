@@ -196,6 +196,7 @@ PanelWindow {
                         if (mouse.button === Qt.MiddleButton) {
                             var proc = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { }', root);
                             proc.command = ["rm", root.imagePath];
+                            proc.onExited.connect(() => proc.destroy());
                             proc.running = true;
                             root.imagePath = "";
                             root.dragMimePath = "";
@@ -289,6 +290,7 @@ PanelWindow {
                         return;
                     var proc = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { }', root);
                     proc.command = ["rm", root.imagePath];
+                    proc.onExited.connect(() => proc.destroy());
                     proc.running = true;
                     root.imagePath = "";
                     root.dragMimePath = "";
@@ -331,7 +333,7 @@ PanelWindow {
                 anchors.centerIn: parent
                 text: btn.icon
                 font.family: Icons.font
-                font.pixelSize: 16
+                font.pixelSize: Styling.fontSize(2)
                 color: Styling.srItem(parent.variant) || Colors.overBackground
             }
         }

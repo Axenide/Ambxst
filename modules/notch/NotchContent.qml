@@ -22,8 +22,9 @@ Item {
     required property ShellScreen screen
     property bool unifiedEffectActive: false
 
-    // Get this screen's visibility state
-    readonly property var screenVisibilities: Visibilities.getForScreen(screen.name)
+    // Get this screen's visibility state (per-screen UI always needs a
+    // non-null object, so use the state-creating variant)
+    readonly property var screenVisibilities: Visibilities.ensureForScreen(screen.name)
     readonly property bool isScreenFocused: AxctlService.focusedMonitor && AxctlService.focusedMonitor.name === screen.name
 
     // Monitor reference and refrence to toplevels on monitor
@@ -206,7 +207,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration / 4
-                easing.type: Easing.OutCubic
+                easing.type: Styling.animEasing
             }
         }
 
@@ -248,7 +249,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -265,7 +266,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -283,9 +284,6 @@ Item {
 
                 anchors.topMargin: (root.notchPosition === "top" ? (Config.notchTheme === "default" ? 0 : (Config.notchTheme === "island" ? 4 : 0)) : 0) + (root.notchPosition === "top" ? frameOffset : 0)
                 anchors.bottomMargin: (root.notchPosition === "bottom" ? (Config.notchTheme === "default" ? 0 : (Config.notchTheme === "island" ? 4 : 0)) : 0) + (root.notchPosition === "bottom" ? frameOffset : 0)
-
-                // layer.enabled: true
-                // layer.effect: Shadow {}
 
                 defaultViewComponent: defaultViewComponent
                 launcherViewComponent: null
@@ -328,7 +326,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration / 2
-                    easing.type: Easing.OutCubic
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -344,7 +342,7 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
             }
@@ -372,7 +370,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -380,7 +378,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: Styling.animEasing
                 }
             }
 
@@ -405,10 +403,33 @@ Item {
                     enabled: Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration
-                        easing.type: Easing.OutQuart
+                        easing.type: Styling.animEasing
                     }
                 }
             }
+        }
+    }
+
+    // Open a persistent panel view in the notch stack, focusing it once pushed
+    function openPanelView(loader) {
+        loader.active = true;
+        Qt.callLater(() => {
+            if (loader.item) {
+                notchContainer.stackView.push(loader.item);
+                Qt.callLater(() => {
+                    if (notchContainer.stackView.currentItem) {
+                        notchContainer.stackView.currentItem.forceActiveFocus();
+                    }
+                });
+            }
+        });
+    }
+
+    function closePanelView() {
+        if (notchContainer.stackView.depth > 1) {
+            notchContainer.stackView.pop();
+            notchContainer.isShowingDefault = true;
+            notchContainer.isShowingNotifications = false;
         }
     }
 
@@ -417,91 +438,31 @@ Item {
         target: screenVisibilities
 
         function onLauncherChanged() {
-            if (screenVisibilities.launcher) {
-                persistentLauncherViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentLauncherViewLoader.item) {
-                        notchContainer.stackView.push(persistentLauncherViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            if (screenVisibilities.launcher)
+                openPanelView(persistentLauncherViewLoader);
+            else
+                closePanelView();
         }
 
         function onDashboardChanged() {
-            if (screenVisibilities.dashboard) {
-                persistentDashboardViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentDashboardViewLoader.item) {
-                        notchContainer.stackView.push(persistentDashboardViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            if (screenVisibilities.dashboard)
+                openPanelView(persistentDashboardViewLoader);
+            else
+                closePanelView();
         }
 
         function onPowermenuChanged() {
-            if (screenVisibilities.powermenu) {
-                persistentPowerMenuViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentPowerMenuViewLoader.item) {
-                        notchContainer.stackView.push(persistentPowerMenuViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            if (screenVisibilities.powermenu)
+                openPanelView(persistentPowerMenuViewLoader);
+            else
+                closePanelView();
         }
 
         function onToolsChanged() {
-            if (screenVisibilities.tools) {
-                persistentToolsMenuViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentToolsMenuViewLoader.item) {
-                        notchContainer.stackView.push(persistentToolsMenuViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            if (screenVisibilities.tools)
+                openPanelView(persistentToolsMenuViewLoader);
+            else
+                closePanelView();
         }
     }
 

@@ -98,28 +98,28 @@ Item {
         enabled: Config.animDuration > 0 && !root.useOverridePosition
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
     Behavior on y {
         enabled: Config.animDuration > 0 && !root.useOverridePosition
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
     Behavior on width {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
     Behavior on height {
         enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -407,7 +407,7 @@ Item {
             anchors.centerIn: parent
             text: `${root.windowData?.title || ""}\n[${root.windowData?.class || ""}]${root.windowData?.xwayland ? " [XWayland]" : ""}`
             font.family: Config.theme.font
-            font.pixelSize: 10
+            font.pixelSize: Styling.fontSize(-4)
             color: Colors.inverseOnSurface
             horizontalAlignment: Text.AlignHCenter
         }

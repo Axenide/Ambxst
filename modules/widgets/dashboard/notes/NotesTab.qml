@@ -1261,7 +1261,7 @@ Item {
                     enabled: resultsList.enableScrollAnimation && Config.animDuration > 0
                     NumberAnimation {
                         duration: Config.animDuration / 2
-                        easing.type: Easing.OutCubic
+                        easing.type: Styling.animEasing
                     }
                 }
 
@@ -1285,7 +1285,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration / 2
-                            easing.type: Easing.OutCubic
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1293,7 +1293,7 @@ Item {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1325,7 +1325,7 @@ Item {
                             enabled: Config.animDuration > 0
                             ColorAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
                     }
@@ -1352,13 +1352,13 @@ Item {
                         return baseHeight;
                     }
                     color: "transparent"
-                    radius: 16
+                    radius: Styling.radius(0)
 
                     Behavior on height {
                         enabled: Config.animDuration > 0
                         NumberAnimation {
                             duration: Config.animDuration
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -1471,7 +1471,7 @@ Item {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration
-                                        easing.type: Easing.OutQuart
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -1480,7 +1480,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration / 2
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -1513,14 +1513,14 @@ Item {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration / 3
-                                        easing.type: Easing.OutSine
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                                 Behavior on idx2X {
                                     enabled: Config.animDuration > 0
                                     NumberAnimation {
                                         duration: Config.animDuration
-                                        easing.type: Easing.OutSine
+                                        easing.type: Styling.animEasing
                                     }
                                 }
                             }
@@ -1534,7 +1534,7 @@ Item {
                                     width: 32
                                     height: 32
                                     color: "transparent"
-                                    radius: 6
+                                    radius: Styling.radius(-10)
                                     z: 1
 
                                     property bool isHighlighted: root.deleteButtonIndex === 0
@@ -1550,7 +1550,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.cancel
                                         color: parent.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                        font.pixelSize: 14
+                                        font.pixelSize: Styling.fontSize(0)
                                         font.family: Icons.font
                                         textFormat: Text.RichText
 
@@ -1558,7 +1558,7 @@ Item {
                                             enabled: Config.animDuration > 0
                                             ColorAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -1568,7 +1568,7 @@ Item {
                                     width: 32
                                     height: 32
                                     color: "transparent"
-                                    radius: 6
+                                    radius: Styling.radius(-10)
                                     z: 1
 
                                     property bool isHighlighted: root.deleteButtonIndex === 1
@@ -1584,7 +1584,7 @@ Item {
                                         anchors.centerIn: parent
                                         text: Icons.accept
                                         color: parent.isHighlighted ? Colors.overErrorContainer : Colors.overError
-                                        font.pixelSize: 14
+                                        font.pixelSize: Styling.fontSize(0)
                                         font.family: Icons.font
                                         textFormat: Text.RichText
 
@@ -1592,7 +1592,7 @@ Item {
                                             enabled: Config.animDuration > 0
                                             ColorAnimation {
                                                 duration: Config.animDuration / 2
-                                                easing.type: Easing.OutQuart
+                                                easing.type: Styling.animEasing
                                             }
                                         }
                                     }
@@ -1616,7 +1616,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1657,7 +1657,7 @@ Item {
                                 }
                                 color: iconBackground.item
                                 font.family: Icons.font
-                                font.pixelSize: 16
+                                font.pixelSize: Styling.fontSize(2)
                                 textFormat: Text.RichText
                             }
                         }
@@ -1692,7 +1692,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1776,7 +1776,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1785,7 +1785,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration / 2
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1818,14 +1818,14 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration / 3
-                                    easing.type: Easing.OutSine
+                                    easing.type: Styling.animEasing
                                 }
                             }
                             Behavior on idx2X {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutSine
+                                    easing.type: Styling.animEasing
                                 }
                             }
                         }
@@ -1840,7 +1840,7 @@ Item {
                                 width: 32
                                 height: 32
                                 color: "transparent"
-                                radius: 6
+                                radius: Styling.radius(-10)
                                 z: 1
 
                                 property bool isHighlighted: root.renameButtonIndex === 0
@@ -1856,7 +1856,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.cancel
                                     color: renameCancelButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     font.family: Icons.font
                                     textFormat: Text.RichText
 
@@ -1864,7 +1864,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1875,7 +1875,7 @@ Item {
                                 width: 32
                                 height: 32
                                 color: "transparent"
-                                radius: 6
+                                radius: Styling.radius(-10)
                                 z: 1
 
                                 property bool isHighlighted: root.renameButtonIndex === 1
@@ -1891,7 +1891,7 @@ Item {
                                     anchors.centerIn: parent
                                     text: Icons.accept
                                     color: renameConfirmButton.isHighlighted ? Colors.overSecondaryContainer : Colors.overSecondary
-                                    font.pixelSize: 14
+                                    font.pixelSize: Styling.fontSize(0)
                                     font.family: Icons.font
                                     textFormat: Text.RichText
 
@@ -1899,7 +1899,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         ColorAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -1924,7 +1924,7 @@ Item {
                             enabled: Config.animDuration > 0
                             NumberAnimation {
                                 duration: Config.animDuration
-                                easing.type: Easing.OutQuart
+                                easing.type: Styling.animEasing
                             }
                         }
 
@@ -1993,7 +1993,7 @@ Item {
                                 enabled: Config.animDuration > 0
                                 NumberAnimation {
                                     duration: Config.animDuration
-                                    easing.type: Easing.OutQuart
+                                    easing.type: Styling.animEasing
                                 }
                             }
 
@@ -2032,7 +2032,7 @@ Item {
                                         enabled: Config.animDuration > 0
                                         NumberAnimation {
                                             duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                            easing.type: Styling.animEasing
                                         }
                                     }
                                 }
@@ -2068,7 +2068,7 @@ Item {
                                             Text {
                                                 text: modelData && modelData.icon ? modelData.icon : ""
                                                 font.family: Icons.font
-                                                font.pixelSize: 14
+                                                font.pixelSize: Styling.fontSize(0)
                                                 font.weight: Font.Bold
                                                 textFormat: Text.RichText
                                                 color: {
@@ -2082,7 +2082,7 @@ Item {
                                                     enabled: Config.animDuration > 0
                                                     ColorAnimation {
                                                         duration: Config.animDuration / 2
-                                                        easing.type: Easing.OutQuart
+                                                        easing.type: Styling.animEasing
                                                     }
                                                 }
                                             }
@@ -2106,7 +2106,7 @@ Item {
                                                     enabled: Config.animDuration > 0
                                                     ColorAnimation {
                                                         duration: Config.animDuration / 2
-                                                        easing.type: Easing.OutQuart
+                                                        easing.type: Styling.animEasing
                                                     }
                                                 }
                                             }
@@ -2184,7 +2184,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.minus
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: Colors.overSurface
                         }
 
@@ -2226,7 +2226,7 @@ Item {
                             horizontalAlignment: TextInput.AlignHCenter
                             text: getCurrentFontSize().toString()
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: activeFocus ? Colors.overPrimary : Colors.overSurface
                             selectByMouse: true
                             validator: IntValidator {
@@ -2270,7 +2270,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.plus
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: Colors.overSurface
                         }
 
@@ -2321,7 +2321,7 @@ Item {
                             anchors.centerIn: parent
                             text: "B"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.bold: true
                             color: isBold() ? Colors.overPrimary : Colors.overSurface
                         }
@@ -2361,7 +2361,7 @@ Item {
                             anchors.centerIn: parent
                             text: "I"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.italic: true
                             color: isItalic() ? Colors.overPrimary : Colors.overSurface
                         }
@@ -2401,7 +2401,7 @@ Item {
                             anchors.centerIn: parent
                             text: "U"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.underline: true
                             color: isUnderline() ? Colors.overPrimary : Colors.overSurface
                         }
@@ -2441,7 +2441,7 @@ Item {
                             anchors.centerIn: parent
                             text: "S"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.strikeout: true
                             color: isStrikeout() ? Colors.overPrimary : Colors.overSurface
                         }
@@ -2489,7 +2489,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.alignLeft
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: noteEditor.cursorSelection.alignment === Qt.AlignLeft ? Colors.overPrimary : Colors.overSurface
                         }
 
@@ -2531,7 +2531,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.alignCenter
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: noteEditor.cursorSelection.alignment === Qt.AlignHCenter ? Colors.overPrimary : Colors.overSurface
                         }
 
@@ -2573,7 +2573,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.alignRight
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: noteEditor.cursorSelection.alignment === Qt.AlignRight ? Colors.overPrimary : Colors.overSurface
                         }
 
@@ -2615,7 +2615,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.alignJustify
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: noteEditor.cursorSelection.alignment === Qt.AlignJustify ? Colors.overPrimary : Colors.overSurface
                         }
 
@@ -2866,7 +2866,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.minus
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: Colors.overSurface
                         }
 
@@ -2900,7 +2900,7 @@ Item {
                             anchors.centerIn: parent
                             text: root.mdCurrentHeading || "P"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.bold: true
                             color: Colors.overSurface
                         }
@@ -2925,7 +2925,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.plus
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: Colors.overSurface
                         }
 
@@ -2971,7 +2971,7 @@ Item {
                             anchors.centerIn: parent
                             text: "B"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.bold: true
                             color: Colors.overSurface
                         }
@@ -3010,7 +3010,7 @@ Item {
                             anchors.centerIn: parent
                             text: "I"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.italic: true
                             color: Colors.overSurface
                         }
@@ -3049,7 +3049,7 @@ Item {
                             anchors.centerIn: parent
                             text: "U"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.underline: true
                             color: Colors.overSurface
                         }
@@ -3088,7 +3088,7 @@ Item {
                             anchors.centerIn: parent
                             text: "S"
                             font.family: Config.theme.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             font.strikeout: true
                             color: Colors.overSurface
                         }
@@ -3134,8 +3134,8 @@ Item {
                         Text {
                             anchors.centerIn: parent
                             text: "<>"
-                            font.family: "monospace"
-                            font.pixelSize: 12
+                            font.family: Config.theme.monoFont
+                            font.pixelSize: Styling.monoFontSize(-2)
                             color: Colors.overSurface
                         }
 
@@ -3173,7 +3173,7 @@ Item {
                             anchors.centerIn: parent
                             text: Icons.link
                             font.family: Icons.font
-                            font.pixelSize: 14
+                            font.pixelSize: Styling.fontSize(0)
                             color: Colors.overSurface
                         }
 
@@ -3432,7 +3432,7 @@ Item {
             anchors.centerIn: parent
             text: Icons.spinnerGap
             font.family: Icons.font
-            font.pixelSize: 24
+            font.pixelSize: Styling.fontSize(10)
             color: Colors.overSurface
 
             RotationAnimator on rotation {

@@ -53,7 +53,7 @@ Item {
                 anchors.centerIn: parent
                 text: Icons.cube
                 font.family: Icons.font
-                font.pixelSize: 24
+                font.pixelSize: Styling.fontSize(10)
                 color: previewRect.item
             }
 

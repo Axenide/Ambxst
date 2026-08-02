@@ -141,7 +141,7 @@ Item {
         enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && !root.isScrollDragging && !root.isWheelScrolling
         NumberAnimation {
             duration: (Config.animDuration !== undefined ? Config.animDuration : 0) / 2
-            easing.type: Easing.OutQuart
+            easing.type: Styling.animEasing
         }
     }
 
@@ -357,14 +357,14 @@ Item {
                         enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && !windowDelegate.dragging && !windowDelegate.useOverridePosition
                         NumberAnimation {
                             duration: (Config.animDuration !== undefined ? Config.animDuration : 0)
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
                     Behavior on y {
                         enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0 && !windowDelegate.dragging && !windowDelegate.useOverridePosition
                         NumberAnimation {
                             duration: (Config.animDuration !== undefined ? Config.animDuration : 0)
-                            easing.type: Easing.OutQuart
+                            easing.type: Styling.animEasing
                         }
                     }
 
@@ -723,7 +723,7 @@ Item {
                             anchors.centerIn: parent
                             text: `${(windowDelegate.windowData && windowDelegate.windowData.title !== undefined ? windowDelegate.windowData.title : "") || ""}\n[${(windowDelegate.windowData && windowDelegate.windowData.class !== undefined ? windowDelegate.windowData.class : "") || ""}]${(windowDelegate.windowData && windowDelegate.windowData.xwayland !== undefined ? windowDelegate.windowData.xwayland : false) ? " [XWayland]" : ""}`
                             font.family: Config.theme.font
-                            font.pixelSize: 10
+                            font.pixelSize: Styling.fontSize(-4)
                             color: Colors.inverseOnSurface
                             horizontalAlignment: Text.AlignHCenter
                         }

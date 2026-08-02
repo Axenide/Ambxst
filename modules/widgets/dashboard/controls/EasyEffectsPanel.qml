@@ -137,7 +137,7 @@ Item {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 3
-                                                easing.type: Easing.OutCubic
+                                                easing.type: Styling.animEasing
                                             }
                                         }
 
@@ -152,7 +152,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 NumberAnimation {
                                                     duration: Config.animDuration / 3
-                                                    easing.type: Easing.OutCubic
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
 
@@ -168,7 +168,7 @@ Item {
                                                     enabled: Config.animDuration > 0
                                                     NumberAnimation {
                                                         duration: Config.animDuration / 3
-                                                        easing.type: Easing.OutCubic
+                                                        easing.type: Styling.animEasing
                                                     }
                                                 }
                                             }
@@ -234,7 +234,7 @@ Item {
                                             enabled: Config.animDuration > 0
                                             NumberAnimation {
                                                 duration: Config.animDuration / 3
-                                                easing.type: Easing.OutCubic
+                                                easing.type: Styling.animEasing
                                             }
                                         }
 
@@ -249,7 +249,7 @@ Item {
                                                 enabled: Config.animDuration > 0
                                                 NumberAnimation {
                                                     duration: Config.animDuration / 3
-                                                    easing.type: Easing.OutCubic
+                                                    easing.type: Styling.animEasing
                                                 }
                                             }
 
@@ -265,7 +265,7 @@ Item {
                                                     enabled: Config.animDuration > 0
                                                     NumberAnimation {
                                                         duration: Config.animDuration / 3
-                                                        easing.type: Easing.OutCubic
+                                                        easing.type: Styling.animEasing
                                                     }
                                                 }
                                             }
@@ -320,7 +320,7 @@ Item {
                             Text {
                                 text: Icons.speakerHigh
                                 font.family: Icons.font
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 color: Styling.srItem("overprimary")
                             }
                             Text {
@@ -338,7 +338,7 @@ Item {
                             Text {
                                 text: Icons.mic
                                 font.family: Icons.font
-                                font.pixelSize: 14
+                                font.pixelSize: Styling.fontSize(0)
                                 color: Styling.srItem("overprimary")
                             }
                             Text {
