@@ -32,7 +32,7 @@ QtObject {
             lower.includes("authenticationcanceled") || lower.includes("pinorkeymissing") ||
             lower.includes("pin or key"))
             return "Pairing failed \u2014 check the device and retry";
-        if (lower.includes("no resolvable address") || lower.includes("host is down") || lower.includes("timed out"))
+        if (lower.includes("no resolvable address") || lower.includes("host is down") || lower.includes("timed out") || lower.includes("timeout"))
             return "Device unreachable \u2014 is it powered on?";
         if (lower.includes("no adapter") || lower.includes("not available"))
             return "Bluetooth adapter unavailable";

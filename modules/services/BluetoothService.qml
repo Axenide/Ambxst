@@ -253,7 +253,8 @@ Singleton {
             
             onExited: (exitCode, exitStatus) => {
                 if (exitCode === 0) resolve(buffer.trim());
-                else reject(errorBuffer.trim() || `Process exited with code ${exitCode}`);
+                // bluetoothctl writes errors to stdout, not stderr
+                else reject(errorBuffer.trim() || buffer.trim() || `Process exited with code ${exitCode}`);
                 destroy();
             }
         }
