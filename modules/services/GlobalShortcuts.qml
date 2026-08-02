@@ -33,6 +33,7 @@ QtObject {
         console.log("IPC run command received:", command);
         switch (command) {
             // Launcher (Standalone Notch Module)
+            case "launcher": toggleLauncher(); break;
             case "clipboard": toggleLauncherWithPrefix(1, Config.prefix.clipboard + " "); break;
             case "emoji": toggleLauncherWithPrefix(2, Config.prefix.emoji + " "); break;
             case "tmux": toggleLauncherWithPrefix(3, Config.prefix.tmux + " "); break;

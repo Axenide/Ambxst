@@ -85,15 +85,20 @@ func (c *Client) resolveCoords(location string) (float64, float64, error) {
 
 func (c *Client) geoip() (string, error) {
 	var data struct {
-		Latitude  float64 `json:"latitude"`
-		Longitude float64 `json:"longitude"`
-		Error     string  `json:"error"`
+		Latitude  float64          `json:"latitude"`
+		Longitude float64          `json:"longitude"`
+		Error     json.RawMessage  `json:"error"`
+		Reason    string           `json:"reason"`
 	}
 	if err := c.getJSON(ipapiGeo, &data); err != nil {
 		return "", err
 	}
-	if data.Error != "" {
-		return "", fmt.Errorf("geoip: %s", data.Error)
+	if len(data.Error) > 0 && string(data.Error) != "false" {
+		msg := strings.Trim(string(data.Error), `"`)
+		if data.Reason != "" {
+			msg = data.Reason
+		}
+		return "", fmt.Errorf("geoip: %s", msg)
 	}
 	return fmt.Sprintf("%v,%v", data.Latitude, data.Longitude), nil
 }
@@ -104,14 +109,14 @@ func (c *Client) geocode(city string) (string, error) {
 			Latitude  float64 `json:"latitude"`
 			Longitude float64 `json:"longitude"`
 		} `json:"results"`
-		Error string `json:"error"`
+		Error json.RawMessage `json:"error"`
 	}
 	u := openMeteoGeo + "?name=" + url.QueryEscape(city)
 	if err := c.getJSON(u, &data); err != nil {
 		return "", err
 	}
-	if data.Error != "" {
-		return "", fmt.Errorf("geocoding: %s", data.Error)
+	if len(data.Error) > 0 && string(data.Error) != "false" {
+		return "", fmt.Errorf("geocoding: %s", strings.Trim(string(data.Error), `"`))
 	}
 	if len(data.Results) == 0 {
 		return "", fmt.Errorf("city not found")
