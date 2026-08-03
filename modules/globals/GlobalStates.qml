@@ -511,7 +511,8 @@ Singleton {
         "blurVibrancyDarkness", "blurSpecial", "blurPopups", "blurPopupsIgnorealpha",
         "blurInputMethods", "blurInputMethodsIgnorealpha",
         "blurExplicitIgnoreAlpha", "blurIgnoreAlphaValue",
-        "shadowOffset", "shadowColorInactive"
+        "shadowOffset", "shadowColorInactive",
+        "switchToActivatedWorkspace"
     ]
 
     // Create a deep copy of the current compositor config

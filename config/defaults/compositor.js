@@ -42,5 +42,6 @@ var data = {
     "blurPopups": false,
     "blurPopupsIgnorealpha": 0.2,
     "blurInputMethods": false,
-    "blurInputMethodsIgnorealpha": 0.2
+    "blurInputMethodsIgnorealpha": 0.2,
+    "switchToActivatedWorkspace": true
 }

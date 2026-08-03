@@ -691,6 +691,15 @@ Item {
                                 }
                             }
 
+                            ToggleRow {
+                                label: "Switch to Activated Window's Workspace"
+                                checked: Config.compositor.switchToActivatedWorkspace ?? true
+                                onToggled: value => {
+                                    GlobalStates.markCompositorChanged();
+                                    Config.compositor.switchToActivatedWorkspace = value;
+                                }
+                            }
+
                             NumberInputRow {
                                 label: "Border Size"
                                 value: Config.compositor.borderSize ?? 2

@@ -112,9 +112,14 @@ Singleton {
         });
     }
 
+    function isHiddenDevice(node) {
+        const name = (node?.name || node?.description || "").toLowerCase();
+        return node?.isSink && name.includes("easyeffects");
+    }
+
     function devices(isSink) {
         return Pipewire.nodes.values.filter(node => {
-            return root.correctType(node, isSink) && !node.isStream;
+            return root.correctType(node, isSink) && !node.isStream && !root.isHiddenDevice(node);
         });
     }
 
@@ -193,6 +198,12 @@ Singleton {
 
     // ── Controls ──────────────────────────────────────────────────
 
+    function unmuteIfNeeded(node) {
+        if (node?.audio?.muted) {
+            node.audio.muted = false;
+        }
+    }
+
     function toggleMute() {
         if (sink?.audio) {
             sink.audio.muted = !sink.audio.muted;
@@ -212,6 +223,7 @@ Singleton {
 
     function incrementVolume() {
         if (sink?.audio) {
+            unmuteIfNeeded(sink);
             const newSlider = Math.min(1, currentSlider() + tick);
             const targetGain = sliderToGain(newSlider);
             const currentGain = sink.audio.volume;
@@ -222,6 +234,7 @@ Singleton {
 
     function decrementVolume() {
         if (sink?.audio) {
+            unmuteIfNeeded(sink);
             const newSlider = Math.max(0, currentSlider() - tick);
             const targetGain = sliderToGain(newSlider);
             const currentGain = sink.audio.volume;
@@ -233,6 +246,7 @@ Singleton {
     // Fine 32-step grid (3.125% per step), bound to Shift+volume keys.
     function incrementVolumeFine() {
         if (sink?.audio) {
+            unmuteIfNeeded(sink);
             const newSlider = Math.min(1, currentSlider() + fineTick);
             const targetGain = sliderToGain(newSlider);
             const currentGain = sink.audio.volume;
@@ -243,6 +257,7 @@ Singleton {
 
     function decrementVolumeFine() {
         if (sink?.audio) {
+            unmuteIfNeeded(sink);
             const newSlider = Math.max(0, currentSlider() - fineTick);
             const targetGain = sliderToGain(newSlider);
             const currentGain = sink.audio.volume;
@@ -254,6 +269,7 @@ Singleton {
     // Master output: accepts a perceptual slider position (0-1).
     function setVolume(sliderValue: real) {
         if (sink?.audio) {
+            unmuteIfNeeded(sink);
             const targetGain = sliderToGain(sliderValue);
             const currentGain = sink.audio.volume;
             const safeGain = protectedSetVolume(sink, targetGain, currentGain);
@@ -272,6 +288,7 @@ Singleton {
     // Per-app node: maps perceptual slider → gain.
     function setNodeVolume(node, sliderValue: real) {
         if (node?.audio) {
+            unmuteIfNeeded(node);
             const targetGain = sliderToGain(sliderValue);
             const currentGain = node.audio.volume;
             const safeGain = protectedSetVolume(node, targetGain, currentGain);

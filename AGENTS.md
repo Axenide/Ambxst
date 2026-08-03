@@ -11,7 +11,9 @@ but the binary/command is lowercase `ambxst+` — use that in shell commands.
 - Quickshell hot-reloads on QML/JS file save — edit and save to see changes live.
 - The only in-repo verification is `python3 tests/test_scripts.py` (unittest for
   `scripts/`). The keystore tests need the `cryptography` module installed, or that
-  class errors out; there is no lint/build step.
+  class errors out; there is no local lint/build step. CI (`.github/workflows/ci.yml`)
+  additionally runs ShellCheck on `scripts/*.sh`, yamllint on `.github/`, and
+  `nix flake check` — keep new/changed shell scripts ShellCheck-clean.
 - CLI subcommands live in `cli.sh`. Notable: `lock`, `run <cmd>` (IPC to the running
   shell; `run lockscreen` is what `lock` does), `mic-mute`, `brightness`, `reload`,
   `quit`, `refresh` (Nix dev profile upgrade), `screen on|off`, `suspend`, `version`.
@@ -32,6 +34,8 @@ but the binary/command is lowercase `ambxst+` — use that in shell commands.
 - Packaging: the Nix flake exposes `nix build`, `nix run` (app = `ambxst+`), and a
   `nixosModule`. From source, `nix develop` then `ambxst+`.
 - `quickshell-docs/` is cloned reference docs (gitignored); useful for Quickshell APIs.
+- `lastworkingcommit.txt` holds the last known-good commit hash (used when
+  troubleshooting breakage); `version` holds the version string read by the flake.
 
 ## Layout (read before editing)
 - `shell.qml` — entry point; declares the Shell (`pragma ShellId ambxst+`), registers
@@ -59,7 +63,9 @@ but the binary/command is lowercase `ambxst+` — use that in shell commands.
   user JSON onto the blueprint and *preserves* unknown keys (forward-compatible), but a
   new key still needs a `defaults/*.js` entry or it has no blueprint default.
 - Bind UI to `Config.<module>.<prop>`; never store persistent settings in local state.
-- Config writes auto-save via `FileView`; use `root.pauseAutoSave` for bulk updates.
+- Config writes auto-save via `FileView`; `Config.pauseAutoSave` is a ref-counted
+  counter (int, >0 = paused; `GlobalStates.qml` keeps it in sync with edit sessions)
+  — bump it up/down around bulk updates.
 - Gate code that needs fully-loaded config with `Config.initialLoadComplete`
   (avoid null derefs during load/reload).
 

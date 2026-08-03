@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
@@ -177,6 +178,53 @@ Singleton {
     // bit-identical.
     property string _stateFingerprint: ""
 
+    // Debounce guard for workspace-following. When the compositor focuses a
+    // window on a workspace that isn't active (a link click activating the
+    // browser on another workspace, a file opening in an app already running
+    // elsewhere, …), we dispatch a workspace switch. If that dispatch is
+    // ignored or fails, every subsequent state event would re-trigger the same
+    // switch, so identical follow targets are throttled to once per window.
+    property string _lastFollowKey: ""
+    property int _lastFollowTime: 0
+
+    // Mirrors KDE/GNOME behaviour: when a window is activated on a workspace
+    // that isn't the active one of its monitor, follow it there. Hyprland only
+    // does this reliably when the app performed a proper xdg-activation request
+    // with misc:focus_on_activate enabled; some apps (or configs) skip that, so
+    // the compositor ends up with a focused window on a non-active workspace —
+    // which is exactly the state this watches for. Called after every state
+    // application; at steady state the focused window is always on the active
+    // workspace of its monitor, so the mismatch is transient by construction.
+    function followActivatedWorkspace() {
+        if (!root.ready || !root.focusedClient)
+            return;
+        if (!(Config.compositor?.switchToActivatedWorkspace ?? true))
+            return;
+
+        const client = root.focusedClient;
+        const wsId = client.workspace?.id ?? 0;
+        if (wsId <= 0) // special (scratchpad) workspaces report id 0 — never follow
+            return;
+        const mon = (root.monitors.values || []).find(m => m.id === client.monitor);
+        if (!mon || !mon.activeWorkspace)
+            return;
+        if (mon.activeWorkspace.id === wsId)
+            return;
+
+        const now = Date.now();
+        const key = client.address + "|" + wsId;
+        if (root._lastFollowKey === key && now - root._lastFollowTime < 750)
+            return;
+        root._lastFollowKey = key;
+        root._lastFollowTime = now;
+
+        // axctl's workspace switch acts on the focused monitor, so a window on
+        // another screen needs that monitor focused first.
+        if (root.focusedMonitor && mon.id !== root.focusedMonitor.id)
+            root.dispatch("focusmonitor " + mon.id);
+        root.dispatch("workspace " + wsId);
+    }
+
     function applyState(state) {
         if (!state) return;
 
@@ -262,6 +310,8 @@ Singleton {
                 root.focusedMonitor = focused;
             }
         }
+
+        root.followActivatedWorkspace();
     }
 
     property Process ensureConfigDir: Process {
