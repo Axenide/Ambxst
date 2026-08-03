@@ -9,7 +9,6 @@ import Quickshell.Wayland
 import qs.modules.bar
 import qs.modules.bar.workspaces
 import qs.modules.notifications
-import qs.modules.widgets.dashboard.wallpapers
 
 import qs.modules.notch
 import qs.modules.widgets.overview
@@ -43,8 +42,9 @@ ShellRoot {
             id: wallpaperLoader
             active: true
             required property ShellScreen modelData
-            sourceComponent: Wallpaper {
-                screen: wallpaperLoader.modelData
+            source: "modules/widgets/dashboard/wallpapers/Wallpaper.qml"
+            onLoaded: {
+                if (item) item.screen = wallpaperLoader.modelData;
             }
         }
     }
