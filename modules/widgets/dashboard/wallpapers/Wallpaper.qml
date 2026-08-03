@@ -78,6 +78,7 @@ PanelWindow {
 
     property string colorPresetsDir: Quickshell.env("HOME") + "/.config/ambxst/colors"
     property string officialColorPresetsDir: decodeURIComponent(Qt.resolvedUrl("../../../../assets/colors").toString().replace("file://", ""))
+
     onColorPresetsDirChanged: console.log("Color Presets Directory:", colorPresetsDir)
     property list<string> colorPresets: []
     onColorPresetsChanged: console.log("Color Presets Updated:", colorPresets)
@@ -658,27 +659,35 @@ PanelWindow {
 
         GlobalStates.wallpaperManager = wallpaper;
 
-        // Verificar si existe wallpapers.json, si no, crear con fallback
+        // Verify wallpapers.json exists, create with fallback if not
         checkWallpapersJson.running = true;
 
-        // Initial scans - do these once after config is loaded
-        scanColorPresets();
-        // Start directory monitoring
-        presetsWatcher.reload();
-        officialPresetsWatcher.reload();
-        // Load initial wallpaper config - this will trigger onWallPathChanged which does the actual scan
+        // Load initial wallpaper config - triggers onWallPathChanged which does the actual scan
         wallpaperConfig.reload();
 
-        // Generate lockscreen frame for initial wallpaper after a short delay
+        // Color preset scanning is deferred to first read of colorPresets (see _ensurePresetsInit).
+        // Lockscreen frame and MPV shader generation deferred 5s after boot to reduce peak memory.
         Qt.callLater(function () {
             if (currentWallpaper) {
-                generateLockscreenFrame(currentWallpaper);
+                lockscreenFrameTimer.start();
             }
-            // Force shader generation on startup if enabled
             if (tintEnabled) {
                 updateMpvShader();
             }
         });
+    }
+
+    // Deferred lockscreen frame generation to avoid blocking boot
+    Timer {
+        id: lockscreenFrameTimer
+        interval: 5000
+        running: false
+        repeat: false
+        onTriggered: {
+            if (currentWallpaper) {
+                generateLockscreenFrame(currentWallpaper);
+            }
+        }
     }
 
     FileView {
@@ -1005,7 +1014,7 @@ PanelWindow {
         }
     }
 
-    // Directory watcher for user color presets
+    // Directory watcher for user color presets.
     FileView {
         id: presetsWatcher
         path: colorPresetsDir
@@ -1018,7 +1027,7 @@ PanelWindow {
         }
     }
 
-    // Directory watcher for official color presets
+    // Directory watcher for official color presets.
     FileView {
         id: officialPresetsWatcher
         path: officialColorPresetsDir
