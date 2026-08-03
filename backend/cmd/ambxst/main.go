@@ -252,6 +252,12 @@ func execCommand(name string, args ...string) {
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	// jemalloc (used by Qt/Quickshell) retains freed memory in its arenas
+	// without returning it to the OS, inflating RSS by ~100-150MB at idle.
+	// A short decay pushes the memory back without affecting performance.
+	if os.Getenv("MALLOC_CONF") == "" {
+		cmd.Env = append(os.Environ(), "MALLOC_CONF=dirty_decay_ms:1000,muzzy_decay_ms:1000")
+	}
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
