@@ -255,13 +255,13 @@ ShellRoot {
         source: "modules/widgets/config/SettingsWindow.qml"
     }
 
-    // On-screen display
+    // On-screen display (lazy: instantiated only when OSD visibility is requested)
     Variants {
         model: Quickshell.screens
 
         Loader {
             id: osdLoader
-            active: SuspendManager.wakeReady
+            active: SuspendManager.wakeReady && GlobalStates.osdVisible
             required property ShellScreen modelData
             sourceComponent: OSD {
                 targetScreen: osdLoader.modelData
