@@ -415,9 +415,15 @@ Singleton {
         // Deferred: write TOML 3 seconds after boot to reduce boot-time load.
         // axctl still works without this file being pre-generated; it will be
         // written on first config load or when the binds panel opens.
-        Qt.callLater(() => {
-            const t = Qt.createQmlObject('import QtQuick; Timer { interval: 3000; running: true; repeat: false; onTriggered: parent.writeTomlFile() }', root, "tomlDefer");
-        });
+        tomlDeferTimer.start();
+    }
+
+    Timer {
+        id: tomlDeferTimer
+        interval: 3000
+        running: false
+        repeat: false
+        onTriggered: writeTomlFile()
     }
 
     property Connections configConnections: Connections {

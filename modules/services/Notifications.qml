@@ -621,9 +621,15 @@ Singleton {
     Component.onCompleted: {
         // Defer notification history reload to not block boot.
         // The DBus notification server is registered above and live notifications work.
-        Qt.callLater(() => {
-            const t = Qt.createQmlObject('import QtQuick; Timer { interval: 2000; running: true; repeat: false; onTriggered: parent.notifFileView.reload() }', root, "notifDefer");
-        });
+        notifDeferTimer.start();
         root.initDone();
+    }
+
+    Timer {
+        id: notifDeferTimer
+        interval: 2000
+        running: false
+        repeat: false
+        onTriggered: notifFileView.reload()
     }
 }
