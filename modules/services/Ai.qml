@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.modules.services
+import qs.modules.globals
 import "ai"
 import "ai/strategies"
 
@@ -81,14 +82,30 @@ Singleton {
     }
 
     Component.onCompleted: {
+        // Deferred init to save RAM at boot. Triggered when AI sidebar becomes visible.
         if (StateService.initialized)
             restoreModel();
+    }
 
+    // Lazy init: trigger fetchAvailableModels/reloadHistory/createNewChat
+    // when AI sidebar is opened for the first time.
+    property bool _aiInitialized: false
+    function _ensureInit() {
+        if (_aiInitialized) return;
+        _aiInitialized = true;
         if (models.length === 0)
             fetchAvailableModels();
-
         reloadHistory();
         createNewChat();
+    }
+
+    // Trigger lazy init when AI sidebar is opened
+    Connections {
+        target: GlobalStates
+        function onAssistantVisibleChanged() {
+            if (GlobalStates.assistantVisible)
+                root._ensureInit();
+        }
     }
 
     // ============================================
