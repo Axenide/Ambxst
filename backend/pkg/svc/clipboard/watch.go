@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // watchProc runs `wl-paste --watch` (clipboard_watch.sh behaviour) and emits
@@ -53,6 +54,11 @@ func (w *watchProc) run(sub eventSender) {
 		// Mirror clipboard_watch.sh: pipe stdin, run check, print REFRESH_LIST.
 		// checkScript() reuses scripts/clipboard_check.sh + clipboard_insert.sh.
 		cmd := exec.Command("sh", "-c", "wl-paste --watch bash -c 'cat >/dev/null; "+w.svc.checkScript()+" "+w.checkArgs()+" && echo REFRESH_LIST || echo check-failed >&2'")
+		// Put the watcher in its own process group so we can kill the entire
+		// group (sh + wl-paste + descendants) on stop. Without this, killing
+		// only `sh` leaves wl-paste as a zombie/orphan consuming clipboard
+		// subscriptions and memory on every daemon restart.
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			return
@@ -72,7 +78,10 @@ func (w *watchProc) run(sub eventSender) {
 		}()
 		select {
 		case <-w.stopCh:
-			cmd.Process.Kill()
+			// Kill the whole process group (negative PID = pgid).
+			if cmd.Process != nil {
+				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+			}
 			cmd.Wait()
 			return
 		case <-done:
