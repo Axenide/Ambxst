@@ -64,6 +64,11 @@ QtObject {
         }
     }
 
+    // External trigger to start watching + init.
+    function start() {
+        _ensureInit();
+    }
+
     // Initialize database
     property Process initDbProcess: Process {
         running: false
@@ -457,6 +462,7 @@ QtObject {
     }
 
     function list() {
+        _ensureInit();
         if (!_initialized) return;
         _operationInProgress = true;
         // Use JSON mode for reliable parsing, with timeout to avoid locks
@@ -808,6 +814,16 @@ QtObject {
     }
 
     Component.onCompleted: {
-        Qt.callLater(() => initialize());
+        // Bind clipboard watcher at boot (cheap - just adds IPC subscription)
+        // but defer the DB init until first access (saves boot time + memory).
+        bindWatcher();
+    }
+
+    // Lazy init: trigger DB creation + history load when first accessed.
+    property bool _initRequested: false
+    function _ensureInit() {
+        if (_initRequested) return;
+        _initRequested = true;
+        initialize();
     }
 }
