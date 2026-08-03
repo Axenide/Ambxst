@@ -662,10 +662,13 @@ PanelWindow {
         // Verify wallpapers.json exists, create with fallback if not
         checkWallpapersJson.running = true;
 
+        // Initial scans - color presets are needed for the wallpapers tab SchemeSelector.
+        scanColorPresets();
+        presetsWatcher.reload();
+        officialPresetsWatcher.reload();
         // Load initial wallpaper config - triggers onWallPathChanged which does the actual scan
         wallpaperConfig.reload();
 
-        // Color preset scanning is deferred to first read of colorPresets (see _ensurePresetsInit).
         // Lockscreen frame and MPV shader generation deferred 5s after boot to reduce peak memory.
         Qt.callLater(function () {
             if (currentWallpaper) {
