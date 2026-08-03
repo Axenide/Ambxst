@@ -89,6 +89,18 @@ func main() {
 		doSuspend()
 	case "brightness":
 		runBrightness(args[1:])
+	case "colorpicker":
+		os.Exit(runColorPicker())
+	case "lockwall":
+		os.Exit(runLockWall(args[1:]))
+	case "thumbs":
+		os.Exit(runThumbs(args[1:], 140, true))
+	case "dthumbs":
+		os.Exit(runThumbs(args[1:], 64, false))
+	case "chatlist":
+		os.Exit(runChatList(args[1:]))
+	case "writeshader":
+		os.Exit(runWriteShader(args[1:]))
 	default:
 		fmt.Printf("Error: Unknown command '%s'\n", args[0])
 		showHelp()
@@ -327,6 +339,10 @@ Commands:
     brightness -l                    List monitors and their brightness
     install <target>                 Install compositor config (hyprland)
     remove <target>                  Remove compositor config (hyprland)
+    colorpicker                      Pick a screen color (slurp+grim+magick)
+    lockwall <wallpaper> <data>      Extract lockscreen frame from video/GIF
+    thumbs <config> <cache> [fall]   Generate wallpaper thumbnails (140x140)
+    dthumbs <dir> <cache>            Generate desktop thumbnails (64x64)
     help                             Show this help message
     version, -v, --version           Show Ambxst version
     goodbye                          Uninstall Ambxst

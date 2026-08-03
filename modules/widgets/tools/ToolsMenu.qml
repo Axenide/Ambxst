@@ -126,9 +126,8 @@ ActionGrid {
             
              root.itemSelected();
         } else if (action.tooltip === "Color Picker") {
-            var scriptPath = Qt.resolvedUrl("../../../scripts/colorpicker.py").toString().replace("file://", "");
             // Run detached so it survives when the menu closes
-            colorPickerProc.command = ["bash", "-c", "nohup python3 \"" + scriptPath + "\" > /dev/null 2>&1 &"];
+            colorPickerProc.command = ["bash", "-c", "nohup ambxst colorpicker > /dev/null 2>&1 &"];
             colorPickerProc.running = true;
             root.itemSelected();
         } else if (action.tooltip === "OCR") {

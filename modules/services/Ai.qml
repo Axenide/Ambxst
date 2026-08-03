@@ -609,25 +609,7 @@ Singleton {
     }
 
     function reloadHistory() {
-        let pyScript = `import os, json, glob
-chat_dir = "${chatDir}"
-os.makedirs(chat_dir, exist_ok=True)
-files = sorted(glob.glob(chat_dir + "/*.json"), key=os.path.getmtime, reverse=True)
-for f in files:
-    id = os.path.basename(f)[:-5]
-    title = "New Chat"
-    try:
-        with open(f, 'r') as fp:
-            data = json.load(fp)
-            for msg in data:
-                if msg.get("role") == "user":
-                    title = msg.get("content", "")[:40].replace("\\n", " ").strip()
-                    if len(msg.get("content", "")) > 40: title += "..."
-                    break
-    except: pass
-    print(f"{id}|{title}")
-`;
-        listHistoryProcess.command = ["python3", "-c", pyScript];
+        listHistoryProcess.command = ["ambxst", "chatlist", chatDir];
         listHistoryProcess.running = true;
     }
 

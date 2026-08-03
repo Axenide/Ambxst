@@ -613,8 +613,7 @@ Singleton {
     Process {
         id: thumbnailProcess
         running: false
-        // QUICKSHELL-GIT: command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../scripts/desktop_thumbgen.py").toString().replace("file://", "")), desktopDir, Quickshell.cacheDir + "/desktop_thumbnails"]
-        command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../scripts/desktop_thumbgen.py").toString().replace("file://", "")), desktopDir, Quickshell.env("HOME") + "/.cache/ambxst" + "/desktop_thumbnails"]
+        command: ["ambxst", "dthumbs", desktopDir, Quickshell.env("HOME") + "/.cache/ambxst" + "/desktop_thumbnails"]
 
         stdout: StdioCollector {
             onStreamFinished: {

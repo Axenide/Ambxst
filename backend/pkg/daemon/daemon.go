@@ -16,6 +16,8 @@ import (
 	"ambxst/backend/pkg/svc/brightness"
 	"ambxst/backend/pkg/svc/clipboard"
 	configsvc "ambxst/backend/pkg/svc/config"
+	"ambxst/backend/pkg/svc/keystore"
+	"ambxst/backend/pkg/svc/linkpreview"
 	"ambxst/backend/pkg/svc/network"
 	"ambxst/backend/pkg/svc/sleep"
 	"ambxst/backend/pkg/svc/systemmonitor"
@@ -66,6 +68,12 @@ func New() (*Daemon, error) {
 
 	configSvc := configsvc.NewService(d.paths)
 	configSvc.Register(srv)
+
+	keySvc := keystore.NewService(d.paths)
+	keySvc.Register(srv)
+
+	linkSvc := linkpreview.NewService()
+	linkSvc.Register(srv)
 
 	d.ui = uiSvc
 	d.srv = srv
