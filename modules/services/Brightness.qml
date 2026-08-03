@@ -236,7 +236,10 @@ Singleton {
         }
 
         Component.onCompleted: {
-            initialize();
+            // Defer brightness detection to reduce boot I/O.
+            Qt.callLater(() => {
+                const t = Qt.createQmlObject('import QtQuick; Timer { interval: 2000; running: true; repeat: false; onTriggered: parent.initialize() }', parent, "brightDefer");
+            });
         }
 
         onBusNumChanged: {
