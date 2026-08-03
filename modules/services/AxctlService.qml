@@ -196,30 +196,52 @@ Singleton {
     // application; at steady state the focused window is always on the active
     // workspace of its monitor, so the mismatch is transient by construction.
     function followActivatedWorkspace() {
-        if (!root.ready || !root.focusedClient)
+        if (!root.ready)
             return;
         if (!(Config.compositor?.switchToActivatedWorkspace ?? true))
             return;
 
-        const client = root.focusedClient;
-        // Only follow a window the compositor actually reports as focused. The
-        // focusedClient fallback in applyState() keeps the last real focus around
-        // for restoreFocus(), but that window may live on a workspace the user
-        // just left (e.g. an empty workspace has no focused window) — following
-        // it would yank the user straight back to the old workspace.
-        if (!client.is_focused)
-            return;
-        const wsId = client.workspace?.id ?? 0;
-        if (wsId <= 0) // special (scratchpad) workspaces report id 0 — never follow
-            return;
-        const mon = (root.monitors.values || []).find(m => m.id === client.monitor);
-        if (!mon || !mon.activeWorkspace)
-            return;
-        if (mon.activeWorkspace.id === wsId)
-            return;
+        const monitors = root.monitors.values || [];
 
+        // Path 1 — the compositor actually focused a window on a non-active
+        // workspace (xdg-activation succeeded, e.g. misc:focus_on_activate is
+        // enabled). The focusedClient fallback in applyState() keeps the last
+        // real focus around for restoreFocus(), but that window may live on a
+        // workspace the user just left (e.g. an empty workspace has no focused
+        // window) — following it would yank the user straight back to the old
+        // workspace. Only follow a window the compositor reports as focused.
+        const focused = root.focusedClient;
+        if (focused && focused.is_focused && (focused.workspace?.id ?? 0) > 0) {
+            const fmon = monitors.find(m => m.id === focused.monitor);
+            if (fmon && fmon.activeWorkspace && fmon.activeWorkspace.id !== focused.workspace.id) {
+                root.followTo(focused.address, focused.workspace.id, focused.monitor, false);
+                return;
+            }
+        }
+
+        // Path 2 — a window is demanding attention (urgent) on a non-active
+        // workspace. This is what Hyprland reports when an activation request
+        // is denied (misc:focus_on_activate disabled) or an app explicitly
+        // demands attention (notification popup, new message, file open into
+        // an existing window on another workspace, …). Switch to its workspace
+        // and focus the window so the attention request is actually answered.
+        const urgent = (root.clients.values || []).find(w => w.urgent && (w.workspace?.id ?? 0) > 0);
+        if (!urgent)
+            return;
+        const umon = monitors.find(m => m.id === urgent.monitor);
+        if (umon && umon.activeWorkspace && umon.activeWorkspace.id !== urgent.workspace.id) {
+            root.followTo(urgent.address, urgent.workspace.id, urgent.monitor, true);
+        }
+    }
+
+    // Switch the focused monitor to the target workspace and optionally focus
+    // the target window explicitly (needed for urgent windows, which are not
+    // focused yet; a normally activated window already has focus). Throttled
+    // per window so a failed or ignored dispatch can't re-trigger on every
+    // state event until the compositor settles.
+    function followTo(address, wsId, monitorId, focusWindow) {
         const now = Date.now();
-        const key = client.address + "|" + wsId;
+        const key = address + "|" + wsId;
         if (root._lastFollowKey === key && now - root._lastFollowTime < 750)
             return;
         root._lastFollowKey = key;
@@ -227,9 +249,12 @@ Singleton {
 
         // axctl's workspace switch acts on the focused monitor, so a window on
         // another screen needs that monitor focused first.
-        if (root.focusedMonitor && mon.id !== root.focusedMonitor.id)
+        const mon = (root.monitors.values || []).find(m => m.id === monitorId);
+        if (root.focusedMonitor && mon && mon.id !== root.focusedMonitor.id)
             root.dispatch("focusmonitor " + mon.id);
         root.dispatch("workspace " + wsId);
+        if (focusWindow)
+            root.dispatch("focuswindow " + address);
     }
 
     function applyState(state) {
@@ -264,6 +289,7 @@ Singleton {
                     floating: win.is_floating,
                     fullscreen: win.is_fullscreen,
                     hidden: win.is_hidden,
+                    urgent: win.is_urgent || false,
                     mapped: true,
                     at: [win.metadata ? (win.metadata.x || 0) : 0, win.metadata ? (win.metadata.y || 0) : 0],
                     size: [win.metadata ? (win.metadata.width || 100) : 100, win.metadata ? (win.metadata.height || 100) : 100],
