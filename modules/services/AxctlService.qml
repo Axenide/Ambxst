@@ -202,6 +202,13 @@ Singleton {
             return;
 
         const client = root.focusedClient;
+        // Only follow a window the compositor actually reports as focused. The
+        // focusedClient fallback in applyState() keeps the last real focus around
+        // for restoreFocus(), but that window may live on a workspace the user
+        // just left (e.g. an empty workspace has no focused window) — following
+        // it would yank the user straight back to the old workspace.
+        if (!client.is_focused)
+            return;
         const wsId = client.workspace?.id ?? 0;
         if (wsId <= 0) // special (scratchpad) workspaces report id 0 — never follow
             return;
