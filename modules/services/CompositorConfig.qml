@@ -208,8 +208,8 @@ QtObject {
 
         console.log(`CompositorConfig: Applying ignorealpha: ${ignoreAlphaValue}, explicit: ${Config.compositor.blurExplicitIgnoreAlpha}`);
         batchCommand += ` ; keyword layerrule noanim,quickshell ; keyword layerrule blur,quickshell ; keyword layerrule blurpopups,quickshell ; keyword layerrule ignorealpha ${ignoreAlphaValue},quickshell`;
-        console.log("CompositorConfig: Refreshing TOML via CompositorTomlWriter");
-        CompositorTomlWriter.refresh();
+        console.log("CompositorConfig: Triggering TOML regen via CompositorTomlWriter");
+        CompositorTomlWriter.callWrite();
     }
 
     property Connections configConnections: Connections {

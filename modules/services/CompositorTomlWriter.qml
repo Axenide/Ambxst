@@ -154,14 +154,44 @@ Singleton {
         };
     }
 
+    // Fallback writer used when the ambxst daemon is unreachable.
+    // Reproduces the [target] block the Go service produces so the
+    // axctl watcher still finds a valid TOML during daemon restarts
+    // or when the IPC socket is stale. The QML previously had the
+    // full generator in-tree; this is a deliberately minimal subset
+    // covering the [target] section only — enough to keep the chain
+    // alive, not enough to compete with the Go service.
+    property Process fallbackProcess: Process {
+        stdout: SplitParser {}
+    }
+
+    function fallbackWrite() {
+        const escapedPath = root.outputPath.replace(/'/g, "'\\''");
+        // The Go service writes relative paths so the wiring follows
+        // the TOML directory. The minimal fallback reproduces the
+        // same hyprland target line so axctl at least resolves a
+        // valid path during the outage.
+        const content = "[target]\nhyprland = \"hyprland.lua\"\n";
+        fallbackProcess.command = ["bash", "-c", `mkdir -p "$(dirname '${escapedPath}')" && printf '%s' '${content.replace(/'/g, "'\\''")}' > '${escapedPath}'`];
+        fallbackProcess.running = true;
+        console.warn("CompositorTomlWriter: daemon unreachable, wrote fallback [target] only");
+    }
+
     function callWrite() {
         const payload = JSON.stringify(gatherInput());
         // The daemon exposes a unix socket; Quickshell.Io.Process doesn't
         // speak the JSON-RPC framing directly, so we run the ambxst CLI
-        // with a transient request via stdin. The CLI command
-        // "ambxst ipc compositor.write <json>" is the simplest transport
-        // we can rely on without coupling to the socket protocol here.
+        // with a transient request. If the daemon is down (e.g. socket
+        // file is stale), the CLI exits with code 1; we then fall back
+        // to a minimal direct write so axctl still has a valid TOML
+        // to watch and the rest of the shell keeps working.
         ipcProcess.command = ["ambxst", "ipc", "call", "compositor.write", payload];
+        ipcProcess.exited.connect(function(code) {
+            if (code !== 0) {
+                console.warn("CompositorTomlWriter: daemon call failed, using fallback");
+                fallbackWrite();
+            }
+        });
         ipcProcess.running = true;
         console.log("CompositorTomlWriter: requested compositor.write via ambxst CLI");
     }

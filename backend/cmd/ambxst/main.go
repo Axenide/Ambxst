@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"net"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"ambxst/backend/pkg/daemon"
@@ -193,9 +196,52 @@ func mustCall(method string, params any) json.RawMessage {
 	return res
 }
 
+// pidPath mirrors daemon.pidFile so the launcher can validate the
+// running PID. Kept in sync with backend/pkg/daemon/daemon.go.
+func pidPath() string {
+	if runtime := os.Getenv("XDG_RUNTIME_DIR"); runtime != "" {
+		return filepath.Join(runtime, "ambxst-daemon.pid")
+	}
+	return "/tmp/ambxst-daemon.pid"
+}
+
+// isAlive returns true only when the daemon is actually reachable:
+// the socket file exists, a process is listening on it, and the PID
+// file (if any) points to a live process. Stale state from previous
+// daemon crashes is cleaned up so a subsequent launch can spawn a
+// fresh daemon.
 func isAlive() bool {
-	_, err := os.Stat(socketPath())
-	return err == nil
+	sock := socketPath()
+
+	// 1) Socket file present?
+	info, err := os.Stat(sock)
+	if err != nil || info.Mode()&os.ModeSocket == 0 {
+		return false
+	}
+
+	// 2) Anything listening? Probe with a short connect.
+	c, err := net.DialTimeout("unix", sock, 500*time.Millisecond)
+	if err != nil {
+		os.Remove(sock)
+		os.Remove(pidPath())
+		return false
+	}
+	c.Close()
+
+	// 3) PID file (if present) must point to a live process.
+	if data, err := os.ReadFile(pidPath()); err == nil {
+		pidStr := strings.TrimSpace(string(data))
+		if pid, err := strconv.Atoi(pidStr); err == nil {
+			if proc, err := os.FindProcess(pid); err == nil {
+				if err := proc.Signal(syscall.Signal(0)); err != nil {
+					os.Remove(sock)
+					os.Remove(pidPath())
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func launch() {
