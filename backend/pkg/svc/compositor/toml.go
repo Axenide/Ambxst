@@ -18,10 +18,15 @@ func Render(in Input) string {
 	// in before the watcher reloads the rest of the config. axctl only
 	// uses the field matching the running compositor, so listing all
 	// three is harmless on machines that only run one of them.
+	//
+	// Paths are written relative to the TOML's directory (axctl
+	// resolves them against the file's location); the TOML lives in
+	// ~/.local/share/ambxst/ alongside the generated configs, so the
+	// relative forms below keep the wiring self-contained.
 	b.WriteString("[target]\n")
-	b.WriteString(`hyprland = "~/.local/share/ambxst/hyprland.lua"` + "\n")
-	b.WriteString(`niri = "~/.local/share/ambxst/niri.kdl"` + "\n")
-	b.WriteString(`mango = "~/.local/share/ambxst/mango.conf"` + "\n")
+	b.WriteString(`hyprland = "hyprland.lua"` + "\n")
+	b.WriteString(`niri = "niri.kdl"` + "\n")
+	b.WriteString(`mango = "mango.conf"` + "\n")
 
 	// [startup]
 	b.WriteString("\n[startup]\n")

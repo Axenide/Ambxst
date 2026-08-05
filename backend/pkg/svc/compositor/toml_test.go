@@ -122,7 +122,7 @@ func TestRenderTargetFirst(t *testing.T) {
 
 func TestRenderHyprlandTarget(t *testing.T) {
 	out := Render(sampleInput())
-	want := `hyprland = "~/.local/share/ambxst/hyprland.lua"`
+	want := `hyprland = "hyprland.lua"`
 	if !strings.Contains(out, want) {
 		t.Errorf("missing target line %q in:\n%s", want, out)
 	}
@@ -130,7 +130,7 @@ func TestRenderHyprlandTarget(t *testing.T) {
 
 func TestRenderNiriTarget(t *testing.T) {
 	out := Render(sampleInput())
-	want := `niri = "~/.local/share/ambxst/niri.kdl"`
+	want := `niri = "niri.kdl"`
 	if !strings.Contains(out, want) {
 		t.Errorf("missing niri target %q in:\n%s", want, out)
 	}
@@ -138,7 +138,7 @@ func TestRenderNiriTarget(t *testing.T) {
 
 func TestRenderMangoTarget(t *testing.T) {
 	out := Render(sampleInput())
-	want := `mango = "~/.local/share/ambxst/mango.conf"`
+	want := `mango = "mango.conf"`
 	if !strings.Contains(out, want) {
 		t.Errorf("missing mango target %q in:\n%s", want, out)
 	}
@@ -147,9 +147,9 @@ func TestRenderMangoTarget(t *testing.T) {
 func TestRenderAllTargetsCoexist(t *testing.T) {
 	out := Render(sampleInput())
 	lines := []string{
-		`hyprland = "~/.local/share/ambxst/hyprland.lua"`,
-		`niri = "~/.local/share/ambxst/niri.kdl"`,
-		`mango = "~/.local/share/ambxst/mango.conf"`,
+		`hyprland = "hyprland.lua"`,
+		`niri = "niri.kdl"`,
+		`mango = "mango.conf"`,
 	}
 	for _, want := range lines {
 		if !strings.Contains(out, want) {

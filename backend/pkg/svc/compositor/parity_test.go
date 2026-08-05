@@ -19,9 +19,9 @@ func TestRenderMatchesCurrentAxctlToml(t *testing.T) {
 	// If any of these drift, the daemon-side parser or axctl's TOML
 	// loader will break.
 	required := []string{
-		"[target]\nhyprland = \"~/.local/share/ambxst/hyprland.lua\"\n",
-		"niri = \"~/.local/share/ambxst/niri.kdl\"\n",
-		"mango = \"~/.local/share/ambxst/mango.conf\"\n",
+		"[target]\nhyprland = \"hyprland.lua\"\n",
+		"niri = \"niri.kdl\"\n",
+		"mango = \"mango.conf\"\n",
 		"[startup]\nexec-once = \"ambxst\"\n",
 		"[appearance.gaps]\ninner = 2\nouter = 4\n",
 		"[appearance.border]\nwidth = 2\n",
