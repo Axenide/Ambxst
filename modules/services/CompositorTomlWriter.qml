@@ -196,31 +196,76 @@ Singleton {
         console.log("CompositorTomlWriter: requested compositor.write via ambxst CLI");
     }
 
+    // Tracks whether the QML's keybind adapter is ready. We hold the
+    // initial TOML regen until both the daemon's compositor service
+    // and the binds.json adapter are populated, so the very first
+    // write doesn't go out with an empty keybinds block.
+    property bool configReady: false
+    property bool keybindsReady: false
+
     Component.onCompleted: {
-        // Deferred first write (3s after boot) to keep startup snappy and
-        // give the daemon time to come up.
-        tomlDeferTimer.start();
+        // Defer first write to give the daemon time to come up and
+        // the keybinds adapter time to load. The write fires from
+        // onReady() once both flags are true; if either is still
+        // missing after 6s we fire anyway with whatever we have
+        // (the fallback writer will still emit a usable [target]).
+        configReady = !!Config.loader.loaded;
+        keybindsReady = !!(Config.keybindsLoader.adapter && Config.keybindsLoader.adapter.ambxst);
+        if (configReady && keybindsReady) {
+            callWrite();
+        } else {
+            tomlDeferTimer.start();
+            tomlTimeoutTimer.start();
+        }
+    }
+
+    function _onReady() {
+        if (configReady && keybindsReady) {
+            tomlDeferTimer.stop();
+            tomlTimeoutTimer.stop();
+            callWrite();
+        }
     }
 
     Timer {
         id: tomlDeferTimer
         interval: 3000
         running: false
+        repeat: true
+        onTriggered: _onReady()
+    }
+
+    Timer {
+        id: tomlTimeoutTimer
+        interval: 6000
+        running: false
         repeat: false
-        onTriggered: root.callWrite()
+        onTriggered: {
+            console.warn("CompositorTomlWriter: config or keybinds not ready after 6s, writing with available data");
+            callWrite();
+        }
     }
 
     // Match the previous QML signal set so we don't lose regen triggers.
     property Connections configConnections: Connections {
         target: Config.loader
-        function onLoaded() { root.callWrite(); }
+        function onLoaded() {
+            root.configReady = true;
+            root._onReady();
+        }
     }
 
     property Connections keybindsConnections: Connections {
         target: Config.keybindsLoader
-        function onLoaded() { root.callWrite(); }
+        function onLoaded() {
+            root.keybindsReady = !!(Config.keybindsLoader.adapter && Config.keybindsLoader.adapter.ambxst);
+            root._onReady();
+        }
         function onFileChanged() { root.callWrite(); }
-        function onAdapterUpdated() { root.callWrite(); }
+        function onAdapterUpdated() {
+            root.keybindsReady = !!(Config.keybindsLoader.adapter && Config.keybindsLoader.adapter.ambxst);
+            root._onReady();
+        }
         function onPathChanged() { root.callWrite(); }
     }
 

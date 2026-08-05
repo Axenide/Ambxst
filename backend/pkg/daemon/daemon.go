@@ -157,7 +157,13 @@ func SpawnDetached(p *paths.Paths) error {
 	cmd := exec.Command(exe, "daemon")
 	cmd.Stdout = nil
 	cmd.Stderr = nil
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	// Intentionally NOT setting SysProcAttr.Setsid: we want the daemon
+	// to share the launcher's process group so SIGINT (Ctrl+C in the
+	// QML) propagates to it. Previously Setsid=true left an orphan
+	// daemon plus wl-paste running after Ctrl+C. The daemon still
+	// survives launcher restarts because cmd.Release() detaches it
+	// from the parent's wait channel.
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
 	if err := cmd.Start(); err != nil {
 		return err
 	}
