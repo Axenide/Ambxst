@@ -63,17 +63,51 @@ Singleton {
         return (val === undefined || val === null) ? fallback : val;
     }
 
+    // Resolves a color name (e.g. "primary") through Config.resolveColor
+    // and formats it as the rgba string Hyprland expects. Falls back
+    // to a known-good rgba when the name can't be resolved, so the
+    // generated Lua never lands on a bare "primary" string.
+    function resolveColorName(name, fallbackRgba) {
+        try {
+            const v = Config.resolveColor(name);
+            const color = (typeof v === 'string') ? Qt.color(v) : v;
+            if (color && color.r !== undefined) {
+                return formatColorForCompositor(color);
+            }
+        } catch (e) { /* swallow and fall through */ }
+        return fallbackRgba;
+    }
+
+    function resolveColorList(names, fallbackRgba) {
+        if (!Array.isArray(names) || names.length === 0) return [fallbackRgba];
+        const out = [];
+        for (let i = 0; i < names.length; i++) {
+            out.push(resolveColorName(names[i], fallbackRgba));
+        }
+        return out;
+    }
+
     function gatherInput() {
         // Resolved border color/opacity, matching the QML aliases defined
         // in Config.qml:3476-3480.
         const c = Config.compositor;
         const borderSize = c.borderSize;
-        const borderColor = c.syncBorderColor
-            ? (c.borderSize === undefined ? "primary" : c.activeBorderColor)  // any unique value; replaced below
-            : (c.activeBorderColor && c.activeBorderColor.length > 0 ? c.activeBorderColor[0] : "primary");
         const rounding = intOr(c.rounding, 16);
-        const shadowColor = c.shadowColor;
-        const shadowOpacity = c.shadowOpacity;
+        // Resolve the active border color. If syncBorderColor is on, the
+        // alias Config.compositorBorderColor already points at the synced
+        // theme value; if not, use the first entry of activeBorderColor.
+        // In both cases the value is a NAME — convert to rgba here so
+        // the TOML and downstream Lua carry a value Hyprland understands.
+        const activeRgba = resolveColorName(
+            boolOr(c.syncBorderColor, false) ? "primary" : (c.activeBorderColor && c.activeBorderColor[0]) || "primary",
+            "rgb(87abf8)"
+        );
+        const inactiveRgba = resolveColorName(
+            c.inactiveBorderColor && c.inactiveBorderColor[0] || "surface",
+            "rgb(272937)"
+        );
+        const shadowColor = resolveColorName(c.shadowColor || "shadow", "rgba(00000080)");
+        const shadowColorInactive = resolveColorName(c.shadowColorInactive || "shadow", "rgba(00000080)");
 
         return {
             compositor: {
@@ -82,10 +116,10 @@ Singleton {
                 borderSize: intOr(borderSize, 2),
                 rounding: rounding,
                 syncBorderColor: boolOr(c.syncBorderColor, false),
-                borderColor: borderColor,
-                activeBorderColor: colorOr(c.activeBorderColor, ["primary"]),
+                borderColor: activeRgba,
+                activeBorderColor: [activeRgba],
                 activeBorderAngle: intOr(c.borderAngle, 45),
-                inactiveBorderColor: colorOr(c.inactiveBorderColor, ["surface"]),
+                inactiveBorderColor: [inactiveRgba],
                 inactiveBorderAngle: intOr(c.inactiveBorderAngle, 45),
                 shadow: {
                     enabled: boolOr(c.shadowEnabled, true),
@@ -93,9 +127,9 @@ Singleton {
                     renderPower: intOr(c.shadowRenderPower, 3),
                     sharp: boolOr(c.shadowSharp, false),
                     ignoreWindow: boolOr(c.shadowIgnoreWindow, true),
-                    color: shadowColor || "shadow",
-                    colorInactive: c.shadowColorInactive || "shadow",
-                    opacity: shadowOpacity !== undefined ? shadowOpacity : 0.5,
+                    color: shadowColor,
+                    colorInactive: shadowColorInactive,
+                    opacity: c.shadowOpacity !== undefined ? c.shadowOpacity : 0.5,
                     offset: c.shadowOffset || "0 0",
                     scale: c.shadowScale !== undefined ? c.shadowScale : 1.0,
                 },
