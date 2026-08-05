@@ -426,8 +426,8 @@ Commands:
     brightness -s [monitor]          Save current brightness
     brightness -r [monitor]          Restore saved brightness
     brightness -l                    List monitors and their brightness
-    install <target>                 Install compositor config (hyprland)
-    remove <target>                  Remove compositor config (hyprland)
+    install <target>                 Install compositor config (hyprland, niri, mango)
+    remove <target>                  Remove compositor config (hyprland, niri, mango)
     colorpicker                      Pick a screen color (slurp+grim+magick)
     lockwall <wallpaper> <data>      Extract lockscreen frame from video/GIF
     thumbs <config> <cache> [fall]   Generate wallpaper thumbnails (140x140)

@@ -60,8 +60,12 @@ func runInstall(targets []string) {
 	switch target {
 	case "hyprland":
 		installHyprland()
+	case "niri":
+		installSimpleTarget(niriConfig)
+	case "mango":
+		installSimpleTarget(mangoConfig)
 	default:
-		fmt.Printf("Error: Unknown target '%s'. Supported: hyprland\n", target)
+		fmt.Printf("Error: Unknown target '%s'. Supported: hyprland, niri, mango\n", target)
 		os.Exit(1)
 	}
 }
@@ -74,8 +78,12 @@ func runRemove(targets []string) {
 	switch target {
 	case "hyprland":
 		removeHyprland()
+	case "niri":
+		removeSimpleTarget(niriConfig)
+	case "mango":
+		removeSimpleTarget(mangoConfig)
 	default:
-		fmt.Printf("Error: Unknown target '%s'. Supported: hyprland\n", target)
+		fmt.Printf("Error: Unknown target '%s'. Supported: hyprland, niri, mango\n", target)
 		os.Exit(1)
 	}
 }
@@ -96,6 +104,33 @@ loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()
 -- OVERRIDES
 -- Down here you can write or source anything that you want to override from Ambxst's settings.
 `
+
+// simpleTarget describes a compositor whose Ambxst integration is a single
+// include/source line in one config file. Hyprland is the exception with
+// both .conf and .lua sides.
+type simpleTarget struct {
+	name    string
+	relDir  string // under ~/.config
+	relFile string // config file path under relDir
+	marker  string // exact source line to detect presence / remove
+	header  string // language-specific comment marker for the block
+}
+
+var niriConfig = simpleTarget{
+	name:    "Niri",
+	relDir:  "niri",
+	relFile: "config.kdl",
+	marker:  `include "~/.local/share/ambxst/niri.kdl"`,
+	header:  "//",
+}
+
+var mangoConfig = simpleTarget{
+	name:    "Mango",
+	relDir:  "mango",
+	relFile: "config.conf",
+	marker:  `source = ~/.local/share/ambxst/mango.conf`,
+	header:  "#",
+}
 
 func installHyprland() {
 	home, _ := os.UserHomeDir()
@@ -122,11 +157,37 @@ func removeHyprland() {
 	removeBlock(confPath, hyprSource)
 }
 
+func installSimpleTarget(t simpleTarget) {
+	home, _ := os.UserHomeDir()
+	dir := filepath.Join(home, ".config", t.relDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return
+	}
+	path := filepath.Join(dir, t.relFile)
+	block := fmt.Sprintf("%s Ambxst\n%s\n\n%s OVERRIDES\n%s Down here you can write or %s anything that you want to override from Ambxst's settings.\n",
+		t.header, t.marker, t.header, t.header, includeKeyword(t.name))
+	appendBlock(path, t.marker, block)
+}
+
+func removeSimpleTarget(t simpleTarget) {
+	home, _ := os.UserHomeDir()
+	path := filepath.Join(home, ".config", t.relDir, t.relFile)
+	removeBlock(path, t.marker)
+}
+
+func includeKeyword(compositor string) string {
+	if compositor == "Mango" {
+		return "source"
+	}
+	return "include"
+}
+
 func appendBlock(path, source, block string) {
 	if fileExists(path) {
 		data, err := os.ReadFile(path)
 		if err == nil && strings.Contains(string(data), source) {
-			fmt.Printf("Ambxst Hyprland block already present in %s\n", path)
+			fmt.Printf("Ambxst block already present in %s\n", path)
 			return
 		}
 	}
@@ -142,7 +203,7 @@ func appendBlock(path, source, block string) {
 	} else {
 		fmt.Fprintf(f, "%s\n", block)
 	}
-	fmt.Printf("Added Ambxst Hyprland block to %s\n", path)
+	fmt.Printf("Added Ambxst block to %s\n", path)
 }
 
 func removeBlock(path, source string) {
@@ -161,10 +222,13 @@ func removeBlock(path, source string) {
 		return trimmed == source ||
 			trimmed == "# Ambxst" ||
 			trimmed == "-- Ambxst" ||
+			trimmed == "// Ambxst" ||
 			trimmed == "# OVERRIDES" ||
 			trimmed == "-- OVERRIDES" ||
+			trimmed == "// OVERRIDES" ||
 			trimmed == "# Down here you can write or source anything that you want to override from Ambxst's settings." ||
-			trimmed == "-- Down here you can write or source anything that you want to override from Ambxst's settings."
+			trimmed == "-- Down here you can write or source anything that you want to override from Ambxst's settings." ||
+			trimmed == "// Down here you can write or include anything that you want to override from Ambxst's settings."
 	}
 
 	sc := bufio.NewScanner(in)
@@ -190,7 +254,7 @@ func removeBlock(path, source string) {
 		out = append(out, line)
 	}
 	os.WriteFile(path, []byte(strings.Join(out, "\n")+"\n"), 0o644)
-	fmt.Printf("Removed Ambxst Hyprland block from %s\n", path)
+	fmt.Printf("Removed Ambxst block from %s\n", path)
 }
 
 func runGoodbye() {
