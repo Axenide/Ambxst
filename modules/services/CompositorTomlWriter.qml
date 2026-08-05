@@ -1,5 +1,4 @@
 pragma Singleton
-
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -216,18 +215,28 @@ Singleton {
                 };
         }
 
+        // Quickshell's JsonAdapter exposes list<var> as a QVariantList, which
+        // is iterable and has .length but fails Array.isArray(). Coerce to a
+        // real JS array so JSON.stringify preserves the entries and the
+        // Go compositor service sees the custom binds in the payload.
+        let custom = [];
+        if (adapter.custom !== null && adapter.custom !== undefined) {
+            try {
+                custom = Array.from(adapter.custom);
+            } catch (e) {
+                custom = [];
+            }
+        }
         console.log("CompositorTomlWriter:gatherKeybinds", JSON.stringify({
             hasAdapter: !!adapter,
-            ambxstKeys: ambxst ? Object.keys(ambxst) : [],
-            systemKeys: system ? Object.keys(system) : [],
-            customType: Array.isArray(adapter.custom) ? "array" : typeof adapter.custom,
-            customLen: Array.isArray(adapter.custom) ? adapter.custom.length : -1,
-            customRaw: adapter.custom === null ? "null" : (adapter.custom === undefined ? "undef" : (Array.isArray(adapter.custom) ? adapter.custom.length + " items" : JSON.stringify(adapter.custom).slice(0, 100))),
+            ambxstKeys: Object.keys(ambxst),
+            systemKeys: Object.keys(system),
+            customLen: custom.length,
         }));
         return {
             ambxst: ambxst,
             system: system,
-            custom: Array.isArray(adapter.custom) ? adapter.custom : [],
+            custom: custom,
         };
     }
 
@@ -304,8 +313,11 @@ Singleton {
         if (!Config.keybindsInitialLoadComplete) return false;
         // The adapter must have populated the keybinds tree, including
         // the custom list. Without checking custom we can fire a
-        // premature write that drops all user keybinds.
-        return !!(a.ambxst && Array.isArray(a.custom));
+        // premature write that drops all user keybinds. Quickshell's
+        // list<var> arrives as a QVariantList which fails Array.isArray(),
+        // so check length-bearing iterability instead.
+        const hasCustom = a.custom !== null && a.custom !== undefined && typeof a.custom.length === "number";
+        return !!(a.ambxst && hasCustom);
     }
 
     function _onReady() {
