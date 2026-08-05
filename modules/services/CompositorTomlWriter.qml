@@ -214,6 +214,13 @@ Singleton {
                 };
         }
 
+        console.log("CompositorTomlWriter:gatherKeybinds", JSON.stringify({
+            hasAdapter: !!adapter,
+            ambxstKeys: ambxst ? Object.keys(ambxst) : [],
+            systemKeys: system ? Object.keys(system) : [],
+            customType: Array.isArray(adapter.custom) ? "array" : typeof adapter.custom,
+            customLen: Array.isArray(adapter.custom) ? adapter.custom.length : -1,
+        }));
         return {
             ambxst: ambxst,
             system: system,
