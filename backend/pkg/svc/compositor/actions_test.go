@@ -213,3 +213,41 @@ func TestRoundTripForCommonEntries(t *testing.T) {
 		_ = spec
 	}
 }
+
+func TestMonocleFocusResolvesToCycle(t *testing.T) {
+	cases := []struct {
+		direction string
+		wantArg   string
+	}{
+		{"u", "cyclenext"},
+		{"r", "cyclenext"},
+		{"d", "cycleprev"},
+		{"l", "cycleprev"},
+		{"", "cyclenext"}, // default args
+	}
+	for _, c := range cases {
+		t.Run(c.direction, func(t *testing.T) {
+			args := defaultArgsForID("monocle.focus")
+			if c.direction != "" {
+				args["direction"] = c.direction
+			}
+			got := ResolveAction(Action{ID: "monocle.focus", Args: args})
+			if got == nil {
+				t.Fatal("monocle.focus did not resolve")
+			}
+			if got.Dispatcher != "cyclenext" || got.Argument != c.wantArg {
+				t.Errorf("got dispatcher=%s argument=%q, want cyclenext %q", got.Dispatcher, got.Argument, c.wantArg)
+			}
+		})
+	}
+}
+
+func TestMonocleMoveWindowResolvesToCycle(t *testing.T) {
+	got := ResolveAction(Action{ID: "monocle.move-window", Args: map[string]any{"direction": "d"}})
+	if got == nil {
+		t.Fatal("monocle.move-window did not resolve")
+	}
+	if got.Dispatcher != "cyclenext" || got.Argument != "cycleprev" {
+		t.Errorf("got dispatcher=%s argument=%q, want cyclenext cycleprev", got.Dispatcher, got.Argument)
+	}
+}

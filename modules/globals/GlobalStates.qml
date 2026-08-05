@@ -53,7 +53,7 @@ Singleton {
     // ═══════════════════════════════════════════════════════════════
     property string compositorLayout: ""
     property bool compositorLayoutReady: false
-    readonly property var availableLayouts: ["dwindle", "master", "scrolling"]
+    readonly property var availableLayouts: ["dwindle", "master", "scrolling", "monocle"]
 
     Process {
         id: getLayoutProcess

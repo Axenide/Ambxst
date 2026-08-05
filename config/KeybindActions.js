@@ -86,6 +86,12 @@ var ACTION_CATALOG = [
     { id: "scrolling.move-window", label: "Move Window", category: "Window", dispatcher: "movewindow", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
         return directionToLetter(args.direction);
     } },
+    { id: "monocle.focus", label: "Cycle Focus", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
+    } },
+    { id: "monocle.move-window", label: "Cycle Window", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
+    } },
     { id: "scrolling.resize-column", label: "Resize Column", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "delta", label: "Delta", placeholder: "+0.1 / -0.1", defaultValue: "+0.1" }], argumentBuilder: function (args) {
         return "colresize " + String(args.delta || "").trim();
     } },

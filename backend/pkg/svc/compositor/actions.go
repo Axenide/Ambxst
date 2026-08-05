@@ -77,6 +77,18 @@ var catalog = []ActionSpec{
 
 	{ID: "scrolling.focus", Label: "Focus", Category: "Window", Dispatcher: "movefocus", Args: []ActionArg{{Key: "direction", Label: "Direction", Placeholder: "up/down/left/right", DefaultValue: "up"}}, ArgumentFn: func(args map[string]any) string { return directionToLetter(stringArg(args, "direction")) }},
 	{ID: "scrolling.move-window", Label: "Move Window", Category: "Window", Dispatcher: "movewindow", Args: []ActionArg{{Key: "direction", Label: "Direction", Placeholder: "up/down/left/right", DefaultValue: "left"}}, ArgumentFn: func(args map[string]any) string { return directionToLetter(stringArg(args, "direction")) }},
+	{ID: "monocle.focus", Label: "Cycle Focus", Category: "Monocle Layout", Dispatcher: "cyclenext", Args: []ActionArg{{Key: "direction", Label: "Direction", Placeholder: "up/right = next, down/left = prev", DefaultValue: "next"}}, ArgumentFn: func(args map[string]any) string {
+		if stringArg(args, "direction") == "d" || stringArg(args, "direction") == "l" {
+			return "cycleprev"
+		}
+		return "cyclenext"
+	}},
+	{ID: "monocle.move-window", Label: "Cycle Window", Category: "Monocle Layout", Dispatcher: "cyclenext", Args: []ActionArg{{Key: "direction", Label: "Direction", Placeholder: "up/right = next, down/left = prev", DefaultValue: "next"}}, ArgumentFn: func(args map[string]any) string {
+		if stringArg(args, "direction") == "d" || stringArg(args, "direction") == "l" {
+			return "cycleprev"
+		}
+		return "cyclenext"
+	}},
 	{ID: "scrolling.resize-column", Label: "Resize Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Args: []ActionArg{{Key: "delta", Label: "Delta", Placeholder: "+0.1 / -0.1", DefaultValue: "+0.1"}}, ArgumentFn: func(args map[string]any) string { return "colresize " + strings.TrimSpace(stringArg(args, "delta")) }},
 	{ID: "scrolling.promote", Label: "Promote Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "promote"},
 	{ID: "scrolling.toggle-fit", Label: "Toggle Fit", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "togglefit"},
