@@ -7,7 +7,7 @@ BACKEND_DIR := backend
 GO ?= go
 GOFLAGS ?=
 
-.PHONY: all build vet lint run nix clean dev
+.PHONY: all build vet lint run nix clean dev install
 
 all: build
 
@@ -34,6 +34,11 @@ dev: build
 ## nix: build the backend package via Nix (NixOS / Nix installs)
 nix:
 	@cd $(BACKEND_DIR) && git -C .. add backend 2>/dev/null; nix build '.#packages.$(shell uname -m)-linux.backend' --no-link --print-out-paths
+
+## install: build, sudo install the binary, then remove the local copy
+install: build
+	sudo install $(BINARY) /usr/local/bin/$(BINARY)
+	rm -f $(BINARY)
 
 ## clean: remove the compiled binary
 clean:
