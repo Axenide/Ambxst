@@ -187,8 +187,10 @@ Singleton {
 
     function gatherKeybinds() {
         const adapter = Config.keybindsLoader.adapter;
-        if (!adapter)
+        if (!adapter) {
+            console.log("CompositorTomlWriter:gatherKeybinds NO ADAPTER");
             return { ambxst: {}, system: {}, custom: [] };
+        }
 
         const toAction = (a) => a ? { id: a.id, args: a.args || {} } : null;
 
@@ -220,6 +222,7 @@ Singleton {
             systemKeys: system ? Object.keys(system) : [],
             customType: Array.isArray(adapter.custom) ? "array" : typeof adapter.custom,
             customLen: Array.isArray(adapter.custom) ? adapter.custom.length : -1,
+            customRaw: adapter.custom === null ? "null" : (adapter.custom === undefined ? "undef" : (Array.isArray(adapter.custom) ? adapter.custom.length + " items" : JSON.stringify(adapter.custom).slice(0, 100))),
         }));
         return {
             ambxst: ambxst,
