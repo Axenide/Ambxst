@@ -47,58 +47,77 @@ Singleton {
         return (position === "left" || position === "right") ? "vertical" : "horizontal";
     }
 
+    // Fallback values mirror the JsonAdapter defaults in Config.qml so
+    // the TOML always has usable color names even if Config.compositor
+    // hasn't loaded yet when gatherInput() is called. Without these,
+    // undefined var values are dropped by JSON.stringify, leaving the
+    // border section empty in the generated hyprland.{lua,conf}.
+    function colorOr(arr, fallback) {
+        if (Array.isArray(arr) && arr.length > 0) return arr;
+        return fallback;
+    }
+    function intOr(val, fallback) {
+        return (val === undefined || val === null) ? fallback : val;
+    }
+    function boolOr(val, fallback) {
+        return (val === undefined || val === null) ? fallback : val;
+    }
+
     function gatherInput() {
         // Resolved border color/opacity, matching the QML aliases defined
         // in Config.qml:3476-3480.
-        const borderSize = Config.compositorBorderSize;
-        const borderColor = Config.compositorBorderColor;
-        const rounding = Config.compositorRounding;
-        const shadowColor = Config.compositorShadowColor;
-        const shadowOpacity = Config.compositorShadowOpacity;
+        const c = Config.compositor;
+        const borderSize = c.borderSize;
+        const borderColor = c.syncBorderColor
+            ? (c.borderSize === undefined ? "primary" : c.activeBorderColor)  // any unique value; replaced below
+            : (c.activeBorderColor && c.activeBorderColor.length > 0 ? c.activeBorderColor[0] : "primary");
+        const rounding = intOr(c.rounding, 16);
+        const shadowColor = c.shadowColor;
+        const shadowOpacity = c.shadowOpacity;
 
         return {
             compositor: {
-                gapsIn: Config.compositor.gapsIn,
-                gapsOut: Config.compositor.gapsOut,
-                borderSize: borderSize,
+                gapsIn: intOr(c.gapsIn, 0),
+                gapsOut: intOr(c.gapsOut, 0),
+                borderSize: intOr(borderSize, 2),
                 rounding: rounding,
-                syncBorderColor: Config.compositor.syncBorderColor,
+                syncBorderColor: boolOr(c.syncBorderColor, false),
                 borderColor: borderColor,
-                activeBorderColor: Config.compositor.activeBorderColor,
-                activeBorderAngle: Config.compositor.borderAngle,
-                inactiveBorderColor: Config.compositor.inactiveBorderColor,
-                inactiveBorderAngle: Config.compositor.inactiveBorderAngle,
+                activeBorderColor: colorOr(c.activeBorderColor, ["primary"]),
+                activeBorderAngle: intOr(c.borderAngle, 45),
+                inactiveBorderColor: colorOr(c.inactiveBorderColor, ["surface"]),
+                inactiveBorderAngle: intOr(c.inactiveBorderAngle, 45),
                 shadow: {
-                    enabled: Config.compositor.shadowEnabled,
-                    range: Config.compositor.shadowRange,
-                    renderPower: Config.compositor.shadowRenderPower,
-                    sharp: Config.compositor.shadowSharp,
-                    ignoreWindow: Config.compositor.shadowIgnoreWindow,
-                    color: shadowColor,
-                    colorInactive: Config.compositor.shadowColorInactive,
-                    opacity: shadowOpacity,
-                    offset: Config.compositor.shadowOffset,
-                    scale: Config.compositor.shadowScale,
+                    enabled: boolOr(c.shadowEnabled, true),
+                    range: intOr(c.shadowRange, 8),
+                    renderPower: intOr(c.shadowRenderPower, 3),
+                    sharp: boolOr(c.shadowSharp, false),
+                    ignoreWindow: boolOr(c.shadowIgnoreWindow, true),
+                    color: shadowColor || "shadow",
+                    colorInactive: c.shadowColorInactive || "shadow",
+                    opacity: shadowOpacity !== undefined ? shadowOpacity : 0.5,
+                    offset: c.shadowOffset || "0 0",
+                    scale: c.shadowScale !== undefined ? c.shadowScale : 1.0,
                 },
                 blur: {
-                    enabled: Config.compositor.blurEnabled,
-                    size: Config.compositor.blurSize,
-                    passes: Config.compositor.blurPasses,
-                    ignoreOpacity: Config.compositor.blurIgnoreOpacity,
-                    explicitIgnoreAlpha: Config.compositor.blurExplicitIgnoreAlpha,
-                    ignoreAlphaValue: Config.compositor.blurIgnoreAlphaValue,
-                    newOptimizations: Config.compositor.blurNewOptimizations,
-                    xray: Config.compositor.blurXray,
-                    noise: Config.compositor.blurNoise,
-                    contrast: Config.compositor.blurContrast,
-                    brightness: Config.compositor.blurBrightness,
-                    vibrancy: Config.compositor.blurVibrancy,
-                    vibrancyDarkness: Config.compositor.blurVibrancyDarkness,
-                    special: Config.compositor.blurSpecial,
-                    popups: Config.compositor.blurPopups,
-                    popupsIgnorealpha: Config.compositor.blurPopupsIgnorealpha,
-                    inputMethods: Config.compositor.blurInputMethods,
-                    inputMethodsIgnorealpha: Config.compositor.blurInputMethodsIgnorealpha,
+                    enabled: boolOr(c.blurEnabled, true),
+                    size: intOr(c.blurSize, 4),
+                    passes: intOr(c.blurPasses, 2),
+                    ignoreOpacity: boolOr(c.blurIgnoreOpacity, true),
+                    explicitIgnoreAlpha: boolOr(c.blurExplicitIgnoreAlpha, false),
+                    ignoreAlphaValue: c.blurIgnoreAlphaValue !== undefined ? c.blurIgnoreAlphaValue : 0.2,
+                    newOptimizations: boolOr(c.blurNewOptimizations, true),
+                    xray: boolOr(c.blurXray, false),
+                    noise: c.blurNoise !== undefined ? c.blurNoise : 0.0,
+                    contrast: c.blurContrast !== undefined ? c.blurContrast : 1.0,
+                    brightness: c.blurBrightness !== undefined ? c.blurBrightness : 1.0,
+                    vibrancy: c.blurVibrancy !== undefined ? c.blurVibrancy : 0.0,
+                    vibrancyDarkness: c.blurVibrancyDarkness !== undefined ? c.blurVibrancyDarkness : 0.0,
+                    special: boolOr(c.blurSpecial, true),
+                    popups: boolOr(c.blurPopups, false),
+                    popupsIgnorealpha: c.blurPopupsIgnorealpha !== undefined ? c.blurPopupsIgnorealpha : 0.2,
+                    inputMethods: boolOr(c.blurInputMethods, false),
+                    inputMethodsIgnorealpha: c.blurInputMethodsIgnorealpha !== undefined ? c.blurInputMethodsIgnorealpha : 0.2,
                 },
                 animations: {
                     enabled: true,
