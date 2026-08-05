@@ -267,17 +267,19 @@ Singleton {
     // initial TOML regen until both the daemon's compositor service
     // and the binds.json adapter are populated, so the very first
     // write doesn't go out with an empty keybinds block.
+    //
+    // Important: the keybinds loader runs a 1s createKeybindsTimer +
+    // 0.5s repairKeybindsTimer before binds.json is fully populated.
+    // adapter.ambxst may exist early (we'd consider it "ready")
+    // while adapter.custom is still empty. So readiness must require
+    // Config.keybindsInitialLoadComplete AND a non-empty custom list,
+    // otherwise the first write silently drops the 98 custom binds.
     property bool configReady: false
     property bool keybindsReady: false
 
     Component.onCompleted: {
-        // Defer first write to give the daemon time to come up and
-        // the keybinds adapter time to load. The write fires from
-        // onReady() once both flags are true; if either is still
-        // missing after 6s we fire anyway with whatever we have
-        // (the fallback writer will still emit a usable [target]).
         configReady = !!Config.loader.loaded;
-        keybindsReady = !!(Config.keybindsLoader.adapter && Config.keybindsLoader.adapter.ambxst);
+        keybindsReady = _computeKeybindsReady();
         if (configReady && keybindsReady) {
             callWrite();
         } else {
@@ -286,7 +288,19 @@ Singleton {
         }
     }
 
+    function _computeKeybindsReady() {
+        const a = Config.keybindsLoader.adapter;
+        if (!a) return false;
+        if (!Config.keybindsInitialLoadComplete) return false;
+        // The adapter must have populated the keybinds tree, including
+        // the custom list. Without checking custom we can fire a
+        // premature write that drops all user keybinds.
+        return !!(a.ambxst && Array.isArray(a.custom));
+    }
+
     function _onReady() {
+        configReady = !!Config.loader.loaded;
+        keybindsReady = _computeKeybindsReady();
         if (configReady && keybindsReady) {
             tomlDeferTimer.stop();
             tomlTimeoutTimer.stop();
@@ -317,7 +331,6 @@ Singleton {
     property Connections configConnections: Connections {
         target: Config.loader
         function onLoaded() {
-            root.configReady = true;
             root._onReady();
         }
     }
@@ -325,15 +338,27 @@ Singleton {
     property Connections keybindsConnections: Connections {
         target: Config.keybindsLoader
         function onLoaded() {
-            root.keybindsReady = !!(Config.keybindsLoader.adapter && Config.keybindsLoader.adapter.ambxst);
             root._onReady();
         }
         function onFileChanged() { root.callWrite(); }
         function onAdapterUpdated() {
-            root.keybindsReady = !!(Config.keybindsLoader.adapter && Config.keybindsLoader.adapter.ambxst);
+            // adapter.custom may arrive in a separate onAdapterUpdated
+            // tick after ambxst. Re-check readiness and fire if it's
+            // the first time we see a non-empty custom list.
             root._onReady();
         }
         function onPathChanged() { root.callWrite(); }
+    }
+
+    // Config.qml flips keybindsInitialLoadComplete to true once the
+    // repair migration has run. Subscribe so the deferred first write
+    // happens right after the keybinds are fully populated, not on a
+    // 6s timer that may race the migration.
+    property Connections keybindsReadyConnection: Connections {
+        target: Config
+        function onKeybindsInitialLoadCompleteChanged() {
+            root._onReady();
+        }
     }
 
     property Connections compositorConnections: Connections {
