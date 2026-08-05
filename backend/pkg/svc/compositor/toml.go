@@ -15,9 +15,13 @@ func Render(in Input) string {
 	var b strings.Builder
 
 	// [target] — must be first so axctl's [target] path resolution kicks
-	// in before the watcher reloads the rest of the config.
+	// in before the watcher reloads the rest of the config. axctl only
+	// uses the field matching the running compositor, so listing all
+	// three is harmless on machines that only run one of them.
 	b.WriteString("[target]\n")
 	b.WriteString(`hyprland = "~/.local/share/ambxst/hyprland.lua"` + "\n")
+	b.WriteString(`niri = "~/.local/share/ambxst/niri.kdl"` + "\n")
+	b.WriteString(`mango = "~/.local/share/ambxst/mango.conf"` + "\n")
 
 	// [startup]
 	b.WriteString("\n[startup]\n")
