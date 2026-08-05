@@ -128,7 +128,10 @@ Singleton {
     function generateToml() {
         let toml = "";
 
-        toml += "[startup]\n";
+        toml += "[target]\n";
+        toml += 'hyprland = "~/.local/share/ambxst/hyprland.lua"\n';
+
+        toml += "\n[startup]\n";
         toml += "exec-once = \"ambxst\"\n";
 
         function tomlEscape(str) {

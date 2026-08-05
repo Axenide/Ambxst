@@ -82,10 +82,26 @@ Singleton {
         }
     }
 
+    Process {
+        id: setLayoutProcess
+        property string pendingLayout: ""
+        onExited: (code) => {
+            if (code === 0 && pendingLayout && availableLayouts.includes(pendingLayout)) {
+                compositorLayout = pendingLayout;
+                pendingLayout = "";
+            } else if (pendingLayout) {
+                console.warn("GlobalStates: axctl layout set failed (code:", code, "), keeping compositorLayout as", compositorLayout);
+                pendingLayout = "";
+            }
+        }
+    }
+
     function setCompositorLayout(layout) {
         if (availableLayouts.includes(layout)) {
-            compositorLayout = layout;
             StateService.set("compositorLayout", layout);
+            setLayoutProcess.pendingLayout = layout;
+            setLayoutProcess.command = ["axctl", "layout", "set", layout];
+            setLayoutProcess.running = true;
         }
     }
 

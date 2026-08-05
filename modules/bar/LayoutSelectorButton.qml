@@ -113,11 +113,11 @@ Item {
         anchorItem: buttonBg
         bar: root.bar
 
-        contentWidth: layoutRow.implicitWidth + popupPadding * 2
-        contentHeight: 36 + popupPadding * 2
+        contentWidth: layoutColumn.implicitWidth + popupPadding * 2
+        contentHeight: layoutColumn.implicitHeight + popupPadding * 2
 
-        Row {
-            id: layoutRow
+        ColumnLayout {
+            id: layoutColumn
             anchors.centerIn: parent
             spacing: 4
 
@@ -138,7 +138,7 @@ Item {
                     required property string modelData
                     required property int index
 
-                    readonly property bool isSelected: layoutRow.currentIndex === index
+                    readonly property bool isSelected: layoutColumn.currentIndex === index
                     readonly property bool isFirst: index === 0
                     readonly property bool isLast: index === GlobalStates.availableLayouts.length - 1
                     property bool buttonHovered: false
@@ -148,12 +148,13 @@ Item {
 
                     variant: isSelected ? "primary" : (buttonHovered ? "focus" : "common")
                     enableShadow: false
-                    width: layoutLabel.implicitWidth + 48
-                    height: 36
+                    Layout.fillWidth: true
+                    Layout.preferredWidth: layoutLabel.implicitWidth + 48
+                    Layout.preferredHeight: 36
 
                     topLeftRadius: isSelected ? (isFirst ? defaultRadius : selectedRadius) : defaultRadius
-                    bottomLeftRadius: isSelected ? (isFirst ? defaultRadius : selectedRadius) : defaultRadius
-                    topRightRadius: isSelected ? (isLast ? defaultRadius : selectedRadius) : defaultRadius
+                    topRightRadius: isSelected ? (isFirst ? defaultRadius : selectedRadius) : defaultRadius
+                    bottomLeftRadius: isSelected ? (isLast ? defaultRadius : selectedRadius) : defaultRadius
                     bottomRightRadius: isSelected ? (isLast ? defaultRadius : selectedRadius) : defaultRadius
 
                     RowLayout {
