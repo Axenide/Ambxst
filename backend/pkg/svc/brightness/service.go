@@ -2,8 +2,8 @@ package brightness
 
 import (
 	"encoding/json"
-	"fmt"
 	"os/exec"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -118,26 +118,25 @@ func (t *target) apply(value float64) {
 	exec.Command("brightnessctl", "--class", "backlight", "s", strconv.Itoa(int(value*100)), "--quiet").Run()
 }
 
+// ddcVCPRe captures the current and max brightness values from
+// `ddcutil getvcp 10` output. The two capture groups absorb any
+// surrounding whitespace and the `=` separator that broke the
+// previous fields-based parser.
+var ddcVCPRe = regexp.MustCompile(`current value\s*=\s*(\d+).*?max value\s*=\s*(\d+)`)
+
 func (t *target) current() (float64, bool) {
 	if t.kind == "ddcutil" {
 		out, err := exec.Command("ddcutil", "-b", t.bus, "getvcp", "10").Output()
 		if err != nil {
 			return 0, false
 		}
-		var cur, max int
-		for _, line := range strings.Split(string(out), "\n") {
-			if strings.Contains(line, "current value") {
-				fmt.Sscanf(line, "VCP 10 CTA-861 Feature: Display Luminance (current value = %d, max value = %d)", &cur, &max)
-			}
+		m := ddcVCPRe.FindStringSubmatch(string(out))
+		if len(m) < 3 {
+			return 0, false
 		}
-		if max <= 0 {
-			fs := strings.Fields(string(out))
-			if len(fs) >= 2 {
-				max, _ = strconv.Atoi(fs[len(fs)-1])
-				cur, _ = strconv.Atoi(fs[len(fs)-2])
-			}
-		}
-		if max <= 0 {
+		cur, err1 := strconv.Atoi(m[1])
+		max, err2 := strconv.Atoi(m[2])
+		if err1 != nil || err2 != nil || max <= 0 {
 			return 0, false
 		}
 		return float64(cur) / float64(max), true
