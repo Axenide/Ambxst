@@ -109,6 +109,18 @@ Singleton {
         const shadowColor = resolveColorName(c.shadowColor || "shadow", "rgba(00000080)");
         const shadowColorInactive = resolveColorName(c.shadowColorInactive || "shadow", "rgba(00000080)");
 
+        // Debug breadcrumb so we can see what the QML is actually
+        // resolving at runtime without needing a full Quickshell
+        // debug session.
+        console.log("CompositorTomlWriter:gatherInput", JSON.stringify({
+            activeBorder: c.activeBorderColor,
+            activeRgba: activeRgba,
+            inactiveBorder: c.inactiveBorderColor,
+            inactiveRgba: inactiveRgba,
+            shadowColor: c.shadowColor,
+            shadowRgba: shadowColor,
+        }));
+
         return {
             compositor: {
                 gapsIn: intOr(c.gapsIn, 0),
