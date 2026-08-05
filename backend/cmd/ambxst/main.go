@@ -97,6 +97,8 @@ func main() {
 		os.Exit(runThumbs(args[1:], 140, true))
 	case "dthumbs":
 		os.Exit(runThumbs(args[1:], 64, false))
+	case "ipc":
+		os.Exit(runIpc(args[1:]))
 	case "chatlist":
 		os.Exit(runChatList(args[1:]))
 	case "writeshader":
@@ -140,6 +142,41 @@ func socketPath() string {
 
 func newClient() *ipc.Client {
 	return ipc.NewClient(socketPath())
+}
+
+// runIpc dispatches a JSON-RPC call to the daemon. Two subcommands are
+// supported:
+//
+//	ambxst ipc call <service.method> <json>
+//
+// The <json> argument is the raw params payload; pass an empty string to
+// invoke a parameterless method.
+func runIpc(args []string) int {
+	if len(args) < 2 || args[0] != "call" {
+		fmt.Fprintln(os.Stderr, "Usage: ambxst ipc call <service.method> <json>")
+		return 2
+	}
+	method := args[1]
+	var params any
+	if len(args) >= 3 && args[2] != "" {
+		if err := json.Unmarshal([]byte(args[2]), &params); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: invalid JSON payload: %v\n", err)
+			return 2
+		}
+	}
+	if !isSocketUp() {
+		fmt.Fprintln(os.Stderr, "Error: Ambxst daemon is not running")
+		return 1
+	}
+	res, err := newClient().Call(method, params)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return 1
+	}
+	if len(res) > 0 {
+		fmt.Println(string(res))
+	}
+	return 0
 }
 
 func mustCall(method string, params any) json.RawMessage {

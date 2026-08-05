@@ -15,6 +15,7 @@ import (
 	"ambxst/backend/pkg/svc"
 	"ambxst/backend/pkg/svc/brightness"
 	"ambxst/backend/pkg/svc/clipboard"
+	"ambxst/backend/pkg/svc/compositor"
 	configsvc "ambxst/backend/pkg/svc/config"
 	"ambxst/backend/pkg/svc/keystore"
 	"ambxst/backend/pkg/svc/linkpreview"
@@ -68,6 +69,9 @@ func New() (*Daemon, error) {
 
 	configSvc := configsvc.NewService(d.paths)
 	configSvc.Register(srv)
+
+	compositorSvc := compositor.NewService(d.paths)
+	compositorSvc.Register(srv)
 
 	keySvc := keystore.NewService(d.paths)
 	keySvc.Register(srv)
