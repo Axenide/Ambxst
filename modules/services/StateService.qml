@@ -5,10 +5,15 @@ import Quickshell
 import Quickshell.Io
 
 /**
- * Centralized state management service
+ * Centralized state management service.
  * Handles persistent state storage for all services.
  * Writes are owned by the Go daemon (config.stateSet under lock), which
  * eliminates the race with GameModeService writing the same states.json.
+ *
+ * Consumers should restore persisted values via `initializedChanged`
+ * (and a `Component.onCompleted` defensive check), NOT via one-shot
+ * Timers: the daemon IPC roundtrip is async and can exceed timer
+ * thresholds on cold start. `stateLoaded` is kept for compat.
  */
 Singleton {
     id: root

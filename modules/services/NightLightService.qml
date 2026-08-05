@@ -73,24 +73,20 @@ Singleton {
         }
     }
 
+    property bool _restored: false
     Connections {
         target: StateService
-        function onStateLoaded() {
-            root.active = StateService.get("nightLight", false);
-            root.syncState();
+        function onInitializedChanged() {
+            root._restore();
         }
     }
+    Component.onCompleted: root._restore()
 
-    // Auto-initialize on creation
-    Timer {
-        interval: 100
-        running: true
-        repeat: false
-        onTriggered: {
-            if (StateService.initialized) {
-                root.active = StateService.get("nightLight", false);
-                root.syncState();
-            }
+    function _restore() {
+        if (StateService.initialized && !root._restored) {
+            root._restored = true;
+            root.active = StateService.get("nightLight", false);
+            root.syncState();
         }
     }
 }

@@ -67,13 +67,13 @@ Singleton {
             isRestored = true;
     }
 
+    property bool _restored: false
     Connections {
         target: StateService
-        function onStateLoaded() {
-            restoreModel();
+        function onInitializedChanged() {
+            root._restore();
         }
     }
-
     Connections {
         target: KeyStore
         function onKeysChanged() {
@@ -81,10 +81,13 @@ Singleton {
         }
     }
 
-    Component.onCompleted: {
-        // Deferred init to save RAM at boot. Triggered when AI sidebar becomes visible.
-        if (StateService.initialized)
+    Component.onCompleted: root._restore()
+
+    function _restore() {
+        if (StateService.initialized && !root._restored) {
+            root._restored = true;
             restoreModel();
+        }
     }
 
     // Lazy init: trigger fetchAvailableModels/reloadHistory/createNewChat
