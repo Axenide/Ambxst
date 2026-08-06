@@ -9,52 +9,54 @@ import (
 	"ambxst/backend/pkg/ipc"
 )
 
-// Service exposes the TOML generator over JSON-RPC. The QML shell
-// assembles the input payload and calls "render" or "write"; the latter
-// persists the result to the canonical axctl.toml path under
-// $XDG_DATA_HOME/ambxst/axctl.toml (or ~/.local/share/ambxst/axctl.toml
-// as a fallback).
+// Service exposes the TOML generator + axctl process supervisor over
+// JSON-RPC. Render/write keep the historical signature for backwards
+// compatibility with QML callers; state/dispatch/subscribe are the new
+// surface for managing the live axctl children owned by the daemon.
 type Service struct {
 	paths PathResolver
+	mgr   *Manager
 }
 
+// PathResolver is the minimal surface the service needs from *paths.Paths.
+// Defined as an interface so tests can stub the TOML path without bringing
+// in the full paths package.
 type PathResolver interface {
 	AxctlToml() string
 }
 
-// PathFunc adapts a plain function to the PathResolver interface, so the
-// daemon can hand off the Paths struct without depending on the package
-// directly.
+// PathFunc adapts a plain function to the PathResolver interface.
 type PathFunc func() string
 
 func (f PathFunc) AxctlToml() string { return f() }
 
+// NewService constructs the compositor service. When p is non-nil, a
+// Manager is attached so state/dispatch/subscribe are available.
 func NewService(p PathResolver) *Service {
-	if p == nil {
-		p = PathFunc(defaultTomlPath)
+	s := &Service{paths: p}
+	if p != nil {
+		s.mgr = NewManager(p)
 	}
-	return &Service{paths: p}
+	return s
 }
 
-func defaultTomlPath() string {
-	dir := os.Getenv("XDG_DATA_HOME")
-	if dir == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			home = "/tmp"
-		}
-		dir = filepath.Join(home, ".local", "share")
-	}
-	return filepath.Join(dir, "ambxst", "axctl.toml")
-}
+// Manager returns the underlying process supervisor. Returns nil when the
+// service was constructed without a path resolver.
+func (s *Service) Manager() *Manager { return s.mgr }
 
 func (s *Service) Register(srv *ipc.Server) {
+	methods := map[string]ipc.HandlerFunc{
+		"render": s.render,
+		"write":  s.write,
+	}
+	if s.mgr != nil {
+		methods["state"] = s.state
+		methods["dispatch"] = s.dispatch
+	}
 	srv.Register(&ipc.Service{
-		Name: "compositor",
-		Methods: map[string]ipc.HandlerFunc{
-			"render": s.render,
-			"write":  s.write,
-		},
+		Name:      "compositor",
+		Methods:   methods,
+		Subscribe: s.subscribe,
 	})
 }
 
@@ -78,11 +80,83 @@ func (s *Service) write(params json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("compositor.write: %w", err)
 	}
 	content := Render(in)
-	path := s.paths.AxctlToml()
+	var path string
+	if s.paths != nil {
+		path = s.paths.AxctlToml()
+	} else {
+		path = defaultTomlPath()
+	}
 	if err := atomicWrite(path, []byte(content)); err != nil {
 		return nil, fmt.Errorf("compositor.write: %w", err)
 	}
 	return map[string]any{"ok": true, "path": path}, nil
+}
+
+func (s *Service) state(_ json.RawMessage) (any, error) {
+	if s.mgr == nil {
+		return nil, fmt.Errorf("compositor: process manager not initialized")
+	}
+	st := s.mgr.State()
+	return map[string]any{
+		"windows":    st.Windows,
+		"workspaces": st.Workspaces,
+		"monitors":   st.Monitors,
+	}, nil
+}
+
+func (s *Service) dispatch(params json.RawMessage) (any, error) {
+	if s.mgr == nil {
+		return nil, fmt.Errorf("compositor: process manager not initialized")
+	}
+	var p struct {
+		Args []string `json:"args"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	out, code, err := s.mgr.Dispatch(p.Args)
+	return map[string]any{
+		"stdout":    out,
+		"exit_code": code,
+		"error":     errString(err),
+	}, nil
+}
+
+func (s *Service) subscribe(sub *ipc.Subscriber) {
+	if s.mgr == nil {
+		return
+	}
+	ch, cancel := s.mgr.Subscribe()
+	go func() {
+		defer cancel()
+		for {
+			select {
+			case st, ok := <-ch:
+				if !ok {
+					return
+				}
+				sub.Send("compositor.state", map[string]any{
+					"windows":    st.Windows,
+					"workspaces": st.Workspaces,
+					"monitors":   st.Monitors,
+				})
+			case <-sub.StopCh():
+				return
+			}
+		}
+	}()
+}
+
+func defaultTomlPath() string {
+	dir := os.Getenv("XDG_DATA_HOME")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "/tmp"
+		}
+		dir = filepath.Join(home, ".local", "share")
+	}
+	return filepath.Join(dir, "ambxst", "axctl.toml")
 }
 
 func atomicWrite(path string, data []byte) error {
@@ -94,4 +168,11 @@ func atomicWrite(path string, data []byte) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+func errString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }

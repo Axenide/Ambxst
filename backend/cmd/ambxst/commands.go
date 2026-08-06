@@ -258,6 +258,9 @@ func removeBlock(path, source string) {
 }
 
 func runGoodbye() {
+	if isAlive() {
+		quitAmbxst()
+	}
 	fmt.Println("Uninstalling Ambxst...")
 	fmt.Print("Are you sure? (y/N): ")
 	reader := bufio.NewReader(os.Stdin)

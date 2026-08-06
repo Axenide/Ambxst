@@ -23,11 +23,12 @@ vet:
 ## lint: go vet + QML lint (best effort)
 lint: vet
 
-## run: build and launch the shell via the Go binary (needs Hyprland + Quickshell)
+## run: build and launch the shell (the ambxst binary itself is the
+##       daemon; it supervises Quickshell, axctl and wl-paste children)
 run: build
 	@./$(BINARY)
 
-## dev: build then run with live QML reload (editing shell.qml restarts)
+## dev: alias for run
 dev: build
 	@./$(BINARY)
 
@@ -44,7 +45,3 @@ install: build
 clean:
 	@rm -f $(BINARY)
 	@echo "Removed ./$(BINARY)"
-
-## Rebuild binary and run the daemon (headless test)
-daemon: build
-	@./$(BINARY) daemon

@@ -11,7 +11,7 @@ When changes are made to axctl (in `/home/adriano/Repos/Axenide/axctl/`), manual
 1. Build: `cd /home/adriano/Repos/Axenide/axctl && go build -o bin/axctl .`
 2. Install: Replace `/usr/local/bin/axctl` with the new binary (requires manual intervention)
 
-The agent cannot test axctl changes directly because the daemon runs in the user's session environment.
+The agent cannot test axctl changes directly because the backend runs in the user's session environment.
 
 ## OVERVIEW
 Ambxst is a highly customizable Wayland shell built with Quickshell. It provides a unified panel (bar, dock, notch), dashboard, lockscreen, desktop widgets, and notification system, driven by a reactive JSON configuration system. Multi-monitor support via `Variants` on `Quickshell.screens`.
@@ -47,7 +47,7 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 │       └── tools/        # Quick utility access (OCR, recording, etc.)
 ├── assets/               # Wallpapers, color presets, AI provider configs, sounds
 ├── scripts/              # Residual Python/Bash helpers (most logic in backend/)
-├── backend/              # Go backend daemon + CLI (replaces cli.sh)
+├── backend/              # Go backend — single `ambxst` process supervises Quickshell, axctl and wl-paste (replaces cli.sh)
 ├── nix/                  # Nix flake, packages, and module definitions
 ├── shell.qml             # Entry point: ShellRoot, Variants, service init
 └── cli.sh                # REMOVED — replaced by Go binary `ambxst`
@@ -86,7 +86,8 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 | `GradientCache` | Singleton | `modules/components/GradientCache.qml` | GPU texture sharing optimization |
 | `UnifiedShellPanel` | Component | `modules/shell/UnifiedShellPanel.qml` | Full-screen `PanelWindow` for Bar + Notch + Dock |
 | `ShellRoot` | Component | `shell.qml` | Root window. `Variants` per screen |
-| `AxctlService` | Singleton | `modules/services/AxctlService.qml` | Compositor abstraction (focus, dispatch) |
+| `AxctlService` | Singleton | `modules/services/AxctlService.qml` | Compositor abstraction; state sourced via IPC subscription to the backend `compositor` service |
+| `BackendService` | Singleton | `modules/services/BackendService.qml` | JSON-RPC client + subscription manager for the ambxst daemon |
 | `StateService` | Singleton | `modules/services/StateService.qml` | JSON persistence for session state |
 | `FocusGrabManager` | Singleton | `modules/services/FocusGrabManager.qml` | Input focus coordination |
 
@@ -115,16 +116,15 @@ Ambxst is a highly customizable Wayland shell built with Quickshell. It provides
 ```bash
 # Build the Go backend binary (outputs ./ambxst at repo root, gitignored)
 make build
-# Build + run the shell via the Go binary (spawns daemon, execs qs)
+# Build + run the shell via the Go binary (the binary itself is the
+# daemon: it supervises Quickshell, axctl and wl-paste children)
 make run
 # Nix package build (backend)
 make nix
-# Run the daemon standalone (headless IPC testing)
-make daemon
 
 # Run shell directly (requires Quickshell + Hyprland)
 qs -p shell.qml
-# Or via the Go CLI binary (spawns daemon, ensures config, execs qs):
+# Or via the Go CLI binary (starts IPC, supervises children, execs qs):
 ./ambxst
 
 # Install (Arch/Fedora/NixOS)

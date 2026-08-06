@@ -21,7 +21,7 @@ Remaining Bash utilities. All Python and most Bash logic has moved into the Go b
 | `weather.sh` | `svc/weather` (IPC) |
 | `clipboard_watch.sh` | `svc/clipboard` watch (IPC) |
 | `sleep_monitor.sh`, `loginlock.sh` | `svc/sleep` (IPC) |
-| `daemon_priority.sh` | CLI `launch()` |
+| `daemon_priority.sh` | CLI `runShell()` |
 | `keystore.py` | `svc/keystore` (IPC) |
 | `link_preview.py` | `svc/linkpreview` (IPC) |
 | `colorpicker.py` | CLI `ambxst colorpicker` |

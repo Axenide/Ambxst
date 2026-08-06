@@ -1,14 +1,16 @@
 package daemon
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"strconv"
-	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	"ambxst/backend/pkg/ipc"
 	"ambxst/backend/pkg/paths"
@@ -25,152 +27,215 @@ import (
 	"ambxst/backend/pkg/svc/weather"
 )
 
-// Daemon orchestrates the background IPC server.
+// Daemon is the unified ambxst process. It owns the IPC server, all
+// background services (clipboard, sleep, compositor, …) and the Quickshell
+// child. A single binary acts as both launcher and daemon: this struct's
+// Run() method replaces the previous "launch + detached daemon" dance and
+// guarantees a clean shutdown of every child the process spawned.
 type Daemon struct {
-	paths     *paths.Paths
-	srv       *ipc.Server
-	ui        *svc.UIService
-	sleep     *sleep.Service
-	clipboard *clipboard.Service
-	network   *network.Service
+	paths *paths.Paths
+	srv   *ipc.Server
+
+	ui          *svc.UIService
+	sleep       *sleep.Service
+	clipboard   *clipboard.Service
+	network     *network.Service
+	compositor  *compositor.Service
+
+	shutdownCh  chan struct{}
+	shutdownOnce sync.Once
+
+	qsCmd *exec.Cmd
 }
 
+// New wires every service into a freshly constructed server. The caller is
+// expected to call Run() next.
 func New() (*Daemon, error) {
-	d := &Daemon{paths: paths.New()}
-
-	srv := ipc.NewServer(d.paths.SocketPath())
+	p := paths.New()
+	d := &Daemon{
+		paths:      p,
+		srv:        ipc.NewServer(p.SocketPath()),
+		shutdownCh: make(chan struct{}),
+	}
 
 	uiSvc := svc.NewUIService()
-	uiSvc.Register(srv)
+	uiSvc.Register(d.srv)
 
 	sysMon := systemmonitor.NewService(2000, []string{"/"})
-	sysMon.Register(srv)
+	sysMon.Register(d.srv)
 
 	sleepSvc, err := sleep.NewService()
 	if err != nil {
 		return nil, fmt.Errorf("sleep service: %w", err)
 	}
 	d.sleep = sleepSvc
-	sleepSvc.Register(srv)
+	sleepSvc.Register(d.srv)
 
 	weatherSvc := weather.NewService()
-	weatherSvc.Register(srv)
+	weatherSvc.Register(d.srv)
 
 	clipSvc := clipboard.NewService(d.paths)
-	clipSvc.Register(srv)
+	clipSvc.Register(d.srv)
 	d.clipboard = clipSvc
 
 	netSvc := network.NewService()
-	netSvc.Register(srv)
+	netSvc.Register(d.srv)
 	d.network = netSvc
 
 	brightSvc := brightness.NewService()
-	brightSvc.Register(srv)
+	brightSvc.Register(d.srv)
 
 	configSvc := configsvc.NewService(d.paths)
-	configSvc.Register(srv)
+	configSvc.Register(d.srv)
 
-	compositorSvc := compositor.NewService(d.paths)
-	compositorSvc.Register(srv)
+	compSvc := compositor.NewService(d.paths)
+	compSvc.Register(d.srv)
+	d.compositor = compSvc
 
 	keySvc := keystore.NewService(d.paths)
-	keySvc.Register(srv)
+	keySvc.Register(d.srv)
 
 	linkSvc := linkpreview.NewService()
-	linkSvc.Register(srv)
+	linkSvc.Register(d.srv)
+
+	// system.shutdown → triggers the same exit path as a terminal signal.
+	d.srv.Register(&ipc.Service{
+		Name: "system",
+		Methods: map[string]ipc.HandlerFunc{
+			"shutdown": func(_ json.RawMessage) (any, error) {
+				d.TriggerShutdown()
+				return "ok", nil
+			},
+		},
+	})
 
 	d.ui = uiSvc
-	d.srv = srv
 	return d, nil
 }
 
-// SocketPath returns the daemon socket path.
-func (d *Daemon) SocketPath() string { return d.srv.SocketPath() }
+// Server returns the underlying IPC server. Exposed for advanced callers
+// (e.g. tests) that need to issue calls directly.
+func (d *Daemon) Server() *ipc.Server { return d.srv }
 
-// Serve listens and serves until SIGINT/SIGTERM.
-func (d *Daemon) Serve() error {
+// TriggerShutdown requests a graceful shutdown. Safe to call multiple
+// times; only the first call has any effect.
+func (d *Daemon) TriggerShutdown() {
+	d.shutdownOnce.Do(func() { close(d.shutdownCh) })
+}
+
+// Run blocks until the Quickshell child exits, an IPC shutdown is
+// requested, or a terminating signal is received. On exit it tears down
+// every child it owns in the right order:
+//
+//	1. close the IPC listener (refuse new connections)
+//	2. SIGTERM → Quickshell; SIGKILL its process group if it ignores
+//	3. compositor.Close()  → axctl daemon + axctl subscribe
+//	4. clipboard.Close()   → wl-paste --watch
+//	5. sleep.Close()       → dbus connection
+func (d *Daemon) Run(qsBin, shellQML string) error {
 	if err := d.srv.Listen(); err != nil {
-		return fmt.Errorf("listen: %w", err)
+		return fmt.Errorf("ipc listen: %w", err)
 	}
 	pidPath := pidFile()
-	if err := os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0o644); err == nil {
-		defer os.Remove(pidPath)
-	}
+	_ = os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0o644)
+	defer os.Remove(pidPath)
 	defer d.srv.Close()
-	defer func() {
-		if d.sleep != nil {
-			d.sleep.Close()
-		}
-		if d.clipboard != nil {
-			d.clipboard.Close()
-		}
-	}()
 
-	fmt.Printf("[ambxst-daemon] listening on %s\n", d.srv.SocketPath())
+	if err := d.compositor.Manager().Start(); err != nil {
+		log.Printf("[ambxst] compositor manager: %v (continuing)", err)
+	}
 
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-	done := make(chan error, 1)
-	go func() {
-		done <- d.srv.Serve()
-	}()
+	if err := d.spawnQS(qsBin, shellQML); err != nil {
+		return fmt.Errorf("spawn qs: %w", err)
+	}
+
+	go d.srv.Serve()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+	defer signal.Stop(sigCh)
+
+	qsDone := make(chan error, 1)
+	go func() { qsDone <- d.qsCmd.Wait() }()
 
 	select {
-	case err := <-done:
-		return err
-	case <-sig:
-		fmt.Println("[ambxst-daemon] shutting down")
-		return nil
+	case s := <-sigCh:
+		log.Printf("[ambxst] received %v, shutting down", s)
+	case <-d.shutdownCh:
+		log.Printf("[ambxst] shutdown requested via IPC")
+	case err := <-qsDone:
+		log.Printf("[ambxst] qs exited: %v", err)
 	}
+
+	d.shutdown()
+	return nil
 }
 
-// pidFile returns the daemon pid file path.
-func pidFile() string {
-	if runtime := os.Getenv("XDG_RUNTIME_DIR"); runtime != "" {
-		return filepath.Join(runtime, "ambxst-daemon.pid")
+// spawnQS launches Quickshell as a child of the current process, in its
+// own process group so a single SIGKILL cleans up all of qs's descendants.
+func (d *Daemon) spawnQS(qsBin, shellQML string) error {
+	cmd := exec.Command(qsBin, "-p", shellQML)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	env := os.Environ()
+	if os.Getenv("MALLOC_CONF") == "" {
+		env = append(env, "MALLOC_CONF=dirty_decay_ms:1000,muzzy_decay_ms:1000")
 	}
-	return "/tmp/ambxst-daemon.pid"
-}
-
-// AlreadyRunning reports whether a daemon pid file points to a live process.
-// Guards against a second instance stealing the socket after removing it.
-func AlreadyRunning() bool {
-	data, err := os.ReadFile(pidFile())
-	if err != nil {
-		return false
-	}
-	pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil || pid <= 0 || pid == os.Getpid() {
-		return false
-	}
-	proc := filepath.Join("/proc", strconv.Itoa(pid))
-	_, err = os.Stat(proc)
-	return err == nil
-}
-
-// Spawn detached daemon, waiting for the socket to appear.
-func SpawnDetached(p *paths.Paths) error {
-	exe, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command(exe, "daemon")
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	// Intentionally NOT setting SysProcAttr.Setsid: we want the daemon
-	// to share the launcher's process group so SIGINT (Ctrl+C in the
-	// QML) propagates to it. Previously Setsid=true left an orphan
-	// daemon plus wl-paste running after Ctrl+C. The daemon still
-	// survives launcher restarts because cmd.Release() detaches it
-	// from the parent's wait channel.
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.Env = env
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	if cmd.Process != nil {
-		cmd.Process.Release()
-	}
+	d.qsCmd = cmd
 	return nil
+}
+
+func (d *Daemon) shutdown() {
+	if d.qsCmd != nil && d.qsCmd.Process != nil {
+		_ = d.qsCmd.Process.Signal(syscall.SIGTERM)
+		done := make(chan struct{})
+		go func() { _ = d.qsCmd.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(1500 * time.Millisecond):
+			if pgid, err := syscall.Getpgid(d.qsCmd.Process.Pid); err == nil && pgid > 0 {
+				_ = syscall.Kill(-pgid, syscall.SIGKILL)
+			} else {
+				_ = d.qsCmd.Process.Kill()
+			}
+			<-done
+		}
+		d.qsCmd = nil
+	}
+
+	if d.compositor != nil && d.compositor.Manager() != nil {
+		d.compositor.Manager().Close()
+	}
+	if d.clipboard != nil {
+		d.clipboard.Close()
+	}
+	if d.sleep != nil {
+		d.sleep.Close()
+	}
+
+	// Defensive sweep: any child that escaped the process group cleanup
+	// (e.g. tail -f on a FIFO that survived Quickshell's SIGTERM) gets a
+	// targeted kill. Cheap and idempotent.
+	exec.Command("pkill", "-f", "tail -f /tmp/ambxst_ipc.pipe").Run()
+	exec.Command("pkill", "-f", "axctl.*daemon").Run()
+	exec.Command("pkill", "-f", "axctl subscribe").Run()
+	exec.Command("pkill", "-f", "wl-paste --watch").Run()
+}
+
+// pidFile returns the daemon pid file path. Kept in sync with
+// backend/cmd/ambxst/main.go so other invocations can probe the running
+// process without touching the IPC socket.
+func pidFile() string {
+	if runtime := os.Getenv("XDG_RUNTIME_DIR"); runtime != "" {
+		return filepath.Join(runtime, "ambxst.pid")
+	}
+	return "/tmp/ambxst.pid"
 }
 
 // EnsureConfigFiles copies preset JSON defaults if missing (legacy ensure_config_files).
