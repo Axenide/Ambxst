@@ -81,7 +81,7 @@ Singleton {
                 }],
             "actionHandlers": {
                 "enable-power-saver": function () {
-                    PowerProfile.setProfile("power-saver");
+                    PowerProfileClient.setProfile("power-saver");
                 },
                 "dismiss": function (id) {
                     Notifications.discardNotification(id);

@@ -284,7 +284,7 @@ ShellRoot {
         Component.onCompleted: {
             // Critical services — init immediately (next tick)
             Qt.callLater(() => {
-                let _ = CaffeineService.inhibit;
+                let _ = CaffeineClient.inhibit;
                 _ = IdleService.lockCmd; // Force init
                 _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
             });
@@ -296,8 +296,8 @@ ShellRoot {
         interval: 2000
         running: true
         onTriggered: {
-            let _ = NightLightService.active;
-            _ = GameModeService.toggled;
+            let _ = NightLightClient.active;
+            _ = GameModeClient.toggled;
         }
     }
 }

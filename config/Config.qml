@@ -3412,7 +3412,7 @@ Singleton {
 
     property int roundness: theme.roundness
     property string defaultFont: theme.font
-    property int animDuration: Services.GameModeService.toggled ? 0 : theme.animDuration
+    property int animDuration: Services.GameModeClient.toggled ? 0 : theme.animDuration
     property bool tintIcons: theme.tintIcons
 
     // Handle lightMode changes

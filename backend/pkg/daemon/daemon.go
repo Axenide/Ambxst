@@ -16,12 +16,16 @@ import (
 	"ambxst/backend/pkg/paths"
 	"ambxst/backend/pkg/svc"
 	"ambxst/backend/pkg/svc/brightness"
+	"ambxst/backend/pkg/svc/caffeine"
 	"ambxst/backend/pkg/svc/clipboard"
 	"ambxst/backend/pkg/svc/compositor"
 	configsvc "ambxst/backend/pkg/svc/config"
+	"ambxst/backend/pkg/svc/gamemode"
 	"ambxst/backend/pkg/svc/keystore"
 	"ambxst/backend/pkg/svc/linkpreview"
 	"ambxst/backend/pkg/svc/network"
+	"ambxst/backend/pkg/svc/nightlight"
+	"ambxst/backend/pkg/svc/powerprofile"
 	"ambxst/backend/pkg/svc/sleep"
 	"ambxst/backend/pkg/svc/systemmonitor"
 	"ambxst/backend/pkg/svc/weather"
@@ -41,6 +45,10 @@ type Daemon struct {
 	clipboard   *clipboard.Service
 	network     *network.Service
 	compositor  *compositor.Service
+	caffeine    *caffeine.Service
+	gamemode    *gamemode.Service
+	powerprof   *powerprofile.Service
+	nightlight  *nightlight.Service
 
 	shutdownCh  chan struct{}
 	shutdownOnce sync.Once
@@ -98,6 +106,22 @@ func New() (*Daemon, error) {
 	linkSvc := linkpreview.NewService()
 	linkSvc.Register(d.srv)
 
+	gmSvc := gamemode.NewService(d.paths)
+	gmSvc.Register(d.srv)
+	d.gamemode = gmSvc
+
+	caffeineSvc := caffeine.NewService(d.paths)
+	caffeineSvc.Register(d.srv)
+	d.caffeine = caffeineSvc
+
+	powerprofSvc := powerprofile.NewService()
+	powerprofSvc.Register(d.srv)
+	d.powerprof = powerprofSvc
+
+	nlSvc := nightlight.NewService(d.paths)
+	nlSvc.Register(d.srv)
+	d.nightlight = nlSvc
+
 	// system.shutdown → triggers the same exit path as a terminal signal.
 	d.srv.Register(&ipc.Service{
 		Name: "system",
@@ -144,6 +168,25 @@ func (d *Daemon) Run(qsBin, shellQML string) error {
 	if err := d.compositor.Manager().Start(); err != nil {
 		log.Printf("[ambxst] compositor manager: %v (continuing)", err)
 	}
+
+	// Caffeine + Nightlight restore both depend on side effects that may
+	// not be ready immediately: caffeine needs the axctl daemon socket
+	// (spun up by the compositor service above), nightlight needs wlsunset
+	// on PATH. Run them in a goroutine after a short delay so the axctl
+	// child has time to bind its socket.
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		if d.caffeine != nil {
+			if _, err := d.caffeine.Restore(nil); err != nil {
+				log.Printf("[ambxst] caffeine restore: %v", err)
+			}
+		}
+		if d.nightlight != nil {
+			if _, err := d.nightlight.Restore(nil); err != nil {
+				log.Printf("[ambxst] nightlight restore: %v", err)
+			}
+		}
+	}()
 
 	if err := d.spawnQS(qsBin, shellQML); err != nil {
 		return fmt.Errorf("spawn qs: %w", err)
@@ -218,6 +261,9 @@ func (d *Daemon) shutdown() {
 	if d.sleep != nil {
 		d.sleep.Close()
 	}
+	if d.nightlight != nil {
+		d.nightlight.Close()
+	}
 
 	// Defensive sweep: any child that escaped the process group cleanup
 	// (e.g. tail -f on a FIFO that survived Quickshell's SIGTERM) gets a
@@ -226,6 +272,7 @@ func (d *Daemon) shutdown() {
 	exec.Command("pkill", "-f", "axctl.*daemon").Run()
 	exec.Command("pkill", "-f", "axctl subscribe").Run()
 	exec.Command("pkill", "-f", "wl-paste --watch").Run()
+	exec.Command("pkill", "-f", "wlsunset").Run()
 }
 
 // pidFile returns the daemon pid file path. Kept in sync with
