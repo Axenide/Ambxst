@@ -3,6 +3,8 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Services.Notifications
+import qs.modules.services
 
 QtObject {
     id: root
@@ -10,6 +12,7 @@ QtObject {
     property bool isRecording: false
     property string duration: ""
     property string lastError: ""
+    property string currentOutputFile: ""
     property bool canRecordDirectly: true // Optimistic default
 
     property bool _initialized: false
@@ -111,6 +114,7 @@ QtObject {
             return;
 
         var outputFile = root.videosDir + "/" + new Date().toISOString().replace(/[:.]/g, "-") + ".mp4";
+        root.currentOutputFile = outputFile;
         var cmd = "gpu-screen-recorder -f 60";
 
         // Window mode
@@ -185,7 +189,7 @@ QtObject {
                 root.isRecording = false;
                 notifyErrorProcess.running = true;
             } else {
-                notifySavedProcess.running = true;
+                sendSavedNotification();
             }
         }
     }
@@ -195,9 +199,28 @@ QtObject {
         command: ["notify-send", "-u", "critical", "Screen Recorder Error", "Failed to start. Check logs."]
     }
 
-    property Process notifySavedProcess: Process {
-        id: notifySavedProcess
-        command: ["notify-send", "Screen Recorder", "Recording saved to " + root.videosDir]
+    function sendSavedNotification() {
+        if (root.currentOutputFile === "") return;
+        const fileName = root.currentOutputFile.substring(root.currentOutputFile.lastIndexOf("/") + 1);
+        Notifications.notifyInternal({
+            "summary": "Screen Recorder",
+            "body": "Recording saved: " + fileName,
+            "actions": [{
+                    "identifier": "open",
+                    "text": "Open"
+                }, {
+                    "identifier": "open-folder",
+                    "text": "Open Folder"
+                }],
+            "actionHandlers": {
+                "open": function () {
+                    Quickshell.execDetached(["xdg-open", root.currentOutputFile]);
+                },
+                "open-folder": function () {
+                    Quickshell.execDetached(["xdg-open", root.videosDir]);
+                }
+            }
+        });
     }
 
     property Process openVideosProcess: Process {

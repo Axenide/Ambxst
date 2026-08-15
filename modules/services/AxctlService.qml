@@ -56,6 +56,8 @@ Singleton {
             if (subParts.length > 1) {
                 cmdArgs.push(getAddr(subParts[1]));
             }
+        } else if (action === "focusmonitor") {
+            cmdArgs = ["monitor", "focus", rawArgs];
         } else if (action === "togglespecialworkspace") {
             cmdArgs = ["workspace", "toggle-special"];
             if (rawArgs) cmdArgs.push(rawArgs);

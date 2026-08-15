@@ -21,6 +21,7 @@ import "defaults/prefix.js" as PrefixDefaults
 import "defaults/system.js" as SystemDefaults
 import "defaults/dock.js" as DockDefaults
 import "defaults/ai.js" as AiDefaults
+import "defaults/general.js" as GeneralDefaults
 import "ConfigValidator.js" as ConfigValidator
 
 Singleton {
@@ -55,9 +56,10 @@ Singleton {
     property bool systemReady: false
     property bool dockReady: false
     property bool aiReady: false
+    property bool generalReady: false
     property bool keybindsInitialLoadComplete: false
 
-    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady
+    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady && generalReady
 
     // Compatibility aliases
     property alias loader: themeLoader
@@ -1136,7 +1138,7 @@ Singleton {
         }
 
         adapter: JsonAdapter {
-            property list<string> apps: ["kitty"]
+            property list<string> apps: []
         }
     }
 
@@ -1182,6 +1184,47 @@ Singleton {
             property int sidebarWidth: 400
             property string sidebarPosition: "right"
             property bool sidebarPinnedOnStartup: false
+        }
+    }
+
+    // ============================================
+    // GENERAL MODULE
+    // ============================================
+    FileView {
+        id: generalLoader
+        path: root.configDir + "/general.json"
+        atomicWrites: true
+        watchChanges: true
+        onLoaded: {
+            if (!root.generalReady) {
+                validateModule("general", generalLoader, GeneralDefaults.data, () => {
+                    root.generalReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.generalReady) {
+                handleMissingConfig("general", generalLoader, GeneralDefaults.data, () => {
+                    root.generalReady = true;
+                });
+            }
+        }
+        onFileChanged: {
+            root.pauseAutoSave = true;
+            reload();
+            root.pauseAutoSave = false;
+        }
+        onPathChanged: reload()
+        onAdapterUpdated: {
+            if (root.generalReady && !root.pauseAutoSave) {
+                generalLoader.writeAdapter();
+            }
+        }
+
+        adapter: JsonAdapter {
+            property string terminal: "kitty"
+            property bool terminalAdvanced: false
+            property string terminalCommand: "$TERMINAL -e $COMMAND"
         }
     }
 
@@ -3464,6 +3507,9 @@ Singleton {
     // AI configuration
     property QtObject ai: aiLoader.adapter
 
+    // General configuration
+    property QtObject general: generalLoader.adapter
+
     // Module save functions
     function saveBar() {
         barLoader.writeAdapter();
@@ -3506,6 +3552,9 @@ Singleton {
     }
     function saveAi() {
         aiLoader.writeAdapter();
+    }
+    function saveGeneral() {
+        generalLoader.writeAdapter();
     }
 
     // Color helpers
