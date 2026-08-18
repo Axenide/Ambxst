@@ -278,6 +278,7 @@ Item {
                 delegate: Item {
                     id: windowDelegate
                     required property var modelData
+                    required property int index
 
                     readonly property var windowData: modelData
                     readonly property var toplevel: {
@@ -288,6 +289,17 @@ Item {
                         if (candidates.length <= 1) return candidates[0] || null;
                         return candidates.find(t => t.title === (windowData.title || "")) || candidates[0];
                     }
+
+                    // niri does not report absolute window positions (all at=[0,0]),
+                    // so windows would stack on top of each other. Detect this and
+                    // lay them out in a cascade instead.
+                    readonly property bool hasRealPosition: {
+                        const x = (windowData && windowData.at && windowData.at[0] !== undefined ? windowData.at[0] : 0) || 0;
+                        const y = (windowData && windowData.at && windowData.at[1] !== undefined ? windowData.at[1] : 0) || 0;
+                        return x !== 0 || y !== 0;
+                    }
+                    readonly property bool useCascade: AxctlService.compositor === "niri" || !hasRealPosition
+                    readonly property real cascadeOffset: 24 * scale_
 
                     // niri cannot screencopy a window that sits under the
                     // fullscreen overview overlay, so live preview is unsupported.
@@ -303,6 +315,8 @@ Item {
                     readonly property real baseX: {
                         if (useOverridePosition && overrideBaseX >= 0)
                             return overrideBaseX;
+                        if (useCascade)
+                            return root.viewportOffset + root.horizontalScrollOffset + index * cascadeOffset;
                         let base = ((windowData && windowData.at && windowData.at[0] !== undefined ? windowData.at[0] : 0) || 0) - ((monitorData && monitorData.x !== undefined ? monitorData.x : 0) || 0);
                         if (barPosition === "left")
                             base -= barReserved;
@@ -311,6 +325,8 @@ Item {
                     readonly property real baseY: {
                         if (useOverridePosition && overrideBaseY >= 0)
                             return overrideBaseY;
+                        if (useCascade)
+                            return index * cascadeOffset;
                         let base = ((windowData && windowData.at && windowData.at[1] !== undefined ? windowData.at[1] : 0) || 0) - ((monitorData && monitorData.y !== undefined ? monitorData.y : 0) || 0);
                         if (barPosition === "top")
                             base -= barReserved;
@@ -397,6 +413,10 @@ Item {
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
                         color: windowDelegate.dragging ? Colors.surfaceBright : windowDelegate.hovered ? Colors.surface : Colors.background
+                        // On niri there is no live preview, so keep the card
+                        // translucent to let the wallpaper show through instead
+                        // of a solid black block.
+                        opacity: windowDelegate.canPreview ? 1.0 : 0.55
                         border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
                         border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
                         visible: !(Config.performance.windowPreview && windowDelegate.canPreview)
