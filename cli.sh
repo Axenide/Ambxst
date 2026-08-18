@@ -573,8 +573,36 @@ install)
 		else
 			append_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE" "$AMBXST_HYPR_CONF_BLOCK"
 		fi
+	elif [ "$TARGET" = "niri" ]; then
+		NIRI_DIR="$HOME/.config/niri"
+		NIRI_CONF="$NIRI_DIR/config.kdl"
+		mkdir -p "$NIRI_DIR"
+
+		# Add spawn-at-startup for ambxst if not present
+		if ! grep -qF 'spawn-at-startup "ambxst"' "$NIRI_CONF" 2>/dev/null; then
+			printf '\nspawn-at-startup "ambxst"\n' >>"$NIRI_CONF"
+			echo "Added spawn-at-startup ambxst to $NIRI_CONF"
+		else
+			echo "spawn-at-startup ambxst already present in $NIRI_CONF"
+		fi
+
+		# Add layer-rule for ambxst blur if not present
+		if ! grep -qF 'namespace="ambxst"' "$NIRI_CONF" 2>/dev/null; then
+			cat >>"$NIRI_CONF" <<'EOF'
+
+layer-rule {
+    match namespace="ambxst"
+    background-effect {
+        blur true
+    }
+}
+EOF
+			echo "Added ambxst layer-rule to $NIRI_CONF"
+		else
+			echo "ambxst layer-rule already present in $NIRI_CONF"
+		fi
 	else
-		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
+		echo "Error: Unknown target '$TARGET'. Supported: hyprland, niri"
 		exit 1
 	fi
 	;;
@@ -587,8 +615,27 @@ remove)
 
 		remove_ambxst_hyprland_block "$HYPR_LUA" "$AMBXST_HYPR_LUA_SOURCE"
 		remove_ambxst_hyprland_block "$HYPR_CONF" "$AMBXST_HYPR_CONF_SOURCE"
+	elif [ "$TARGET" = "niri" ]; then
+		NIRI_CONF="$HOME/.config/niri/config.kdl"
+		# Remove spawn-at-startup ambxst
+		sed -i '/spawn-at-startup "ambxst"/d' "$NIRI_CONF" 2>/dev/null
+		# Remove ambxst layer-rule block
+		awk '
+			/^layer-rule \{/ { in_block=1; buf=$0"\n"; next }
+			in_block {
+				buf = buf $0 "\n"
+				if ($0 ~ /^}/) {
+					if (buf ~ /namespace="ambxst"/) { buf="" }
+					else { printf "%s", buf }
+					in_block=0; buf=""
+				}
+				next
+			}
+			{ print }
+		' "$NIRI_CONF" >"$NIRI_CONF.tmp" && mv "$NIRI_CONF.tmp" "$NIRI_CONF"
+		echo "Removed ambxst block from $NIRI_CONF"
 	else
-		echo "Error: Unknown target '$TARGET'. Supported: hyprland"
+		echo "Error: Unknown target '$TARGET'. Supported: hyprland, niri"
 		exit 1
 	fi
 	;;

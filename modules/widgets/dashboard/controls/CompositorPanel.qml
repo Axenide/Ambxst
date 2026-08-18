@@ -8,6 +8,7 @@ import Quickshell
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -660,6 +661,8 @@ Item {
                             SectionButton {
                                 text: "Shadows"
                                 sectionId: "shadows"
+                                // niri does not render window shadows.
+                                visible: AxctlService.compositor !== "niri"
                             }
                             SectionButton {
                                 text: "Blur"
@@ -835,7 +838,8 @@ Item {
 
                         // Shadows Section
                         ColumnLayout {
-                            visible: root.currentSection === "shadows"
+                            // niri does not render window shadows.
+                            visible: root.currentSection === "shadows" && AxctlService.compositor !== "niri"
                             Layout.fillWidth: true
                             spacing: 8
 

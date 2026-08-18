@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import Quickshell.Io
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 import "../../../../config/KeybindActions.js" as KeybindActions
 
@@ -1696,6 +1697,8 @@ Item {
                                 font.weight: Font.Medium
                                 color: Colors.overSurfaceVariant
                                 Layout.topMargin: 8
+                                // niri has a single scrollable-tiling layout; no selector.
+                                visible: AxctlService.compositor !== "niri"
                             }
 
                             Text {
@@ -1704,11 +1707,14 @@ Item {
                                 font.pixelSize: Styling.fontSize(-2)
                                 color: Colors.overSurfaceVariant
                                 Layout.topMargin: -4
+                                visible: AxctlService.compositor !== "niri"
                             }
 
                             Flow {
                                 Layout.fillWidth: true
                                 spacing: 8
+                                // niri has a single scrollable-tiling layout; no selector.
+                                visible: AxctlService.compositor !== "niri"
 
                                 Repeater {
                                     model: root.availableLayouts

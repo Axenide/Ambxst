@@ -75,6 +75,45 @@ QtObject {
         applyTimer.restart();
     }
 
+    // niri path: build a universal appearance payload and let axctl's KDL
+    // generator write ambxst-generated.kdl + include + reload.
+    function applyNiriConfig() {
+        const gapsIn = Config.compositor.gapsIn !== undefined ? Config.compositor.gapsIn : 8;
+        const borderWidth = Config.compositorBorderSize !== undefined ? Config.compositorBorderSize : 2;
+        const rounding = Config.compositorRounding !== undefined ? Config.compositorRounding : 12;
+
+        // Resolve border colors (single color for niri; gradients unsupported).
+        let activeColor = "#33b1ff";
+        const borderColors = Config.compositor.syncBorderColor ? [Config.compositorBorderColor] : Config.compositor.activeBorderColor;
+        if (borderColors && borderColors.length > 0) {
+            const resolved = Config.resolveColor(borderColors[0]);
+            activeColor = (typeof resolved === 'string') ? resolved : "#33b1ff";
+        }
+
+        const payload = {
+            appearance: {
+                gaps: { inner: gapsIn },
+                border: {
+                    width: borderWidth,
+                    active_color: activeColor,
+                    rounding: rounding
+                }
+            }
+        };
+
+        niriApplyProcess.command = ["axctl", "config", "apply", JSON.stringify(payload)];
+        niriApplyProcess.running = true;
+    }
+
+    property Process niriApplyProcess: Process {
+        running: false
+        stdout: SplitParser {
+            onRead: (data) => {
+                if (data) console.log("CompositorConfig[niri]:", data);
+            }
+        }
+    }
+
     function applyCompositorConfigInternal() {
         // Ensure adapters are loaded before applying config.
         if (!Config.loader.loaded) {
@@ -85,6 +124,13 @@ QtObject {
         // Wait for layout to be ready.
         if (!GlobalStates.compositorLayoutReady) {
             console.log("CompositorConfig: Esperando que se detecte el layout de AxctlService...");
+            return;
+        }
+
+        // niri path: build a universal payload and let axctl's KDL generator
+        // write ambxst-generated.kdl + include + reload. No Hyprland keywords.
+        if (AxctlService.compositor === "niri") {
+            applyNiriConfig();
             return;
         }
 
