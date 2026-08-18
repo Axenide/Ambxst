@@ -289,6 +289,11 @@ Item {
                         return candidates.find(t => t.title === (windowData.title || "")) || candidates[0];
                     }
 
+                    // niri cannot screencopy a window that sits under the
+                    // fullscreen overview overlay, so live preview is unsupported.
+                    // Fall back to the icon card in that case.
+                    readonly property bool canPreview: AxctlService.compositor !== "niri"
+
                     // Override position tracking for immediate visual update
                     property real overrideBaseX: -1
                     property real overrideBaseY: -1
@@ -380,9 +385,9 @@ Item {
                         ScreencopyView {
                             id: windowPreview
                             anchors.fill: parent
-                            captureSource: Config.performance.windowPreview && GlobalStates.overviewOpen ? windowDelegate.toplevel : null
+                            captureSource: Config.performance.windowPreview && GlobalStates.overviewOpen && windowDelegate.canPreview ? windowDelegate.toplevel : null
                             live: GlobalStates.overviewOpen
-                            visible: Config.performance.windowPreview
+                            visible: Config.performance.windowPreview && windowDelegate.canPreview
                         }
                     }
 
@@ -394,7 +399,7 @@ Item {
                         color: windowDelegate.dragging ? Colors.surfaceBright : windowDelegate.hovered ? Colors.surface : Colors.background
                         border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
                         border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
-                        visible: !Config.performance.windowPreview
+                        visible: !(Config.performance.windowPreview && windowDelegate.canPreview)
 
                         Behavior on color {
                             enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
@@ -415,7 +420,7 @@ Item {
                         source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
                         sourceSize: Qt.size(iconSize, iconSize)
                         asynchronous: true
-                        visible: !Config.performance.windowPreview
+                        visible: !Config.performance.windowPreview || !windowDelegate.canPreview
                         z: 10
                     }
 
