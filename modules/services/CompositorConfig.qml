@@ -6,6 +6,7 @@ import qs.config
 import qs.modules.theme
 import qs.modules.bar
 import qs.modules.globals
+import "../../config/KeybindActions.js" as KeybindActions
 
 QtObject {
     id: root
@@ -98,11 +99,86 @@ QtObject {
                     active_color: activeColor,
                     rounding: rounding
                 }
-            }
+            },
+            keybinds: root.collectKeybindsPayload()
         };
 
         niriApplyProcess.command = ["axctl", "config", "apply", JSON.stringify(payload)];
         niriApplyProcess.running = true;
+    }
+
+    // Collect the keybinds from binds.json into the axctl universal payload format.
+    function collectKeybindsPayload() {
+        const keybinds = Config.keybindsLoader && Config.keybindsLoader.adapter
+            ? Config.keybindsLoader.adapter : null;
+        if (!keybinds) return {};
+
+        const result = {};
+
+        // Ambxst module binds (launcher, dashboard, assistant, ...)
+        const ambxstBinds = keybinds.ambxst;
+        if (ambxstBinds && typeof ambxstBinds === "object") {
+            const ambxstObj = {};
+            for (const section in ambxstBinds) {
+                if (section === "system") continue;
+                const bind = ambxstBinds[section];
+                const resolved = KeybindActions.resolveAction(bind.action);
+                if (!resolved) continue;
+                ambxstObj[section] = {
+                    modifiers: bind.modifiers || [],
+                    key: bind.key || "",
+                    dispatcher: resolved.dispatcher || "exec",
+                    argument: resolved.argument || "",
+                    enabled: bind.enabled !== false
+                };
+            }
+            const sysBinds = keybinds.ambxst.system;
+            if (sysBinds && typeof sysBinds === "object") {
+                const sysObj = {};
+                for (const section in sysBinds) {
+                    const bind = sysBinds[section];
+                    const resolved = KeybindActions.resolveAction(bind.action);
+                    if (!resolved) continue;
+                    sysObj[section] = {
+                        modifiers: bind.modifiers || [],
+                        key: bind.key || "",
+                        dispatcher: resolved.dispatcher || "exec",
+                        argument: resolved.argument || "",
+                        enabled: bind.enabled !== false
+                    };
+                }
+                result.ambxst = { system: sysObj };
+            }
+            if (Object.keys(ambxstObj).length > 0) {
+                result.ambxst = Object.assign(result.ambxst || {}, ambxstObj);
+            }
+        }
+
+        // Custom binds
+        const custom = keybinds.custom;
+        if (custom && Array.isArray(custom) && custom.length > 0) {
+            const customArr = [];
+            for (let i = 0; i < custom.length; i++) {
+                const bind = custom[i];
+                if (!bind || !bind.keys || !bind.actions || bind.enabled === false) continue;
+                const key = bind.keys[0];
+                const action = bind.actions[0];
+                const resolved = KeybindActions.resolveAction(action);
+                if (!resolved || !key) continue;
+                customArr.push({
+                    modifiers: key.modifiers || [],
+                    key: key.key || "",
+                    dispatcher: resolved.dispatcher || "exec",
+                    argument: resolved.argument || "",
+                    enabled: true
+                });
+            }
+            if (customArr.length > 0) {
+                result.custom = customArr;
+            }
+        }
+
+        return result;
     }
 
     property Process niriApplyProcess: Process {
@@ -437,6 +513,21 @@ QtObject {
                 applyCompositorConfig();
             }
         }
+    }
+
+    // Re-apply compositor config when binds.json changes (BindsPanel edits keybinds).
+    property Connections keybindsConnections: Connections {
+        target: Config.keybindsLoader
+        function onFileChanged() {
+            // Debounce: binds.json may be written in several quick chunks.
+            keybindsApplyTimer.restart();
+        }
+    }
+
+    property Timer keybindsApplyTimer: Timer {
+        interval: 250
+        repeat: false
+        onTriggered: applyCompositorConfig()
     }
 
 
