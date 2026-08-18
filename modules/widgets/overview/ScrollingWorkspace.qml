@@ -17,6 +17,7 @@ Item {
     id: root
 
     required property int workspaceId
+    property string workspaceName: ""
     required property real workspaceWidth
     required property real workspaceHeight
     required property real workspacePadding
@@ -728,6 +729,29 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
+                }
+            }
+
+            // Workspace name label (top-left)
+            Rectangle {
+                visible: root.workspaceName !== ""
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.margins: 4
+                implicitWidth: nameText.implicitWidth + 8
+                implicitHeight: nameText.implicitHeight + 4
+                color: Colors.inverseSurface
+                opacity: 0.85
+                radius: Styling.radius(-2)
+
+                Text {
+                    id: nameText
+                    anchors.centerIn: parent
+                    text: root.workspaceName
+                    font.family: Config.theme.font
+                    font.pixelSize: 10
+                    font.weight: Font.Bold
+                    color: Colors.inverseOnSurface
                 }
             }
         }

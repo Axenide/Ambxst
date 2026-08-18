@@ -15,7 +15,13 @@ Item {
 
     // Config values
     readonly property real scale: Config.overview.scale
-    readonly property int totalWorkspaces: Config.overview.rows * Config.overview.columns
+    // Number of workspaces: prefer the real list from axctl, fall back to the
+    // configured grid. niri creates exactly the workspaces it uses (plus one
+    // empty), so the config rows*columns number is wrong in practice.
+    readonly property int totalWorkspaces: {
+        const ws = AxctlService.workspaces && AxctlService.workspaces.values ? AxctlService.workspaces.values.length : 0;
+        return ws > 0 ? ws : (Config.overview.rows * Config.overview.columns);
+    }
     readonly property int visibleWorkspaces: 3  // Show 3 workspaces at a time in viewport
     readonly property real workspaceSpacing: Config.overview.workspaceSpacing
     readonly property real workspacePadding: 4
@@ -256,11 +262,18 @@ Item {
                 spacing: workspaceSpacing
 
                 Repeater {
-                    model: totalWorkspaces
+                    model: AxctlService.workspaces && AxctlService.workspaces.values ? AxctlService.workspaces.values : (function() {
+                        const arr = [];
+                        for (let i = 0; i < totalWorkspaces; i++) arr.push({ id: i + 1, name: "" });
+                        return arr;
+                    })()
                     delegate: ScrollingWorkspace {
                         id: scrollingWorkspace
+                        required property var modelData
                         required property int index
-                        workspaceId: index + 1
+                        // Use the real workspace id from axctl (niri ids may not be contiguous)
+                        workspaceId: (modelData && modelData.id !== undefined) ? modelData.id : (index + 1)
+                        workspaceName: (modelData && modelData.name !== undefined) ? String(modelData.name || "") : ""
                         workspaceWidth: scrollingOverviewRoot.workspaceWidth
                         workspaceHeight: scrollingOverviewRoot.workspaceHeight
                         workspacePadding: scrollingOverviewRoot.workspacePadding
