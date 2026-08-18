@@ -10,6 +10,10 @@ ToggleButton {
     tooltipText: "Open Window Overview"
 
     onToggle: function () {
+        // On niri use the compositor's built-in overview (real windows).
+        if (AxctlService.toggleOverview()) {
+            return;
+        }
         if (GlobalStates.overviewOpen) {
             Visibilities.setActiveModule("");
         } else {

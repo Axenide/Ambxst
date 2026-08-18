@@ -32,7 +32,10 @@ Item {
 
         onClicked: {
             if (Visibilities.currentActiveModule === "dashboard") {
-                Visibilities.setActiveModule("overview");
+                // On niri open the compositor's built-in overview.
+                if (!AxctlService.toggleOverview()) {
+                    Visibilities.setActiveModule("overview");
+                }
             } else if (Visibilities.currentActiveModule === "overview") {
                 GlobalStates.launcherCurrentTab = 0;
                 Visibilities.setActiveModule("launcher");

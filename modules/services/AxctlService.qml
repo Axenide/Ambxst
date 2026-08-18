@@ -112,6 +112,21 @@ Singleton {
         proc.running = true;
     }
 
+    // Toggle the window overview. On niri we use the compositor's built-in
+    // overview (real windows, drag-and-drop) instead of the Ambxst one, which
+    // cannot show live previews on niri (no absolute window geometry).
+    // Returns true if the compositor handled it (niri), false otherwise.
+    function toggleOverview() {
+        if (root.compositor === "niri") {
+            let proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+            proc.command = ["niri", "msg", "action", "toggle-overview"];
+            proc.onExited.connect(() => proc.destroy());
+            proc.running = true;
+            return true;
+        }
+        return false;
+    }
+
     function monitorFor(screen) {
         if (!screen) return null;
         let screenName = screen.name || screen;
