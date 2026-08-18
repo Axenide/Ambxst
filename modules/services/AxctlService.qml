@@ -120,7 +120,9 @@ Singleton {
         if (root.compositor === "niri") {
             let proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
             proc.command = ["niri", "msg", "action", "toggle-overview"];
-            proc.onExited.connect(() => proc.destroy());
+            proc.onExited.connect((code) => {
+                proc.destroy();
+            });
             proc.running = true;
             return true;
         }
