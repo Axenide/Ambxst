@@ -221,6 +221,11 @@ QtObject {
         // builder calls that don't fit the table-replace model.
         const luaExpression = "hl.config(" + luaLiteral(hlConfig) + ")";
 
+        console.log("CompositorConfig: dispatching hl.config() update —",
+                    "active=" + activeBorderLua,
+                    "inactive=" + inactiveBorderLua,
+                    "rounding=" + Config.compositorRounding);
+
         // Live dispatch through the ambxst backend so the change reaches
         // Hyprland immediately, independent of the fsnotify watcher in
         // axctl which currently misses atomic writes to axctl.toml. The
