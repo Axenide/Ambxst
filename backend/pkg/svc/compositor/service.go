@@ -182,15 +182,28 @@ func defaultTomlPath() string {
 	return filepath.Join(dir, "ambxst", "axctl.toml")
 }
 
+// atomicWrite persists the TOML by truncating and rewriting it in place
+// rather than going through a tmp-file + rename. The classic tmp+rename
+// pattern is atomic at the syscall level, but it creates a new inode and
+// (under Linux inotify) invalidates any fsnotify watch on the original
+// path — which is exactly how axctl's TOML watcher tracks changes. The
+// watcher receives IN_DELETE_SELF + IN_IGNORED on rename, then silently
+// drops every subsequent change to the file. Net effect: Hyprland's
+// generated hyprland.lua never gets refreshed, the live IPC dispatch is
+// the only thing keeping settings current, and persistence across an
+// ambxst restart is lost.
+//
+// Rewriting in place keeps the inode stable so fsnotify emits IN_MODIFY
+// and axctl's reload pipeline (TOML → regenerate hyprland.{lua,conf} →
+// hyprctl reload) keeps working. The trade-off is a brief window during
+// the write where a concurrent reader could see a partially-written
+// file; for a small TOML that just means the go-toml decoder fails and
+// axctl keeps the previous config until the next write completes.
 func atomicWrite(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return os.WriteFile(path, data, 0o644)
 }
 
 func errString(err error) string {
