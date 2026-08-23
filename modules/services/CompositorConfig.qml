@@ -233,6 +233,38 @@ QtObject {
         // shell restart and any unrelated compositor change picks them up
         // via the watcher (when that path works).
         CompositorTomlWriter.callWrite();
+
+        // Workspace transition animation. axctl hardcodes slidefade in
+        // its generated hyprland.lua (it doesn't read animation styles
+        // from the TOML yet), so the watcher's hyprctl reload above
+        // would otherwise overwrite any style we apply now. Defer the
+        // dispatch by enough wall-clock for the reload to settle, then
+        // land our eval as the final value.
+        //
+        // Mapping: bar horizontal (top/bottom) → vertical slide,
+        // bar vertical (left/right) → horizontal slide.
+        const barOrientation = getBarOrientation();
+        const workspaceAnimStyle = barOrientation === "vertical"
+            ? "slidefade 20%"
+            : "slidefadevert 20%";
+        const workspaceAnimExpr = "hl.animation({leaf = \"workspaces\", enabled = true, speed = 2.5, bezier = \"myBezier\", style = \"" + workspaceAnimStyle + "\"})";
+        workspaceAnimTimer.expression = workspaceAnimExpr;
+        workspaceAnimTimer.restart();
+    }
+
+    property Timer workspaceAnimTimer: Timer {
+        // Fires after the watcher's debounce (200ms) + hyprctl reload
+        // round-trip to push the bar-orientation-correct workspace
+        // animation on top of whatever the regenerated hyprland.lua
+        // would otherwise impose.
+        interval: 500
+        repeat: false
+        property string expression: ""
+        onTriggered: {
+            if (expression !== "") {
+                BackendService.notify("compositor.eval", { expression: expression });
+            }
+        }
     }
 
     property Connections configConnections: Connections {
