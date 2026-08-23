@@ -66,6 +66,12 @@ func New() (*Daemon, error) {
 		shutdownCh: make(chan struct{}),
 	}
 
+	// Migrate states.json before any service reads from it. Idempotent.
+	configSvc := configsvc.NewService(p)
+	if err := configSvc.MigrateStates(); err != nil {
+		log.Printf("[ambxst] states migrate: %v", err)
+	}
+
 	uiSvc := svc.NewUIService()
 	uiSvc.Register(d.srv)
 
@@ -93,7 +99,6 @@ func New() (*Daemon, error) {
 	brightSvc := brightness.NewService()
 	brightSvc.Register(d.srv)
 
-	configSvc := configsvc.NewService(d.paths)
 	configSvc.Register(d.srv)
 
 	compSvc := compositor.NewService(d.paths)

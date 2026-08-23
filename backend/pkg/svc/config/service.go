@@ -38,6 +38,62 @@ func (s *Service) Register(srv *ipc.Server) {
 	})
 }
 
+// MigrateStates normalizes states.json: renames legacy keys and prunes
+// obsolete ones. Idempotent: safe to call on every boot.
+//
+//	nightLight (legacy bool) → nightlight.active (only if nightlight missing)
+//	animStyleSpeeds         → removed (no longer read)
+func (s *Service) MigrateStates() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	path := s.paths.StatesFile()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	doc := map[string]any{}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return err
+	}
+	changed := false
+
+	// nightLight → nightlight (only when new key is missing).
+	if _, hasNew := doc["nightlight"]; !hasNew {
+		if v, ok := doc["nightLight"].(bool); ok {
+			doc["nightlight"] = map[string]any{"active": v, "temp": 4500}
+			changed = true
+		}
+	}
+	if _, ok := doc["nightLight"]; ok {
+		delete(doc, "nightLight")
+		changed = true
+	}
+
+	// Prune keys nobody reads anymore.
+	for _, k := range []string{"animStyleSpeeds"} {
+		if _, ok := doc[k]; ok {
+			delete(doc, k)
+			changed = true
+		}
+	}
+
+	if !changed {
+		return nil
+	}
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return err
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return err
+	}
+	return os.Rename(tmp, path)
+}
+
 // domains lists every config domain Config.qml manages.
 var domains = []string{
 	"theme", "bar", "workspaces", "overview", "notch", "compositor",
