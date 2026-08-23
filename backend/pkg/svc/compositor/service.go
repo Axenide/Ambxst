@@ -52,6 +52,7 @@ func (s *Service) Register(srv *ipc.Server) {
 	if s.mgr != nil {
 		methods["state"] = s.state
 		methods["dispatch"] = s.dispatch
+		methods["eval"] = s.eval
 	}
 	srv.Register(&ipc.Service{
 		Name:      "compositor",
@@ -115,6 +116,28 @@ func (s *Service) dispatch(params json.RawMessage) (any, error) {
 		return nil, err
 	}
 	out, code, err := s.mgr.Dispatch(p.Args)
+	return map[string]any{
+		"stdout":    out,
+		"exit_code": code,
+		"error":     errString(err),
+	}, nil
+}
+
+// eval runs a Hyprland Lua expression through axctl's raw-batch wrapper
+// (which itself shells out to `hyprctl eval <expr>`). The QML side sends
+// `hl.config({...})` updates here so live changes apply immediately
+// without waiting on the TOML watcher.
+func (s *Service) eval(params json.RawMessage) (any, error) {
+	if s.mgr == nil {
+		return nil, fmt.Errorf("compositor: process manager not initialized")
+	}
+	var p struct {
+		Expression string `json:"expression"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, fmt.Errorf("compositor.eval: %w", err)
+	}
+	out, code, err := s.mgr.Eval(p.Expression)
 	return map[string]any{
 		"stdout":    out,
 		"exit_code": code,

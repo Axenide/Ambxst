@@ -267,6 +267,21 @@ func (m *Manager) Dispatch(args []string) (string, int, error) {
 	return strings.TrimSpace(string(out)), exit, nil
 }
 
+// Eval runs a Hyprland Lua expression via axctl's raw-batch wrapper around
+// `hyprctl eval <expr>`. Used by the QML shell to push live config changes
+// (border colors, rounding, opacities, etc.) without going through the
+// TOML regen + watcher + reload cycle, which Hyprland 0.56's Lua config
+// does not re-source on a plain `hyprctl reload` for in-progress changes
+// and which the fsnotify watcher in axctl currently misses on atomic
+// writes to ~/.local/share/ambxst/axctl.toml.
+func (m *Manager) Eval(expression string) (string, int, error) {
+	expression = strings.TrimSpace(expression)
+	if expression == "" {
+		return "", 0, fmt.Errorf("eval: empty expression")
+	}
+	return m.Dispatch([]string{"config", "raw-batch", "eval " + expression})
+}
+
 // Close kills the axctl process group, then waits for the read goroutine to
 // drain. Safe to call multiple times.
 func (m *Manager) Close() {
