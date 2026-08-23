@@ -70,6 +70,53 @@ QtObject {
         }
     }
 
+    // Emits a Lua literal for a JS value. Used to build the hl.config({...})
+    // table that we dispatch to Hyprland via the compositor.eval JSON-RPC
+    // method. Strings get JSON-style quoting (then escaped to be safe inside
+    // the Lua source we build), numbers/bools map to their Lua equivalents,
+    // arrays become {a, b, c}, plain objects become {key = value, ...}.
+    // null/undefined become nil. Keys with hyphens (none today) are rejected.
+    function luaLiteral(value) {
+        if (value === null || value === undefined) return "nil";
+        const t = typeof value;
+        if (t === "string") {
+            return JSON.stringify(value);
+        }
+        if (t === "number") {
+            if (!isFinite(value)) return "nil";
+            return String(value);
+        }
+        if (t === "boolean") return value ? "true" : "false";
+        if (Array.isArray(value)) {
+            const items = value.map(luaLiteral);
+            return "{" + items.join(", ") + "}";
+        }
+        if (t === "object") {
+            const parts = [];
+            for (const key in value) {
+                if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+                if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+                parts.push(key + " = " + luaLiteral(value[key]));
+            }
+            return "{" + parts.join(", ") + "}";
+        }
+        return "nil";
+    }
+
+    // Builds the border color value in Hyprland Lua syntax. Single colors
+    // become a quoted string; multi-color gradients become a table with
+    // colors/angle fields, matching the example in hyprland's repo:
+    //   active_border = { colors = { "...", "..." }, angle = 45 }
+    function formatBorderColorForLua(colorNames, angle, fallbackName) {
+        if (colorNames && colorNames.length > 1) {
+            const colors = colorNames.map(n => formatColorForCompositor(getColorValue(n)));
+            return luaLiteral({ colors: colors, angle: angle });
+        }
+        const singleName = (colorNames && colorNames.length === 1) ? colorNames[0] : fallbackName;
+        const color = getColorValue(singleName);
+        return JSON.stringify(formatColorForCompositor(color));
+    }
+
     function applyCompositorConfig() {
         readAnimationsProcess.running = true;
         applyTimer.restart();
@@ -88,127 +135,96 @@ QtObject {
             return;
         }
 
-        // Determine active colors.
-        let activeColorFormatted = "";
-        // Force compositorBorderColor if syncBorderColor is enabled, otherwise use configured list (supports gradients).
-        const borderColors = Config.compositor.syncBorderColor ? null : Config.compositor.activeBorderColor;
+        const c = Config.compositor;
 
-        if (borderColors && borderColors.length > 1) {
-            // Multi-color gradient.
-            const formattedColors = borderColors.map(colorName => {
-                const color = getColorValue(colorName);
-                return formatColorForCompositor(color);
-            }).join(" ");
-            activeColorFormatted = `${formattedColors} ${Config.compositor.borderAngle}deg`;
-        } else {
-            // Single color: if sync enabled or empty, use compositorBorderColor; otherwise use first element.
-            const singleColorName = (borderColors && borderColors.length === 1) ? borderColors[0] : Config.compositorBorderColor;
-            const activeColor = getColorValue(singleColorName);
-            activeColorFormatted = formatColorForCompositor(activeColor);
-        }
+        // Determine border colors in Lua-ready form. Sync forces
+        // compositorBorderColor; otherwise we honour the configured list
+        // (supports gradients via the table form).
+        const borderColors = c.syncBorderColor ? null : c.activeBorderColor;
+        const activeBorderLua = formatBorderColorForLua(borderColors, c.borderAngle, Config.compositorBorderColor);
 
-        // Determine inactive colors.
-        let inactiveColorFormatted = "";
-        const inactiveBorderColors = Config.compositor.inactiveBorderColor;
-
-        if (inactiveBorderColors && inactiveBorderColors.length > 1) {
-            // Multi-color gradient.
-            const formattedColors = inactiveBorderColors.map(colorName => {
-                const color = getColorValue(colorName);
-                const colorWithFullOpacity = Qt.rgba(color.r, color.g, color.b, 1.0);
-                return formatColorForCompositor(colorWithFullOpacity);
-            }).join(" ");
-            inactiveColorFormatted = `${formattedColors} ${Config.compositor.inactiveBorderAngle}deg`;
-        } else {
-            // Single color.
-            const singleColorName = (inactiveBorderColors && inactiveBorderColors.length === 1) ? inactiveBorderColors[0] : "surface";
-            const inactiveColor = getColorValue(singleColorName);
-            const inactiveColorWithFullOpacity = Qt.rgba(inactiveColor.r, inactiveColor.g, inactiveColor.b, 1.0);
-            inactiveColorFormatted = formatColorForCompositor(inactiveColorWithFullOpacity);
-        }
+        const inactiveColors = c.inactiveBorderColor;
+        const inactiveBorderLua = formatBorderColorForLua(inactiveColors, c.inactiveBorderAngle, "surface");
 
         // Shadow colors.
-        const shadowColor = getColorValue(Config.compositorShadowColor);
-        const shadowColorInactive = getColorValue(Config.compositor.shadowColorInactive);
-        const shadowColorWithOpacity = Qt.rgba(shadowColor.r, shadowColor.g, shadowColor.b, shadowColor.a * Config.compositorShadowOpacity);
-        const shadowColorInactiveWithOpacity = Qt.rgba(shadowColorInactive.r, shadowColorInactive.g, shadowColorInactive.b, shadowColorInactive.a * Config.compositorShadowOpacity);
-        const shadowColorFormatted = formatColorForCompositor(shadowColorWithOpacity);
-        const shadowColorInactiveFormatted = formatColorForCompositor(shadowColorInactiveWithOpacity);
+        const shadowBase = getColorValue(Config.compositorShadowColor);
+        const shadowInactive = getColorValue(c.shadowColorInactive);
+        const shadowOpacity = c.shadowOpacity !== undefined ? c.shadowOpacity : Config.compositorShadowOpacity;
+        const shadowColorRgba = formatColorForCompositor(
+            Qt.rgba(shadowBase.r, shadowBase.g, shadowBase.b, shadowBase.a * shadowOpacity)
+        );
+        const shadowColorInactiveRgba = formatColorForCompositor(
+            Qt.rgba(shadowInactive.r, shadowInactive.g, shadowInactive.b, shadowInactive.a * shadowOpacity)
+        );
 
-        const barOrientation = getBarOrientation();
-        let speed = 2.5;
-        let bezier = "default";
-        
-        if (currentAnimationConfig && currentAnimationConfig[0]) {
-            const workspaceAnim = currentAnimationConfig[0].find(anim => anim.name === "workspaces");
-            if (workspaceAnim) {
-                speed = workspaceAnim.speed || speed;
-                bezier = workspaceAnim.bezier || bezier;
-            }
-        }
-
-        const workspacesAnimation = barOrientation === "vertical" ? `slidefadevert 20%` : `slidefade 20%`;
-        const workspaceCommand = `keyword animation workspaces,1,${speed},${bezier},${workspacesAnimation}`;
-
-        // Calculate ignorealpha.
-        let ignoreAlphaValue = 0.0;
-
-        if (Config.compositor.blurExplicitIgnoreAlpha) {
-            ignoreAlphaValue = Config.compositor.blurIgnoreAlphaValue.toFixed(2);
-        } else {
-            // Dynamic ignorealpha based on StyledRect opacity.
-            // Use min(barbg, bg) opacity if barbg > 0, else use bg.
-            const barBgOpacity = (Config.theme.srBarBg && Config.theme.srBarBg.opacity !== undefined) ? Config.theme.srBarBg.opacity : 0;
-            const bgOpacity = (Config.theme.srBg && Config.theme.srBg.opacity !== undefined) ? Config.theme.srBg.opacity : 1.0;
-            ignoreAlphaValue = (barBgOpacity > 0 ? Math.min(barBgOpacity, bgOpacity) : bgOpacity).toFixed(2);
-            console.log(`CompositorConfig: Auto ignorealpha calculated: ${ignoreAlphaValue} (bg: ${bgOpacity}, bar: ${barBgOpacity})`);
-        }
-
-        let batchCommand = "";
-        batchCommand += `keyword general:border_size ${Config.compositorBorderSize}`;
-        batchCommand += ` ; keyword general:gaps_in ${Config.compositor.gapsIn}`;
-        batchCommand += ` ; keyword general:gaps_out ${Config.compositor.gapsOut}`;
-        batchCommand += ` ; keyword general:col.active_border ${activeColorFormatted}`;
-        batchCommand += ` ; keyword general:col.inactive_border ${inactiveColorFormatted}`;
+        const hlGeneral = {
+            gaps_in: c.gapsIn,
+            gaps_out: c.gapsOut,
+            border_size: Config.compositorBorderSize,
+            col: {
+                active_border: activeBorderLua,
+                inactive_border: inactiveBorderLua,
+            },
+        };
         if (GlobalStates.compositorLayout) {
-            batchCommand += ` ; keyword general:layout ${GlobalStates.compositorLayout}`;
+            hlGeneral.layout = GlobalStates.compositorLayout;
         }
-        batchCommand += ` ; keyword decoration:rounding ${Config.compositorRounding}`;
-        batchCommand += ` ; keyword decoration:shadow:enabled ${Config.compositor.shadowEnabled}`;
-        batchCommand += ` ; keyword decoration:shadow:range ${Config.compositor.shadowRange}`;
-        batchCommand += ` ; keyword decoration:shadow:render_power ${Config.compositor.shadowRenderPower}`;
-        batchCommand += ` ; keyword decoration:shadow:sharp ${Config.compositor.shadowSharp}`;
-        batchCommand += ` ; keyword decoration:shadow:ignore_window ${Config.compositor.shadowIgnoreWindow}`;
-        batchCommand += ` ; keyword decoration:shadow:color ${shadowColorFormatted}`;
-        batchCommand += ` ; keyword decoration:shadow:color_inactive ${shadowColorInactiveFormatted}`;
-        batchCommand += ` ; keyword decoration:shadow:offset ${Config.compositor.shadowOffset}`;
-        batchCommand += ` ; keyword decoration:shadow:scale ${Config.compositor.shadowScale}`;
-        batchCommand += ` ; keyword decoration:blur:enabled ${Config.compositor.blurEnabled}`;
-        batchCommand += ` ; keyword decoration:blur:size ${Config.compositor.blurSize}`;
-        batchCommand += ` ; keyword decoration:blur:passes ${Config.compositor.blurPasses}`;
-        batchCommand += ` ; keyword decoration:blur:ignore_opacity ${Config.compositor.blurIgnoreOpacity}`;
-        batchCommand += ` ; keyword decoration:blur:new_optimizations ${Config.compositor.blurNewOptimizations}`;
-        batchCommand += ` ; keyword decoration:blur:xray ${Config.compositor.blurXray}`;
-        batchCommand += ` ; keyword decoration:blur:noise ${Config.compositor.blurNoise}`;
-        batchCommand += ` ; keyword decoration:blur:contrast ${Config.compositor.blurContrast}`;
-        batchCommand += ` ; keyword decoration:blur:brightness ${Config.compositor.blurBrightness}`;
-        batchCommand += ` ; keyword decoration:blur:vibrancy ${Config.compositor.blurVibrancy}`;
-        batchCommand += ` ; keyword decoration:blur:vibrancy_darkness ${Config.compositor.blurVibrancyDarkness}`;
-        batchCommand += ` ; keyword decoration:blur:special ${Config.compositor.blurSpecial}`;
-        batchCommand += ` ; keyword decoration:blur:popups ${Config.compositor.blurPopups}`;
-        batchCommand += ` ; keyword decoration:blur:popups_ignorealpha ${Config.compositor.blurPopupsIgnorealpha}`;
-        batchCommand += ` ; keyword decoration:blur:input_methods ${Config.compositor.blurInputMethods}`;
-        batchCommand += ` ; keyword decoration:blur:input_methods_ignorealpha ${Config.compositor.blurInputMethodsIgnorealpha}`;
-        batchCommand += ` ; keyword bezier myBezier,0.4,0.0,0.2,1.0`;
-        batchCommand += ` ; keyword animation windows,1,2.5,myBezier,popin 80%`;
-        batchCommand += ` ; keyword animation border,1,2.5,myBezier`;
-        batchCommand += ` ; keyword animation fade,1,2.5,myBezier`;
-        batchCommand += ` ; ${workspaceCommand}`;
-        // Note: workspaceCommand is dynamically calculated based on current animations and orientation.
 
-        console.log(`CompositorConfig: Applying ignorealpha: ${ignoreAlphaValue}, explicit: ${Config.compositor.blurExplicitIgnoreAlpha}`);
-        batchCommand += ` ; keyword layerrule noanim,quickshell ; keyword layerrule blur,quickshell ; keyword layerrule blurpopups,quickshell ; keyword layerrule ignorealpha ${ignoreAlphaValue},quickshell`;
-        console.log("CompositorConfig: Triggering TOML regen via CompositorTomlWriter");
+        const hlConfig = {
+            general: hlGeneral,
+            decoration: {
+                rounding: Config.compositorRounding,
+                active_opacity: c.activeOpacity !== undefined ? c.activeOpacity : 1.0,
+                inactive_opacity: c.inactiveOpacity !== undefined ? c.inactiveOpacity : 1.0,
+                shadow: {
+                    enabled: c.shadowEnabled,
+                    range: c.shadowRange,
+                    render_power: c.shadowRenderPower,
+                    sharp: c.shadowSharp,
+                    ignore_window: c.shadowIgnoreWindow,
+                    color: shadowColorRgba,
+                    color_inactive: shadowColorInactiveRgba,
+                    offset: c.shadowOffset || "0 0",
+                    scale: c.shadowScale !== undefined ? c.shadowScale : 1.0,
+                },
+                blur: {
+                    enabled: c.blurEnabled,
+                    size: c.blurSize,
+                    passes: c.blurPasses,
+                    ignore_opacity: c.blurIgnoreOpacity,
+                    new_optimizations: c.blurNewOptimizations,
+                    xray: c.blurXray,
+                    noise: c.blurNoise,
+                    contrast: c.blurContrast,
+                    brightness: c.blurBrightness,
+                    vibrancy: c.blurVibrancy,
+                    vibrancy_darkness: c.blurVibrancyDarkness,
+                    special: c.blurSpecial,
+                    popups: c.blurPopups,
+                    popups_ignorealpha: c.blurPopupsIgnorealpha,
+                    input_methods: c.blurInputMethods,
+                    input_methods_ignorealpha: c.blurInputMethodsIgnorealpha,
+                },
+            },
+        };
+
+        // Hyprland's hl.config() replaces the given top-level tables, so we
+        // only include sections that have meaningful changes. To keep behaviour
+        // simple and predictable we always send general + decoration; layer
+        // rules + animations + animations are persisted via the TOML path
+        // below, since hl.layer_rule / hl.animation are handle-returning
+        // builder calls that don't fit the table-replace model.
+        const luaExpression = "hl.config(" + luaLiteral(hlConfig) + ")";
+
+        // Live dispatch through the ambxst backend so the change reaches
+        // Hyprland immediately, independent of the fsnotify watcher in
+        // axctl which currently misses atomic writes to axctl.toml. The
+        // backend shells out via `axctl config raw-batch "eval ..."`.
+        BackendService.notify("compositor.eval", { expression: luaExpression });
+
+        // Persist by regenerating the TOML so the new values survive a
+        // shell restart and any unrelated compositor change picks them up
+        // via the watcher (when that path works).
         CompositorTomlWriter.callWrite();
     }
 
