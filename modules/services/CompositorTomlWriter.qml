@@ -178,13 +178,14 @@ Singleton {
                 animations: {
                     enabled: true,
                     // axctl threads this through to the workspace
-                    // animation style in hyprland.{lua,conf}. Vertical
-                    // bar → horizontal slide, horizontal bar →
-                    // vertical slide, so the workspace transition
-                    // always sweeps perpendicular to the bar.
+                    // animation style in hyprland.{lua,conf}. The slide
+                    // runs parallel to the bar so workspaces swap in the
+                    // same axis the bar occupies:
+                    //   bar at top/bottom (horizontal) → slidefade
+                    //   bar at left/right (vertical)    → slidefadevert
                     workspaceStyle: (Config.bar && (Config.bar.position === "left" || Config.bar.position === "right"))
-                        ? "slidefade 20%"
-                        : "slidefadevert 20%",
+                        ? "slidefadevert 20%"
+                        : "slidefade 20%",
                 },
             },
             theme: {
