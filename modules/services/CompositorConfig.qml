@@ -181,7 +181,12 @@ QtObject {
                     range: c.shadowRange,
                     render_power: c.shadowRenderPower,
                     sharp: c.shadowSharp,
-                    ignore_window: c.shadowIgnoreWindow,
+                    // shadow:ignore_window was removed in Hyprland 0.56.
+                    // Keep reading the value from Config so the persisted
+                    // setting survives in case it returns, but do not
+                    // dispatch it: hl.config() rejects unknown keys and
+                    // aborts the rest of the table in some Hyprland
+                    // versions.
                     color: shadowColorRgba,
                     color_inactive: shadowColorInactiveRgba,
                     offset: c.shadowOffset || "0 0",
