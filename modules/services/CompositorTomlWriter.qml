@@ -90,29 +90,36 @@ Singleton {
 
     function gatherInput() {
         // Resolved border color/opacity, matching the QML aliases defined
-        // in Config.qml:3476-3480.
+        // in Config.qml:3476-3480. These aliases already collapse the
+        // sync-* toggles onto the appropriate source (theme vs. compositor
+        // vs. active list), so reading them here keeps the persisted
+        // TOML in lock-step with the live dispatch in CompositorConfig.qml.
+        // Using the raw c.rounding / c.borderSize / c.shadowColor would
+        // skip the sync logic and let the watcher-driven hyprland.lua
+        // regen diverge from the live hl.config() value — e.g. changing
+        // a border color would briefly reset the corners to the raw
+        // compositor.rounding before the dispatch re-applied the synced
+        // theme value.
         const c = Config.compositor;
-        const borderSize = c.borderSize;
-        const rounding = intOr(c.rounding, 16);
-        // Resolve the active border color. If syncBorderColor is on, the
-        // alias Config.compositorBorderColor already points at the synced
-        // theme value; if not, use the first entry of activeBorderColor.
-        // In both cases the value is a NAME — convert to rgba here so
-        // the TOML and downstream Lua carry a value Hyprland understands.
+        const borderSize = Config.compositorBorderSize;
+        const rounding = Config.compositorRounding;
+        // Config.compositorBorderColor already resolves the sync case
+        // (theme.srBg.border[0]) vs the unsynced case (active list[0]),
+        // and returns a color NAME we can feed through resolveColorName.
         const activeRgba = resolveColorName(
-            boolOr(c.syncBorderColor, false) ? "primary" : (c.activeBorderColor && c.activeBorderColor[0]) || "primary",
+            Config.compositorBorderColor,
             "rgb(87abf8)"
         );
         const inactiveRgba = resolveColorName(
             c.inactiveBorderColor && c.inactiveBorderColor[0] || "surface",
             "rgb(272937)"
         );
-        const shadowColor = resolveColorName(c.shadowColor || "shadow", "rgba(00000080)");
+        const shadowColor = resolveColorName(Config.compositorShadowColor, "rgba(00000080)");
         const shadowColorInactive = resolveColorName(c.shadowColorInactive || "shadow", "rgba(00000080)");
 
         // Debug breadcrumb so we can see what the QML is actually
-        // resolving at runtime without needing a full Quickshell
-        // debug session.
+        // resolving at runtime without needing a full Quickshell debug
+        // session.
         console.log("CompositorTomlWriter:gatherInput", JSON.stringify({
             activeBorder: c.activeBorderColor,
             activeRgba: activeRgba,
@@ -120,6 +127,8 @@ Singleton {
             inactiveRgba: inactiveRgba,
             shadowColor: c.shadowColor,
             shadowRgba: shadowColor,
+            borderSize: borderSize,
+            rounding: rounding,
         }));
 
         return {
