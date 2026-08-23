@@ -221,15 +221,12 @@ QtObject {
         // builder calls that don't fit the table-replace model.
         const luaExpression = "hl.config(" + luaLiteral(hlConfig) + ")";
 
-        console.log("CompositorConfig: dispatching hl.config() update —",
-                    "active=" + activeBorderLua,
-                    "inactive=" + inactiveBorderLua,
-                    "rounding=" + Config.compositorRounding);
-
         // Live dispatch through the ambxst backend so the change reaches
         // Hyprland immediately, independent of the fsnotify watcher in
-        // axctl which currently misses atomic writes to axctl.toml. The
-        // backend shells out via `axctl config raw-batch "eval ..."`.
+        // axctl. The backend shells out via `axctl config raw-batch
+        // "eval hl.config({...})"`; the TOML write below is the
+        // persistence leg of the round-trip — the watcher regenerates
+        // hyprland.{lua,conf} once it detects the new TOML contents.
         BackendService.notify("compositor.eval", { expression: luaExpression });
 
         // Persist by regenerating the TOML so the new values survive a
