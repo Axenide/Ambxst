@@ -63,7 +63,8 @@ type BlurConfig struct {
 }
 
 type Animations struct {
-	Enabled bool `json:"enabled"`
+	Enabled        bool   `json:"enabled"`
+	WorkspaceStyle string `json:"workspaceStyle"`
 }
 
 type ThemeConfig struct {

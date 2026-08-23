@@ -109,6 +109,9 @@ func writeAppearance(b *strings.Builder, in Input) {
 	// animations
 	b.WriteString("\n[appearance.animations]\n")
 	fmt.Fprintf(b, "enabled = %t\n", c.Animations.Enabled)
+	if c.Animations.WorkspaceStyle != "" {
+		fmt.Fprintf(b, "workspace_style = %q\n", c.Animations.WorkspaceStyle)
+	}
 }
 
 // formatBorderColors reproduces the QML formatBorderColors formatter:
