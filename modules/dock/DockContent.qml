@@ -519,6 +519,10 @@ Item {
                         }
 
                         onClicked: {
+                            // On niri use the compositor's built-in overview.
+                            if (AxctlService.toggleOverview()) {
+                                return;
+                            }
                             let visibilities = Visibilities.getForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;
@@ -653,6 +657,10 @@ Item {
                         }
 
                         onClicked: {
+                            // On niri use the compositor's built-in overview.
+                            if (AxctlService.toggleOverview()) {
+                                return;
+                            }
                             let visibilities = Visibilities.getForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;

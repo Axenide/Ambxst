@@ -17,6 +17,7 @@ Item {
     id: root
 
     required property int workspaceId
+    property string workspaceName: ""
     required property real workspaceWidth
     required property real workspaceHeight
     required property real workspacePadding
@@ -277,6 +278,7 @@ Item {
                 delegate: Item {
                     id: windowDelegate
                     required property var modelData
+                    required property int index
 
                     readonly property var windowData: modelData
                     readonly property var toplevel: {
@@ -288,6 +290,22 @@ Item {
                         return candidates.find(t => t.title === (windowData.title || "")) || candidates[0];
                     }
 
+                    // niri does not report absolute window positions (all at=[0,0]),
+                    // so windows would stack on top of each other. Detect this and
+                    // lay them out in a cascade instead.
+                    readonly property bool hasRealPosition: {
+                        const x = (windowData && windowData.at && windowData.at[0] !== undefined ? windowData.at[0] : 0) || 0;
+                        const y = (windowData && windowData.at && windowData.at[1] !== undefined ? windowData.at[1] : 0) || 0;
+                        return x !== 0 || y !== 0;
+                    }
+                    readonly property bool useCascade: AxctlService.compositor === "niri" || !hasRealPosition
+                    readonly property real cascadeOffset: 24 * scale_
+
+                    // niri cannot screencopy a window that sits under the
+                    // fullscreen overview overlay, so live preview is unsupported.
+                    // Fall back to the icon card in that case.
+                    readonly property bool canPreview: AxctlService.compositor !== "niri"
+
                     // Override position tracking for immediate visual update
                     property real overrideBaseX: -1
                     property real overrideBaseY: -1
@@ -297,6 +315,8 @@ Item {
                     readonly property real baseX: {
                         if (useOverridePosition && overrideBaseX >= 0)
                             return overrideBaseX;
+                        if (useCascade)
+                            return root.viewportOffset + root.horizontalScrollOffset + index * cascadeOffset;
                         let base = ((windowData && windowData.at && windowData.at[0] !== undefined ? windowData.at[0] : 0) || 0) - ((monitorData && monitorData.x !== undefined ? monitorData.x : 0) || 0);
                         if (barPosition === "left")
                             base -= barReserved;
@@ -305,6 +325,8 @@ Item {
                     readonly property real baseY: {
                         if (useOverridePosition && overrideBaseY >= 0)
                             return overrideBaseY;
+                        if (useCascade)
+                            return index * cascadeOffset;
                         let base = ((windowData && windowData.at && windowData.at[1] !== undefined ? windowData.at[1] : 0) || 0) - ((monitorData && monitorData.y !== undefined ? monitorData.y : 0) || 0);
                         if (barPosition === "top")
                             base -= barReserved;
@@ -379,9 +401,9 @@ Item {
                         ScreencopyView {
                             id: windowPreview
                             anchors.fill: parent
-                            captureSource: Config.performance.windowPreview && GlobalStates.overviewOpen ? windowDelegate.toplevel : null
+                            captureSource: Config.performance.windowPreview && GlobalStates.overviewOpen && windowDelegate.canPreview ? windowDelegate.toplevel : null
                             live: GlobalStates.overviewOpen
-                            visible: Config.performance.windowPreview
+                            visible: Config.performance.windowPreview && windowDelegate.canPreview
                         }
                     }
 
@@ -391,9 +413,13 @@ Item {
                         anchors.fill: parent
                         radius: windowDelegate.calculatedRadius
                         color: windowDelegate.dragging ? Colors.surfaceBright : windowDelegate.hovered ? Colors.surface : Colors.background
+                        // On niri there is no live preview, so keep the card
+                        // translucent to let the wallpaper show through instead
+                        // of a solid black block.
+                        opacity: windowDelegate.canPreview ? 1.0 : 0.55
                         border.color: windowDelegate.isSelected ? Colors.tertiary : windowDelegate.isMatched ? Styling.srItem("overprimary") : Styling.srItem("overprimary")
                         border.width: windowDelegate.isSelected ? 3 : windowDelegate.isMatched ? 2 : (windowDelegate.hovered ? 2 : 0)
-                        visible: !Config.performance.windowPreview
+                        visible: !(Config.performance.windowPreview && windowDelegate.canPreview)
 
                         Behavior on color {
                             enabled: (Config.animDuration !== undefined ? Config.animDuration : 0) > 0
@@ -414,7 +440,7 @@ Item {
                         source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
                         sourceSize: Qt.size(iconSize, iconSize)
                         asynchronous: true
-                        visible: !Config.performance.windowPreview
+                        visible: !Config.performance.windowPreview || !windowDelegate.canPreview
                         z: 10
                     }
 
@@ -728,6 +754,29 @@ Item {
                             horizontalAlignment: Text.AlignHCenter
                         }
                     }
+                }
+            }
+
+            // Workspace name label (top-left)
+            Rectangle {
+                visible: root.workspaceName !== ""
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.margins: 4
+                implicitWidth: nameText.implicitWidth + 8
+                implicitHeight: nameText.implicitHeight + 4
+                color: Colors.inverseSurface
+                opacity: 0.85
+                radius: Styling.radius(-2)
+
+                Text {
+                    id: nameText
+                    anchors.centerIn: parent
+                    text: root.workspaceName
+                    font.family: Config.theme.font
+                    font.pixelSize: 10
+                    font.weight: Font.Bold
+                    color: Colors.inverseOnSurface
                 }
             }
         }

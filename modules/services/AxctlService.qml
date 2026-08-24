@@ -27,8 +27,43 @@ Singleton {
 
     signal rawEvent(var event)
 
+    // Detected compositor: "hyprland" | "niri" | "mango" | "unknown"
+    property string compositor: "unknown"
+
     // Config path for axctl daemon
     property string configPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst/axctl.toml"
+
+    // Detect the active compositor by checking for its IPC socket.
+    function detectCompositor() {
+        const niriSock = Quickshell.env("NIRI_SOCKET") || "";
+        if (niriSock) {
+            root.compositor = "niri";
+            return;
+        }
+        // Fallback: glob /run/user/<uid>/niri*.sock
+        const uid = Quickshell.env("UID") || "1000";
+        const glob = "/run/user/" + uid + "/niri*.sock";
+        detectProcess.command = ["sh", "-c", "ls " + glob + " 2>/dev/null | head -1"];
+        detectProcess.running = true;
+    }
+
+    property Process detectProcess: Process {
+        running: false
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const path = text.trim();
+                if (path) {
+                    root.compositor = "niri";
+                } else {
+                    root.compositor = "hyprland";
+                }
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        root.detectCompositor();
+    }
 
     function dispatch(command) {
         if (!command) return;
@@ -59,6 +94,10 @@ Singleton {
         } else if (action === "focusmonitor") {
             cmdArgs = ["monitor", "focus", rawArgs];
         } else if (action === "togglespecialworkspace") {
+            // niri has no special workspaces; no-op to avoid an axctl error.
+            if (root.compositor === "niri") {
+                return;
+            }
             cmdArgs = ["workspace", "toggle-special"];
             if (rawArgs) cmdArgs.push(rawArgs);
         } else {
@@ -71,6 +110,23 @@ Singleton {
         proc.command = finalCommand;
         proc.onExited.connect(() => proc.destroy());
         proc.running = true;
+    }
+
+    // Toggle the window overview. On niri we use the compositor's built-in
+    // overview (real windows, drag-and-drop) instead of the Ambxst one, which
+    // cannot show live previews on niri (no absolute window geometry).
+    // Returns true if the compositor handled it (niri), false otherwise.
+    function toggleOverview() {
+        if (root.compositor === "niri") {
+            let proc = Qt.createQmlObject('import Quickshell.Io; Process {}', root);
+            proc.command = ["niri", "msg", "action", "toggle-overview"];
+            proc.onExited.connect((code) => {
+                proc.destroy();
+            });
+            proc.running = true;
+            return true;
+        }
+        return false;
     }
 
     function monitorFor(screen) {

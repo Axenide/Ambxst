@@ -82,10 +82,14 @@ Singleton {
         }
     }
 
-    function setCompositorLayout(layout) {
-        if (availableLayouts.includes(layout)) {
-            compositorLayout = layout;
-            StateService.set("compositorLayout", layout);
+    // niri has a single scrollable-tiling layout; skip hyprctl and mark ready.
+    Connections {
+        target: AxctlService
+        function onCompositorChanged() {
+            if (AxctlService.compositor === "niri") {
+                root.compositorLayout = "scrolling";
+                root.compositorLayoutReady = true;
+            }
         }
     }
 
@@ -95,13 +99,26 @@ Singleton {
         setCompositorLayout(availableLayouts[nextIndex]);
     }
 
+    function setCompositorLayout(layout) {
+        if (availableLayouts.includes(layout)) {
+            compositorLayout = layout;
+            StateService.set("compositorLayout", layout);
+        }
+    }
+
 
     // Ensure LockscreenService singleton is loaded
     Component.onCompleted: {
         // Reference the singleton to ensure it loads
         LockscreenService.toString();
-        // Fetch the active layout from the compositor
-        getLayoutProcess.running = true;
+        // If niri is already detected, set layout immediately (skip hyprctl).
+        if (AxctlService.compositor === "niri") {
+            root.compositorLayout = "scrolling";
+            root.compositorLayoutReady = true;
+        } else {
+            // Fetch the active layout from the compositor
+            getLayoutProcess.running = true;
+        }
     }
 
     // Persistent launcher state across monitors
