@@ -255,13 +255,17 @@ ShellRoot {
         source: "modules/widgets/config/SettingsWindow.qml"
     }
 
-    // On-screen display (lazy: instantiated only when OSD visibility is requested)
+    // On-screen display — always live so its Audio/Brightness Connections
+    // can flip GlobalStates.osdVisible on volume/brightness events. Gating
+    // the loader on osdVisible would create a chicken-and-egg loop:
+    // the OSD is the only thing that sets osdVisible true, but it has
+    // to be loaded before its signal handlers can run.
     Variants {
         model: Quickshell.screens
 
         Loader {
             id: osdLoader
-            active: SuspendManager.wakeReady && GlobalStates.osdVisible
+            active: SuspendManager.wakeReady
             required property ShellScreen modelData
             sourceComponent: OSD {
                 targetScreen: osdLoader.modelData
