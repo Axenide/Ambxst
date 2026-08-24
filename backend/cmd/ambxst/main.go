@@ -92,6 +92,10 @@ func main() {
 		os.Exit(runChatList(args[1:]))
 	case "writeshader":
 		os.Exit(runWriteShader(args[1:]))
+	case "wallpaper":
+		os.Exit(runWallpaper(args[1:]))
+	case "preset":
+		os.Exit(runPreset(args[1:]))
 	default:
 		fmt.Printf("Error: Unknown command '%s'\n", args[0])
 		showHelp()
@@ -272,31 +276,8 @@ func killPIDFile() {
 }
 
 func shellDir() string {
-	if dir := os.Getenv("AMBXST_SHELL"); dir != "" {
+	if dir := paths.FindShellSource(); dir != "" {
 		return dir
-	}
-	if exe, err := os.Executable(); err == nil {
-		parent := filepath.Dir(exe)
-		if fileExists(filepath.Join(parent, "shell.qml")) {
-			return parent
-		}
-		if filepath.Base(parent) == "backend" {
-			return filepath.Dir(parent)
-		}
-		if filepath.Base(parent) == "bin" && filepath.Base(filepath.Dir(parent)) == "backend" {
-			return filepath.Dir(filepath.Dir(parent))
-		}
-	}
-	if p := paths.New().ShellPathFile(); p != "" {
-		if data, err := os.ReadFile(p); err == nil {
-			dir := strings.TrimSpace(string(data))
-			if fileExists(filepath.Join(dir, "shell.qml")) {
-				return dir
-			}
-		}
-	}
-	if cwd, err := os.Getwd(); err == nil && fileExists(filepath.Join(cwd, "shell.qml")) {
-		return cwd
 	}
 	return filepath.Join(os.Getenv("HOME"), ".local/src/ambxst")
 }
@@ -396,6 +377,12 @@ Commands:
     thumbs <config> <cache> [fall]   Generate wallpaper thumbnails (140x140)
     dthumbs <dir> <cache>            Generate desktop thumbnails (64x64)
     ipc call <method> <json>         Send a raw JSON-RPC call to the daemon
+    wallpaper <file>                Set wallpaper (with optional flags)
+        -scheme <name>              Use a specific matugen color scheme
+        -oled                       Enable OLED mode for this wallpaper only
+        -tint                       Enable tint for this wallpaper only
+        -monitor <id|name>          Apply to a specific monitor
+    preset [-l|"Name"]              List or apply a preset (name supports quotes)
     help                             Show this help message
     version, -v, --version           Show Ambxst version
     goodbye                          Uninstall Ambxst

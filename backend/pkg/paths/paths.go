@@ -95,3 +95,10 @@ func (p *Paths) KeybindsFile() string {
 func (p *Paths) ShellPathFile() string {
 	return filepath.Join(p.DataDir, "shell_repo")
 }
+
+// ShellSourceDir returns the absolute path to the Ambxst shell source
+// tree (see FindShellSource for the lookup rules). Callers that already
+// hold a *Paths simply ignore it; the receiver is unused.
+func (p *Paths) ShellSourceDir() string {
+	return FindShellSource()
+}

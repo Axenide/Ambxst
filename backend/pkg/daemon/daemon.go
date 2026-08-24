@@ -26,8 +26,10 @@ import (
 	"ambxst/backend/pkg/svc/network"
 	"ambxst/backend/pkg/svc/nightlight"
 	"ambxst/backend/pkg/svc/powerprofile"
+	"ambxst/backend/pkg/svc/preset"
 	"ambxst/backend/pkg/svc/sleep"
 	"ambxst/backend/pkg/svc/systemmonitor"
+	"ambxst/backend/pkg/svc/wallpaper"
 	"ambxst/backend/pkg/svc/weather"
 )
 
@@ -126,6 +128,12 @@ func New() (*Daemon, error) {
 	nlSvc := nightlight.NewService(d.paths)
 	nlSvc.Register(d.srv)
 	d.nightlight = nlSvc
+
+	wallpaperSvc := wallpaper.NewService()
+	wallpaperSvc.Register(d.srv)
+
+	presetSvc := preset.NewService(d.paths)
+	presetSvc.Register(d.srv)
 
 	// system.shutdown → triggers the same exit path as a terminal signal.
 	d.srv.Register(&ipc.Service{
