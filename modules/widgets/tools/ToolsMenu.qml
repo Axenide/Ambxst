@@ -110,20 +110,18 @@ ActionGrid {
             ScreenRecorder.toggleRecording();
             root.itemSelected();
         } else if (action.tooltip === "Open Screenshots") {
-            // Usamos xdg-user-dir en el comando bash para respetar las rutas del sistema
-            var cmd = "dir=\"$(xdg-user-dir PICTURES)/Screenshots\"; mkdir -p \"$dir\"; nohup xdg-open \"$dir\" > /dev/null 2>&1 &";
-            
-            openFolderProc.command = ["bash", "-c", cmd];
+            Screenshot.initialize();
+            var shotsDir = Screenshot.screenshotsDir !== "" ? Screenshot.screenshotsDir : Quickshell.env("HOME") + "/Pictures/Screenshots";
+            openFolderProc.command = ["bash", "-c", "nohup xdg-open \"$0\" > /dev/null 2>&1 &", shotsDir];
             openFolderProc.running = true;
-            
+
             root.itemSelected();
         } else if (action.tooltip === "Open Recordings") {
-            // Usamos xdg-user-dir para videos, manteniendo la subcarpeta Recordings
-            var cmd = "dir=\"$(xdg-user-dir VIDEOS)/Recordings\"; mkdir -p \"$dir\"; nohup xdg-open \"$dir\" > /dev/null 2>&1 &";
-            
-            openFolderProc.command = ["bash", "-c", cmd];
+            ScreenRecorder.initialize();
+            var recsDir = ScreenRecorder.videosDir !== "" ? ScreenRecorder.videosDir : Quickshell.env("HOME") + "/Videos/Recordings";
+            openFolderProc.command = ["bash", "-c", "nohup xdg-open \"$0\" > /dev/null 2>&1 &", recsDir];
             openFolderProc.running = true;
-            
+
              root.itemSelected();
         } else if (action.tooltip === "Color Picker") {
             // Run detached so it survives when the menu closes
@@ -131,12 +129,10 @@ ActionGrid {
             colorPickerProc.running = true;
             root.itemSelected();
         } else if (action.tooltip === "OCR") {
-            var scriptPath = Qt.resolvedUrl("../../../scripts/ocr.sh").toString().replace("file://", "");
-            
             // Build languages string from Config
             var ocrConfig = Config.system.ocr;
             var langs = [];
-            
+
             if (ocrConfig) {
                 if (ocrConfig.eng !== false) langs.push("eng"); // Default true
                 if (ocrConfig.spa !== false) langs.push("spa"); // Default true
@@ -148,16 +144,15 @@ ActionGrid {
             } else {
                 langs = ["eng", "spa"];
             }
-            
+
             if (langs.length === 0) langs.push("eng");
             var langString = langs.join("+");
 
-            ocrProc.command = ["bash", "-c", "nohup \"" + scriptPath + "\" \"" + langString + "\" > /dev/null 2>&1 &"];
+            ocrProc.command = ["bash", "-c", "nohup ambxst ocr \"$0\" > /dev/null 2>&1 &", langString];
             ocrProc.running = true;
             root.itemSelected();
         } else if (action.tooltip === "QR Code") {
-            var scriptPath = Qt.resolvedUrl("../../../scripts/qr_scan.sh").toString().replace("file://", "");
-            qrProc.command = ["bash", "-c", "nohup \"" + scriptPath + "\" > /dev/null 2>&1 &"];
+            qrProc.command = ["bash", "-c", "nohup ambxst qr > /dev/null 2>&1 &"];
             qrProc.running = true;
             root.itemSelected();
         } else if (action.tooltip === "Google Lens") {

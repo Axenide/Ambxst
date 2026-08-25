@@ -77,6 +77,7 @@ type captureParams struct {
 	Height    int    `json:"height"`
 	Clipboard bool   `json:"clipboard"`
 	Filename  string `json:"filename"`
+	OutPath   string `json:"outPath"`
 }
 
 // capture saves a screenshot. Region coordinates are logical global pixels;
@@ -117,9 +118,19 @@ func (s *Service) capture(params json.RawMessage) (any, error) {
 	}
 	defer closer()
 
-	outPath, w, h, err := s.saveCapture(result, p.Filename)
-	if err != nil {
-		return nil, err
+	var outPath string
+	var w, h int
+	if p.OutPath != "" {
+		outPath = p.OutPath
+		if err := writePNG(result, outPath); err != nil {
+			return nil, err
+		}
+		w, h = result.Buffer.Width, result.Buffer.Height
+	} else {
+		outPath, w, h, err = s.saveCapture(result, p.Filename)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if p.Clipboard {
