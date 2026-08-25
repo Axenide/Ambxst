@@ -11,10 +11,11 @@ de QML.
 - **Recorder**: servicio IPC dueño del proceso `gpu-screen-recorder` (SIGINT,
   estado por eventos). DMS no tiene grabación: diseño propio.
 - **Colorpicker**: lupa layer-shell completa de DMS.
-- **OCR/QR**: subcomandos Go (`slurp` región + motor + tesseract/zbarimg).
+- **OCR/QR**: overlay QML de screenshots en modo solo-región → IPC `ocr.text`/
+  `ocr.barcode` (tesseract + gozxing). slurp eliminado.
 - **Thumbs**: imágenes 100% Go nativo; vídeos siguen con ffmpeg.
-- **Se mantienen**: slurp, tesseract, zbarimg, gpu-screen-recorder, wl-copy,
-  ffmpeg, notify-send. **Se eliminan**: grim, imagemagick.
+- **Se mantienen**: tesseract, gpu-screen-recorder, wl-copy,
+  ffmpeg, notify-send. **Se eliminan**: grim, imagemagick, zbar, slurp.
 
 ## Fases
 

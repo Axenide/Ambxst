@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.modules.globals
+import qs.config
 
 QtObject {
     id: root
@@ -201,6 +202,10 @@ QtObject {
     }
 
     function processRegion(x, y, w, h) {
+        if (root.captureMode === "ocr" || root.captureMode === "qr") {
+            root._runRecognition(root.captureMode, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+            return;
+        }
         var isLens = root.captureMode === "lens";
         var params = {
             mode: "region",
@@ -216,6 +221,57 @@ QtObject {
         BackendService.call("screenshot.capture", params, (result, error) => {
             root._onCaptureResult(result, error);
         });
+    }
+
+    // OCR / QR reuse the region selection overlay; results land in the
+    // clipboard on the backend side and surface as internal notifications.
+    function _runRecognition(kind, x, y, w, h) {
+        root.captureMode = "normal";
+        var method = kind === "qr" ? "ocr.barcode" : "ocr.text";
+        var params = { x: x, y: y, width: w, height: h };
+        if (kind === "ocr") {
+            params.langs = root.ocrLangs();
+        }
+        BackendService.call(method, params, (result, error) => {
+            if (error) {
+                Notifications.notifyInternal({
+                    summary: kind === "qr" ? "QR Scan Error" : "OCR Error",
+                    body: "" + error
+                });
+                return;
+            }
+            if (kind === "qr") {
+                var found = result && result.content && result.content !== "";
+                Notifications.notifyInternal({
+                    summary: "QR/Barcode Result",
+                    body: found ? "Content copied to clipboard" : "No code detected"
+                });
+            } else {
+                var hasText = result && result.text && result.text !== "";
+                Notifications.notifyInternal({
+                    summary: "OCR Result",
+                    body: hasText ? "Text copied to clipboard" : "No text detected"
+                });
+            }
+        });
+    }
+
+    function ocrLangs() {
+        var cfg = Config.system.ocr;
+        var langs = [];
+        if (cfg) {
+            if (cfg.eng !== false) langs.push("eng");
+            if (cfg.spa !== false) langs.push("spa");
+            if (cfg.lat === true) langs.push("lat");
+            if (cfg.jpn === true) langs.push("jpn");
+            if (cfg.chi_sim === true) langs.push("chi_sim");
+            if (cfg.chi_tra === true) langs.push("chi_tra");
+            if (cfg.kor === true) langs.push("kor");
+        } else {
+            langs = ["eng", "spa"];
+        }
+        if (langs.length === 0) langs.push("eng");
+        return langs.join("+");
     }
 
     function processMonitorScreen(monitorName) {

@@ -12,7 +12,6 @@ with pkgs; [
   matugen
   python3
   power-profiles-daemon
-  slurp
   sqlite
   upower
   wl-clip-persist

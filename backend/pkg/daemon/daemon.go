@@ -24,7 +24,8 @@ import (
 	"ambxst/backend/pkg/svc/keystore"
 	"ambxst/backend/pkg/svc/linkpreview"
 	"ambxst/backend/pkg/svc/network"
-	"ambxst/backend/pkg/svc/nightlight"
+	nightlight "ambxst/backend/pkg/svc/nightlight"
+	ocrsvc "ambxst/backend/pkg/svc/ocr"
 	"ambxst/backend/pkg/svc/powerprofile"
 	"ambxst/backend/pkg/svc/preset"
 	recordersvc "ambxst/backend/pkg/svc/recorder"
@@ -144,6 +145,9 @@ func New() (*Daemon, error) {
 	recSvc := recordersvc.NewService(d.paths)
 	recSvc.Register(d.srv)
 	d.recorder = recSvc
+
+	ocrSvc := ocrsvc.NewService()
+	ocrSvc.Register(d.srv)
 
 	// system.shutdown → triggers the same exit path as a terminal signal.
 	d.srv.Register(&ipc.Service{

@@ -1,6 +1,7 @@
 package capture
 
 import (
+	"bytes"
 	"fmt"
 
 	"ambxst/backend/internal/screenshot"
@@ -99,4 +100,25 @@ func cursorMode(on bool) screenshot.CursorMode {
 		return screenshot.CursorOn
 	}
 	return screenshot.CursorOff
+}
+
+// RegionPNG captures a logical global rect as PNG bytes. 10-bit captures
+// are downconverted so external consumers get plain 8-bit images.
+func RegionPNG(outputName string, x, y, w, h int) ([]byte, func(), error) {
+	result, closer, err := Region(outputName, x, y, w, h, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if screenshot.PixelFormat(result.Format).Is10Bit() {
+		result.Buffer.Convert10To8()
+		result.Format = uint32(result.Buffer.Format)
+	}
+
+	var buf bytes.Buffer
+	if err := screenshot.EncodeBufferPNG(&buf, result.Buffer, result.Format, nil); err != nil {
+		closer()
+		return nil, nil, fmt.Errorf("encode png: %w", err)
+	}
+	return buf.Bytes(), closer, nil
 }
