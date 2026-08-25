@@ -11,6 +11,7 @@ import (
 
 	"ambxst/backend/internal/screenshot"
 	"ambxst/backend/pkg/axmon"
+	"ambxst/backend/pkg/capture"
 	"ambxst/backend/pkg/ipc"
 	"ambxst/backend/pkg/paths"
 )
@@ -51,7 +52,7 @@ func (s *Service) frame(params json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("output is required")
 	}
 
-	result, closer, err := s.captureUpright(p.Output, p.Cursor)
+	result, closer, err := capture.Frame(p.Output, p.Cursor)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +95,7 @@ func (s *Service) capture(params json.RawMessage) (any, error) {
 
 	switch p.Mode {
 	case "region":
-		result, closer, err = s.captureRegion(p)
+		result, closer, err = capture.Region(p.Output, p.X, p.Y, p.Width, p.Height, false)
 	case "output", "screen", "fullscreen":
 		name := p.Output
 		if name == "" && (p.Mode == "screen" || p.Mode == "fullscreen") {
@@ -109,7 +110,7 @@ func (s *Service) capture(params json.RawMessage) (any, error) {
 		if name == "" {
 			return nil, fmt.Errorf("no output available")
 		}
-		result, closer, err = s.captureUpright(name, false)
+		result, closer, err = capture.Frame(name, false)
 	default:
 		return nil, fmt.Errorf("unknown mode %q", p.Mode)
 	}
@@ -167,92 +168,6 @@ func (s *Service) dir(_ json.RawMessage) (any, error) {
 	return map[string]any{"dir": dir}, nil
 }
 
-// captureUpright connects, captures one output raw and normalizes it.
-// The returned closer releases the buffer; call before returning.
-func (s *Service) captureUpright(outputName string, cursor bool) (*screenshot.CaptureResult, func(), error) {
-	engine := screenshot.NewEngine(cursorMode(cursor))
-	if err := engine.Connect(); err != nil {
-		return nil, func() {}, err
-	}
-
-	raw, err := engine.CaptureOutputFrame(outputName)
-	if err != nil {
-		engine.Close()
-		return nil, func() {}, err
-	}
-
-	result, err := screenshot.Upright(raw)
-	if err != nil {
-		raw.Buffer.Close()
-		engine.Close()
-		return nil, func() {}, err
-	}
-
-	closer := func() {
-		result.Buffer.Close()
-		engine.Close()
-	}
-	return result, closer, nil
-}
-
-// captureRegion resolves the owning monitor for a logical global rect and
-// crops the captured output at physical scale.
-func (s *Service) captureRegion(p captureParams) (*screenshot.CaptureResult, func(), error) {
-	rect := screenshot.Region{
-		X:      int32(p.X),
-		Y:      int32(p.Y),
-		Width:  int32(p.Width),
-		Height: int32(p.Height),
-	}
-	if rect.IsEmpty() {
-		return nil, nil, fmt.Errorf("empty region")
-	}
-
-	monitors, err := axmon.List()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	name := p.Output
-	if name == "" {
-		m, ok := axmon.Containing(monitors, int(rect.X+rect.Width/2), int(rect.Y+rect.Height/2))
-		if !ok {
-			m, ok = axmon.Containing(monitors, int(rect.X), int(rect.Y))
-		}
-		if !ok {
-			return nil, nil, fmt.Errorf("region outside all outputs")
-		}
-		name = m.Name
-	}
-	mon, ok := axmon.FindByName(monitors, name)
-	if !ok {
-		return nil, nil, fmt.Errorf("output %q not found", name)
-	}
-
-	result, closer, err := s.captureUpright(name, false)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	scale := mon.EffectiveScale()
-	localX := int(float64(int(rect.X)-mon.X())*scale + 0.5)
-	localY := int(float64(int(rect.Y)-mon.Y())*scale + 0.5)
-	w := int(float64(rect.Width)*scale + 0.5)
-	h := int(float64(rect.Height)*scale + 0.5)
-
-	cropped, err := screenshot.CropBuffer(result, int32(localX), int32(localY), int32(w), int32(h))
-	if err != nil {
-		closer()
-		return nil, nil, err
-	}
-
-	combinedCloser := func() {
-		cropped.Buffer.Close()
-		closer()
-	}
-	return cropped, combinedCloser, nil
-}
-
 func writePNG(result *screenshot.CaptureResult, outPath string) error {
 	f, err := os.Create(outPath)
 	if err != nil {
@@ -286,13 +201,6 @@ func copyFileToClipboard(path string) {
 	cmd := exec.Command("wl-copy", "--type", "image/png")
 	cmd.Stdin = f
 	_ = cmd.Run()
-}
-
-func cursorMode(on bool) screenshot.CursorMode {
-	if on {
-		return screenshot.CursorOn
-	}
-	return screenshot.CursorOff
 }
 
 func screenshotsDir(p *paths.Paths) string {

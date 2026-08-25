@@ -80,6 +80,10 @@ func main() {
 		runBrightness(args[1:])
 	case "colorpicker":
 		os.Exit(runColorPicker())
+	case "ocr":
+		os.Exit(runOCR(args[1:]))
+	case "qr":
+		os.Exit(runQR())
 	case "lockwall":
 		os.Exit(runLockWall(args[1:]))
 	case "thumbs":
@@ -372,7 +376,9 @@ Commands:
     brightness -l                    List monitors and their brightness
     install <target>                 Install compositor config (hyprland, niri, mango)
     remove <target>                  Remove compositor config (hyprland, niri, mango)
-    colorpicker                      Pick a screen color (slurp+grim+magick)
+    colorpicker                      Pick a screen color (interactive loupe)
+    ocr [langs]                      OCR a screen region into the clipboard
+    qr                               Scan a QR/barcode region into the clipboard
     lockwall <wallpaper> <data>      Extract lockscreen frame from video/GIF
     thumbs <config> <cache> [fall]   Generate wallpaper thumbnails (140x140)
     dthumbs <dir> <cache>            Generate desktop thumbnails (64x64)
