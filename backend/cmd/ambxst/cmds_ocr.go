@@ -47,12 +47,12 @@ func runOCR(args []string) int {
 
 	text := strings.TrimSpace(string(out))
 	if text == "" {
-		exec.Command("notify-send", "OCR Result", "No text detected", "-u", "low", "-i", "dialogue-error").Run()
+		exec.Command("notify-send", "OCR Result", "No text detected", "-u", "low").Run()
 		return 0
 	}
 
 	copyText(text)
-	exec.Command("notify-send", "OCR Result", "Text copied to clipboard", "-i", "edit-paste").Run()
+	exec.Command("notify-send", "OCR Result", "Text copied to clipboard").Run()
 	return 0
 }
 
@@ -77,12 +77,12 @@ func runQR() int {
 
 	result, err := decodeBarcode(png)
 	if err != nil || strings.TrimSpace(result) == "" {
-		exec.Command("notify-send", "QR/Barcode Result", "No code detected", "-u", "low", "-i", "dialogue-error").Run()
+		exec.Command("notify-send", "QR/Barcode Result", "No code detected", "-u", "low").Run()
 		return 0
 	}
 
 	copyText(result)
-	exec.Command("notify-send", "QR/Barcode Result", "Content copied to clipboard", "-i", "qr-code").Run()
+	exec.Command("notify-send", "QR/Barcode Result", "Content copied to clipboard").Run()
 	return 0
 }
 
