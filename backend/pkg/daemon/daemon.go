@@ -27,6 +27,8 @@ import (
 	"ambxst/backend/pkg/svc/nightlight"
 	"ambxst/backend/pkg/svc/powerprofile"
 	"ambxst/backend/pkg/svc/preset"
+	recordersvc "ambxst/backend/pkg/svc/recorder"
+	"ambxst/backend/pkg/svc/screenshot"
 	"ambxst/backend/pkg/svc/sleep"
 	"ambxst/backend/pkg/svc/systemmonitor"
 	"ambxst/backend/pkg/svc/wallpaper"
@@ -51,6 +53,7 @@ type Daemon struct {
 	gamemode    *gamemode.Service
 	powerprof   *powerprofile.Service
 	nightlight  *nightlight.Service
+	recorder    *recordersvc.Service
 
 	shutdownCh  chan struct{}
 	shutdownOnce sync.Once
@@ -134,6 +137,13 @@ func New() (*Daemon, error) {
 
 	presetSvc := preset.NewService(d.paths)
 	presetSvc.Register(d.srv)
+
+	shotSvc := screenshot.NewService(d.paths)
+	shotSvc.Register(d.srv)
+
+	recSvc := recordersvc.NewService(d.paths)
+	recSvc.Register(d.srv)
+	d.recorder = recSvc
 
 	// system.shutdown → triggers the same exit path as a terminal signal.
 	d.srv.Register(&ipc.Service{
@@ -276,6 +286,9 @@ func (d *Daemon) shutdown() {
 	}
 	if d.nightlight != nil {
 		d.nightlight.Close()
+	}
+	if d.recorder != nil {
+		d.recorder.Close()
 	}
 
 	// Defensive sweep: any child that escaped the process group cleanup

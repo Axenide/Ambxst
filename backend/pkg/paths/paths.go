@@ -3,6 +3,7 @@ package paths
 import (
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Paths resolves XDG dirs for the shell.
@@ -101,4 +102,48 @@ func (p *Paths) ShellPathFile() string {
 // hold a *Paths simply ignore it; the receiver is unused.
 func (p *Paths) ShellSourceDir() string {
 	return FindShellSource()
+}
+
+// userDir reads a directory entry from ~/.config/user-dirs.dirs,
+// falling back to ~/ <def>.
+func userDir(key, def string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		home = "/tmp"
+	}
+	fallback := filepath.Join(home, def)
+
+	data, err := os.ReadFile(filepath.Join(home, ".config", "user-dirs.dirs"))
+	if err != nil {
+		return fallback
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "XDG_"+key+"_DIR") {
+			continue
+		}
+		eq := strings.Index(line, "=")
+		if eq < 0 {
+			continue
+		}
+		val := strings.TrimSpace(line[eq+1:])
+		val = strings.Trim(val, `"'`)
+		switch {
+		case strings.HasPrefix(val, "$HOME"):
+			return filepath.Join(home, strings.TrimPrefix(strings.TrimPrefix(val, "$HOME"), "/"))
+		case strings.HasPrefix(val, "/"):
+			return val
+		}
+	}
+	return fallback
+}
+
+// PicturesDir mirrors xdg-user-dir PICTURES.
+func (p *Paths) PicturesDir() string {
+	return userDir("PICTURES", "Pictures")
+}
+
+// VideosDir mirrors xdg-user-dir VIDEOS.
+func (p *Paths) VideosDir() string {
+	return userDir("VIDEOS", "Videos")
 }
