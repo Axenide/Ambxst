@@ -48,9 +48,14 @@ func runColorPicker() int {
 		"--action=hex=Copy HEX", "--action=rgb=Copy RGB", "--action=hsv=Copy HSV").Output()
 
 	chosen := strings.TrimSpace(string(action))
+	if chosen == "" {
+		// Dismissed, expired, or closed without picking: HEX is already
+		// on the clipboard, so no follow-up popup.
+		return 0
+	}
 	chosenColor := map[string]string{"hex": hexColor, "rgb": rgbColor, "hsv": hsvColor}[chosen]
 	if chosenColor == "" {
-		chosenColor = hexColor
+		return 0
 	}
 	copyText(chosenColor)
 	exec.Command("notify-send", "Color Picker", "Copied: "+chosenColor, "-i", icon, "-u", "low").Run()
