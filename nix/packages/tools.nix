@@ -6,8 +6,6 @@ with pkgs; [
   ddcutil
   fontconfig
   glib
-  grim
-  imagemagick
   jq
 
   libnotify

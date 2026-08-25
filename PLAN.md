@@ -18,24 +18,24 @@ de QML.
 
 ## Fases
 
-1. [ ] Motor de captura Wayland en `backend/internal/screenshot/`
+1. [x] Motor de captura Wayland en `backend/internal/screenshot/`
    - `types.go`, `shm.go`, `png.go` (casi copia directa de DMS)
    - `capture.go`: connect/registry/outputs/capture/crop (sin modos interactivos)
    - `backend/internal/proto/{wlr_screencopy,wlr_layer_shell,wp_viewporter,keyboard_shortcuts_inhibit,wp_color_management}`
    - Dep: `github.com/AvengeMedia/dankgo` (MIT). Atribución MIT en headers.
-2. [ ] Servicios IPC
+2. [x] Servicios IPC
    - `pkg/svc/screenshot`: `frame {output,cursor}`, `capture {mode,output,x,y,w,h,clipboard}`, `list`
    - `pkg/svc/recorder`: `start/stop/status` + evento `recorder.state`
    - `pkg/paths`: parseo `~/.config/user-dirs.dirs`
-3. [ ] Frontend QML
+3. [x] Frontend QML
    - `Screenshot.qml` sobre `BackendService.call`; API/señales intactas para overlays
    - `ScreenRecorder.qml` cliente fino estilo GameModeClient
    - `ToolsMenu.qml`: OCR/QR → subcomandos; `google_lens.sh` acepta path
    - Borrar `scripts/{ocr,qr_scan,wf-record}.sh`, props muertas
-4. [ ] Colorpicker lupa DMS (`backend/internal/colorpicker`) + rewrite CLI
-5. [ ] `ambxst ocr [langs]` / `ambxst qr`
-6. [ ] Thumbs nativos imágenes (`backend/internal/media`)
-7. [ ] Packaging: quitar grim/imagemagick de nix + install.sh
+4. [x] Colorpicker lupa DMS (`backend/internal/colorpicker`) + rewrite CLI
+5. [x] `ambxst ocr [langs]` / `ambxst qr`
+6. [x] Thumbs nativos imágenes (`backend/internal/media`)
+7. [x] Packaging: quitar grim/imagemagick de nix + install.sh
 
 ## Contratos IPC
 

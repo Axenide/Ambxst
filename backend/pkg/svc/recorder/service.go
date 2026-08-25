@@ -84,25 +84,28 @@ func (s *Service) start(params json.RawMessage) (any, error) {
 	name = strings.ReplaceAll(name, ".", "-")
 	outPath := filepath.Join(dir, name+".mp4")
 
-	args := []string{"-f", fmt.Sprintf("%d", p.Framerate), "-w", p.Mode}
+	args := []string{"-f", fmt.Sprintf("%d", p.Framerate)}
 	switch p.Mode {
-	case "screen", "portal":
-		if p.Output != "" {
-			args = append(args, "-o", p.Output)
-		}
 	case "region":
 		if p.Region == "" {
 			s.mu.Unlock()
 			return nil, fmt.Errorf("region is required for region mode")
 		}
-		args = append(args, "-region", p.Region)
+		args = append(args, "-w", "region", "-region", p.Region)
+	case "screen":
 		if p.Output != "" {
-			args = append(args, "-o", p.Output)
+			args = append(args, "-w", p.Output)
+		} else {
+			args = append(args, "-w", "screen")
 		}
+	case "portal":
+		args = append(args, "-w", "portal")
 	case "window":
-		if p.Output != "" {
-			args = append(args, "-k", p.Output)
-		}
+		// Window capture on Wayland goes through the portal.
+		args = append(args, "-w", "portal")
+	default:
+		s.mu.Unlock()
+		return nil, fmt.Errorf("unknown mode %q", p.Mode)
 	}
 
 	if p.AudioOut && p.AudioIn {
