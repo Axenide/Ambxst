@@ -120,7 +120,7 @@ install_dependencies() {
       qt6-qtimageformats qt6-qtmultimedia qt6-qtshadertools
       kf6-syntax-highlighting kf6-breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig slurp jq sqlite upower
-      wl-clipboard wlsunset wtype zbar glib2 pipx zenity power-profiles-daemon
+      wl-clipboard wlsunset wtype glib2 pipx zenity power-profiles-daemon
       python3.12 libnotify flatpak golang
       tesseract tesseract-langpack-eng tesseract-langpack-spa tesseract-langpack-jpn
       tesseract-langpack-chi_sim tesseract-langpack-chi_tra tesseract-langpack-kor tesseract-langpack-lat
@@ -167,7 +167,7 @@ install_dependencies() {
       qt6-base qt6-declarative qt6-wayland qt6-svg qt6-tools qt6-imageformats qt6-multimedia qt6-shadertools
       libwebp libavif syntax-highlighting breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig slurp jq sqlite upower
-      wl-clipboard wlsunset wtype zbar glib2 python-pipx zenity inetutils power-profiles-daemon
+      wl-clipboard wlsunset wtype glib2 python-pipx zenity inetutils power-profiles-daemon
       python312 libnotify golang
       tesseract tesseract-data-eng tesseract-data-spa tesseract-data-jpn
       tesseract-data-chi_sim tesseract-data-chi_tra tesseract-data-kor tesseract-data-lat

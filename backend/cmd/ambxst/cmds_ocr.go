@@ -57,7 +57,7 @@ func runOCR(args []string) int {
 }
 
 func runQR() int {
-	for _, dep := range []string{"slurp", "zbarimg", "wl-copy", "notify-send"} {
+	for _, dep := range []string{"slurp", "wl-copy", "notify-send"} {
 		if _, err := exec.LookPath(dep); err != nil {
 			notifyCritical("QR Scan Error", "Missing dependency: "+dep)
 			return 1
@@ -75,16 +75,8 @@ func runQR() int {
 		return 1
 	}
 
-	cmd := exec.Command("zbarimg", "-q", "--raw", "-")
-	cmd.Stdin = bytes.NewReader(png)
-	out, err := cmd.Output()
-	if err != nil && len(out) == 0 {
-		exec.Command("notify-send", "QR/Barcode Result", "No code detected", "-u", "low", "-i", "dialogue-error").Run()
-		return 0
-	}
-
-	result := strings.TrimSpace(string(out))
-	if result == "" {
+	result, err := decodeBarcode(png)
+	if err != nil || strings.TrimSpace(result) == "" {
 		exec.Command("notify-send", "QR/Barcode Result", "No code detected", "-u", "low", "-i", "dialogue-error").Run()
 		return 0
 	}
@@ -132,6 +124,11 @@ func captureRegionPNG(r screenRegion) ([]byte, error) {
 		return nil, err
 	}
 	defer closer()
+
+	if screenshot.PixelFormat(result.Format).Is10Bit() {
+		result.Buffer.Convert10To8()
+		result.Format = uint32(result.Buffer.Format)
+	}
 
 	var buf bytes.Buffer
 	if err := screenshot.EncodeBufferPNG(&buf, result.Buffer, result.Format, nil); err != nil {

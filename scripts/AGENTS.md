@@ -32,5 +32,5 @@ Remaining Bash utilities. All Python and most Bash logic has moved into the Go b
 ## CONVENTIONS
 - **Communication**: Scripts output to stdout; QML reads via `Process` + `SplitParser` or `StdioCollector`.
 - **Format**: Bash scripts output line-delimited text.
-- **Dependencies**: Scripts assume tools are installed (`wl-paste`, `wl-copy`, `slurp`, `tesseract`, `zbarimg`, `brightnessctl`). Nix/install.sh handles dependencies. Screenshots/recording/colorpicker no longer need grim or ImageMagick.
+- **Dependencies**: Scripts assume tools are installed (`wl-paste`, `wl-copy`, `slurp`, `tesseract`, `brightnessctl`). Nix/install.sh handles dependencies. Screenshots/recording/colorpicker/QR no longer need grim, ImageMagick or zbar (QR/barcodes decode in pure Go via gozxing).
 - **Error handling**: Scripts should exit cleanly on missing tools; QML services provide fallback values.

@@ -37,8 +37,9 @@ func runColorPicker() int {
 	rgbColor := picked.ToRGB()
 	hsvColor := picked.ToHSV()
 
-	icon := filepath.Join(os.TempDir(), "color_picker_preview.png")
+	icon := colorSwatchPath(hexColor)
 	writeColorSwatch(icon, picked.R, picked.G, picked.B)
+	pruneStaleSwatches(icon)
 	copyText(hexColor)
 
 	action, _ := exec.Command("notify-send", "Color Picked",
@@ -72,6 +73,34 @@ func writeColorSwatch(path string, r, g, b uint8) {
 	_ = screenshot.EncodePNG(f, img)
 }
 
+// colorSwatchPath keys the swatch file by the picked color so notification
+// renderers that cache by path show the right image for each pick.
+func colorSwatchPath(hexColor string) string {
+	name := strings.TrimPrefix(strings.ToLower(hexColor), "#")
+	return filepath.Join(os.TempDir(), "ambxst_color_swatch_"+name+".png")
+}
+
+// pruneStaleSwatches removes swatches from previous picks so /tmp never
+// accumulates more than one.
+func pruneStaleSwatches(current string) {
+	matches, _ := filepath.Glob(filepath.Join(os.TempDir(), "ambxst_color_swatch_*.png"))
+	for _, m := range matches {
+		if m != current {
+			os.Remove(m)
+		}
+	}
+}
+
+// copyText must not wait on wl-copy: it forks a clipboard-serving child
+// that inherits our pipes and lives until the content is replaced. Waiting
+// on it would stall everything queued after the copy.
 func copyText(text string) {
-	runInput(exec.Command("wl-copy"), []byte(text))
+	cmd := exec.Command("wl-copy", "--type", "text/plain")
+	cmd.Stdin = strings.NewReader(text)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	if err := cmd.Start(); err != nil {
+		return
+	}
+	go func() { _ = cmd.Wait() }()
 }
