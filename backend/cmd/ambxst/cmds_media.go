@@ -100,17 +100,13 @@ func generateThumb(filePath, thumbPath string, size int) error {
 		return err
 	}
 	ext := strings.ToLower(filepath.Ext(filePath))
-	scale := fmt.Sprintf("%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", size, size, size, size)
 	if mediaVideoExts[ext] {
+		scale := fmt.Sprintf("%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", size, size, size, size)
 		_, err := exec.Command("ffmpeg", "-y", "-i", filePath,
 			"-ss", "00:00:01", "-vframes", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath).Output()
 		return err
 	}
-	_, err := exec.Command("convert", filePath,
-		"-resize", fmt.Sprintf("%dx%d^", size, size),
-		"-gravity", "center", "-extent", fmt.Sprintf("%dx%d", size, size),
-		"-quality", "85", thumbPath).Output()
-	return err
+	return generateThumbImage(filePath, thumbPath, size)
 }
 
 func runThumbs(args []string, size int, recursive bool) int {
