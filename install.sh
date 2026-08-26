@@ -413,7 +413,7 @@ install_axctl() {
   fi
 
   log_info "Installing axctl..."
-  curl -L get.axeni.de/axctl | sh
+  curl -fsSL get.axeni.de/axctl | sh
   log_success "axctl installed"
 }
 
