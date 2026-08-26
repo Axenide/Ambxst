@@ -120,7 +120,7 @@ install_dependencies() {
       kf6-syntax-highlighting kf6-breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig jq sqlite upower
       wl-clipboard wlsunset wtype glib2 pipx zenity power-profiles-daemon
-      python3.12 libnotify flatpak golang
+      python3.12 libnotify flatpak
       tesseract tesseract-langpack-eng tesseract-langpack-spa tesseract-langpack-jpn
       tesseract-langpack-chi_sim tesseract-langpack-chi_tra tesseract-langpack-kor tesseract-langpack-lat
       google-roboto-fonts google-roboto-mono-fonts dejavu-sans-fonts liberation-fonts
@@ -167,7 +167,7 @@ install_dependencies() {
       libwebp libavif syntax-highlighting breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig jq sqlite upower
       wl-clipboard wlsunset wtype glib2 python-pipx zenity inetutils power-profiles-daemon
-      python312 libnotify golang
+      python312 libnotify
       tesseract tesseract-data-eng tesseract-data-spa tesseract-data-jpn
       tesseract-data-chi_sim tesseract-data-chi_tra tesseract-data-kor tesseract-data-lat
       ttf-roboto ttf-roboto-mono ttf-dejavu ttf-liberation noto-fonts noto-fonts-cjk noto-fonts-emoji
@@ -336,19 +336,47 @@ setup_repo() {
   git -C "$INSTALL_PATH" reset --hard origin/main
 }
 
-# === Backend Build ===
-build_backend() {
+# === Binary Download ===
+download_binary() {
   [[ "$DISTRO" == "nixos" ]] && return
-  has_cmd go || {
-    log_error "Go is required to build the Ambxst backend. Install Go (golang) first."
+
+  local ARCH
+  case "$(uname -m)" in
+  x86_64) ARCH="amd64" ;;
+  aarch64 | arm64) ARCH="arm64" ;;
+  *)
+    log_error "Unsupported architecture: $(uname -m)."
+    log_warn "Clone https://github.com/Axenide/Ambxst and run 'make install' manually."
+    exit 1
+    ;;
+  esac
+
+  local BASE_URL="https://github.com/Axenide/Ambxst/releases/latest/download"
+
+  log_info "Downloading Ambxst binary (linux-$ARCH)..."
+  curl -fsSL "$BASE_URL/ambxst-linux-$ARCH" -o "/tmp/ambxst-linux-$ARCH" || {
+    log_error "Failed to download the Ambxst binary."
+    log_warn "Clone https://github.com/Axenide/Ambxst and run 'make install' manually."
     exit 1
   }
-  log_info "Building Ambxst Go backend..."
-  (cd "$INSTALL_PATH/backend" && go build -o /tmp/ambxst-bin ./cmd/ambxst) || {
-    log_error "Failed to build Ambxst backend."
+
+  curl -fsSL "$BASE_URL/SHA256SUMS" -o /tmp/ambxst.SHA256SUMS || {
+    log_error "Failed to download checksums."
     exit 1
   }
-  log_success "Backend built to /tmp/ambxst-bin"
+
+  (
+    cd /tmp || exit 1
+    sha256sum --check --ignore-missing ambxst.SHA256SUMS >/dev/null
+  ) || {
+    log_error "Checksum verification failed for the downloaded binary."
+    rm -f "/tmp/ambxst-linux-$ARCH" /tmp/ambxst.SHA256SUMS
+    exit 1
+  }
+
+  mv "/tmp/ambxst-linux-$ARCH" /tmp/ambxst
+  rm -f /tmp/ambxst.SHA256SUMS
+  log_success "Binary downloaded"
 }
 
 # === Quickshell Build ===
@@ -452,8 +480,8 @@ setup_launcher() {
   sudo mkdir -p "$BIN_DIR"
 
   log_info "Installing ambxst binary to $BIN_DIR/ambxst..."
-  sudo install -m 755 /tmp/ambxst-bin "$BIN_DIR/ambxst"
-  rm -f /tmp/ambxst-bin
+  sudo install -m 755 /tmp/ambxst "$BIN_DIR/ambxst"
+  rm -f /tmp/ambxst
 
   # Record the repo location so the installed binary can find shell sources.
   mkdir -p "$HOME/.local/share/ambxst"
@@ -466,7 +494,7 @@ migrate_old_paths
 install_dependencies "$1"
 install_axctl
 setup_repo
-build_backend
+download_binary
 install_quickshell
 install_python_tools
 configure_services
