@@ -49,8 +49,6 @@ declare -A BINARY_CHECK=(
   ["wtype"]="wtype"
   ["mpvpaper"]="mpvpaper"
   ["gradia"]="gradia"
-  ["pipx"]="pipx"
-  ["python-pipx"]="pipx"
   ["zenity"]="zenity"
   ["gpu-screen-recorder"]="gpu-screen-recorder"
 )
@@ -119,8 +117,8 @@ install_dependencies() {
       qt6-qtimageformats qt6-qtmultimedia qt6-qtshadertools
       kf6-syntax-highlighting kf6-breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig jq sqlite upower
-      wl-clipboard wlsunset wtype glib2 pipx zenity power-profiles-daemon
-      python3.12 libnotify flatpak
+      wl-clipboard wlsunset wtype glib2 zenity power-profiles-daemon
+      libnotify flatpak
       tesseract tesseract-langpack-eng tesseract-langpack-spa tesseract-langpack-jpn
       tesseract-langpack-chi_sim tesseract-langpack-chi_tra tesseract-langpack-kor tesseract-langpack-lat
       google-roboto-fonts google-roboto-mono-fonts dejavu-sans-fonts liberation-fonts
@@ -166,8 +164,8 @@ install_dependencies() {
       qt6-base qt6-declarative qt6-wayland qt6-svg qt6-tools qt6-imageformats qt6-multimedia qt6-shadertools
       libwebp libavif syntax-highlighting breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig jq sqlite upower
-      wl-clipboard wlsunset wtype glib2 python-pipx zenity inetutils power-profiles-daemon
-      python312 libnotify
+      wl-clipboard wlsunset wtype glib2 zenity inetutils power-profiles-daemon
+      libnotify
       tesseract tesseract-data-eng tesseract-data-spa tesseract-data-jpn
       tesseract-data-chi_sim tesseract-data-chi_tra tesseract-data-kor tesseract-data-lat
       ttf-roboto ttf-roboto-mono ttf-dejavu ttf-liberation noto-fonts noto-fonts-cjk noto-fonts-emoji
@@ -412,19 +410,6 @@ install_axctl() {
   log_success "axctl installed"
 }
 
-# === Python Tools ===
-install_python_tools() {
-  [[ "$DISTRO" == "nixos" ]] && return
-  has_cmd pipx || {
-    log_warn "pipx not found, skipping Python tools"
-    return
-  }
-
-  log_info "Installing Python tools..."
-
-  pipx ensurepath 2>/dev/null || true
-}
-
 # === Service Configuration ===
 configure_services() {
   [[ "$DISTRO" == "nixos" ]] && return
@@ -496,7 +481,6 @@ install_axctl
 setup_repo
 download_binary
 install_quickshell
-install_python_tools
 configure_services
 setup_launcher
 
