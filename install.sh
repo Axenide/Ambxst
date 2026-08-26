@@ -308,20 +308,27 @@ setup_repo() {
   log_info "Checking repository status..."
   git -C "$INSTALL_PATH" fetch origin
 
-  local BRANCH
+  local BRANCH REMOTE_REF
   BRANCH=$(git -C "$INSTALL_PATH" rev-parse --abbrev-ref HEAD)
 
-  if [[ "$BRANCH" != "main" ]]; then
-    log_warn "On branch '$BRANCH', not 'main'. Skipping update."
+  if [[ "$BRANCH" == "HEAD" ]]; then
+    log_warn "Detached HEAD. Skipping update."
     return
   fi
 
+  if ! git -C "$INSTALL_PATH" show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+    log_warn "On local-only branch '$BRANCH'. Skipping update."
+    return
+  fi
+
+  REMOTE_REF="origin/$BRANCH"
+
   local HAS_CHANGES=0
   [[ -n "$(git -C "$INSTALL_PATH" status --porcelain)" ]] && HAS_CHANGES=1
-  [[ -n "$(git -C "$INSTALL_PATH" log origin/main..HEAD)" ]] && HAS_CHANGES=1
+  [[ -n "$(git -C "$INSTALL_PATH" log "$REMOTE_REF"..HEAD)" ]] && HAS_CHANGES=1
 
   if [[ "$HAS_CHANGES" -eq 1 ]]; then
-    echo -e "${YELLOW}⚠  Local changes detected on 'main'.${NC}"
+    echo -e "${YELLOW}⚠  Local changes detected on '$BRANCH'.${NC}"
     echo -e "${RED}This will DISCARD all local changes.${NC}"
     read -r -p "Continue? [y/N] " response </dev/tty
     [[ ! "$response" =~ ^[Yy]$ ]] && {
@@ -331,7 +338,7 @@ setup_repo() {
   fi
 
   log_info "Syncing with remote..."
-  git -C "$INSTALL_PATH" reset --hard origin/main
+  git -C "$INSTALL_PATH" reset --hard "$REMOTE_REF"
 }
 
 # === Binary Download ===
