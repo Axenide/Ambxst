@@ -16,10 +16,15 @@ FloatingWindow {
     title: "Ambxst Settings"
     visible: GlobalStates.settingsWindowVisible
 
-    // Center on screen (approximate, since FloatingWindow usually centers by default or relies on WM)
-    // We can't easily force center without screen geometry, but WM usually handles it.
-
     color: "transparent"
+
+    // Resolve the target screen before the backing window is created.
+    // Changing `screen` while the window is visible forces quickshell to
+    // hide/show the window, which fires onVisibleChanged(false) and would
+    // be misread as an external close.
+    // Deliberately not bound to focusedMonitor so refocusing another
+    // monitor while open never remaps this window.
+    screen: screenByName(GlobalStates.settingsTargetScreenName)
 
     function screenByName(name) {
         if (!name) return null;
@@ -34,11 +39,6 @@ FloatingWindow {
     }
 
     function preparePlacement() {
-        const targetScreen = screenByName(GlobalStates.settingsTargetScreenName || AxctlService.focusedMonitor?.name || "");
-        if (targetScreen) {
-            settingsWindow.screen = targetScreen;
-        }
-
         placementTimer.attempts = 0;
         placementTimer.restart();
     }
@@ -92,21 +92,8 @@ FloatingWindow {
     onVisibleChanged: {
         if (visible) {
             preparePlacement();
-        }
-
-        if (!visible && GlobalStates.settingsWindowVisible) {
+        } else if (GlobalStates.settingsWindowVisible) {
             GlobalStates.settingsWindowVisible = false;
-        }
-    }
-
-    // Sync visibility from GlobalStates
-    Connections {
-        target: GlobalStates
-        function onSettingsWindowVisibleChanged() {
-            if (GlobalStates.settingsWindowVisible) {
-                settingsWindow.preparePlacement();
-            }
-            settingsWindow.visible = GlobalStates.settingsWindowVisible;
         }
     }
 }
