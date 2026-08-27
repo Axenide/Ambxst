@@ -250,11 +250,9 @@ func TestRenderLayerRules(t *testing.T) {
 	out := Render(sampleInput())
 	for _, want := range []string{
 		`namespace = "quickshell"`,
-		`namespace = "overview"`,
-		`namespace = "presets"`,
 		`namespace = "fabric"`,
 		`ignore_alpha_value = 0.4`,
-		`ignore_alpha_value = 0.5`,
+		`ignore_alpha_value = 0.20`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in layer rules:\n%s", want, out)

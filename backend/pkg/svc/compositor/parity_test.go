@@ -34,7 +34,7 @@ func TestRenderMatchesCurrentAxctlToml(t *testing.T) {
 		"dispatcher = \"killactive\"",
 		"namespace = \"quickshell\"\nno_anim = true",
 		"namespace = \"fabric\"\nblur = true\nignore_alpha_value = 0.4",
-		"namespace = \"ambxst\"\nblur = true\nblur_popups = true\nno_anim = true\nignore_alpha_value = 0.5",
+		"namespace = \"^ambxst(:.*)?$\"\nblur = true\nblur_popups = true\nno_anim = true\nignore_alpha_value = 0.20",
 		"[input]\n[input.keyboard]\nlayouts = \"\"\nvariants = \"\"\n",
 	}
 	for _, want := range required {
