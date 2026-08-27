@@ -25,7 +25,7 @@ func TestRenderOutputSnapshot(t *testing.T) {
 // this guard catches accidental reordering during refactors.
 func TestRenderLayoutRulesOrder(t *testing.T) {
 	out := Render(realishInput())
-	ambxstIdx := strings.Index(out, `namespace = "ambxst"`)
+	ambxstIdx := strings.Index(out, `namespace = "^ambxst(:.*)?$"`)
 	if ambxstIdx == -1 {
 		t.Fatal("ambxst layer rule missing")
 	}

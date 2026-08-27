@@ -255,20 +255,22 @@ func normalizeKeybindDispatcher(dispatcher, argument string) (string, string) {
 }
 
 func writeLayerRules(b *strings.Builder, in Input) {
-	ignoreAlpha := calculateIgnoreAlpha(in.Theme, in.Bar)
-	// QML writes 9 layer_rules entries. The bar orientation flips the
+	quickshellAlpha := formatFloat(calculateIgnoreAlpha(in.Theme, in.Bar))
+	ambxstAlpha := formatFloat(in.Compositor.Blur.IgnoreAlphaValue)
+	// QML writes 7 layer_rules entries. The bar orientation flips the
 	// workspace animation but doesn't change layer rules, so we keep the
-	// set fixed here.
+	// set fixed here. The ambxst rule reads from BlurConfig so changes in
+	// compositor.json (blurExplicitIgnoreAlpha, blurIgnoreAlphaValue)
+	// actually reach axctl; the previous hardcoded 0.5 silently shadowed
+	// the user setting.
 	rules := []layerRule{
 		{namespace: "quickshell", noAnim: true},
 		{namespace: "quickshell", blur: true},
 		{namespace: "quickshell", blurPopups: true},
-		{namespace: "quickshell", ignoreAlpha: true, ignoreAlphaValue: formatFloat(ignoreAlpha)},
+		{namespace: "quickshell", ignoreAlpha: true, ignoreAlphaValue: quickshellAlpha},
 		{namespace: "selection", noAnim: true},
 		{namespace: "fabric", blur: true, ignoreAlphaValue: "0.4"},
-		{namespace: "ambxst", blur: true, blurPopups: true, noAnim: true, ignoreAlphaValue: "0.5"},
-		{namespace: "overview", blur: true, blurPopups: true, noAnim: true},
-		{namespace: "presets", blur: true, blurPopups: true, noAnim: true},
+		{namespace: "^ambxst(:.*)?$", blur: true, blurPopups: true, noAnim: true, ignoreAlpha: in.Compositor.Blur.ExplicitIgnoreAlpha, ignoreAlphaValue: ambxstAlpha},
 	}
 	for _, r := range rules {
 		writeLayerRule(b, r)
