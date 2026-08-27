@@ -12,6 +12,7 @@ import (
 
 	"ambxst/backend/internal/colorpicker"
 	"ambxst/backend/internal/screenshot"
+	"ambxst/backend/pkg/svc/notify"
 )
 
 // --- colorpicker: interactive layer-shell loupe -> clipboard -> notify actions ---
@@ -26,7 +27,7 @@ func runColorPicker() int {
 	})
 	picked, err := picker.Run()
 	if err != nil {
-		exec.Command("notify-send", "Color Picker", "Error: "+err.Error(), "-u", "critical").Run()
+		notifyShell("Color Picker", "Error: "+err.Error(), "critical")
 		return 1
 	}
 	if picked == nil {
@@ -42,23 +43,37 @@ func runColorPicker() int {
 	pruneStaleSwatches(icon)
 	copyText(hexColor)
 
-	action, _ := exec.Command("notify-send", "Color Picked",
-		fmt.Sprintf("%s copied to clipboard", hexColor),
-		"-i", icon, "-a", "ColorPicker", "-u", "normal",
-		"--action=hex=Copy HEX", "--action=rgb=Copy RGB", "--action=hsv=Copy HSV").Output()
-
-	chosen := strings.TrimSpace(string(action))
-	if chosen == "" {
-		// Dismissed, expired, or closed without picking: HEX is already
-		// on the clipboard, so no follow-up popup.
-		return 0
+	// Route through the ambxst daemon so the notification is tracked and
+	// can be discarded by the Notifications singleton, instead of leaking
+	// into the system notification daemon via notify-send. The previous
+	// implementation used --action=... and blocked on the user's pick;
+	// the IPC channel can't wait synchronously for an action, so we
+	// embed each format's value in the action's `clipboard` field and let
+	// the QML side invoke wl-copy when the user clicks a button.
+	action := []map[string]string{
+		{"identifier": "hex", "text": "Copy HEX", "clipboard": hexColor},
+		{"identifier": "rgb", "text": "Copy RGB", "clipboard": rgbColor},
+		{"identifier": "hsv", "text": "Copy HSV", "clipboard": hsvColor},
 	}
-	chosenColor := map[string]string{"hex": hexColor, "rgb": rgbColor, "hsv": hsvColor}[chosen]
-	if chosenColor == "" {
-		return 0
+	params := map[string]any{
+		"summary":  "Color Picked",
+		"body":     fmt.Sprintf("%s copied to clipboard", hexColor),
+		"appName":  "ColorPicker",
+		"appIcon":  icon,
+		"image":    icon,
+		"urgency":  "normal",
+		"actions":  action,
+		"replaceKey": "colorpicker",
 	}
-	copyText(chosenColor)
-	exec.Command("notify-send", "Color Picker", "Copied: "+chosenColor, "-i", icon, "-u", "low").Run()
+	if _, err := newClient().Call("notify.send", params); err != nil {
+		// Daemon not running: fall back to a plain notify-send without
+		// actions. The user keeps the HEX on the clipboard either way.
+		_ = notify.SendFallback(
+			"Color Picked",
+			fmt.Sprintf("%s copied to clipboard", hexColor),
+			"normal",
+		)
+	}
 	return 0
 }
 

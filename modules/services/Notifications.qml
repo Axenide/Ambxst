@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
+import qs.modules.services
 
 Singleton {
     id: root
@@ -622,7 +623,67 @@ Singleton {
         // Defer notification history reload to not block boot.
         // The DBus notification server is registered above and live notifications work.
         notifDeferTimer.start();
+
+        // Subscribe to the notify IPC service so external CLI commands
+        // (colorpicker, screen, …) can route their notifications through
+        // this singleton instead of shelling out to notify-send. Without
+        // this they bypass Ambxst's notification lifecycle and leak into
+        // the system daemon — see cmds_colorpicker.go for the originating
+        // bug. We register the subscription even if BackendService isn't
+        // connected yet; the callback simply won't fire until the socket
+        // is up.
+        root.notifyIpcHandle = BackendService.addSubscription(
+            ["notify"],
+            (service, data) => root.handleNotifyRequest(data)
+        );
+
         root.initDone();
+    }
+
+    property int notifyIpcHandle: -1
+
+    // handleNotifyRequest converts a CLI-driven notify.send event into a
+    // tracked notification. Actions whose source object carries a
+    // `clipboard` field get a synthetic handler that runs wl-copy when
+    // the user clicks them, so cross-process flows (colorpicker formats)
+    // keep working without the CLI blocking on stdin.
+    function handleNotifyRequest(data) {
+        if (!data) return;
+        const rawActions = data.actions || [];
+        const actionHandlers = {};
+        const actions = [];
+        for (let i = 0; i < rawActions.length; i++) {
+            const a = rawActions[i];
+            if (!a || !a.identifier) continue;
+            actions.push({
+                identifier: a.identifier,
+                text: a.text || a.identifier
+            });
+            if (a.clipboard !== undefined && a.clipboard !== null) {
+                const value = a.clipboard;
+                actionHandlers[a.identifier] = function (_id) {
+                    Quickshell.execDetached([
+                        "bash", "-c",
+                        "printf '%s' " + JSON.stringify(value) + " | wl-copy --type text/plain"
+                    ]);
+                };
+            }
+        }
+
+        const opts = {
+            summary: data.summary || "",
+            body: data.body || "",
+            appName: data.appName || "Ambxst",
+            appIcon: data.appIcon || "",
+            image: data.image || "",
+            urgency: data.urgency || "normal",
+            expireTimeout: data.expireTimeout || 5000,
+            replaceKey: data.replaceKey || "",
+            actions: actions,
+            actionHandlers: actionHandlers,
+            popup: true
+        };
+        root.notifyInternal(opts);
     }
 
     Timer {

@@ -25,6 +25,7 @@ import (
 	"ambxst/backend/pkg/svc/linkpreview"
 	"ambxst/backend/pkg/svc/network"
 	nightlight "ambxst/backend/pkg/svc/nightlight"
+	notifysvc "ambxst/backend/pkg/svc/notify"
 	ocrsvc "ambxst/backend/pkg/svc/ocr"
 	"ambxst/backend/pkg/svc/powerprofile"
 	"ambxst/backend/pkg/svc/preset"
@@ -148,6 +149,12 @@ func New() (*Daemon, error) {
 
 	ocrSvc := ocrsvc.NewService()
 	ocrSvc.Register(d.srv)
+
+	// notify — exposes notify.send so CLIs (colorpicker, screen, …) can
+	// route their notifications through the running shell instead of
+	// shelling out to notify-send. See pkg/svc/notify for the rationale.
+	notifySvc := notifysvc.NewService()
+	notifySvc.Register(d.srv)
 
 	// system.shutdown → triggers the same exit path as a terminal signal.
 	d.srv.Register(&ipc.Service{
