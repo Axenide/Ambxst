@@ -59,8 +59,12 @@ QtObject {
             var finishedPath = state.lastPath || root.currentOutputFile;
             if (wasRecording) {
                 if (root.lastError !== "") {
-                    notifyErrorProcess.command = ["notify-send", "-u", "critical", "Screen Recorder Error", "Failed to record. Check logs."];
-                    notifyErrorProcess.running = true;
+                    Notifications.notifyInternal({
+                        "summary": "Screen Recorder Error",
+                        "body": "Failed to record. Check logs.",
+                        "urgency": "critical",
+                        "appName": "ScreenRecorder"
+                    });
                 } else if (finishedPath) {
                     root.sendSavedNotification(finishedPath);
                 }
@@ -111,24 +115,23 @@ QtObject {
         BackendService.call("recorder.start", params, (result, error) => {
             if (error) {
                 console.warn("[ScreenRecorder] Start failed: " + error);
-                notifyErrorProcess.command = ["notify-send", "-u", "critical", "Screen Recorder Error", "Failed to start. Check logs."];
-                notifyErrorProcess.running = true;
+                Notifications.notifyInternal({
+                    "summary": "Screen Recorder Error",
+                    "body": "Failed to start. Check logs.",
+                    "urgency": "critical",
+                    "appName": "ScreenRecorder"
+                });
             } else if (result && result.path) {
                 root.currentOutputFile = result.path;
             }
         });
 
-        notifyStartProcess.running = true;
-    }
-
-    property Process notifyStartProcess: Process {
-        id: notifyStartProcess
-        command: ["notify-send", "Screen Recorder", "Starting recording..."]
-    }
-
-    property Process notifyErrorProcess: Process {
-        id: notifyErrorProcess
-        command: ["notify-send", "-u", "critical", "Screen Recorder Error", "Failed to start. Check logs."]
+        Notifications.notifyInternal({
+            "summary": "Screen Recorder",
+            "body": "Starting recording...",
+            "appName": "ScreenRecorder",
+            "expireTimeout": 2000
+        });
     }
 
     function sendSavedNotification(path) {
