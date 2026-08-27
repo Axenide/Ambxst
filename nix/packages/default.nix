@@ -72,6 +72,6 @@ let
 
 in pkgs.buildEnv {
   name = "Ambxst-${version}";
-  paths = [ envAmbxst backendPkg launcher ];
+  paths = [ envAmbxst launcher ];
   meta.mainProgram = "ambxst";
 }

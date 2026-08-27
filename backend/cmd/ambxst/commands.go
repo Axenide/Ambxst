@@ -88,8 +88,19 @@ func runRemove(targets []string) {
 	}
 }
 
-const hyprSource = "source = ~/.local/share/ambxst/hyprland.conf"
-const hyprLuaSource = `loadfile(os.Getenv("HOME"))`
+// Block detection markers — the first line of each block is the stable
+// identity used for both append detection and removal. Using the inner
+// content (e.g. the loadfile(...)() line, or the include/source path) was
+// fragile: if the user edited the inner path, the next run of
+// `ambxst install <target>` would not match the marker and would re-append
+// the entire block, producing duplicate imports. The comment line at the
+// top of the block is immutable and unique to Ambxst, which is why
+// removeBlock already lists "# Ambxst", "-- Ambxst", and "// Ambxst" in
+// its isRemove set — we now use the same convention for detection.
+const (
+	hyprLuaMarker  = "-- Ambxst"
+	hyprConfMarker = "# Ambxst"
+)
 
 const hyprConfBlock = `# Ambxst
 source = ~/.local/share/ambxst/hyprland.conf
@@ -139,11 +150,15 @@ func installHyprland() {
 	luaPath := filepath.Join(hyprDir, "hyprland.lua")
 	confPath := filepath.Join(hyprDir, "hyprland.conf")
 
-	luaSrc := `loadfile(os.getenv("HOME") .. "/.local/share/ambxst/hyprland.lua")()`
+	if isHomeManagerManaged(luaPath) || isHomeManagerManaged(confPath) {
+		printHomeManagerHyprlandGuidance(luaPath, confPath)
+		return
+	}
+
 	if fileExists(luaPath) || !fileExists(confPath) {
-		appendBlock(luaPath, luaSrc, hyprLuaBlock)
+		appendBlock(luaPath, hyprLuaMarker, hyprLuaBlock)
 	} else {
-		appendBlock(confPath, hyprSource, hyprConfBlock)
+		appendBlock(confPath, hyprConfMarker, hyprConfBlock)
 	}
 }
 
@@ -152,9 +167,58 @@ func removeHyprland() {
 	hyprDir := filepath.Join(home, ".config/hypr")
 	luaPath := filepath.Join(hyprDir, "hyprland.lua")
 	confPath := filepath.Join(hyprDir, "hyprland.conf")
-	luaSrc := "loadfile(os.getenv(\"HOME\") .. \"/.local/share/ambxst/hyprland.lua\")()"
-	removeBlock(luaPath, luaSrc)
-	removeBlock(confPath, hyprSource)
+	if isHomeManagerManaged(luaPath) || isHomeManagerManaged(confPath) {
+		return
+	}
+	removeBlock(luaPath, hyprLuaMarker)
+	removeBlock(confPath, hyprConfMarker)
+}
+
+// isHomeManagerManaged returns true when path is a symlink whose target
+// lives inside the Nix store, which is the home-manager pattern (HM places
+// every managed file under <store-path>/home-manager-files/...). Writing
+// through such a symlink fails with EACCES because the target is read-only.
+//
+// We use Lstat to detect the symlink itself, then Readlink to grab the
+// raw target string. Readlink is preferred over EvalSymlinks here: it does
+// not require the target to exist (HM never leaves dangling symlinks, but
+// a partially-activated state or a manual rm -rf can), and it returns the
+// link text exactly as written by HM, which is always an absolute
+// /nix/store/... path.
+func isHomeManagerManaged(path string) bool {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return false
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return false
+	}
+	target, err := os.Readlink(path)
+	if err != nil {
+		return false
+	}
+	return strings.HasPrefix(target, "/nix/store/")
+}
+
+func printHomeManagerHyprlandGuidance(luaPath, confPath string) {
+	managed := luaPath
+	if isHomeManagerManaged(confPath) {
+		managed = confPath
+	}
+	fmt.Fprintf(os.Stderr,
+		"Ambxst: %s is managed by home-manager (symlink into /nix/store).\n"+
+			"Ambxst will not modify it directly. Add this to your home.nix instead:\n\n"+
+			"  wayland.windowManager.hyprland.enable = false;\n"+
+			"  xdg.configFile.\"hypr/hyprland.lua\".text = ''\n"+
+			"    loadfile(os.getenv(\"HOME\") .. \"/.local/share/ambxst/hyprland.lua\")()\n\n"+
+			"    -- OVERRIDES (hl.* API, Hyprland >=0.56)\n"+
+			"    hl.config({ input = { kb_layout = \"latam\" } })\n"+
+			"    hl.monitor({ output = \"\", mode = \"preferred\", scale = 1 })\n"+
+			"    hl.bind(\"SUPER + Return\", hl.dsp.exec_cmd(\"kitty\"))\n"+
+			"  '';\n\n"+
+			"Ambxst regenerates ~/.local/share/ambxst/hyprland.lua on every\n"+
+			"theme/gaps/binds change — no rebuild required for cosmetic tweaks.\n",
+		managed)
 }
 
 func installSimpleTarget(t simpleTarget) {
@@ -167,13 +231,16 @@ func installSimpleTarget(t simpleTarget) {
 	path := filepath.Join(dir, t.relFile)
 	block := fmt.Sprintf("%s Ambxst\n%s\n\n%s OVERRIDES\n%s Down here you can write or %s anything that you want to override from Ambxst's settings.\n",
 		t.header, t.marker, t.header, t.header, includeKeyword(t.name))
-	appendBlock(path, t.marker, block)
+	// Use the comment marker (first line) as the detection key, not the
+	// inner include/source path — see hyprLuaMarker/hyprConfMarker above
+	// for the rationale.
+	appendBlock(path, t.header+" Ambxst", block)
 }
 
 func removeSimpleTarget(t simpleTarget) {
 	home, _ := os.UserHomeDir()
 	path := filepath.Join(home, ".config", t.relDir, t.relFile)
-	removeBlock(path, t.marker)
+	removeBlock(path, t.header+" Ambxst")
 }
 
 func includeKeyword(compositor string) string {
