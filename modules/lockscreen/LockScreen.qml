@@ -22,6 +22,8 @@ WlSessionLockSurface {
     property bool authenticating: false
     property string errorMessage: ""
     property int failLockSecondsLeft: 0
+    property bool fingerprintAvailable: false
+    property bool fingerprintScanning: false
 
     // Always transparent - blur background handles the visuals
     color: "transparent"
@@ -452,10 +454,10 @@ WlSessionLockSurface {
                         anchors.rightMargin: 32
                         spacing: 8
 
-                        // User icon / Spinner
+                        // User icon / Spinner / Fingerprint
                         Text {
                             id: userIcon
-                            text: authenticating ? Icons.circleNotch : Icons.user
+                            text: authenticating ? Icons.circleNotch : (fingerprintScanning ? Icons.fingerprint : Icons.user)
                             font.family: Icons.font
                             font.pixelSize: 24
                             color: passwordFieldBg.item
@@ -473,6 +475,7 @@ WlSessionLockSurface {
                                 }
                             }
 
+                            // Spinner for password auth
                             Timer {
                                 id: spinnerTimer
                                 interval: 100
@@ -483,9 +486,32 @@ WlSessionLockSurface {
                                 }
                             }
 
+                            // Breathing pulse for fingerprint scanning
+                            SequentialAnimation {
+                                running: fingerprintScanning && !authenticating
+                                loops: Animation.Infinite
+                                NumberAnimation {
+                                    target: userIcon
+                                    property: "opacity"
+                                    to: 0.35
+                                    duration: 1170
+                                    easing.type: Easing.InOutSine
+                                }
+                                NumberAnimation {
+                                    target: userIcon
+                                    property: "opacity"
+                                    to: 1.0
+                                    duration: 1170
+                                    easing.type: Easing.InOutSine
+                                }
+                            }
+
                             onTextChanged: {
-                                if (userIcon.text === Icons.user) {
+                                if (userIcon.text !== Icons.circleNotch) {
                                     userIcon.rotation = 0;
+                                }
+                                if (userIcon.text !== Icons.fingerprint) {
+                                    userIcon.opacity = 1.0;
                                 }
                             }
                         }
@@ -524,6 +550,12 @@ WlSessionLockSurface {
                             onAccepted: {
                                 if (passwordInput.text.trim() === "")
                                     return;
+
+                                // Stop fingerprint scan while password auth runs
+                                if (fprintdVerify.running) {
+                                    fprintdVerify.running = false;
+                                    fingerprintScanning = false;
+                                }
 
                                 // Guardar contraseña y limpiar campo inmediatamente
                                 authPasswordHolder.password = passwordInput.text;
@@ -578,6 +610,11 @@ WlSessionLockSurface {
                         passwordInput.text = "";
                         authenticating = false;
                         passwordInputBox.showError = false;
+                        // Resume fingerprint scanning after failed password attempt
+                        if (fingerprintAvailable) {
+                            fprintdVerify.running = true;
+                            fingerprintScanning = true;
+                        }
                     }
                 }
             }
@@ -658,6 +695,58 @@ WlSessionLockSurface {
             } else {
                 stop();
                 errorMessage = "";
+            }
+        }
+    }
+
+    // Fingerprint authentication via fprintd
+    // Step 1: check if user has any enrolled fingers
+    Process {
+        id: fprintdCheckProc
+        command: ["bash", "-c", `fprintd-list '${usernameCollector.text.trim()}' 2>/dev/null`]
+        running: false
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // fprintd-list output contains "finger" for each enrolled finger
+                if (text.indexOf("-finger") >= 0) {
+                    fingerprintAvailable = true;
+                    fprintdVerify.running = true;
+                    fingerprintScanning = true;
+                }
+            }
+        }
+    }
+
+    // Step 2: run fprintd-verify and watch for match
+    Process {
+        id: fprintdVerify
+        command: ["fprintd-verify", usernameCollector.text.trim()]
+        running: false
+
+        stdout: StdioCollector {
+            id: fprintdVerifyOut
+            onStreamFinished: {
+                fingerprintScanning = false;
+                if (text.indexOf("verify-match") >= 0) {
+                    // Fingerprint matched — trigger the same unlock flow as password success
+                    startAnim = false;
+                    unlockTimer.start();
+                    errorMessage = "";
+                    authenticating = false;
+                }
+                // On failure or timeout, do nothing — user can still type password
+            }
+        }
+    }
+
+    // Start fingerprint check once the username is known
+    Connections {
+        target: usernameCollector
+        function onTextChanged() {
+            const user = usernameCollector.text.trim();
+            if (user !== "" && startAnim && !fprintdCheckProc.running && !fingerprintAvailable) {
+                fprintdCheckProc.running = true;
             }
         }
     }
@@ -746,5 +835,11 @@ WlSessionLockSurface {
         // Start animations
         startAnim = true;
         passwordInput.forceActiveFocus();
+
+        // If username is already available (whoami finished), start fingerprint check now.
+        // Otherwise the Connections on usernameCollector will trigger it.
+        if (usernameCollector.text.trim() !== "") {
+            fprintdCheckProc.running = true;
+        }
     }
 }

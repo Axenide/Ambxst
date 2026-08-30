@@ -180,6 +180,7 @@ QtObject {
     readonly property string sunDim: ""
     readonly property string moon: ""
     readonly property string user: ""
+    readonly property string fingerprint: ""
     readonly property string spinnerGap: ""
     readonly property string circleNotch: ""
     readonly property string file: ""
