@@ -172,7 +172,44 @@ Rectangle {
 
         function updateFilteredApps() {
             if (searchText.length > 0) {
-                filteredApps = AppSearch.fuzzyQuery(searchText);
+                var results = AppSearch.fuzzyQuery(searchText);
+                
+                // Utilitário de Conta (Calculadora)
+                let trimmed = searchText.trim();
+                let isMath = /^[0-9.,()+\-*/%\s]+$/.test(trimmed) && /[+\-*/%]/.test(trimmed) && /[0-9]/.test(trimmed);
+                
+                if (isMath) {
+                    try {
+                        let expr = trimmed.replace(/,/g, '.');
+                        let result = Function('"use strict";return (' + expr + ')')();
+                        
+                        if (result !== undefined && result !== null && !isNaN(result) && isFinite(result)) {
+                            let resultStr = result.toString().replace('.', ',');
+                            
+                            let calcApp = {
+                                "id": "calc-result",
+                                "name": "= " + resultStr,
+                                "icon": "accessories-calculator",
+                                "comment": "Resultado da conta (Pressione Enter para copiar)",
+                                "execString": "",
+                                "categories": [],
+                                "runInTerminal": false,
+                                "execute": function() {
+                                    Quickshell.execDetached(["wl-copy", resultStr]);
+                                }
+                            };
+                            
+                            let newResults = [calcApp];
+                            for (var i = 0; i < results.length; i++) {
+                                newResults.push(results[i]);
+                            }
+                            filteredApps = newResults;
+                            return;
+                        }
+                    } catch(e) {}
+                }
+                
+                filteredApps = results;
             } else {
                 filteredApps = AppSearch.getAllApps();
             }
@@ -229,8 +266,10 @@ Rectangle {
             let app = appsById[appId];
             if (app && app.execute) {
                 app.execute();
-                // Record usage for sorting priority
-                UsageTracker.recordUsage(appId);
+                if (appId !== "calc-result") {
+                    // Record usage for sorting priority
+                    UsageTracker.recordUsage(appId);
+                }
             }
         }
 
