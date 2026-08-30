@@ -2,6 +2,29 @@
 # Script to list all monitors and their current brightness
 # Outputs format: MonitorName:Brightness
 
+# declare associative map to collect unique brightness values per monitor
+declare -A BRIGHTNESS_MAP=()
+
+# Helper: set a brightness value in the map, preferring non-zero and larger values
+set_brightness() {
+    local name="$1" value="$2"
+    local prev
+    prev="${BRIGHTNESS_MAP[$name]}"
+    if [ -z "$prev" ]; then
+        BRIGHTNESS_MAP[$name]="$value"
+        return
+    fi
+    # prefer non-zero over zero
+    if [ "$prev" -eq 0 ] && [ "$value" -gt 0 ]; then
+        BRIGHTNESS_MAP[$name]="$value"
+        return
+    fi
+    # prefer larger value if both non-zero
+    if [ "$value" -gt "$prev" ]; then
+        BRIGHTNESS_MAP[$name]="$value"
+    fi
+}
+
 # Check for internal displays using brightnessctl (backlight devices only)
 if command -v brightnessctl &> /dev/null; then
     DEVICES=$(brightnessctl -l 2>/dev/null | grep "backlight" | awk -F"'" '{print $2}')
@@ -16,7 +39,7 @@ if command -v brightnessctl &> /dev/null; then
             if [ -z "$MONITOR_NAME" ]; then
                 MONITOR_NAME="eDP-1"
             fi
-            echo "${MONITOR_NAME}:${PERCENT}"
+            set_brightness "$MONITOR_NAME" "$PERCENT"
         fi
     done
 fi
@@ -35,10 +58,15 @@ if command -v ddcutil &> /dev/null; then
             # End of display block, get brightness
             BRIGHTNESS=$(ddcutil -b "$CURRENT_BUS" getvcp 10 --brief 2>/dev/null | awk '{print $4}')
             if [ -n "$BRIGHTNESS" ]; then
-                echo "${CURRENT_CONNECTOR}:${BRIGHTNESS}"
+                set_brightness "$CURRENT_CONNECTOR" "$BRIGHTNESS"
             fi
             CURRENT_BUS=""
             CURRENT_CONNECTOR=""
         fi
     done < <(ddcutil detect --brief 2>/dev/null; echo "")
 fi
+
+    # Output unique brightness entries
+    for k in "${!BRIGHTNESS_MAP[@]}"; do
+        echo "${k}:${BRIGHTNESS_MAP[$k]}"
+    done
