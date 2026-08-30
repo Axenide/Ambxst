@@ -595,6 +595,13 @@ Item {
                         onClicked: function () {
                             Config.keybindsLoader.reload();
                         }
+                    },
+                    {
+                        icon: Icons.file,
+                        tooltip: "Open JSON",
+                        onClicked: function () {
+                            Qt.openUrlExternally("file://" + Config.keybindsPath);
+                        }
                     }
                 ]
             }
