@@ -1,19 +1,23 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 )
 
-const brightnessSaveFile = "/tmp/ambxst_brightness_saved.txt"
-
-// runBrightness mirrors the legacy `ambxst brightness` CLI command.
+// runBrightness is a thin shim over `axctl brightness <action>`. It
+// preserves the legacy `ambxst brightness ...` CLI surface so existing
+// keybinds (`Config.qml` default Hyprland binds) and the idle listener
+// (`config/defaults/system.js`) keep working without modification.
 func runBrightness(args []string) {
+	if !hasBinary("axctl") {
+		fmt.Fprintln(os.Stderr, "Error: axctl is required for brightness control")
+		os.Exit(1)
+	}
+
 	arg2 := ""
 	arg3 := ""
 	arg4 := ""
@@ -27,51 +31,18 @@ func runBrightness(args []string) {
 		arg4 = args[2]
 	}
 
-	// -l/--list
-	if arg2 == "-l" || arg2 == "--list" {
-		fmt.Println("Monitors:")
-		out, err := exec.Command("bash", "-c",
-			"hyprctl monitors -j 2>/dev/null | jq -r '.[] | \"  \\(.name)\"'").
-			CombinedOutput()
-		if err != nil || len(out) == 0 {
-			fmt.Println("Error: Could not list monitors")
-			os.Exit(1)
-		}
-		fmt.Print(string(out))
+	switch {
+	case arg2 == "-l" || arg2 == "--list":
+		axctlRun("brightness", "list")
 		return
-	}
-
-	// -r/--restore
-	if arg2 == "-r" || arg2 == "--restore" {
-		if !fileExists(brightnessSaveFile) {
-			fmt.Println("Error: No saved brightness found. Use -s to save first.")
-			os.Exit(1)
-		}
+	case arg2 == "-r" || arg2 == "--restore":
 		monitor := arg3
 		if monitor == "" {
-			lines := readLines(brightnessSaveFile)
-			for _, line := range lines {
-				parts := strings.SplitN(line, ":", 2)
-				if len(parts) != 2 {
-					continue
-				}
-				normalized := percentToNorm(parts[1])
-				ipcBrightnessSet(normalized, parts[0])
-			}
+			axctlRun("brightness", "restore")
 			fmt.Println("Restored brightness for all monitors")
 		} else {
-			value := ""
-			for _, line := range readLines(brightnessSaveFile) {
-				if strings.HasPrefix(line, monitor+":") {
-					value = strings.SplitN(line, ":", 2)[1]
-				}
-			}
-			if value == "" {
-				fmt.Printf("Error: No saved brightness for monitor %s\n", monitor)
-				os.Exit(1)
-			}
-			ipcBrightnessSet(percentToNorm(value), monitor)
-			fmt.Printf("Restored brightness for %s to %s%%\n", monitor, value)
+			axctlRun("brightness", "restore", monitor)
+			fmt.Printf("Restored brightness for %s\n", monitor)
 		}
 		return
 	}
@@ -79,21 +50,19 @@ func runBrightness(args []string) {
 	value := ""
 	monitor := ""
 	saveFlag := false
-	relativeMode := false
 	relativeDelta := ""
 
 	if isNumber(arg2) {
 		value = arg2
 		if arg3 == "-s" || arg3 == "--save" {
 			saveFlag = true
-		} else if arg3 != "" && arg3 != "-s" && arg3 != "--save" {
+		} else if arg3 != "" {
 			monitor = arg3
 			if arg4 == "-s" || arg4 == "--save" {
 				saveFlag = true
 			}
 		}
 	} else if isRelative(arg2) {
-		relativeMode = true
 		relativeDelta = arg2
 		if arg3 != "" && arg3 != "-s" && arg3 != "--save" {
 			monitor = arg3
@@ -105,20 +74,34 @@ func runBrightness(args []string) {
 		}
 	} else if arg2 == "-s" || arg2 == "--save" {
 		monitor = arg3
-		saveBrightness(monitor)
+		if monitor == "" {
+			axctlRun("brightness", "save")
+			fmt.Println("Saved current brightness for all monitors")
+		} else {
+			axctlRun("brightness", "save", monitor)
+			fmt.Printf("Saved current brightness for %s\n", monitor)
+		}
 		return
 	} else {
 		fmt.Println("Error: Invalid brightness value. Must be 0-100 or +/-delta.")
 		os.Exit(1)
 	}
 
-	// Relative mode: adjust
-	if relativeMode {
-		normalized := relativeDeltaNorm(relativeDelta)
-		ipcBrightnessAdjust(normalized, monitor)
+	if saveFlag {
 		if monitor == "" {
+			axctlRun("brightness", "save")
+		} else {
+			axctlRun("brightness", "save", monitor)
+		}
+	}
+
+	if relativeDelta != "" {
+		delta := relativeDeltaNorm(relativeDelta)
+		if monitor == "" {
+			axctlRun("brightness", "adjust", fmt.Sprintf("%g", delta))
 			fmt.Printf("Adjusted brightness by %s%% for all monitors\n", relativeDelta)
 		} else {
+			axctlRun("brightness", "adjust", monitor, fmt.Sprintf("%g", delta))
 			fmt.Printf("Adjusted brightness by %s%% for %s\n", relativeDelta, monitor)
 		}
 		return
@@ -129,122 +112,55 @@ func runBrightness(args []string) {
 		fmt.Println("Error: Brightness must be between 0 and 100")
 		os.Exit(1)
 	}
-
-	if saveFlag {
-		saveBrightness(monitor)
-	}
-
 	normalized := percentToNorm(value)
 	if monitor == "" {
-		ipcBrightnessSet(normalized, "")
+		axctlRun("brightness", "set", fmt.Sprintf("%g", normalized))
 		fmt.Printf("Set brightness to %s%% for all monitors\n", value)
 	} else {
-		ipcBrightnessSet(normalized, monitor)
+		axctlRun("brightness", "set", monitor, fmt.Sprintf("%g", normalized))
 		fmt.Printf("Set brightness to %s%% for %s\n", value, monitor)
 	}
 }
 
-func ipcBrightnessSet(normalized, monitor string) {
-	params := map[string]any{"value": normalized, "monitor": monitor}
-	if hasSocketUp() {
-		mustCallQuiet("brightness.set", params)
-		return
-	}
-	// Fallback via qs ipc (only when shell is up, not daemon).
-	exec.Command("sh", "-c", "qs ipc --pid $(cat /tmp/ambxst.pid 2>/dev/null) call brightness set "+normalized+" "+monitor).Run()
-}
-
-func ipcBrightnessAdjust(delta, monitor string) {
-	params := map[string]any{"delta": delta, "monitor": monitor}
-	if hasSocketUp() {
-		mustCallQuiet("brightness.adjust", params)
-		return
-	}
-	exec.Command("sh", "-c", "qs ipc --pid $(cat /tmp/ambxst.pid 2>/dev/null) call brightness adjust "+delta+" "+monitor).Run()
-}
-
-func hasSocketUp() bool { return isAlive() }
-
-func mustCallQuiet(method string, params any) {
-	_ = mustCallNoExit(method, params)
-}
-
-func mustCallNoExit(method string, params any) error {
-	c := newClient()
-	_, err := c.Call(method, params)
-	return err
-}
-
-func saveBrightness(monitor string) {
-	lines := brightnessList()
-	if monitor == "" {
-		// Save all
-		f, err := os.Create(brightnessSaveFile)
-		if err != nil {
-			fmt.Println("Warning: could not save brightness")
-			return
-		}
-		defer f.Close()
-		for _, l := range lines {
-			parts := strings.SplitN(l, ":", 2)
-			if len(parts) == 2 {
-				fmt.Fprintf(f, "%s:%s\n", parts[0], parts[1])
-			}
-		}
-		fmt.Println("Saved current brightness for all monitors")
-	} else {
-		saved := map[string]string{}
-		for _, l := range readLines(brightnessSaveFile) {
-			parts := strings.SplitN(l, ":", 2)
-			if len(parts) == 2 {
-				saved[parts[0]] = parts[1]
-			}
-		}
-		current := ""
-		for _, l := range brightnessList() {
-			if strings.HasPrefix(l, monitor+":") {
-				current = strings.SplitN(l, ":", 2)[1]
-			}
-		}
-		if current == "" {
-			fmt.Printf("Error: Monitor %s not found\n", monitor)
+// axctlRun shells out to `axctl <args...>` and forwards stdout/stderr.
+// Empty positional args are passed through to preserve the documented
+// "<monitor>" parameter that distinguishes "all" from a specific target.
+func axctlRun(args ...string) {
+	cmd := exec.Command("axctl", args...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		if _, ok := err.(*exec.ExitError); ok {
 			os.Exit(1)
 		}
-		saved[monitor] = current
-		f, _ := os.Create(brightnessSaveFile)
-		for k, v := range saved {
-			fmt.Fprintf(f, "%s:%s\n", k, v)
-		}
-		f.Close()
-		fmt.Printf("Saved current brightness for %s (%s%%)\n", monitor, current)
+		fmt.Fprintf(os.Stderr, "Error: axctl: %v\n", err)
+		os.Exit(1)
 	}
 }
 
-func brightnessList() []string {
-	script := filepath.Join(shellDir(), "scripts", "brightness_list.sh")
-	if fileExists(script) {
-		out, err := exec.Command("bash", script).Output()
-		if err == nil {
-			return strings.Split(strings.TrimSpace(string(out)), "\n")
-		}
-	}
-	return nil
-}
-
-func percentToNorm(p string) string {
+func percentToNorm(p string) float64 {
 	f, err := strconv.ParseFloat(p, 64)
 	if err != nil {
-		return "0"
+		return 0
 	}
-	return fmt.Sprintf("%.2f", f/100)
+	return f / 100
 }
 
-func relativeDeltaNorm(delta string) string {
-	f, err := strconv.ParseFloat(delta, 64)
-	if err != nil {
-		return "0"
+func relativeDeltaNorm(delta string) float64 {
+	sign := 1.0
+	s := delta
+	if strings.HasPrefix(s, "-") {
+		sign = -1
+		s = s[1:]
+	} else if strings.HasPrefix(s, "+") {
+		s = s[1:]
 	}
-	return fmt.Sprintf("%.2f", f/100)
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return sign * f / 100
 }
 
 func isNumber(s string) bool {
@@ -267,18 +183,4 @@ func isRelative(s string) bool {
 	}
 	_, err := strconv.Atoi(s[1:])
 	return err == nil && s[1:] != ""
-}
-
-func readLines(path string) []string {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil
-	}
-	defer f.Close()
-	var lines []string
-	sc := bufio.NewScanner(f)
-	for sc.Scan() {
-		lines = append(lines, sc.Text())
-	}
-	return lines
 }

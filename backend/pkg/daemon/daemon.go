@@ -15,7 +15,6 @@ import (
 	"ambxst/backend/pkg/ipc"
 	"ambxst/backend/pkg/paths"
 	"ambxst/backend/pkg/svc"
-	"ambxst/backend/pkg/svc/brightness"
 	"ambxst/backend/pkg/svc/caffeine"
 	"ambxst/backend/pkg/svc/clipboard"
 	"ambxst/backend/pkg/svc/compositor"
@@ -103,8 +102,8 @@ func New() (*Daemon, error) {
 	netSvc.Register(d.srv)
 	d.network = netSvc
 
-	brightSvc := brightness.NewService()
-	brightSvc.Register(d.srv)
+	// Brightness lives in axctl now; the ambxst CLI is a thin shim that
+	// shells out to it (see backend/cmd/ambxst/brightness.go).
 
 	configSvc.Register(d.srv)
 
