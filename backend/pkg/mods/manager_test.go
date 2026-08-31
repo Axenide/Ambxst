@@ -862,6 +862,43 @@ func TestUntestedBaseRevisionWarnsInsteadOfBlocking(t *testing.T) {
 	}
 }
 
+func TestManagerKeepsBothInsertionsAtTheSameAnchor(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	original := "header\nanchor\nfooter\n"
+	writeTestFile(t, filepath.Join(base, "shell.qml"), original)
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	first := filepath.Join(root, "first")
+	writeDiffPackage(t, first, "example.first", original, "header\nanchor\nwidget one\nfooter\n")
+	second := filepath.Join(root, "second")
+	writeDiffPackage(t, second, "example.second", original, "header\nanchor\nwidget two\nfooter\n")
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Install(second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.first", true); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.SetEnabled("example.second", true)
+	if err != nil {
+		t.Fatalf("two independent insertions were refused: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, "shell.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "header\nanchor\nwidget one\nwidget two\nfooter\n" {
+		t.Fatalf("load order did not decide the insertion order: %q", data)
+	}
+}
+
 func writeDiffPackage(t *testing.T, root, id, before, after string) {
 	t.Helper()
 	repo := t.TempDir()

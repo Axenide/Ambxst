@@ -83,7 +83,9 @@ composition runs in a temporary Git repository that borrows the base object
 store, which keeps those blobs reachable after an Ambxst update. That repository
 is deleted before the generation is activated, so a generation is plain source.
 
-Two mods rewriting the same lines still stop the build, and the active
+Two mods that only insert new lines at the same anchor are both kept, in load
+order; this is what lets independent bar widgets register next to each other.
+Two mods rewriting the same existing lines still stop the build, and the active
 generation remains unchanged. Overlay replacements still verify the target
 checksum at the point where they run. Dependencies are applied before
 dependents; user load order resolves the remaining order.

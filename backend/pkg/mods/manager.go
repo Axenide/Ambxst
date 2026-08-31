@@ -1169,6 +1169,92 @@ func (m *Manager) cleanupGenerations(state State) {
 // base object store is borrowed rather than copied, which keeps the pre-image
 // blobs of older mods reachable after an Ambxst update. The repository is
 // removed before the generation is activated.
+// resolveAddedBlocks settles the one merge conflict that load order can decide:
+// two mods inserting new lines at the same place. Neither side removed base
+// content there, so both blocks belong in the file, and the mod applied first
+// goes first. Any conflict that also rewrites existing lines is left alone and
+// stops the build.
+func resolveAddedBlocks(generation string) (bool, error) {
+	cmd := exec.Command("git", "diff", "--name-only", "--diff-filter=U")
+	cmd.Dir = generation
+	output, err := cmd.Output()
+	if err != nil {
+		return false, fmt.Errorf("list conflicts: %w", err)
+	}
+	files := strings.Fields(strings.TrimSpace(string(output)))
+	if len(files) == 0 {
+		return false, nil
+	}
+	for _, name := range files {
+		path, err := safeJoin(generation, name)
+		if err != nil {
+			return false, err
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return false, err
+		}
+		merged, ok := mergeAddedBlocks(string(data))
+		if !ok {
+			return false, nil
+		}
+		if err := os.WriteFile(path, []byte(merged), 0o644); err != nil {
+			return false, err
+		}
+		if err := runCommand(generation, "git", "add", "--", name); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
+}
+
+// mergeAddedBlocks keeps both sides of every diff3 conflict whose merge base is
+// empty. It reports false as soon as a conflict has base content, so the caller
+// can stop instead of guessing.
+func mergeAddedBlocks(content string) (string, bool) {
+	lines := strings.Split(content, "\n")
+	var out []string
+	for index := 0; index < len(lines); index++ {
+		if !strings.HasPrefix(lines[index], "<<<<<<<") {
+			out = append(out, lines[index])
+			continue
+		}
+		var ours, base, theirs []string
+		section := "ours"
+		index++
+		closed := false
+		for ; index < len(lines); index++ {
+			line := lines[index]
+			switch {
+			case strings.HasPrefix(line, "|||||||"):
+				section = "base"
+			case line == "=======" || strings.HasPrefix(line, "======= "):
+				section = "theirs"
+			case strings.HasPrefix(line, ">>>>>>>"):
+				closed = true
+			default:
+				switch section {
+				case "ours":
+					ours = append(ours, line)
+				case "base":
+					base = append(base, line)
+				default:
+					theirs = append(theirs, line)
+				}
+			}
+			if closed {
+				break
+			}
+		}
+		if !closed || len(base) > 0 {
+			return "", false
+		}
+		out = append(out, ours...)
+		out = append(out, theirs...)
+	}
+	return strings.Join(out, "\n"), true
+}
+
 func initComposition(generation, base string) error {
 	if err := runCommand(generation, "git", "init", "-q"); err != nil {
 		return err
@@ -1178,6 +1264,7 @@ func initComposition(generation, base string) error {
 		{"user.name", "Ambxst Mods"},
 		{"commit.gpgsign", "false"},
 		{"core.autocrlf", "false"},
+		{"merge.conflictStyle", "diff3"},
 		{"core.hooksPath", filepath.Join(generation, ".git", "unused-hooks")},
 	}
 	for _, setting := range settings {
@@ -1237,10 +1324,15 @@ func applyOperation(generation, packageRoot string, op Operation) error {
 		}
 		// The context a patch was written against moves when an earlier mod
 		// edits the same file, or when Ambxst itself changes. A three-way
-		// merge against the recorded pre-image accepts that drift and still
-		// stops on hunks that touch the same lines.
+		// merge against the recorded pre-image accepts that drift.
 		if err := runCommand(generation, "git", "apply", "--3way", source); err != nil {
-			return fmt.Errorf("apply patch: %w", err)
+			resolved, resolveErr := resolveAddedBlocks(generation)
+			if resolveErr != nil {
+				return fmt.Errorf("apply patch: %w", errors.Join(err, resolveErr))
+			}
+			if !resolved {
+				return fmt.Errorf("apply patch: %w", err)
+			}
 		}
 		return nil
 	}
