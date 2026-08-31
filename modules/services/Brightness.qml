@@ -237,6 +237,11 @@ Singleton {
         }
         readonly property bool isDdc: !useBrightnessctl && !!ddcEntry
         readonly property string busNum: isDdc ? ddcEntry.busNum : ""
+        // Canonical monitor key used to match axctl's Event.BrightnessChanged
+        // broadcasts: "ddc-<bus>" for DDC, "backlight" for internal panels.
+        function monitorName(): string {
+            return monitor.isDdc ? ("ddc-" + monitor.busNum) : "backlight";
+        }
         property int rawMaxBrightness: 100
         property real brightness
         property bool ready: false
