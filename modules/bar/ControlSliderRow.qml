@@ -115,7 +115,7 @@ Item {
             property real animatedProgress: root.sliderValue
 
             Behavior on animatedProgress {
-                enabled: Config.animDuration > 0
+                enabled: Config.animDuration > 0 && !mouseArea.pressed
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart
