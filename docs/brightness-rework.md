@@ -194,6 +194,31 @@ JsonAdapter. Wire `OSD.qml` to read `Config.osdHideInterval`.
 - axctl is installed as `/usr/local/bin/axctl`; rolling back means
   restoring the previous binary.
 
+## Activation
+
+After installing the new binary and merging the QML changes:
+
+1. **Restart ambxst** (the daemon supervises axctl, but not qs — qs
+   exiting cascades to ambxst exiting, and the new QML is only picked
+   up on a fresh start). From the tmux session:
+   ```
+   exit
+   /usr/local/bin/ambxst   # or: make run
+   ```
+2. The new axctl daemon will be auto-launched with the new code. The
+   `Event.BrightnessChanged` broadcasts will include the canonical
+   `monitor` key (`"backlight"` or `"ddc-N"`) and the actual absolute
+   value, so QML's subscription loop will match them instantly.
+
+## Status
+
+Implementation completed across two repos:
+
+- axctl: `b022bd92` — broadcast per-device with absolute value and
+  canonical key.
+- ambxst: `363dddcc` — two-flag system, OsdManager, suppressOsd,
+  Binding { when: !isDragging }, config keys, docs.
+
 ## Testing plan
 
 1. Manual: drag brightness slider → OSD must NOT flicker, slider must
