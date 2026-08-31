@@ -4,6 +4,7 @@ import QtQuick
 import QtQml
 import Quickshell
 import Quickshell.Io
+import qs.modules.services
 
 Singleton {
     id: root
@@ -97,7 +98,7 @@ Singleton {
 
         if (isOfficialName(presetName)) {
             console.warn("Cannot create preset with official name:", presetName)
-            Quickshell.execDetached(["notify-send", "Error", `Cannot use reserved official name "${presetName}".`])
+            Notifications.notifyInternal({summary: "Error", body: `Cannot use reserved official name "${presetName}".`, appName: "Presets", urgency: "critical"})
             return
         }
 
@@ -277,7 +278,7 @@ Singleton {
 
         if (isOfficialName(newName)) {
             console.warn("Cannot rename to official name")
-            Quickshell.execDetached(["notify-send", "Error", `Cannot rename to reserved official name "${newName}".`])
+            Notifications.notifyInternal({summary: "Error", body: `Cannot rename to reserved official name "${newName}".`, appName: "Presets", urgency: "critical"})
             return
         }
 
@@ -359,12 +360,12 @@ Singleton {
         onExited: function(exitCode) {
             if (exitCode === 0) {
                 console.log("Preset saved successfully:", root.pendingPresetName)
-                Quickshell.execDetached(["notify-send", "Preset Saved", `Preset "${root.pendingPresetName}" saved successfully.`])
+                Notifications.notifyInternal({summary: "Preset Saved", body: `Preset "${root.pendingPresetName}" saved successfully.`, appName: "Presets"})
                 // Trigger scan
                 root.scanProcess.running = true
             } else {
                 console.warn("Failed to save preset:", root.pendingPresetName)
-                Quickshell.execDetached(["notify-send", "Error", `Failed to save preset "${root.pendingPresetName}".`])
+                Notifications.notifyInternal({summary: "Error", body: `Failed to save preset "${root.pendingPresetName}".`, appName: "Presets", urgency: "critical"})
             }
             root.pendingPresetName = ""
         }
@@ -378,7 +379,7 @@ Singleton {
         onExited: function(exitCode) {
             if (exitCode === 0 && root.pendingRename) {
                 console.log("Preset renamed successfully:", root.pendingRename.oldName, "->", root.pendingRename.newName)
-                Quickshell.execDetached(["notify-send", "Preset Renamed", `Preset renamed to "${root.pendingRename.newName}".`])
+                Notifications.notifyInternal({summary: "Preset Renamed", body: `Preset renamed to "${root.pendingRename.newName}".`, appName: "Presets"})
                 // Update active preset if it was the renamed one
                 if (root.activePreset === root.pendingRename.oldName) {
                     root.activePreset = root.pendingRename.newName
@@ -389,7 +390,7 @@ Singleton {
                 root.scanProcess.running = true
             } else {
                 console.warn("Failed to rename preset")
-                Quickshell.execDetached(["notify-send", "Error", "Failed to rename preset."])
+                Notifications.notifyInternal({summary: "Error", body: "Failed to rename preset.", appName: "Presets", urgency: "critical"})
             }
             root.pendingRename = null
         }
@@ -403,11 +404,11 @@ Singleton {
         onExited: function(exitCode) {
             if (exitCode === 0) {
                 console.log("Preset updated successfully:", root.pendingUpdateName)
-                Quickshell.execDetached(["notify-send", "Preset Updated", `Preset "${root.pendingUpdateName}" updated successfully.`])
+                Notifications.notifyInternal({summary: "Preset Updated", body: `Preset "${root.pendingUpdateName}" updated successfully.`, appName: "Presets"})
                 root.scanProcess.running = true
             } else {
                 console.warn("Failed to update preset:", root.pendingUpdateName)
-                Quickshell.execDetached(["notify-send", "Error", `Failed to update preset "${root.pendingUpdateName}".`])
+                Notifications.notifyInternal({summary: "Error", body: `Failed to update preset "${root.pendingUpdateName}".`, appName: "Presets", urgency: "critical"})
             }
             root.pendingUpdateName = ""
         }
@@ -421,7 +422,7 @@ Singleton {
         onExited: function(exitCode) {
             if (exitCode === 0) {
                 console.log("Preset deleted successfully:", root.pendingDeleteName)
-                Quickshell.execDetached(["notify-send", "Preset Deleted", `Preset "${root.pendingDeleteName}" deleted.`])
+                Notifications.notifyInternal({summary: "Preset Deleted", body: `Preset "${root.pendingDeleteName}" deleted.`, appName: "Presets"})
                 // Clear active preset if it was the deleted one
                 if (root.activePreset === root.pendingDeleteName) {
                     root.activePreset = ""
@@ -429,7 +430,7 @@ Singleton {
                 root.scanProcess.running = true
             } else {
                 console.warn("Failed to delete preset:", root.pendingDeleteName)
-                Quickshell.execDetached(["notify-send", "Error", `Failed to delete preset "${root.pendingDeleteName}".`])
+                Notifications.notifyInternal({summary: "Error", body: `Failed to delete preset "${root.pendingDeleteName}".`, appName: "Presets", urgency: "critical"})
             }
             root.pendingDeleteName = ""
         }
@@ -449,11 +450,11 @@ Singleton {
         onExited: function(exitCode) {
             if (exitCode === 0) {
                 console.log("Preset loaded successfully:", root.currentPreset)
-                Quickshell.execDetached(["notify-send", "Preset Loaded", `Preset "${root.currentPreset}" loaded successfully.`])
+                Notifications.notifyInternal({summary: "Preset Loaded", body: `Preset "${root.currentPreset}" loaded successfully.`, appName: "Presets"})
                 root.activePreset = root.currentPreset
             } else {
                 console.warn("Failed to load preset:", root.currentPreset)
-                Quickshell.execDetached(["notify-send", "Error", `Failed to load preset "${root.currentPreset}".`])
+                Notifications.notifyInternal({summary: "Error", body: `Failed to load preset "${root.currentPreset}".`, appName: "Presets", urgency: "critical"})
             }
             root.currentPreset = ""
         }

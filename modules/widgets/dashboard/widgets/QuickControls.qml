@@ -102,27 +102,27 @@ StyledRect {
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
                     iconName: Icons.nightLight
-                    isActive: NightLightService.active
-                    tooltipText: NightLightService.active ? "Night Light: On" : "Night Light: Off"
-                    onClicked: NightLightService.toggle()
+                    isActive: NightLightClient.active
+                    tooltipText: NightLightClient.active ? "Night Light: On" : "Night Light: Off"
+                    onClicked: NightLightClient.toggle()
                 }
 
                 ControlButton {
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
                     iconName: Icons.caffeine
-                    isActive: CaffeineService.inhibit
-                    tooltipText: CaffeineService.inhibit ? "Caffeine: On" : "Caffeine: Off"
-                    onClicked: CaffeineService.toggleInhibit()
+                    isActive: CaffeineClient.inhibit
+                    tooltipText: CaffeineClient.inhibit ? "Caffeine: On" : "Caffeine: Off"
+                    onClicked: CaffeineClient.toggle()
                 }
 
                 ControlButton {
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
                     iconName: Icons.gameMode
-                    isActive: GameModeService.toggled
-                    tooltipText: GameModeService.toggled ? "Game Mode: On" : "Game Mode: Off"
-                    onClicked: GameModeService.toggle()
+                    isActive: GameModeClient.toggled
+                    tooltipText: GameModeClient.toggled ? "Game Mode: On" : "Game Mode: Off"
+                    onClicked: GameModeClient.toggle()
                 }
             }
         }

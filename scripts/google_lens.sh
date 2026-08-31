@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Upload image to uguu.se and open in Google Lens
-# Expects image at /tmp/image.png (captured by ScreenshotTool)
+# Usage: google_lens.sh [image_path] (default /tmp/image.png)
 
 set -euo pipefail
 
-IMAGE_PATH="/tmp/image.png"
+IMAGE_PATH="${1:-/tmp/image.png}"
 
 # Verify image exists
 if [[ ! -f "$IMAGE_PATH" ]]; then

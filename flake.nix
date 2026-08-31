@@ -2,12 +2,7 @@
   description = "Ambxst - An Axtremely customizable shell by Axenide";
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
-
-    quickshell = {
-      url = "git+https://git.outfoxxed.me/outfoxxed/quickshell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
     axctl = {
       url = "github:Axenide/axctl";
@@ -15,9 +10,10 @@
     };
   };
 
-  outputs = { self, nixpkgs, quickshell, axctl, ... }:
+  outputs = { self, nixpkgs, axctl, ... }:
     let
       ambxstLib = import ./nix/lib.nix { inherit nixpkgs; };
+      version = nixpkgs.lib.removeSuffix "\n" (builtins.readFile ./version);
     in {
       nixosModules.default = { pkgs, lib, ... }: {
         imports = [ ./nix/modules ];
@@ -35,11 +31,14 @@
           lib = nixpkgs.lib;
 
           Ambxst = import ./nix/packages {
-            inherit pkgs lib self system quickshell axctl;
+            inherit pkgs lib self system axctl version;
           };
         in {
           default = Ambxst;
           Ambxst = Ambxst;
+          backend = import ./nix/packages/backend.nix {
+            inherit pkgs lib version;
+          };
         }
       );
 
