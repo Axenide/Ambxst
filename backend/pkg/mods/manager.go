@@ -80,6 +80,7 @@ type ModInfo struct {
 	CompatibilityError string           `json:"compatibilityError,omitempty"`
 	Untested           bool             `json:"untested,omitempty"`
 	UntestedMessage    string           `json:"untestedMessage,omitempty"`
+	UnknownFields      []string         `json:"unknownFields,omitempty"`
 }
 
 type DependencyInfo struct {
@@ -1058,6 +1059,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			CompatibilityError: compatibilityMessage,
 			Untested:           untestedMessage != "",
 			UntestedMessage:    untestedMessage,
+			UnknownFields:      manifest.UnknownFields,
 		})
 	}
 	sort.SliceStable(status.Mods, func(i, j int) bool { return status.Mods[i].Order < status.Mods[j].Order })

@@ -104,6 +104,7 @@ Item {
         "mods.unknown": "Unknown",
         "mods.unknown_error": "Unknown error",
         "mods.unknown_version": "Unknown version",
+        "mods.unknown_fields": "Manifest keys this Ambxst does not know: %1",
         "mods.untested_base": "%1. You can still enable it.",
         "mods.update": "Update",
         "mods.working": "Working…"
@@ -810,6 +811,16 @@ Item {
                         visible: (root.selectedMod?.untestedMessage ?? "") !== ""
                         Layout.fillWidth: true
                         text: root.tr("mods.untested_base", root.selectedMod?.untestedMessage ?? "")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.warning
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        visible: (root.selectedMod?.unknownFields ?? []).length > 0
+                        Layout.fillWidth: true
+                        text: root.tr("mods.unknown_fields", (root.selectedMod?.unknownFields ?? []).join(", "))
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-2)
                         color: Colors.warning

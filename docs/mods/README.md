@@ -105,6 +105,10 @@ installed or enabled. Fill them in: the confirmation prompt is where a user
 decides whether to trust the code, and an anonymous package gives them nothing
 to check.
 
+A manifest key this Ambxst does not know is reported in the package status and
+otherwise ignored, so metadata added to the format later does not break older
+installs.
+
 `commands` declares executables that must be available before composition.
 `permissions` is review metadata shown to the user. It is not a sandbox or an
 authorization mechanism: installed QML runs with the user's permissions.

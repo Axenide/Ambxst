@@ -82,3 +82,28 @@ func writeTestFile(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+func TestLoadManifestKeepsUnknownFields(t *testing.T) {
+	root := t.TempDir()
+	manifest := `{
+	  "manifestVersion": 1,
+	  "id": "example.future",
+	  "name": "Future fixture",
+	  "version": "1.0.0",
+	  "sponsorUrl": "https://example.invalid",
+	  "operations": [{"type": "overlay", "source": "Feature.qml", "target": "Feature.qml"}]
+	}`
+	if err := os.WriteFile(filepath.Join(root, "Feature.qml"), []byte("Item {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ManifestFile), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := LoadManifest(root)
+	if err != nil {
+		t.Fatalf("a package using a newer manifest key was rejected: %v", err)
+	}
+	if len(loaded.UnknownFields) != 1 || loaded.UnknownFields[0] != "sponsorUrl" {
+		t.Fatalf("the unknown key was not reported: %#v", loaded.UnknownFields)
+	}
+}

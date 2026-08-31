@@ -8,7 +8,9 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -44,6 +46,9 @@ type Manifest struct {
 	Permissions       []string          `json:"permissions,omitempty"`
 	Settings          *SettingsRef      `json:"settings,omitempty"`
 	Operations        []Operation       `json:"operations"`
+
+	// Keys this build does not recognise, kept for the package status only.
+	UnknownFields []string `json:"-"`
 }
 
 type Compatibility struct {
@@ -93,15 +98,58 @@ func LoadManifest(root string) (Manifest, error) {
 		return Manifest{}, fmt.Errorf("read manifest: %w", err)
 	}
 	var manifest Manifest
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&manifest); err != nil {
+	if err := json.Unmarshal(data, &manifest); err != nil {
 		return Manifest{}, fmt.Errorf("parse manifest: %w", err)
 	}
+	// A key this build does not know is reported, never fatal. Refusing the
+	// package would mean any metadata added to the format later breaks every
+	// older Ambxst that reads it.
+	manifest.UnknownFields = unknownManifestFields(data)
 	if err := manifest.Validate(root); err != nil {
 		return Manifest{}, err
 	}
 	return manifest, nil
+}
+
+func unknownManifestFields(data []byte) []string {
+	var probe Manifest
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var unknown []string
+	for {
+		err := decoder.Decode(&probe)
+		if err == nil || errors.Is(err, io.EOF) {
+			return unknown
+		}
+		const marker = "unknown field "
+		index := strings.Index(err.Error(), marker)
+		if index < 0 {
+			return unknown
+		}
+		name := strings.Trim(err.Error()[index+len(marker):], "\"")
+		if name == "" {
+			return unknown
+		}
+		for _, seen := range unknown {
+			if seen == name {
+				return unknown
+			}
+		}
+		unknown = append(unknown, name)
+		// The decoder stops at the first unknown key, so drop it and look again.
+		var generic map[string]json.RawMessage
+		if json.Unmarshal(data, &generic) != nil {
+			return unknown
+		}
+		delete(generic, name)
+		reduced, marshalErr := json.Marshal(generic)
+		if marshalErr != nil {
+			return unknown
+		}
+		data = reduced
+		decoder = json.NewDecoder(bytes.NewReader(data))
+		decoder.DisallowUnknownFields()
+	}
 }
 
 func (m Manifest) Validate(root string) error {
