@@ -286,6 +286,13 @@ Singleton {
         property real brightness: 0
         property bool ready: false
 
+        // Track our own writes so subscription echoes don't bounce the
+        // value back. DDC quantization can make read-back differ from
+        // what we sent, so we use a 2 % tolerance within a 1500 ms
+        // settle window — anything outside either is an external change.
+        property real lastWrittenValue: 0
+        property int lastWrittenAt: 0
+
         onBrightnessChanged: {
             if (monitor.ready) {
                 root.brightnessChanged(monitor.brightness, monitor.screen);
@@ -311,12 +318,22 @@ Singleton {
         function applyReportedBrightness(value) {
             if (value === undefined)
                 return;
+            // Filter echoes of our own writes (subscription races the
+            // fork+exec we just fired, and DDC read-back quantizes).
+            if (Date.now() - monitor.lastWrittenAt < 1500
+                && Math.abs(value - monitor.lastWrittenValue) < 0.02)
+                return;
+            // Skip no-op assignments (QML re-fires onBrightnessChanged
+            // even when the value didn't change, which makes the OSD
+            // re-animate and the slider bindings recompute).
+            if (Math.abs(value - monitor.brightness) < 0.001)
+                return;
             monitor.brightness = value;
         }
 
         property var setTimer: Timer {
             id: setTimer
-            interval: monitor.isDdc ? 300 : 0
+            interval: monitor.isDdc ? 100 : 0
             onTriggered: {
                 monitor.syncBrightness();
             }
@@ -325,6 +342,8 @@ Singleton {
         function syncBrightness() {
             if (monitor.isDdc && !monitor.busNum)
                 return;
+            monitor.lastWrittenAt = Date.now();
+            monitor.lastWrittenValue = monitor.brightness;
             const proc = writeProcFactory.createObject(monitor, {
                 monitorName: monitor.monitorName(),
                 targetValue: monitor.brightness
