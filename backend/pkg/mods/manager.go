@@ -60,6 +60,8 @@ type ModInfo struct {
 	Description        string           `json:"description"`
 	License            string           `json:"license,omitempty"`
 	Author             string           `json:"author,omitempty"`
+	AuthorURL          string           `json:"authorUrl,omitempty"`
+	Homepage           string           `json:"homepage,omitempty"`
 	Enabled            bool             `json:"enabled"`
 	Order              int              `json:"order"`
 	Source             string           `json:"source"`

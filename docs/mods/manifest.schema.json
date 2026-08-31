@@ -33,6 +33,14 @@
         }
       }
     },
+    "authorUrl": {
+      "type": "string",
+      "description": "Link to the author's page, shown before install and enable."
+    },
+    "homepage": {
+      "type": "string",
+      "description": "Link to the mod's own page, shown before install and enable."
+    },
     "dependencies": { "$ref": "#/$defs/modIds" },
     "dependencySources": {
       "type": "object",

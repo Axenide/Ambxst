@@ -100,6 +100,11 @@ built. `compatibility.testedBaseCommits` is advisory. The base moves with every
 Ambxst update, so an unlisted revision only marks the package as untested in
 Settings; composition, the health window, and rollback remain the real guards.
 
+`author`, `authorUrl`, `homepage`, and `license` are shown before anything is
+installed or enabled. Fill them in: the confirmation prompt is where a user
+decides whether to trust the code, and an anonymous package gives them nothing
+to check.
+
 `commands` declares executables that must be available before composition.
 `permissions` is review metadata shown to the user. It is not a sandbox or an
 authorization mechanism: installed QML runs with the user's permissions.

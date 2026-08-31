@@ -37,6 +37,9 @@ Singleton {
         root.previousGeneration = result?.previousGeneration ?? "";
         root.generationCurrent = result?.generationCurrent ?? true;
         root.generationError = result?.generationError ?? "";
+        // The backend owns this flag. Latching it to true locally kept the
+        // restart banner on screen after the daemon had already cleared it.
+        root.restartRequired = result?.restartRequired ?? false;
         root.loaded = true;
     }
 
@@ -55,7 +58,7 @@ Singleton {
             }
             root.applyStatus(result);
             root.statusMessageKey = successMessage ?? "";
-            if (result?.restartRequired ?? requiresRestart)
+            if (requiresRestart && (result?.restartRequired === undefined))
                 root.restartRequired = true;
             if (onSuccess)
                 onSuccess(result);
