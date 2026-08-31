@@ -33,20 +33,6 @@ Item {
 
     signal requestPopupOpen()
 
-    Process {
-        id: notifyProcess
-        stdout: StdioCollector { id: notifyStdout }
-        onExited: (exitCode) => {
-            let action = notifyStdout.text.trim();
-            if (action === "check") {
-                root.requestPopupOpen();
-            } else if (action === "stop") {
-                root.stopAlarm();
-                root.isRunning = false;
-            }
-        }
-    }
-    
     // Internal countdown state
     property int timeLeft: Config.system.pomodoro.workTime
     property int totalTime: Config.system.pomodoro.workTime
@@ -155,20 +141,32 @@ Item {
             nextSession();
         }
 
-        // Prepare notification command before running
-        let cmd = [
-            "notify-send",
-            "-a", "Pomodoro",
-            "Pomodoro",
-            finishedSession + " session finished!"
-        ];
-        
-        // Add wait and actions ONLY if notify-send supports them (most modern ones do)
-        // Note: Removing --wait can help if the process hangs
-        cmd.splice(1, 0, "--wait", "--action=check=Check", "--action=stop=Stop");
-        
-        notifyProcess.command = cmd;
-        notifyProcess.running = true;
+        // Routed through Ambxst's Notifications service so the timer alert
+        // is tracked and dismissable like every other Ambxst notification
+        // (notify-send was leaking into the system daemon with no way to
+        // discard it). Action handlers preserve the previous --action
+        // behavior: "check" opens the popup, "stop" halts the alarm.
+        Notifications.notifyInternal({
+            summary: "Pomodoro",
+            body: finishedSession + " session finished!",
+            appName: "Pomodoro",
+            urgency: "normal",
+            expireTimeout: 60000,
+            replaceKey: "pomodoro-" + finishedSession,
+            actions: [
+                { identifier: "check", text: "Check" },
+                { identifier: "stop",  text: "Stop"  }
+            ],
+            actionHandlers: {
+                "check": function () {
+                    root.requestPopupOpen();
+                },
+                "stop": function () {
+                    root.stopAlarm();
+                    root.isRunning = false;
+                }
+            }
+        });
     }
 
     function stopAlarm() {

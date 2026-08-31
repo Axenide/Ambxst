@@ -16,7 +16,7 @@ Backend singletons bridging Wayland protocols, CLI tools (nmcli, upower, wpctl, 
 | **Media** | `MprisController.qml` | MPRIS D-Bus player control |
 | **Notifications** | `Notifications.qml` | D-Bus notification server with persistence |
 | **System Monitor** | `SystemResources.qml` | CPU, RAM, GPU, temps via Python script |
-| **Compositor** | `AxctlService.qml` | Abstraction layer for compositor IPC (focus, dispatch) |
+| **Compositor** | `AxctlService.qml` | Compositor abstraction. State arrives via `BackendService` subscription to the Go-owned `compositor` service; `dispatch()` is an IPC call to the backend that runs `axctl` one-shots |
 | **Visibility** | `Visibilities.qml` | Per-screen UI visibility/layering orchestration |
 | **State** | `StateService.qml` | JSON persistence for session state (tab positions, etc.) |
 | **Focus** | `FocusGrabManager.qml` | Input focus coordination across overlays |

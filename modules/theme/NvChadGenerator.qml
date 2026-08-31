@@ -9,9 +9,21 @@ QtObject {
         if (!Colors) return
 
         const fmt = (c) => c.toString()
+        const isDark = (c) => {
+            const hex = fmt(c).replace("#", "")
+            if (hex.length < 6) return true
+
+            const red = parseInt(hex.slice(0, 2), 16)
+            const green = parseInt(hex.slice(2, 4), 16)
+            const blue = parseInt(hex.slice(4, 6), 16)
+            if (Number.isNaN(red) || Number.isNaN(green) || Number.isNaN(blue)) return true
+
+            return ((red * 299 + green * 587 + blue * 114) / 1000) < 128
+        }
 
         const onBackground = fmt(Colors.overBackground)
         const background = fmt(Colors.background)
+        const mode = isDark(Colors.background) ? "dark" : "light"
         const surfaceVariant = fmt(Colors.surfaceVariant)
         const outline = fmt(Colors.outline)
         const red = fmt(Colors.red)
@@ -82,7 +94,7 @@ QtObject {
         lua += `\tbase0F = "${inverseSurface}",\n`
         lua += "}\n\n"
 
-        lua += "M.type = \"dark\"\n\n"
+        lua += `M.type = "${mode}"\n\n`
 
         lua += "M.polish_hl = {\n"
         lua += "\tdefaults = {\n"
@@ -111,7 +123,7 @@ QtObject {
         writer.text = lua
         
         const home = Quickshell.env("HOME")
-        const targetPath = home + "/.cache/wal/base46-dark.lua"
+        const targetPath = home + `/.cache/wal/base46-${mode}.lua`
         
         // Use HEREDOC to handle special characters and newlines correctly
         const cmd = `

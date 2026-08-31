@@ -17,6 +17,7 @@ NotchAnimationBehavior {
     id: root
 
     property int leftPanelWidth
+    property string screenName: ""
 
     property var state: QtObject {
         property int currentTab: GlobalStates.dashboardCurrentTab
@@ -75,6 +76,16 @@ NotchAnimationBehavior {
 
     // Check if a tab should be loaded
     function shouldTabBeLoaded(tabIndex) {
+        // When the dashboard is closed, keep only tab 0 (launcher) alive so
+        // the heavy tabs (wallpapers, clipboard, notes...) release their
+        // objects and image caches instead of remaining resident.
+        if (!root.isVisible) {
+            if (Config.performance.dashboardPersistTabs) {
+                return tabIndex === 0 || lruTabsLoaded[tabIndex] === true;
+            }
+            return tabIndex === 0;
+        }
+
         if (tabIndex === 0) return true; // Always load WidgetsTab (Tab 0)
 
         if (Config.performance.dashboardPersistTabs) {
@@ -391,8 +402,11 @@ NotchAnimationBehavior {
                 // Generic Tab Loader Component
                 component TabLoader : Loader {
                     anchors.fill: parent
-                    // Load based on LRU strategy or if currently active
-                    active: root.shouldTabBeLoaded(index) || root.state.currentTab === index
+                    // Load based on LRU strategy or if currently active.
+                    // When the dashboard closes (isVisible false) tabs are
+                    // unloaded so their image caches / GL pools are released;
+                    // currentTab alone must NOT keep heavy tabs resident.
+                    active: root.shouldTabBeLoaded(index)
                     
                     // Visibility handles the "switching"
                     visible: root.state.currentTab === index
