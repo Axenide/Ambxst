@@ -359,7 +359,7 @@ Singleton {
 
         property var setTimer: Timer {
             id: setTimer
-            interval: monitor.isDdc ? 100 : 0
+            interval: monitor.isDdc ? 50 : 0
             onTriggered: {
                 monitor.syncBrightness();
             }
