@@ -74,10 +74,12 @@ An overlay can add a file. Replacing an existing file also requires
 change fail visibly instead of silently overwriting newer code. Patches are
 checked with `git apply --check --whitespace=error-all` before they are applied.
 
-Two enabled mods cannot currently modify the same target file. This conservative
-rule keeps load order explicit and prevents a successful build whose behavior
-depends on patch coincidence. Dependencies are applied before dependents; user
-load order resolves the remaining order.
+Operations are applied in load order. Separate patches may change different
+parts of the same file; if their hunks overlap or one patch invalidates another,
+`git apply --check` stops the build and the active generation remains unchanged.
+Overlay replacements still verify the target checksum at the point where they
+run. Dependencies are applied before dependents; user load order resolves the
+remaining order.
 
 `commands` declares executables that must be available before composition.
 `permissions` is review metadata shown to the user. It is not a sandbox or an

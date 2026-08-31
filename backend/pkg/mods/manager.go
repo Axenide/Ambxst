@@ -695,20 +695,9 @@ func (m *Manager) buildGeneration(state State) (string, error) {
 	if err := exportBase(base, tmp); err != nil {
 		return "", fmt.Errorf("export base source: %w", err)
 	}
-	owners := make(map[string]string)
 	for _, id := range ordered {
 		manifest := manifests[id]
 		packageRoot := filepath.Join(m.paths.ModPackagesDir(), id)
-		files, err := manifest.AffectedFiles(packageRoot)
-		if err != nil {
-			return "", fmt.Errorf("mod %s: %w", id, err)
-		}
-		for _, file := range files {
-			if owner, exists := owners[file]; exists {
-				return "", fmt.Errorf("mods %s and %s both modify %s", owner, id, file)
-			}
-			owners[file] = id
-		}
 		for _, operation := range manifest.Operations {
 			if err := applyOperation(tmp, packageRoot, operation); err != nil {
 				return "", fmt.Errorf("mod %s: %w", id, err)

@@ -168,6 +168,42 @@ func TestTopologicalOrderUsesDependenciesBeforeUserOrder(t *testing.T) {
 	}
 }
 
+func TestManagerComposesNonOverlappingPatchesToSameFile(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "first\ntwo\nmiddle\nfour\nlast\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	first := filepath.Join(root, "first")
+	writePatchPackage(t, first, "example.first", "@@ -1,2 +1,2 @@\n-first\n+one\n two\n")
+	second := filepath.Join(root, "second")
+	writePatchPackage(t, second, "example.second", "@@ -4,2 +4,2 @@\n four\n-last\n+five\n")
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Install(second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.first", true); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.SetEnabled("example.second", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, "shell.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "one\ntwo\nmiddle\nfour\nfive\n" {
+		t.Fatalf("patches were not composed in order: %q", data)
+	}
+}
+
 func TestConsecutiveBuildsKeepLastKnownGoodGeneration(t *testing.T) {
 	root := t.TempDir()
 	base := filepath.Join(root, "base")
@@ -550,4 +586,24 @@ func writeOverlayPackage(t *testing.T, root, directory, id, target string) strin
 	}
 	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
 	return packageRoot
+}
+
+func writePatchPackage(t *testing.T, root, id, hunk string) {
+	t.Helper()
+	patch := "diff --git a/shell.qml b/shell.qml\n--- a/shell.qml\n+++ b/shell.qml\n" + hunk
+	writeTestFile(t, filepath.Join(root, "patches", "change.patch"), patch)
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              id,
+		Name:            id,
+		Version:         "1.0.0",
+		Operations: []Operation{{
+			Type: "patch", Source: "patches/change.patch",
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(root, ManifestFile), string(data))
 }
