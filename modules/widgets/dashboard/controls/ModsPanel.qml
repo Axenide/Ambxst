@@ -115,11 +115,14 @@ Item {
         if (root.i18nActive) {
             try {
                 if (typeof I18n !== "undefined" && typeof I18n.t === "function") {
-                    const translated = I18n.t(key, argument);
-                    // A translator without this key returns the key itself, and
-                    // the built-in English string beats showing a raw key.
-                    if (translated !== undefined && translated !== key)
-                        return translated;
+                    // Ask only for keys the translator actually carries. A mod
+                    // built against an older panel would otherwise answer every
+                    // key with a humanised guess, which reads worse than the
+                    // English string shipped right here.
+                    const strings = I18n.strings ?? ({});
+                    const base = I18n.fallback ?? ({});
+                    if (strings[key] !== undefined || base[key] !== undefined)
+                        return argument === undefined ? I18n.t(key) : I18n.t(key, argument);
                 }
             } catch (error) {
                 // The English fallback keeps Mods available if the translator is unavailable.
@@ -211,6 +214,16 @@ Item {
     }
 
     Component.onCompleted: ModsService.refresh()
+
+    // The daemon clears the restart flag when a new generation survives its
+    // health window, and the panel can already be open at that moment. This
+    // re-reads only while that banner is on screen and stops with it.
+    Timer {
+        interval: 5000
+        repeat: true
+        running: root.visible && ModsService.restartRequired && !ModsService.busy
+        onTriggered: ModsService.refresh()
+    }
 
     // The daemon clears the restart flag once a new generation survives its
     // health window. Re-reading on show keeps the banner from outliving it.
@@ -769,7 +782,7 @@ Item {
                             Layout.alignment: Qt.AlignVCenter
                             implicitWidth: stateChip.implicitWidth + 20
                             implicitHeight: 24
-                            variant: "common"
+                            variant: "focus"
                             radius: Styling.radius(-2)
                             enableShadow: false
 
