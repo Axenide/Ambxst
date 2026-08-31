@@ -4,7 +4,6 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.services
 import qs.modules.components
-import qs.modules.globals
 import qs.modules.theme
 import qs.config
 
@@ -197,16 +196,10 @@ Item {
                 Layout.preferredHeight: 36
                 Layout.rightMargin: 8
 
-                property var currentMonitor: {
-                    // Explicit dependency on Brightness.monitors so the
-                    // binding re-evaluates when monitors populate. The
-                    // function call alone is opaque to QML reactivity.
-                    const _ = Brightness.monitors;
-                    return Brightness.getMonitorForScreen(root.bar.screen);
-                }
+                property var currentMonitor: Brightness.getMonitorForScreen(root.bar.screen)
 
                 icon: Icons.sun
-                sliderValue: currentMonitor?.brightness ?? 0
+                sliderValue: currentMonitor?.brightness ?? 0.5
                 progressColor: Styling.srItem("overprimary")
                 wavy: true
                 wavyAmplitude: 1.5 * sliderValue
@@ -215,16 +208,15 @@ Item {
                 iconScale: 0.8 + (sliderValue / 1.0) * 0.2
 
                 onValueChanged: newValue => {
-                    GlobalStates.suppressOsdTemporarily();
                     if (Brightness.syncBrightness) {
                         for (let i = 0; i < Brightness.monitors.length; i++) {
                             let mon = Brightness.monitors[i];
                             if (mon && mon.ready) {
-                                mon.setBrightness(newValue, true);
+                                mon.setBrightness(newValue);
                             }
                         }
                     } else if (currentMonitor && currentMonitor.ready) {
-                        currentMonitor.setBrightness(newValue, true);
+                        currentMonitor.setBrightness(newValue);
                     }
                 }
 

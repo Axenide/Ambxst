@@ -159,7 +159,7 @@ PanelWindow {
 
     Timer {
         id: hideTimer
-        interval: Config.compositor.osdHideInterval ?? 2500
+        interval: 2500
         onTriggered: GlobalStates.osdVisible = false
     }
 
@@ -167,10 +167,7 @@ PanelWindow {
         target: GlobalStates
         function onOsdVisibleChanged() {
             if (GlobalStates.osdVisible) {
-                OsdManager.showOsd(root, root.targetScreen);
                 hideTimer.restart();
-            } else {
-                OsdManager.hideOsd(root, root.targetScreen);
             }
         }
     }
@@ -197,20 +194,10 @@ PanelWindow {
     Connections {
         target: Brightness
         function onBrightnessChanged(value, screen) {
-            if (!screen || !root.targetScreen
-                || screen.name === root.targetScreen.name
-                || Brightness.syncBrightness) {
+            // Check if the change happened on THIS screen or if it's a sync change
+            if (!screen || !root.targetScreen || screen.name === root.targetScreen.name || Brightness.syncBrightness) {
                 root.osdValue = value;
                 root.osdMuted = false;
-                GlobalStates.osdIndicator = "brightness";
-            }
-        }
-        function onOsdShouldShow(screen) {
-            if (!screen || !root.targetScreen
-                || screen.name === root.targetScreen.name
-                || Brightness.syncBrightness) {
-                if (GlobalStates.suppressOsd)
-                    return;
                 GlobalStates.osdIndicator = "brightness";
                 GlobalStates.osdVisible = true;
                 hideTimer.restart();

@@ -41,7 +41,5 @@ var data = {
     "blurPopups": false,
     "blurPopupsIgnorealpha": 0.2,
     "blurInputMethods": false,
-    "blurInputMethodsIgnorealpha": 0.2,
-    "osdSuppressOnDrag": true,
-    "osdHideInterval": 2500
+    "blurInputMethodsIgnorealpha": 0.2
 }

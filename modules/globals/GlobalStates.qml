@@ -53,7 +53,7 @@ Singleton {
     // ═══════════════════════════════════════════════════════════════
     property string compositorLayout: ""
     property bool compositorLayoutReady: false
-    readonly property var availableLayouts: ["dwindle", "master", "scrolling", "monocle"]
+    readonly property var availableLayouts: ["dwindle", "master", "scrolling"]
 
     Process {
         id: getLayoutProcess
@@ -82,26 +82,10 @@ Singleton {
         }
     }
 
-    Process {
-        id: setLayoutProcess
-        property string pendingLayout: ""
-        onExited: (code) => {
-            if (code === 0 && pendingLayout && availableLayouts.includes(pendingLayout)) {
-                compositorLayout = pendingLayout;
-                pendingLayout = "";
-            } else if (pendingLayout) {
-                console.warn("GlobalStates: axctl layout set failed (code:", code, "), keeping compositorLayout as", compositorLayout);
-                pendingLayout = "";
-            }
-        }
-    }
-
     function setCompositorLayout(layout) {
         if (availableLayouts.includes(layout)) {
+            compositorLayout = layout;
             StateService.set("compositorLayout", layout);
-            setLayoutProcess.pendingLayout = layout;
-            setLayoutProcess.command = ["axctl", "layout", "set", layout];
-            setLayoutProcess.running = true;
         }
     }
 
@@ -188,29 +172,16 @@ Singleton {
     property bool osdVisible: false
     property string osdIndicator: "volume" // volume, mic, brightness
 
-    // Global suppression for the OSD during user-driven changes (slider
-    // drag). Mirrors DMS SessionData.suppressOSD: any UI-driven call to
-    // suppressOsdTemporarily() arms a 2 s timer that flips this flag
-    // back to false. While true, OSD shows are gated out.
-    property bool suppressOsd: true
-
-    Timer {
-        id: suppressOsdTimer
-        interval: 2000
-        onTriggered: root.suppressOsd = false
-    }
-
-    function suppressOsdTemporarily(): void {
-        if (Config.compositor && !Config.compositor.osdSuppressOnDrag)
-            return;
-        root.suppressOsd = true;
-        suppressOsdTimer.restart();
-    }
-
     // Screenshot Tool state
     property bool screenshotToolVisible: false
     // property string screenshotToolMode: "normal" // DEPRECATED
     property string screenshotCaptureMode: "region" // region, window, screen
+    
+    // Global selection state for synchronization
+    property int screenshotSelectionX: 0
+    property int screenshotSelectionY: 0
+    property int screenshotSelectionW: 0
+    property int screenshotSelectionH: 0
 
     // Screen Record Tool state
     property bool screenRecordToolVisible: false

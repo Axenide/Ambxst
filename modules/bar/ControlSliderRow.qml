@@ -20,7 +20,6 @@ Item {
     property real wavyFrequency: 8
     property real iconRotation: 0
     property real iconScale: 1
-    property bool dragging: mouseArea.pressed
 
     // Internal animated properties
     property real _animatedWavyAmplitude: wavyAmplitude
@@ -115,7 +114,7 @@ Item {
             property real animatedProgress: root.sliderValue
 
             Behavior on animatedProgress {
-                enabled: Config.animDuration > 0 && !mouseArea.pressed
+                enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
                     easing.type: Easing.OutQuart

@@ -759,8 +759,6 @@ Singleton {
             property real blurPopupsIgnorealpha: 0.2
             property bool blurInputMethods: false
             property real blurInputMethodsIgnorealpha: 0.2
-            property bool osdSuppressOnDrag: true
-            property int osdHideInterval: 2500
         }
     }
 

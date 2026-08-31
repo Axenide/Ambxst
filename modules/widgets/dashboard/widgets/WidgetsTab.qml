@@ -245,7 +245,6 @@ Rectangle {
 
                         property real brightnessValue: 0
                         property var currentMonitor: {
-                            const _ = Brightness.monitors; // reactive dep
                             if (Brightness.monitors.length > 0) {
                                 let focusedName = AxctlService.focusedMonitor?.name ?? "";
                                 let found = null;
@@ -274,19 +273,18 @@ Rectangle {
                             brightnessIcon.brightnessIconRotation = (value / 1.0) * 180;
                             brightnessIcon.brightnessIconScale = 0.8 + (value / 1.0) * 0.2;
 
-                            GlobalStates.suppressOsdTemporarily();
                             if (Brightness.syncBrightness) {
                                 // Sync all monitors
                                 for (let i = 0; i < Brightness.monitors.length; i++) {
                                     let mon = Brightness.monitors[i];
                                     if (mon && mon.ready) {
-                                        mon.setBrightness(value, true);
+                                        mon.setBrightness(value);
                                     }
                                 }
                             } else {
                                 // Only current monitor
                                 if (currentMonitor && currentMonitor.ready) {
-                                    currentMonitor.setBrightness(value, true);
+                                    currentMonitor.setBrightness(value);
                                 }
                             }
                         }
