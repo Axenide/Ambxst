@@ -76,6 +76,8 @@ type ModInfo struct {
 	Error              string           `json:"error,omitempty"`
 	Compatible         bool             `json:"compatible"`
 	CompatibilityError string           `json:"compatibilityError,omitempty"`
+	Untested           bool             `json:"untested,omitempty"`
+	UntestedMessage    string           `json:"untestedMessage,omitempty"`
 }
 
 type DependencyInfo struct {
@@ -1015,6 +1017,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			continue
 		}
 		compatibilityErr := checkCompatibility(manifest, base)
+		untestedMessage := untestedBase(manifest, base)
 		compatibilityMessage := ""
 		if compatibilityErr != nil {
 			compatibilityMessage = compatibilityErr.Error()
@@ -1051,6 +1054,8 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			Valid:              true,
 			Compatible:         compatibilityErr == nil,
 			CompatibilityError: compatibilityMessage,
+			Untested:           untestedMessage != "",
+			UntestedMessage:    untestedMessage,
 		})
 	}
 	sort.SliceStable(status.Mods, func(i, j int) bool { return status.Mods[i].Order < status.Mods[j].Order })
@@ -1273,20 +1278,28 @@ func checkCompatibility(manifest Manifest, base string) error {
 	if !matchesVersion(baseVersion, manifest.Compatibility.Ambxst) {
 		return fmt.Errorf("Ambxst %s does not match %q", baseVersion, manifest.Compatibility.Ambxst)
 	}
-	if len(manifest.Compatibility.TestedBaseCommits) > 0 {
-		revision := gitRevision(base)
-		matched := false
-		for _, allowed := range manifest.Compatibility.TestedBaseCommits {
-			if strings.EqualFold(revision, allowed) {
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			return fmt.Errorf("base revision %s has not been tested", shortRevision(revision))
+	return nil
+}
+
+// untestedBase reports a base revision the package author has not tested. A
+// mod is still allowed to build there: the base moves with every Ambxst
+// update, and refusing every unlisted revision would disable the whole
+// collection after one upstream commit. Patch composition, the startup health
+// check, and rollback remain the real guards.
+func untestedBase(manifest Manifest, base string) string {
+	if len(manifest.Compatibility.TestedBaseCommits) == 0 {
+		return ""
+	}
+	revision := gitRevision(base)
+	if revision == "" {
+		return "the base revision is unknown"
+	}
+	for _, tested := range manifest.Compatibility.TestedBaseCommits {
+		if strings.EqualFold(revision, tested) {
+			return ""
 		}
 	}
-	return nil
+	return fmt.Sprintf("not tested on base revision %s", shortRevision(revision))
 }
 
 func topologicalOrder(installed []InstalledMod, manifests map[string]Manifest) ([]string, error) {

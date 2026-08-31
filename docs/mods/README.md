@@ -72,15 +72,26 @@ the replacement fails validation or generation composition.
 
 An overlay can add a file. Replacing an existing file also requires
 `"replace": true` and the current target's `expectedSha256`. This makes a base
-change fail visibly instead of silently overwriting newer code. Patches are
-checked with `git apply --check --whitespace=error-all` before they are applied.
+change fail visibly instead of silently overwriting newer code.
 
-Operations are applied in load order. Separate patches may change different
-parts of the same file; if their hunks overlap or one patch invalidates another,
-`git apply --check` stops the build and the active generation remains unchanged.
-Overlay replacements still verify the target checksum at the point where they
-run. Dependencies are applied before dependents; user load order resolves the
-remaining order.
+Operations are applied in load order. A patch is first tried with
+`git apply --check --whitespace=error-all`. Exact context rarely survives real
+use: an earlier mod edits the same file, or Ambxst itself moves the lines a
+patch was written against. So a patch that does not apply verbatim is retried
+as a three-way merge against the pre-image blob recorded in the diff. The
+composition runs in a temporary Git repository that borrows the base object
+store, which keeps those blobs reachable after an Ambxst update. That repository
+is deleted before the generation is activated, so a generation is plain source.
+
+Two mods rewriting the same lines still stop the build, and the active
+generation remains unchanged. Overlay replacements still verify the target
+checksum at the point where they run. Dependencies are applied before
+dependents; user load order resolves the remaining order.
+
+`compatibility.ambxst` is a hard requirement: a mod outside the range is never
+built. `compatibility.testedBaseCommits` is advisory. The base moves with every
+Ambxst update, so an unlisted revision only marks the package as untested in
+Settings; composition, the health window, and rollback remain the real guards.
 
 `commands` declares executables that must be available before composition.
 `permissions` is review metadata shown to the user. It is not a sandbox or an

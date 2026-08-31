@@ -39,6 +39,7 @@ Item {
         "mods.enable": "Enable",
         "mods.enabled": "Enabled",
         "mods.incompatible": "Incompatible",
+        "mods.untested_base": "%1. You can still enable it.",
         "mods.install": "Install",
         "mods.install_dependencies": "Install required mods",
         "mods.invalid_number": "Enter a valid number.",
@@ -658,6 +659,16 @@ Item {
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.error
                             wrapMode: Text.WrapAnywhere
+                        }
+
+                        Text {
+                            visible: (root.selectedMod?.untestedMessage ?? "") !== ""
+                            Layout.fillWidth: true
+                            text: root.tr("mods.untested_base", root.selectedMod?.untestedMessage ?? "")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.warning
+                            wrapMode: Text.Wrap
                         }
 
                         Separator { Layout.fillWidth: true }

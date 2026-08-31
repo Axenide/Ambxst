@@ -816,6 +816,52 @@ func TestManagerStopsOnOverlappingPatches(t *testing.T) {
 	}
 }
 
+func TestUntestedBaseRevisionWarnsInsteadOfBlocking(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "first\ntwo\nlast\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	source := filepath.Join(root, "source")
+	writeDiffPackage(t, source, "example.untested", "first\ntwo\nlast\n", "first\ntwo\nfive\n")
+	manifestPath := filepath.Join(source, ManifestFile)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest Manifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Compatibility = Compatibility{
+		API:               APIVersion,
+		Ambxst:            ">=1.2.5 <1.3.0",
+		TestedBaseCommits: []string{"0123456789012345678901234567890123456789"},
+	}
+	updated, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, manifestPath, string(updated))
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(source); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.SetEnabled("example.untested", true)
+	if err != nil {
+		t.Fatalf("an untested base revision blocked the build: %v", err)
+	}
+	if status.ActiveGeneration == "" {
+		t.Fatal("no generation was activated")
+	}
+	if len(status.Mods) != 1 || !status.Mods[0].Compatible || !status.Mods[0].Untested {
+		t.Fatalf("the untested base was not reported: %#v", status.Mods)
+	}
+}
+
 func writeDiffPackage(t *testing.T, root, id, before, after string) {
 	t.Helper()
 	repo := t.TempDir()
