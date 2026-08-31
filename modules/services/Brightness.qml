@@ -168,6 +168,7 @@ Singleton {
                 const value = msg.params.value;
                 if (typeof name !== "string" || typeof value !== "number")
                     return;
+                console.log("[brightness event]", new Date().toISOString().slice(11,23), "monitor=", name, "value=", value);
 
                 if (name === "") {
                     for (let i = 0; i < root.monitors.length; ++i) {
