@@ -21,6 +21,7 @@ import "defaults/prefix.js" as PrefixDefaults
 import "defaults/system.js" as SystemDefaults
 import "defaults/dock.js" as DockDefaults
 import "defaults/ai.js" as AiDefaults
+import "defaults/general.js" as GeneralDefaults
 import "ConfigValidator.js" as ConfigValidator
 
 Singleton {
@@ -36,6 +37,7 @@ Singleton {
 
     property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/config"
     property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/binds.json"
+    property string presetDir: Qt.resolvedUrl("../assets/presets/Ambxst Default").toString().replace("file://", "")
 
     property bool pauseAutoSave: false
 
@@ -54,9 +56,10 @@ Singleton {
     property bool systemReady: false
     property bool dockReady: false
     property bool aiReady: false
+    property bool generalReady: false
     property bool keybindsInitialLoadComplete: false
 
-    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady
+    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady && generalReady
 
     // Compatibility aliases
     property alias loader: themeLoader
@@ -65,11 +68,27 @@ Singleton {
     // ============================================
     // BATCH INITIALIZATION
     // ============================================
-    // Ensure config directory exists (pure mkdir, no file checks)
+    // Ensure config directory exists and copy preset files if missing
     Process {
         id: ensureConfigDir
         running: true
-        command: ["mkdir", "-p", root.configDir]
+        command: [
+            "bash", "-c",
+            "mkdir -p '" + root.configDir + "' && " +
+            "cp -n '" + root.presetDir + "/theme.json' '" + root.configDir + "/theme.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/bar.json' '" + root.configDir + "/bar.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/workspaces.json' '" + root.configDir + "/workspaces.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/overview.json' '" + root.configDir + "/overview.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/notch.json' '" + root.configDir + "/notch.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/compositor.json' '" + root.configDir + "/compositor.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/performance.json' '" + root.configDir + "/performance.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/desktop.json' '" + root.configDir + "/desktop.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/lockscreen.json' '" + root.configDir + "/lockscreen.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/dock.json' '" + root.configDir + "/dock.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/ai.json' '" + root.configDir + "/ai.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/system.json' '" + root.configDir + "/system.json' 2>/dev/null || true; " +
+            "echo 'Preset files copied if missing'"
+        ]
     }
 
     // Auto-migrate hyprland.json → compositor.json for existing users
@@ -90,6 +109,13 @@ Singleton {
         onLoaded: {
             if (!root.themeReady) {
                 validateModule("theme", themeLoader, ThemeDefaults.data, () => {
+                    root.themeReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.themeReady) {
+                handleMissingConfig("theme", themeLoader, ThemeDefaults.data, () => {
                     root.themeReady = true;
                 });
             }
@@ -482,6 +508,13 @@ Singleton {
                 });
             }
         }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.barReady) {
+                handleMissingConfig("bar", barLoader, BarDefaults.data, () => {
+                    root.barReady = true;
+                });
+            }
+        }
         onFileChanged: {
             root.pauseAutoSave = true;
             reload();
@@ -534,6 +567,13 @@ Singleton {
                 });
             }
         }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.workspacesReady) {
+                handleMissingConfig("workspaces", workspacesLoader, WorkspacesDefaults.data, () => {
+                    root.workspacesReady = true;
+                });
+            }
+        }
         onFileChanged: {
             root.pauseAutoSave = true;
             reload();
@@ -566,6 +606,13 @@ Singleton {
         onLoaded: {
             if (!root.overviewReady) {
                 validateModule("overview", overviewLoader, OverviewDefaults.data, () => {
+                    root.overviewReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.overviewReady) {
+                handleMissingConfig("overview", overviewLoader, OverviewDefaults.data, () => {
                     root.overviewReady = true;
                 });
             }
@@ -605,6 +652,13 @@ Singleton {
                 });
             }
         }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.notchReady) {
+                handleMissingConfig("notch", notchLoader, NotchDefaults.data, () => {
+                    root.notchReady = true;
+                });
+            }
+        }
         onFileChanged: {
             root.pauseAutoSave = true;
             reload();
@@ -639,6 +693,13 @@ Singleton {
         onLoaded: {
             if (!root.compositorReady) {
                 validateModule("compositor", compositorLoader, CompositorDefaults.data, () => {
+                    root.compositorReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.compositorReady) {
+                handleMissingConfig("compositor", compositorLoader, CompositorDefaults.data, () => {
                     root.compositorReady = true;
                 });
             }
@@ -716,6 +777,13 @@ Singleton {
                 });
             }
         }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.performanceReady) {
+                handleMissingConfig("performance", performanceLoader, PerformanceDefaults.data, () => {
+                    root.performanceReady = true;
+                });
+            }
+        }
         onFileChanged: {
             root.pauseAutoSave = true;
             reload();
@@ -753,6 +821,13 @@ Singleton {
                 });
             }
         }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.weatherReady) {
+                handleMissingConfig("weather", weatherLoader, WeatherDefaults.data, () => {
+                    root.weatherReady = true;
+                });
+            }
+        }
         onFileChanged: {
             root.pauseAutoSave = true;
             reload();
@@ -782,6 +857,13 @@ Singleton {
         onLoaded: {
             if (!root.desktopReady) {
                 validateModule("desktop", desktopLoader, DesktopDefaults.data, () => {
+                    root.desktopReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.desktopReady) {
+                handleMissingConfig("desktop", desktopLoader, DesktopDefaults.data, () => {
                     root.desktopReady = true;
                 });
             }
@@ -821,6 +903,13 @@ Singleton {
                 });
             }
         }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.lockscreenReady) {
+                handleMissingConfig("lockscreen", lockscreenLoader, LockscreenDefaults.data, () => {
+                    root.lockscreenReady = true;
+                });
+            }
+        }
         onFileChanged: {
             root.pauseAutoSave = true;
             reload();
@@ -849,6 +938,13 @@ Singleton {
         onLoaded: {
             if (!root.prefixReady) {
                 validateModule("prefix", prefixLoader, PrefixDefaults.data, () => {
+                    root.prefixReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.prefixReady) {
+                handleMissingConfig("prefix", prefixLoader, PrefixDefaults.data, () => {
                     root.prefixReady = true;
                 });
             }
@@ -889,6 +985,13 @@ Singleton {
                 });
             }
         }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.systemReady) {
+                handleMissingConfig("system", systemLoader, SystemDefaults.data, () => {
+                    root.systemReady = true;
+                });
+            }
+        }
         onFileChanged: {
             root.pauseAutoSave = true;
             reload();
@@ -913,8 +1016,8 @@ Singleton {
                 property list<var> listeners: [
                     {
                         "timeout": 150,
-                        "onTimeout": "ambxst brightness 10 -s",
-                        "onResume": "ambxst brightness -r"
+                        "onTimeout": "axctl brightness save && axctl brightness set 0.1",
+                        "onResume": "axctl brightness restore"
                     },
                     {
                         "timeout": 300,
@@ -977,6 +1080,13 @@ Singleton {
         onLoaded: {
             if (!root.dockReady) {
                 validateModule("dock", dockLoader, DockDefaults.data, () => {
+                    root.dockReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.dockReady) {
+                handleMissingConfig("dock", dockLoader, DockDefaults.data, () => {
                     root.dockReady = true;
                 });
             }
@@ -1045,7 +1155,7 @@ Singleton {
         }
 
         adapter: JsonAdapter {
-            property list<string> apps: ["kitty"]
+            property list<string> apps: []
         }
     }
 
@@ -1060,6 +1170,13 @@ Singleton {
         onLoaded: {
             if (!root.aiReady) {
                 validateModule("ai", aiLoader, AiDefaults.data, () => {
+                    root.aiReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.aiReady) {
+                handleMissingConfig("ai", aiLoader, AiDefaults.data, () => {
                     root.aiReady = true;
                 });
             }
@@ -1084,6 +1201,47 @@ Singleton {
             property int sidebarWidth: 400
             property string sidebarPosition: "right"
             property bool sidebarPinnedOnStartup: false
+        }
+    }
+
+    // ============================================
+    // GENERAL MODULE
+    // ============================================
+    FileView {
+        id: generalLoader
+        path: root.configDir + "/general.json"
+        atomicWrites: true
+        watchChanges: true
+        onLoaded: {
+            if (!root.generalReady) {
+                validateModule("general", generalLoader, GeneralDefaults.data, () => {
+                    root.generalReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.generalReady) {
+                handleMissingConfig("general", generalLoader, GeneralDefaults.data, () => {
+                    root.generalReady = true;
+                });
+            }
+        }
+        onFileChanged: {
+            root.pauseAutoSave = true;
+            reload();
+            root.pauseAutoSave = false;
+        }
+        onPathChanged: reload()
+        onAdapterUpdated: {
+            if (root.generalReady && !root.pauseAutoSave) {
+                generalLoader.writeAdapter();
+            }
+        }
+
+        adapter: JsonAdapter {
+            property string terminal: "kitty"
+            property bool terminalAdvanced: false
+            property string terminalCommand: "$TERMINAL -e $COMMAND"
         }
     }
 
@@ -1247,7 +1405,7 @@ Singleton {
 
             if (needsUpdate) {
                 console.log("Auto-repairing binds.json: adding missing binds");
-                keybindsLoader.setText(JSON.stringify(current, null, 4));
+                keybindsLoader.setText(JSON.stringify(current, null, 2));
             }
         } catch (e) {
             console.warn("Failed to repair binds.json:", e);
@@ -1440,7 +1598,6 @@ Singleton {
             }
 
             property list<var> custom: [
-                // Window management
                 {
                     "name": "Close Window",
                     "keys": [
@@ -1459,8 +1616,6 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Workspace navigation
                 {
                     "name": "Workspace 1",
                     "keys": [
@@ -1641,10 +1796,8 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Move window to workspace
                 {
-                    "name": "Move to Workspace 1",
+                    "name": "Move Window to Workspace 1",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1662,7 +1815,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 2",
+                    "name": "Move Window to Workspace 2",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1680,7 +1833,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 3",
+                    "name": "Move Window to Workspace 3",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1698,7 +1851,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 4",
+                    "name": "Move Window to Workspace 4",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1716,7 +1869,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 5",
+                    "name": "Move Window to Workspace 5",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1734,7 +1887,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 6",
+                    "name": "Move Window to Workspace 6",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1752,7 +1905,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 7",
+                    "name": "Move Window to Workspace 7",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1770,7 +1923,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 8",
+                    "name": "Move Window to Workspace 8",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1788,7 +1941,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 9",
+                    "name": "Move Window to Workspace 9",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1806,7 +1959,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Workspace 10",
+                    "name": "Move Window to Workspace 10",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1823,10 +1976,188 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Workspace scroll/keys
                 {
-                    "name": "Previous Occupied Workspace (Scroll)",
+                    "name": "Move Window Silently to Workspace 1",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "1"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "1",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 2",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "2"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "2",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 3",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "3"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "3",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 4",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "4"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "4",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 5",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "5"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "5",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 6",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "6"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "6",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 7",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "7"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "7",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 8",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "8"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "8",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 9",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "9"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "9",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Silently to Workspace 10",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "0"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movetoworkspacesilent",
+                            "argument": "10",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Switch Occupied Workspace -1",
                     "keys": [
                         {
                             "modifiers": ["SUPER"],
@@ -1844,7 +2175,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Next Occupied Workspace (Scroll)",
+                    "name": "Switch Occupied Workspace +1",
                     "keys": [
                         {
                             "modifiers": ["SUPER"],
@@ -1862,7 +2193,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Previous Occupied Workspace",
+                    "name": "Switch Occupied Workspace -1",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1880,7 +2211,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Next Occupied Workspace",
+                    "name": "Switch Occupied Workspace +1",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -1898,7 +2229,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Previous Workspace",
+                    "name": "Switch Relative Workspace -1",
                     "keys": [
                         {
                             "modifiers": ["SUPER"],
@@ -1916,7 +2247,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Next Workspace",
+                    "name": "Switch Relative Workspace +1",
                     "keys": [
                         {
                             "modifiers": ["SUPER"],
@@ -1933,8 +2264,6 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Window drag/resize
                 {
                     "name": "Drag Window",
                     "keys": [
@@ -1954,7 +2283,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Drag Resize Window",
+                    "name": "Resize Window with Mouse",
                     "keys": [
                         {
                             "modifiers": ["SUPER"],
@@ -1971,10 +2300,8 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Media controls
                 {
-                    "name": "Play/Pause",
+                    "name": "Media Play Pause",
                     "keys": [
                         {
                             "modifiers": [],
@@ -1992,7 +2319,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Previous Track",
+                    "name": "Media Previous",
                     "keys": [
                         {
                             "modifiers": [],
@@ -2010,7 +2337,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Next Track",
+                    "name": "Media Next",
                     "keys": [
                         {
                             "modifiers": [],
@@ -2028,7 +2355,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Media Play/Pause",
+                    "name": "Media Play Pause",
                     "keys": [
                         {
                             "modifiers": [],
@@ -2046,7 +2373,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Stop Playback",
+                    "name": "Media Stop",
                     "keys": [
                         {
                             "modifiers": [],
@@ -2063,8 +2390,6 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Volume controls
                 {
                     "name": "Volume Up",
                     "keys": [
@@ -2119,8 +2444,6 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Brightness controls
                 {
                     "name": "Brightness Up",
                     "keys": [
@@ -2132,7 +2455,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "ambxst brightness +5",
+                            "argument": "axctl brightness adjust 0.05",
                             "flags": "le",
                             "layouts": []
                         }
@@ -2150,15 +2473,13 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "ambxst brightness -5",
+                            "argument": "axctl brightness adjust -0.05",
                             "flags": "le",
                             "layouts": []
                         }
                     ],
                     "enabled": true
                 },
-
-                // Special keys
                 {
                     "name": "Calculator",
                     "keys": [
@@ -2177,8 +2498,6 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Special workspaces
                 {
                     "name": "Toggle Special Workspace",
                     "keys": [
@@ -2198,7 +2517,7 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Move to Special Workspace",
+                    "name": "Move Window to Special Workspace",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
@@ -2215,10 +2534,8 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Lid switch events
                 {
-                    "name": "Lock on Lid Close",
+                    "name": "Lock Session on Lid Switch",
                     "keys": [
                         {
                             "modifiers": [],
@@ -2271,15 +2588,27 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Window focus
                 {
                     "name": "Focus Up",
                     "keys": [
                         {
                             "modifiers": ["SUPER"],
                             "key": "Up"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movefocus",
+                            "argument": "u",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Focus Up",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL"],
                             "key": "k"
@@ -2287,16 +2616,10 @@ Singleton {
                     ],
                     "actions": [
                         {
-                            "dispatcher": "layoutmsg",
-                            "argument": "focus u",
-                            "flags": "",
-                            "layouts": ["scrolling"]
-                        },
-                        {
                             "dispatcher": "movefocus",
                             "argument": "u",
                             "flags": "",
-                            "layouts": ["dwindle", "master"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2307,7 +2630,21 @@ Singleton {
                         {
                             "modifiers": ["SUPER"],
                             "key": "Down"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movefocus",
+                            "argument": "d",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Focus Down",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL"],
                             "key": "j"
@@ -2315,16 +2652,10 @@ Singleton {
                     ],
                     "actions": [
                         {
-                            "dispatcher": "layoutmsg",
-                            "argument": "focus d",
-                            "flags": "",
-                            "layouts": ["scrolling"]
-                        },
-                        {
                             "dispatcher": "movefocus",
                             "argument": "d",
                             "flags": "",
-                            "layouts": ["master", "dwindle"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2335,11 +2666,39 @@ Singleton {
                         {
                             "modifiers": ["SUPER"],
                             "key": "Left"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movefocus",
+                            "argument": "l",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Focus Left",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL"],
                             "key": "z"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movefocus",
+                            "argument": "l",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Focus Left",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL"],
                             "key": "h"
@@ -2347,16 +2706,10 @@ Singleton {
                     ],
                     "actions": [
                         {
-                            "dispatcher": "layoutmsg",
-                            "argument": "focus l",
-                            "flags": "",
-                            "layouts": ["scrolling"]
-                        },
-                        {
                             "dispatcher": "movefocus",
                             "argument": "l",
                             "flags": "",
-                            "layouts": ["dwindle", "master"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2367,11 +2720,39 @@ Singleton {
                         {
                             "modifiers": ["SUPER"],
                             "key": "Right"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movefocus",
+                            "argument": "r",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Focus Right",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL"],
                             "key": "x"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movefocus",
+                            "argument": "r",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Focus Right",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL"],
                             "key": "l"
@@ -2379,29 +2760,35 @@ Singleton {
                     ],
                     "actions": [
                         {
-                            "dispatcher": "layoutmsg",
-                            "argument": "focus r",
-                            "flags": "",
-                            "layouts": ["scrolling"]
-                        },
-                        {
                             "dispatcher": "movefocus",
                             "argument": "r",
                             "flags": "",
-                            "layouts": ["master", "dwindle"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
-
-                // Window movement
                 {
                     "name": "Move Window Left",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "Left"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movewindow",
+                            "argument": "l",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Left",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "h"
@@ -2412,13 +2799,7 @@ Singleton {
                             "dispatcher": "movewindow",
                             "argument": "l",
                             "flags": "",
-                            "layouts": ["master", "dwindle"]
-                        },
-                        {
-                            "dispatcher": "layoutmsg",
-                            "argument": "movewindowto l",
-                            "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2429,7 +2810,21 @@ Singleton {
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "Right"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movewindow",
+                            "argument": "r",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Right",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "l"
@@ -2440,13 +2835,7 @@ Singleton {
                             "dispatcher": "movewindow",
                             "argument": "r",
                             "flags": "",
-                            "layouts": ["dwindle", "master"]
-                        },
-                        {
-                            "dispatcher": "layoutmsg",
-                            "argument": "movewindowto r",
-                            "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2457,7 +2846,21 @@ Singleton {
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "Up"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movewindow",
+                            "argument": "u",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Up",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "k"
@@ -2468,13 +2871,7 @@ Singleton {
                             "dispatcher": "movewindow",
                             "argument": "u",
                             "flags": "",
-                            "layouts": ["master", "dwindle"]
-                        },
-                        {
-                            "dispatcher": "layoutmsg",
-                            "argument": "movewindowto u",
-                            "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2485,7 +2882,21 @@ Singleton {
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "Down"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "movewindow",
+                            "argument": "d",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Move Window Down",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
                             "key": "j"
@@ -2496,26 +2907,32 @@ Singleton {
                             "dispatcher": "movewindow",
                             "argument": "d",
                             "flags": "",
-                            "layouts": ["master", "dwindle"]
-                        },
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Resize Column +0.1",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "ALT"],
+                            "key": "Right"
+                        }
+                    ],
+                    "actions": [
                         {
                             "dispatcher": "layoutmsg",
-                            "argument": "movewindowto d",
+                            "argument": "colresize +0.1",
                             "flags": "",
                             "layouts": []
                         }
                     ],
                     "enabled": true
                 },
-
-                // Window resize
                 {
-                    "name": "Horizontal Resize +",
+                    "name": "Resize Column +0.1",
                     "keys": [
-                        {
-                            "modifiers": ["SUPER", "ALT"],
-                            "key": "Right"
-                        },
                         {
                             "modifiers": ["SUPER", "ALT"],
                             "key": "l"
@@ -2526,24 +2943,32 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "colresize +0.1",
                             "flags": "",
-                            "layouts": ["scrolling"]
-                        },
-                        {
-                            "dispatcher": "resizeactive",
-                            "argument": "50 0",
-                            "flags": "",
-                            "layouts": ["master", "dwindle"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Horizontal Resize -",
+                    "name": "Resize Column -0.1",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
                             "key": "Left"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "layoutmsg",
+                            "argument": "colresize -0.1",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Resize Column -0.1",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
                             "key": "h"
@@ -2554,24 +2979,32 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "colresize -0.1",
                             "flags": "",
-                            "layouts": ["scrolling"]
-                        },
-                        {
-                            "dispatcher": "resizeactive",
-                            "argument": "-50 0",
-                            "flags": "",
-                            "layouts": ["master", "dwindle"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Vertical Resize +",
+                    "name": "Resize Active 0 50",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
                             "key": "Down"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "resizeactive",
+                            "argument": "0 50",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Resize Active 0 50",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
                             "key": "j"
@@ -2588,12 +3021,26 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Vertical Resize -",
+                    "name": "Resize Active 0 -50",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
                             "key": "Up"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "resizeactive",
+                            "argument": "0 -50",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Resize Active 0 -50",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
                             "key": "k"
@@ -2609,10 +3056,8 @@ Singleton {
                     ],
                     "enabled": true
                 },
-
-                // Scrolling layout
                 {
-                    "name": "Promote (Scrolling)",
+                    "name": "Promote Column",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "ALT"],
@@ -2624,13 +3069,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "promote",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Toggle Fit (Scrolling)",
+                    "name": "Toggle Fit",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL"],
@@ -2642,13 +3087,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "togglefit",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Toggle Full Column (Scrolling)",
+                    "name": "Resize Column +conf",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "SHIFT"],
@@ -2660,7 +3105,7 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "colresize +conf",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2671,7 +3116,21 @@ Singleton {
                         {
                             "modifiers": ["SUPER", "ALT", "CTRL"],
                             "key": "Left"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "layoutmsg",
+                            "argument": "swapcol l",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Swap Column Left",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "ALT", "CTRL"],
                             "key": "h"
@@ -2682,7 +3141,7 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "swapcol l",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2693,7 +3152,21 @@ Singleton {
                         {
                             "modifiers": ["SUPER", "ALT", "CTRL"],
                             "key": "Right"
-                        },
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "layoutmsg",
+                            "argument": "swapcol r",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Swap Column Right",
+                    "keys": [
                         {
                             "modifiers": ["SUPER", "ALT", "CTRL"],
                             "key": "l"
@@ -2704,15 +3177,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "swapcol r",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
-
-                // Move column to workspace
                 {
-                    "name": "Move Column To Workspace 1",
+                    "name": "Move Column to Workspace 1",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2724,13 +3195,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 1",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 2",
+                    "name": "Move Column to Workspace 2",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2742,13 +3213,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 2",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 3",
+                    "name": "Move Column to Workspace 3",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2760,13 +3231,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 3",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 4",
+                    "name": "Move Column to Workspace 4",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2778,13 +3249,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 4",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 5",
+                    "name": "Move Column to Workspace 5",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2796,13 +3267,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 5",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 6",
+                    "name": "Move Column to Workspace 6",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2814,13 +3285,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 6",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 7",
+                    "name": "Move Column to Workspace 7",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2832,13 +3303,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 7",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 8",
+                    "name": "Move Column to Workspace 8",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2850,13 +3321,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 8",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 9",
+                    "name": "Move Column to Workspace 9",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2868,13 +3339,13 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 9",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
                 },
                 {
-                    "name": "Move Column To Workspace 10",
+                    "name": "Move Column to Workspace 10",
                     "keys": [
                         {
                             "modifiers": ["SUPER", "CTRL", "ALT"],
@@ -2886,7 +3357,7 @@ Singleton {
                             "dispatcher": "layoutmsg",
                             "argument": "movecoltoworkspace 10",
                             "flags": "",
-                            "layouts": ["scrolling"]
+                            "layouts": []
                         }
                     ],
                     "enabled": true
@@ -2901,7 +3372,7 @@ Singleton {
         if (!raw || raw.trim().length === 0) {
             // File is missing or empty — create with defaults
             console.log(name + ".json missing or empty, creating default...");
-            loader.setText(JSON.stringify(defaults, null, 4));
+            loader.setText(JSON.stringify(defaults, null, 2));
             onComplete();
             return;
         }
@@ -2912,16 +3383,43 @@ Singleton {
 
             if (JSON.stringify(current) !== JSON.stringify(validated)) {
                 console.log("Merging and updating " + name + ".json...");
-                loader.setText(JSON.stringify(validated, null, 4));
+                loader.setText(JSON.stringify(validated, null, 2));
             }
             onComplete();
         } catch (e) {
             console.log("Error validating " + name + " config (invalid JSON?): " + e);
             console.log("Overwriting with defaults due to error.");
-            loader.setText(JSON.stringify(defaults, null, 4));
+            loader.setText(JSON.stringify(defaults, null, 2));
             onComplete();
         }
     }
+
+    // Handle missing config files - copy from preset or create with defaults
+    function handleMissingConfig(name, loader, defaults, onComplete) {
+        var presetPath = root.presetDir + "/" + name + ".json";
+        var targetPath = root.configDir + "/" + name + ".json";
+        console.log(name + ".json not found, checking preset: " + presetPath);
+
+        // Create a Process component dynamically to copy the file
+        var copyProcess = Qt.createQmlObject(
+            "import QtQuick 2.0; Process { running: true; command: ['cp', '" + presetPath + "', '" + targetPath + "']; onFinished: { console.log('Copy finished for " + name + "'); } }",
+            root,
+            "copyProcess"
+        );
+
+        // Reload the loader to pick up the copied file
+        loader.reload();
+
+        // If still not ready after reload, use defaults as fallback
+        Qt.callLater(() => {
+            if (!root[name + "Ready"]) {
+                console.log("Using defaults for " + name + ".json");
+                loader.setText(JSON.stringify(defaults, null, 2));
+            }
+            onComplete();
+        });
+    }
+
 
     // Exposed properties
     // Theme configuration
@@ -2931,7 +3429,7 @@ Singleton {
 
     property int roundness: theme.roundness
     property string defaultFont: theme.font
-    property int animDuration: Services.GameModeService.toggled ? 0 : theme.animDuration
+    property int animDuration: Services.GameModeClient.toggled ? 0 : theme.animDuration
     property bool tintIcons: theme.tintIcons
 
     // Handle lightMode changes
@@ -3026,6 +3524,9 @@ Singleton {
     // AI configuration
     property QtObject ai: aiLoader.adapter
 
+    // General configuration
+    property QtObject general: generalLoader.adapter
+
     // Module save functions
     function saveBar() {
         barLoader.writeAdapter();
@@ -3068,6 +3569,9 @@ Singleton {
     }
     function saveAi() {
         aiLoader.writeAdapter();
+    }
+    function saveGeneral() {
+        generalLoader.writeAdapter();
     }
 
     // Color helpers

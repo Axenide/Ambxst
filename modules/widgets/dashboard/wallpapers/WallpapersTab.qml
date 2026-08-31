@@ -1212,7 +1212,10 @@ FocusScope {
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             smooth: true
-            cache: false // Deshabilitar cache para reducir uso de RAM
+            cache: true // Cache the decoded thumbnails: with cache:false every
+            // grid open re-decodes all 621 thumbs and the global pixmap cache
+            // retains the (old) decoded entries, growing per open instead of
+            // reusing them.
             sourceSize.width: wallpaperGridContainer.cellSize
             sourceSize.height: wallpaperGridContainer.cellSize
 

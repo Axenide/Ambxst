@@ -433,7 +433,13 @@ Item {
                             return winFocus < bestFocus ? win : best;
                         }, null);
                     }
-                    property var mainAppIconSource: Quickshell.iconPath(AppSearch.getCachedIcon((focusedWindow ? focusedWindow.class : undefined)), "image-missing")
+                    readonly property var focusedDesktopEntry: focusedWindow ? DesktopEntries.heuristicLookup(focusedWindow.class) : null
+                    property var mainAppIconSource: {
+                        if (focusedDesktopEntry && focusedDesktopEntry.icon) {
+                            return Quickshell.iconPath(focusedDesktopEntry.icon, "image-missing");
+                        }
+                        return Quickshell.iconPath(AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined), "image-missing");
+                    }
 
                     Text {
                         opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackground.focusedWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
@@ -564,7 +570,13 @@ Item {
                             return winFocus < bestFocus ? win : best;
                         }, null);
                     }
-                    property var mainAppIconSource: Quickshell.iconPath(AppSearch.getCachedIcon((focusedWindow ? focusedWindow.class : undefined)), "image-missing")
+                    readonly property var focusedDesktopEntry: focusedWindow ? DesktopEntries.heuristicLookup(focusedWindow.class) : null
+                    property var mainAppIconSource: {
+                        if (focusedDesktopEntry && focusedDesktopEntry.icon) {
+                            return Quickshell.iconPath(focusedDesktopEntry.icon, "image-missing");
+                        }
+                        return Quickshell.iconPath(AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined), "image-missing");
+                    }
 
                     Text {
                         opacity: Config.workspaces.alwaysShowNumbers || ((Config.workspaces.showNumbers && (!Config.workspaces.showAppIcons || !workspaceButtonBackgroundVert.focusedWindow || Config.workspaces.alwaysShowNumbers)) || (Config.workspaces.alwaysShowNumbers && !Config.workspaces.showAppIcons)) ? 1 : 0
