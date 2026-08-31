@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
 Singleton {
@@ -20,6 +21,7 @@ Singleton {
 
     // Dynamic map of layout code → display name, built as layouts are activated
     property var keymapNames: ({})
+    property int initAttempts: 0
 
     // Short display code for the bar button
     readonly property string displayCode: {
@@ -101,8 +103,6 @@ Singleton {
                 }
                 root.keymapNames = names;
             }
-            // Fetch devices after XKB names are loaded
-            initProcess.running = true;
         }
     }
 
@@ -110,7 +110,7 @@ Singleton {
     Process {
         id: initProcess
         command: ["hyprctl", "devices", "-j"]
-        running: false
+        running: true
         property string buffer: ""
 
         stdout: SplitParser {
@@ -121,68 +121,49 @@ Singleton {
         }
 
         onExited: (code) => {
-            if (code === 0) root.applyDevicesState(initProcess.buffer);
-        }
-    }
-
-    // Resolve Hyprland socket path, then start listener
-    Process {
-        id: resolveSocket
-        command: ["sh", "-c", "echo $XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"]
-        running: true
-        property string socketPath: ""
-
-        stdout: SplitParser {
-            onRead: (data) => {
-                resolveSocket.socketPath = data.trim();
+            if (code === 0 && initProcess.buffer !== "") {
+                root.applyDevicesState(initProcess.buffer);
+                root.initAttempts = 0;
+            } else if (root.initAttempts < 15) {
+                // Hyprland IPC is not up yet. Back off and retry rather than
+                // leaving the indicator stuck for the rest of the session.
+                root.initAttempts++;
+                initRetry.restart();
             }
-        }
-
-        onExited: {
-            if (resolveSocket.socketPath) {
-                socketListener.command = ["ncat", "-U", resolveSocket.socketPath];
-                socketListener.running = true;
-            }
-        }
-    }
-
-    // Listen for layout change events on Hyprland socket2
-    Process {
-        id: socketListener
-        running: false
-
-        stdout: SplitParser {
-            onRead: (data) => {
-                // activelayout>>keyboard_name,layout_name
-                if (data.startsWith("activelayout>>")) {
-                    const payload = data.substring("activelayout>>".length);
-                    const commaIdx = payload.lastIndexOf(",");
-                    if (commaIdx === -1) return;
-
-                    const keymap = payload.substring(commaIdx + 1).trim();
-                    root.currentKeymap = keymap;
-
-                    // Re-query devices to get accurate index
-                    refreshProcess.buffer = "";
-                    refreshProcess.running = true;
-                }
-            }
-        }
-
-        onExited: (code) => {
-            // Auto-reconnect after unexpected disconnect
-            socketReconnect.restart();
         }
     }
 
     Timer {
-        id: socketReconnect
-        interval: 2000
+        id: initRetry
+        interval: Math.min(1000 * root.initAttempts, 10000)
         onTriggered: {
-            if (resolveSocket.socketPath) {
-                socketListener.command = ["ncat", "-U", resolveSocket.socketPath];
-                socketListener.running = true;
-            }
+            initProcess.buffer = "";
+            initProcess.running = true;
+        }
+    }
+
+    // Quickshell owns the Hyprland event socket: it resolves the path, connects
+    // and reconnects. The previous implementation used an external socket
+    // client against a path built once from HYPRLAND_INSTANCE_SIGNATURE. When
+    // quickshell started before Hyprland exported that variable, the malformed
+    // path was retried forever.
+    Connections {
+        target: Hyprland
+
+        function onRawEvent(event) {
+            if (event.name !== "activelayout")
+                return;
+
+            // data is "keyboard_name,layout_name"
+            const commaIdx = event.data.lastIndexOf(",");
+            if (commaIdx === -1)
+                return;
+
+            root.currentKeymap = event.data.substring(commaIdx + 1).trim();
+
+            // Re-query devices for the authoritative active index.
+            refreshProcess.buffer = "";
+            refreshProcess.running = true;
         }
     }
 
@@ -229,7 +210,6 @@ Singleton {
     }
 
     Component.onDestruction: {
-        socketListener.running = false;
         pollTimer.running = false;
     }
 }
