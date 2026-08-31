@@ -277,13 +277,18 @@ Singleton {
         }
     }
 
+    // Wait for this module's own config, not for every Ambxst module. A
+    // missing or late config file elsewhere in the shell must not leave the
+    // calendar backend permanently stopped.
+    readonly property bool configReady: Config.calendarReady
+
     Component.onCompleted: {
-        if (root.enabled && Config.initialLoadComplete)
+        if (root.enabled && root.configReady)
             calendarProcess.running = true;
     }
 
     onEnabledChanged: {
-        if (enabled && Config.initialLoadComplete) calendarProcess.running = true;
+        if (enabled && root.configReady) calendarProcess.running = true;
         else calendarProcess.running = false;
     }
 
@@ -292,12 +297,9 @@ Singleton {
     onArrivalSoundPathChanged: if (calendarProcess.running) restartProcess()
     onBlinkOnArrivalChanged:   if (calendarProcess.running) restartProcess()
 
-    Connections {
-        target: Config
-        function onInitialLoadCompleteChanged() {
-            if (Config.initialLoadComplete && root.enabled)
-                calendarProcess.running = true;
-        }
+    onConfigReadyChanged: {
+        if (root.configReady && root.enabled)
+            calendarProcess.running = true;
     }
 
     function restartProcess() {
