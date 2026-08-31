@@ -201,6 +201,8 @@ Singleton {
     }
 
     function suppressOsdTemporarily(): void {
+        if (Config.compositor && !Config.compositor.osdSuppressOnDrag)
+            return;
         root.suppressOsd = true;
         suppressOsdTimer.restart();
     }

@@ -159,7 +159,7 @@ PanelWindow {
 
     Timer {
         id: hideTimer
-        interval: 2500
+        interval: Config.compositor.osdHideInterval ?? 2500
         onTriggered: GlobalStates.osdVisible = false
     }
 
