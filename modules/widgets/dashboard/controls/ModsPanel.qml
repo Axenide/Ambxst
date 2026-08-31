@@ -369,8 +369,9 @@ Item {
                                                 enabled: !ModsService.busy
                                                 onActiveChanged: {
                                                     if (active) {
-                                                        dragPreview.x = modRow.x;
-                                                        dragPreview.y = modRow.y;
+                                                        const point = modRow.mapToItem(dragPreview.parent, 0, 0);
+                                                        dragPreview.x = point.x;
+                                                        dragPreview.y = point.y;
                                                         return;
                                                     }
                                                     const target = dragPreview.Drag.target;
@@ -424,7 +425,7 @@ Item {
 
                                     Item {
                                         id: dragPreview
-                                        parent: modList
+                                        parent: modList.parent
                                         width: modRow.width
                                         height: modRow.height
                                         visible: reorderDrag.active
