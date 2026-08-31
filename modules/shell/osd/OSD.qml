@@ -202,7 +202,7 @@ PanelWindow {
                 || Brightness.syncBrightness) {
                 root.osdValue = value;
                 root.osdMuted = false;
-                root.osdIndicator = "brightness";
+                GlobalStates.osdIndicator = "brightness";
             }
         }
         function onOsdShouldShow(screen) {

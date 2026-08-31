@@ -245,6 +245,7 @@ Rectangle {
 
                         property real brightnessValue: 0
                         property var currentMonitor: {
+                            const _ = Brightness.monitors; // reactive dep
                             if (Brightness.monitors.length > 0) {
                                 let focusedName = AxctlService.focusedMonitor?.name ?? "";
                                 let found = null;
@@ -299,7 +300,7 @@ Rectangle {
                             property: "brightnessValue"
                             value: brightnessSlider.currentMonitor?.brightness ?? 0
                             when: !brightnessSlider.isDragging
-                            restoreMode: Binding.RestoreBinding
+                            restoreMode: Binding.RestoreNone
                             onValueChanged: {
                                 brightnessIcon.brightnessIconRotation = (brightnessSlider.brightnessValue / 1.0) * 180;
                                 brightnessIcon.brightnessIconScale = 0.8 + (brightnessSlider.brightnessValue / 1.0) * 0.2;

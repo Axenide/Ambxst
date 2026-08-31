@@ -196,10 +196,15 @@ Item {
                 Layout.preferredHeight: 36
                 Layout.rightMargin: 8
 
-                property var currentMonitor: Brightness.getMonitorForScreen(root.bar.screen)
+                property var currentMonitor: {
+                    // Explicit dependency on Brightness.monitors so the
+                    // binding re-evaluates when monitors populate. The
+                    // function call alone is opaque to QML reactivity.
+                    const _ = Brightness.monitors;
+                    return Brightness.getMonitorForScreen(root.bar.screen);
+                }
 
                 icon: Icons.sun
-                sliderValue: currentMonitor?.brightness ?? 0.5
                 progressColor: Styling.srItem("overprimary")
                 wavy: true
                 wavyAmplitude: 1.5 * sliderValue
@@ -223,12 +228,16 @@ Item {
 
                 onIconClicked: {}
 
+                // Drive sliderValue from the kernel-reported brightness while
+                // the user is NOT actively dragging. While dragging, the
+                // mouse handler owns sliderValue; restoreMode RestoreNone
+                // keeps the user's drag value intact when this binding pauses.
                 Binding {
                     target: brightnessRow
                     property: "sliderValue"
-                    value: brightnessRow.currentMonitor?.brightness ?? 0.5
+                    value: brightnessRow.currentMonitor?.brightness ?? 0
                     when: !brightnessRow.dragging
-                    restoreMode: Binding.RestoreBinding
+                    restoreMode: Binding.RestoreNone
                 }
 
                 Connections {
