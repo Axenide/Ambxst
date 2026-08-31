@@ -148,9 +148,9 @@ Item {
     function stateColor(mod) {
         if (!mod || !mod.valid || !mod.compatible)
             return Colors.error;
-        if (mod.untested)
+        if (mod.untested && mod.enabled)
             return Colors.warning;
-        return mod.enabled ? Colors.primary : Colors.outline;
+        return mod.enabled ? Colors.success : Colors.error;
     }
 
     function askConfirm(kind, mod, source) {
@@ -251,14 +251,16 @@ Item {
         enabled: !ModsService.busy
         opacity: enabled ? 1 : 0.45
 
+        readonly property bool engaged: hovered || down || activeFocus
+        // "common" resolves to the same surface as the card behind it, so a
+        // resting secondary button used to read as plain text. "focus" is one
+        // step brighter and keeps the control visible on both grounds.
+        readonly property string surface: action.primary
+            ? (action.engaged ? "primaryfocus" : "primary")
+            : (action.engaged ? (action.destructive ? "error" : "secondary") : "focus")
+
         background: StyledRect {
-            // "common" resolves to the same surface as the card behind it, so a
-            // resting secondary button used to read as plain text. "focus" is
-            // one step brighter and keeps the control visible on both grounds.
-            variant: action.primary
-                ? ((action.hovered || action.down) ? "primaryfocus" : "primary")
-                : ((action.hovered || action.down || action.activeFocus)
-                    ? (action.destructive ? "error" : "secondary") : "focus")
+            variant: action.surface
             radius: Styling.radius(-2)
             enableShadow: false
         }
@@ -268,8 +270,10 @@ Item {
             font.family: Config.theme.font
             font.pixelSize: Styling.fontSize(-1)
             font.weight: action.primary ? Font.DemiBold : Font.Medium
-            color: action.primary ? Styling.srItem("primary")
-                : action.destructive && !action.hovered ? Colors.error
+            // Take the label colour from the surface underneath it. Keeping a
+            // fixed colour made hovered buttons read their own background.
+            color: action.primary || action.engaged ? Styling.srItem(action.surface)
+                : action.destructive ? Colors.error
                 : Colors.overBackground
             horizontalAlignment: Text.AlignHCenter
             verticalAlignment: Text.AlignVCenter
@@ -650,8 +654,9 @@ Item {
                                     implicitWidth: 6
                                     implicitHeight: 6
                                     radius: 3
-                                    color: modRow.current ? modRow.item : root.stateColor(modRow.modelData)
-                                    opacity: modRow.modelData.enabled || !modRow.modelData.valid ? 1 : 0.55
+                                    // Green for running, red for off, on the
+                                    // selected row too: the state is the point.
+                                    color: root.stateColor(modRow.modelData)
                                 }
 
                                 ColumnLayout {
