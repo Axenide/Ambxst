@@ -11,7 +11,8 @@ import qs.modules.theme
 Item {
     id: root
 
-    property int maxContentWidth: 760
+    property int maxContentWidth: 1240
+    property int horizontalMargin: 20
     property string searchQuery: ""
     property string sortMode: "name"
     property string selectedId: ""
@@ -105,7 +106,9 @@ Item {
         return (mod?.dependencyState ?? []).every(dependency => dependency.enabled);
     }
 
-    readonly property int contentWidth: Math.min(width, maxContentWidth)
+    readonly property int contentWidth: Math.max(0, Math.min(width - horizontalMargin * 2, maxContentWidth))
+    readonly property bool wideLayout: contentWidth >= 900
+    readonly property bool hasInstalledMods: (ModsService.mods ?? []).length > 0
     readonly property var filteredMods: {
         const query = root.searchQuery.trim().toLowerCase();
         const items = (ModsService.mods ?? []).filter(mod => {
@@ -320,16 +323,18 @@ Item {
         }
 
         GridLayout {
+            id: managerGrid
             Layout.fillWidth: true
             Layout.fillHeight: true
-            columns: root.width >= 680 ? 2 : 1
-            columnSpacing: 8
-            rowSpacing: 8
+            columns: root.wideLayout && root.hasInstalledMods ? 2 : 1
+            columnSpacing: 12
+            rowSpacing: 12
 
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.preferredWidth: 300
+                Layout.fillHeight: root.wideLayout || !root.hasInstalledMods
+                Layout.preferredWidth: root.wideLayout && root.hasInstalledMods ? 380 : managerGrid.width
+                Layout.preferredHeight: root.wideLayout || !root.hasInstalledMods ? 0 : 280
                 spacing: 6
 
                 RowLayout {
@@ -356,21 +361,35 @@ Item {
                 StyledRect {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
+                    Layout.minimumHeight: root.hasInstalledMods ? 180 : 260
                     variant: "pane"
                     radius: Styling.radius(0)
 
-                    Text {
+                    ColumnLayout {
                         visible: ModsService.loaded && root.filteredMods.length === 0
                         anchors.centerIn: parent
-                        width: Math.min(parent.width - 32, 260)
-                        text: ModsService.mods.length === 0
-                            ? root.tr("mods.empty")
-                            : root.tr("mods.no_matches")
-                        font.family: Config.theme.font
-                        font.pixelSize: Styling.fontSize(-1)
-                        color: Colors.outline
-                        horizontalAlignment: Text.AlignHCenter
-                        wrapMode: Text.Wrap
+                        width: Math.min(parent.width - 48, 440)
+                        spacing: 10
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: Icons.plug
+                            font.family: Icons.font
+                            font.pixelSize: 30
+                            color: Colors.outline
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: ModsService.mods.length === 0
+                                ? root.tr("mods.empty")
+                                : root.tr("mods.no_matches")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            color: Colors.outline
+                            horizontalAlignment: Text.AlignHCenter
+                            wrapMode: Text.Wrap
+                        }
                     }
 
                     Flickable {
@@ -555,10 +574,11 @@ Item {
             }
 
             StyledRect {
+                visible: root.hasInstalledMods
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.preferredWidth: 420
-                Layout.minimumHeight: root.width >= 680 ? 0 : 260
+                Layout.preferredWidth: root.wideLayout ? 720 : managerGrid.width
+                Layout.minimumHeight: 320
                 variant: "pane"
                 radius: Styling.radius(0)
 
