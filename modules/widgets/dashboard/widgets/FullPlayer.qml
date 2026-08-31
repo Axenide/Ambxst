@@ -668,4 +668,14 @@ StyledRect {
             return Icons.telegram;
         return Icons.player;
     }
+
+    WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: event => {
+            if (event.angleDelta.y > 0)
+                Audio.incrementVolume();
+            else if (event.angleDelta.y < 0)
+                Audio.decrementVolume();
+        }
+    }
 }
