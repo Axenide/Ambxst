@@ -12,8 +12,8 @@ var data = {
         "listeners": [
             {
                 "timeout": 150,
-                "onTimeout": "ambxst brightness 10 -s",
-                "onResume": "ambxst brightness -r"
+                "onTimeout": "axctl brightness save && axctl brightness set 0.1",
+                "onResume": "axctl brightness restore"
             },
             {
                 "timeout": 300,

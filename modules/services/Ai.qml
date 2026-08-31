@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.modules.services
+import qs.modules.globals
 import "ai"
 import "ai/strategies"
 
@@ -66,13 +67,13 @@ Singleton {
             isRestored = true;
     }
 
+    property bool _restored: false
     Connections {
         target: StateService
-        function onStateLoaded() {
-            restoreModel();
+        function onInitializedChanged() {
+            root._restore();
         }
     }
-
     Connections {
         target: KeyStore
         function onKeysChanged() {
@@ -80,15 +81,34 @@ Singleton {
         }
     }
 
-    Component.onCompleted: {
-        if (StateService.initialized)
-            restoreModel();
+    Component.onCompleted: root._restore()
 
+    function _restore() {
+        if (StateService.initialized && !root._restored) {
+            root._restored = true;
+            restoreModel();
+        }
+    }
+
+    // Lazy init: trigger fetchAvailableModels/reloadHistory/createNewChat
+    // when AI sidebar is opened for the first time.
+    property bool _aiInitialized: false
+    function _ensureInit() {
+        if (_aiInitialized) return;
+        _aiInitialized = true;
         if (models.length === 0)
             fetchAvailableModels();
-
         reloadHistory();
         createNewChat();
+    }
+
+    // Trigger lazy init when AI sidebar is opened
+    Connections {
+        target: GlobalStates
+        function onAssistantVisibleChanged() {
+            if (GlobalStates.assistantVisible)
+                root._ensureInit();
+        }
     }
 
     // ============================================
@@ -101,6 +121,7 @@ Singleton {
     property MistralApiStrategy mistralStrategy: MistralApiStrategy {}
     property GroqApiStrategy groqStrategy: GroqApiStrategy {}
     property OllamaApiStrategy ollamaStrategy: OllamaApiStrategy {}
+    property MiniMaxApiStrategy minimaxStrategy: MiniMaxApiStrategy {}
 
     property ApiStrategy currentStrategy: openaiStrategy
 
@@ -112,6 +133,7 @@ Singleton {
         case "mistral": return mistralStrategy;
         case "groq": return groqStrategy;
         case "ollama": return ollamaStrategy;
+        case "minimax": return minimaxStrategy;
         case "custom": return openaiStrategy; // custom endpoints use OpenAI-compatible format by default
         default: return openaiStrategy;
         }
@@ -183,10 +205,10 @@ Singleton {
             name: "run_shell_command",
             description: "Execute a shell command on the user's system (Linux). Use this to list files, control the system, or run utilities. Output will be returned.",
             parameters: {
-                type: "OBJECT",
+                type: "object",
                 properties: {
                     command: {
-                        type: "STRING",
+                        type: "string",
                         description: "The shell command to run (e.g. 'ls -la', 'ip addr')"
                     }
                 },
@@ -607,25 +629,7 @@ Singleton {
     }
 
     function reloadHistory() {
-        let pyScript = `import os, json, glob
-chat_dir = "${chatDir}"
-os.makedirs(chat_dir, exist_ok=True)
-files = sorted(glob.glob(chat_dir + "/*.json"), key=os.path.getmtime, reverse=True)
-for f in files:
-    id = os.path.basename(f)[:-5]
-    title = "New Chat"
-    try:
-        with open(f, 'r') as fp:
-            data = json.load(fp)
-            for msg in data:
-                if msg.get("role") == "user":
-                    title = msg.get("content", "")[:40].replace("\\n", " ").strip()
-                    if len(msg.get("content", "")) > 40: title += "..."
-                    break
-    except: pass
-    print(f"{id}|{title}")
-`;
-        listHistoryProcess.command = ["python3", "-c", pyScript];
+        listHistoryProcess.command = ["ambxst", "chatlist", chatDir];
         listHistoryProcess.running = true;
     }
 
@@ -736,30 +740,12 @@ for f in files:
             fetchProcessOpenAI.running = true;
         }
 
-        // Anthropic — no models listing API, add known models
+        // Anthropic
         let anthropicKey = KeyStore.getKey("anthropic");
         if (anthropicKey) {
-            let anthropicModels = [
-                { id: "claude-sonnet-4-20250514", name: "Claude Sonnet 4" },
-                { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
-                { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet" }
-            ];
-            let newModels = [];
-            for (let i = 0; i < anthropicModels.length; i++) {
-                let item = anthropicModels[i];
-                let m = aiModelFactory.createObject(root, {
-                    name: item.name,
-                    icon: Qt.resolvedUrl("../../../assets/aiproviders/anthropic.svg"),
-                    description: "Anthropic Model",
-                    endpoint: "https://api.anthropic.com/v1/messages",
-                    model: item.id,
-                    provider: "anthropic",
-                    requires_key: true,
-                    key_id: "ANTHROPIC_API_KEY"
-                });
-                if (m) newModels.push(m);
-            }
-            mergeModels(newModels);
+            pendingFetches++;
+            fetchProcessAnthropic.command = ["bash", "-c", "curl -s https://api.anthropic.com/v1/models -H 'x-api-key: " + anthropicKey + "' -H 'anthropic-version: 2023-06-01'"];
+            fetchProcessAnthropic.running = true;
         }
 
         // Mistral
@@ -784,6 +770,14 @@ for f in files:
             pendingFetches++;
             fetchProcessOllama.command = ["bash", "-c", "curl -s http://127.0.0.1:11434/api/tags"];
             fetchProcessOllama.running = true;
+        }
+
+        // MiniMax
+        let minimaxKey = KeyStore.getKey("minimax");
+        if (minimaxKey) {
+            pendingFetches++;
+            fetchProcessMiniMax.command = ["bash", "-c", "echo 'done'"];
+            fetchProcessMiniMax.running = true;
         }
 
         if (pendingFetches === 0) {
@@ -893,7 +887,7 @@ for f in files:
                                 name: id,
                                 icon: Qt.resolvedUrl("../../../assets/aiproviders/mistral.svg"),
                                 description: "Mistral Model",
-                                endpoint: "https://api.mistral.ai/v1/chat/completions",
+                                endpoint: "https://api.mistral.ai/v1",
                                 model: id,
                                 provider: "mistral",
                                 requires_key: true,
@@ -929,7 +923,7 @@ for f in files:
                                 name: id,
                                 icon: Qt.resolvedUrl("../../../assets/aiproviders/groq.svg"),
                                 description: "Groq Model",
-                                endpoint: "https://api.groq.com/openai/v1/chat/completions",
+                                endpoint: "https://api.groq.com/openai/v1",
                                 model: id,
                                 provider: "groq",
                                 requires_key: true,
@@ -941,6 +935,42 @@ for f in files:
                     }
                 } catch (e) {
                     console.log("Groq fetch error: " + e);
+                }
+            }
+            checkFetchCompletion();
+        }
+    }
+
+    Process {
+        id: fetchProcessAnthropic
+        stdout: StdioCollector {
+            id: fetchAnthropicOut
+        }
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                try {
+                    let data = JSON.parse(fetchAnthropicOut.text);
+                    if (data.data) {
+                        let newModels = [];
+                        for (let i = 0; i < data.data.length; i++) {
+                            let item = data.data[i];
+                            let id = item.id;
+                            let m = aiModelFactory.createObject(root, {
+                                name: item.display_name || id,
+                                icon: Qt.resolvedUrl("../../../assets/aiproviders/anthropic.svg"),
+                                description: item.description || "Anthropic Model",
+                                endpoint: "https://api.anthropic.com/v1/messages",
+                                model: id,
+                                provider: "anthropic",
+                                requires_key: true,
+                                key_id: "ANTHROPIC_API_KEY"
+                            });
+                            if (m) newModels.push(m);
+                        }
+                        mergeModels(newModels);
+                    }
+                } catch (e) {
+                    console.log("Anthropic fetch error: " + e);
                 }
             }
             checkFetchCompletion();
@@ -980,6 +1010,45 @@ for f in files:
             checkFetchCompletion();
         }
     }
+
+    Process {
+        id: fetchProcessMiniMax
+        onExited: exitCode => {
+            if (exitCode === 0) {
+                let newModels = [];
+                
+                let models = [
+                    { name: "MiniMax-M2.7", model: "MiniMax-M2.7", description: "Latest model with recursive self-improvement, SOTA coding capabilities", endpoint: "https://api.minimax.io" },
+                    { name: "MiniMax-M2.7-highspeed", model: "MiniMax-M2.7-highspeed", description: "Same performance as M2.7, faster inference (~100 tps)", endpoint: "https://api.minimax.io" },
+                    { name: "MiniMax-M2.5", model: "MiniMax-M2.5", description: "Peak performance, ultimate value, master the complex", endpoint: "https://api.minimax.io" },
+                    { name: "MiniMax-M2.5-highspeed", model: "MiniMax-M2.5-highspeed", description: "Same performance as M2.5, faster inference (~100 tps)", endpoint: "https://api.minimax.io" },
+                    { name: "MiniMax-M2.1", model: "MiniMax-M2.1", description: "Powerful multi-language programming, enhanced reasoning", endpoint: "https://api.minimax.io" },
+                    { name: "MiniMax-M2.1-highspeed", model: "MiniMax-M2.1-highspeed", description: "Same performance as M2.1, faster inference (~100 tps)", endpoint: "https://api.minimax.io" },
+                    { name: "MiniMax-M2", model: "MiniMax-M2", description: "Agentic capabilities, advanced reasoning, 200k context", endpoint: "https://api.minimax.io" },
+                    { name: "M2-her", model: "M2-her", description: "Role-playing, multi-turn conversations, emotional expression", endpoint: "https://api.minimax.io" }
+                ];
+                
+                for (let i = 0; i < models.length; i++) {
+                    let item = models[i];
+                    let m = aiModelFactory.createObject(root, {
+                        name: item.name,
+                        icon: Qt.resolvedUrl("../../../assets/aiproviders/minimax.svg"),
+                        description: item.description,
+                        endpoint: item.endpoint,
+                        model: item.model,
+                        provider: "minimax",
+                        requires_key: true,
+                        key_id: "MINIMAX_API_KEY"
+                    });
+                    if (m) newModels.push(m);
+                }
+                
+                mergeModels(newModels);
+            }
+            checkFetchCompletion();
+        }
+    }
+
 
     function checkFetchCompletion() {
         pendingFetches--;

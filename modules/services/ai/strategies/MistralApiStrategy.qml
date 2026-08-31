@@ -6,7 +6,14 @@ ApiStrategy {
     supportsStreaming: true
 
     function getEndpoint(modelObj, apiKey) {
-        return modelObj.endpoint || "https://api.mistral.ai/v1/chat/completions";
+        let base = modelObj.endpoint || "https://api.mistral.ai/v1";
+        // Remove /chat/completions if already present in endpoint
+        if (base.endsWith("/chat/completions")) {
+            base = base.substring(0, base.length - 17); // remove "/chat/completions"
+        }
+        if (base.endsWith("/v1"))
+            return base + "/chat/completions";
+        return base + "/v1/chat/completions";
     }
 
     function getHeaders(apiKey) {
@@ -74,8 +81,18 @@ ApiStrategy {
         if (trimmed === "data: [DONE]")
             return { content: "", done: true, error: null };
 
-        if (!trimmed.startsWith("data: "))
+        // Check if this is a JSON error response (not SSE format)
+        if (!trimmed.startsWith("data: ")) {
+            try {
+                let json = JSON.parse(trimmed);
+                if (json.error) {
+                    return { content: "", done: false, error: json.error.message || json.error };
+                }
+            } catch (e) {
+                // Not JSON, ignore
+            }
             return { content: "", done: false, error: null };
+        }
 
         try {
             let json = JSON.parse(trimmed.substring(6));

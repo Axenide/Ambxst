@@ -73,14 +73,24 @@ var ACTION_CATALOG = [
     { id: "workspace.move-window", label: "Move Window to Workspace", category: "Workspace", dispatcher: "movetoworkspace", args: [{ key: "index", label: "Workspace", placeholder: "1", defaultValue: "1" }], argumentBuilder: function (args) {
         return String(args.index || "").trim();
     } },
+    { id: "workspace.move-window-silent", label: "Move Window to Workspace (Silent)", category: "Workspace", dispatcher: "movetoworkspacesilent", args: [{ key: "index", label: "Workspace", placeholder: "1", defaultValue: "1" }], argumentBuilder: function (args) {
+        return String(args.index || "").trim();
+    } },
     { id: "workspace.toggle-special", label: "Toggle Special Workspace", category: "Workspace", dispatcher: "togglespecialworkspace", argument: "" },
     { id: "workspace.move-window-special", label: "Move Window to Special Workspace", category: "Workspace", dispatcher: "movetoworkspace", argument: "special" },
+    { id: "workspace.move-window-special-silent", label: "Move Window to Special Workspace (Silent)", category: "Workspace", dispatcher: "movetoworkspacesilent", argument: "special" },
 
-    { id: "scrolling.focus", label: "Focus (Scrolling)", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {
-        return "focus " + directionToLetter(args.direction);
+    { id: "scrolling.focus", label: "Focus", category: "Window", dispatcher: "movefocus", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {
+        return directionToLetter(args.direction);
     } },
-    { id: "scrolling.move-window", label: "Move Window (Scrolling)", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
-        return "movewindowto " + directionToLetter(args.direction);
+    { id: "scrolling.move-window", label: "Move Window", category: "Window", dispatcher: "movewindow", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
+        return directionToLetter(args.direction);
+    } },
+    { id: "monocle.focus", label: "Cycle Focus", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
+    } },
+    { id: "monocle.move-window", label: "Cycle Window", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
     } },
     { id: "scrolling.resize-column", label: "Resize Column", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "delta", label: "Delta", placeholder: "+0.1 / -0.1", defaultValue: "+0.1" }], argumentBuilder: function (args) {
         return "colresize " + String(args.delta || "").trim();
@@ -105,8 +115,8 @@ var ACTION_CATALOG = [
     { id: "audio.volume-down", label: "Volume Down", category: "Audio", dispatcher: "exec", argument: "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-", flags: "le" },
     { id: "audio.mute-toggle", label: "Mute Audio", category: "Audio", dispatcher: "exec", argument: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", flags: "le" },
 
-    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness +5", flags: "le" },
-    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness -5", flags: "le" },
+    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "axctl brightness adjust 0.05", flags: "le" },
+    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "axctl brightness adjust -0.05", flags: "le" },
 
     { id: "system.calculator", label: "Calculator", category: "System", dispatcher: "exec", argument: "notify-send \"Soon\"" },
     { id: "system.lock", label: "Lock Session", category: "System", dispatcher: "exec", argument: "loginctl lock-session" },
@@ -242,6 +252,10 @@ function actionFromLegacy(dispatcher, argument, flags) {
         if (arg === "special") return { id: "workspace.move-window-special", args: {} };
         return { id: "workspace.move-window", args: { index: arg } };
     }
+    if (dispatcher === "movetoworkspacesilent") {
+        if (arg === "special") return { id: "workspace.move-window-special-silent", args: {} };
+        return { id: "workspace.move-window-silent", args: { index: arg } };
+    }
     if (dispatcher === "togglespecialworkspace") return { id: "workspace.toggle-special", args: {} };
     if (dispatcher === "movewindow" && flags === "m") return { id: "window.drag", args: {} };
     if (dispatcher === "resizewindow" && flags === "m") return { id: "window.resize-drag", args: {} };
@@ -270,8 +284,8 @@ function actionFromLegacy(dispatcher, argument, flags) {
         if (arg.indexOf("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%+") === 0) return { id: "audio.volume-up", args: {} };
         if (arg.indexOf("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-") === 0) return { id: "audio.volume-down", args: {} };
         if (arg.indexOf("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") === 0) return { id: "audio.mute-toggle", args: {} };
-        if (arg.indexOf("ambxst brightness +5") === 0) return { id: "brightness.up", args: {} };
-        if (arg.indexOf("ambxst brightness -5") === 0) return { id: "brightness.down", args: {} };
+        if (arg.indexOf("axctl brightness adjust 0.05") === 0) return { id: "brightness.up", args: {} };
+        if (arg.indexOf("axctl brightness adjust -0.05") === 0) return { id: "brightness.down", args: {} };
         if (arg === "notify-send \"Soon\"") return { id: "system.calculator", args: {} };
         if (arg === "loginctl lock-session" && flags === "l") return { id: "system.lock-locked", args: {} };
         if (arg === "loginctl lock-session") return { id: "system.lock", args: {} };

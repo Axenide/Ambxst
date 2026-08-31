@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.config
+import qs.modules.services
 
 Singleton {
     id: root
@@ -42,7 +43,7 @@ Singleton {
     function launchApp(appId) {
         const entry = getDesktopEntry(appId);
         if (entry) {
-            entry.execute();
+            AppSearch.launchApp(entry);
         }
     }
 

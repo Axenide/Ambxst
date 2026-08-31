@@ -18,69 +18,55 @@ QtObject {
     readonly property string schemaPath: Qt.resolvedUrl("clipboard_init.sql").toString().replace("file://", "")
     readonly property string insertScriptPath: Qt.resolvedUrl("../../scripts/clipboard_insert.sh").toString().replace("file://", "")
     readonly property string checkScriptPath: Qt.resolvedUrl("../../scripts/clipboard_check.sh").toString().replace("file://", "")
-    readonly property string watchScriptPath: Qt.resolvedUrl("../../scripts/clipboard_watch.sh").toString().replace("file://", "")
-    readonly property string linkPreviewScriptPath: Qt.resolvedUrl("../../scripts/link_preview.py").toString().replace("file://", "")
+    readonly property string linkPreviewScriptPath: ""
 
     property bool _initialized: false
-
-    property var suspendConnections: Connections {
-        target: SuspendManager
-        function onWakingUp() {
-            // Small delay to allow wl-paste to work again after wake
-            wakeRestartTimer.restart();
-        }
-    }
-
-    property var wakeRestartTimer: Timer {
-        id: wakeRestartTimer
-        interval: 2000
-        repeat: false
-        onTriggered: {
-            if (root._initialized) {
-                root.list();
-                clipboardWatcher.running = true;
-            }
-        }
-    }
-
     signal listCompleted()
 
-    // Clipboard watcher using custom script that monitors changes
-    property Process clipboardWatcher: Process {
-        running: root._initialized && !SuspendManager.isSuspending
-        command: [watchScriptPath, checkScriptPath, dbPath, insertScriptPath, binaryDataDir]
-        
-        stdout: StdioCollector {
-            onStreamFinished: {
-                // When watcher outputs something, refresh the list
-                var lines = text.trim().split('\n');
-                for (var i = 0; i < lines.length; i++) {
-                    if (lines[i] === "REFRESH_LIST") {
-                        Qt.callLater(root.list);
-                    }
+    on_InitializedChanged: {
+        Qt.callLater(() => {
+            if (root._initialized && !root._watchBound) {
+                root.bindWatcher();
+            }
+        });
+    }
+
+    // Clipboard watcher — owned by the Go daemon (wl-paste --watch in backend).
+    // The daemon detects clipboard changes, inserts new items via the shared
+    // scripts, and emits a "clipboard.refresh" event; we just re-list.
+    property int clipboardWatchHandle: -1
+    property bool _watchBound: false
+
+    property var _suspendWatch: Connections {
+        target: SuspendManager
+        function onPreparingForSleep() {
+            if (root.clipboardWatchHandle >= 0) BackendService.setSubscriptionActive(root.clipboardWatchHandle, false);
+        }
+        function onWakingUp() {
+            Qt.callLater(() => {
+                if (root._initialized && !SuspendManager.isSuspending && root.clipboardWatchHandle >= 0) {
+                    BackendService.setSubscriptionActive(root.clipboardWatchHandle, true);
                 }
-            }
+            });
         }
-        
-        stderr: StdioCollector {
-            onStreamFinished: {
-                if (text.length > 0 && !text.includes("No selection")) {
-                    console.warn("ClipboardService: watcher stderr:", text);
-                }
+    }
+
+    function bindWatcher() {
+        if (root._watchBound) return;
+        root._watchBound = true;
+        root.clipboardWatchHandle = BackendService.addSubscription(["clipboard"], (service, data) => {
+            if (service === "clipboard.refresh") {
+                Qt.callLater(root.list);
             }
+        });
+        if (root._initialized) {
+            BackendService.setSubscriptionActive(root.clipboardWatchHandle, true);
         }
-        
-        onExited: function(code) {
-            // Watcher should keep running, restart if it exits (unless suspending)
-            if (root._initialized && !SuspendManager.isSuspending) {
-                console.warn("ClipboardService: watcher exited with code:", code, "- restarting...");
-                Qt.callLater(function() {
-                    if (root._initialized && !SuspendManager.isSuspending) {
-                        clipboardWatcher.running = true;
-                    }
-                });
-            }
-        }
+    }
+
+    // External trigger to start watching + init.
+    function start() {
+        _ensureInit();
     }
 
     // Initialize database
@@ -415,51 +401,6 @@ QtObject {
         }
     }
     
-    // Link preview metadata fetcher
-    property Process linkPreviewProcess: Process {
-        property string requestUrl: ""
-        property string requestItemId: ""
-        running: false
-        
-        stdout: StdioCollector {
-            waitForEnd: true
-            
-            onStreamFinished: {
-                try {
-                    var metadata = JSON.parse(text);
-                    // Use request_url from the response - this is the original URL we requested
-                    // This is crucial because requestUrl property may have been overwritten
-                    // by a subsequent request before this response arrived
-                    var responseUrl = metadata.request_url || metadata.url || linkPreviewProcess.requestUrl;
-                    
-                    // Cache the result if successful, using the URL from the response
-                    if (!metadata.error && responseUrl) {
-                        root.linkPreviewCache[responseUrl] = metadata;
-                    }
-                    // Note: requestItemId may also be stale, but the receiver validates it
-                    root.linkPreviewFetched(responseUrl, metadata, linkPreviewProcess.requestItemId);
-                } catch (e) {
-                    console.warn("ClipboardService: Failed to parse link preview:", e);
-                    root.linkPreviewFetched(linkPreviewProcess.requestUrl, {'error': 'Failed to parse response'}, linkPreviewProcess.requestItemId);
-                }
-            }
-        }
-        
-        stderr: StdioCollector {
-            onStreamFinished: {
-                if (text.length > 0) {
-                    console.warn("ClipboardService: linkPreviewProcess stderr:", text);
-                }
-            }
-        }
-        
-        onExited: function(code) {
-            if (code !== 0) {
-                root.linkPreviewFetched(linkPreviewProcess.requestUrl, {'error': 'Failed to fetch preview'}, linkPreviewProcess.requestItemId);
-            }
-        }
-    }
-
     signal fullContentRetrieved(string itemId, string content)
     signal linkPreviewFetched(string url, var metadata, string itemId)
     
@@ -521,6 +462,7 @@ QtObject {
     }
 
     function list() {
+        _ensureInit();
         if (!_initialized) return;
         _operationInProgress = true;
         // Use JSON mode for reliable parsing, with timeout to avoid locks
@@ -643,10 +585,17 @@ QtObject {
             return;
         }
         
-        linkPreviewProcess.requestUrl = url;
-        linkPreviewProcess.requestItemId = itemId;
-        linkPreviewProcess.command = ["python3", linkPreviewScriptPath, url, "5"];
-        linkPreviewProcess.running = true;
+        BackendService.call("linkpreview.fetch", {url: url, timeout: 5}, (metadata, error) => {
+            if (error || !metadata) {
+                root.linkPreviewFetched(url, {'error': 'Failed to fetch preview'}, itemId);
+                return;
+            }
+            const responseUrl = metadata.request_url || metadata.url || url;
+            if (!metadata.error && responseUrl) {
+                root.linkPreviewCache[responseUrl] = metadata;
+            }
+            root.linkPreviewFetched(responseUrl, metadata, itemId);
+        });
     }
     
     // Reorder item by moving it to a new index
@@ -865,6 +814,16 @@ QtObject {
     }
 
     Component.onCompleted: {
-        Qt.callLater(() => initialize());
+        // Bind clipboard watcher at boot (cheap - just adds IPC subscription)
+        // but defer the DB init until first access (saves boot time + memory).
+        bindWatcher();
+    }
+
+    // Lazy init: trigger DB creation + history load when first accessed.
+    property bool _initRequested: false
+    function _ensureInit() {
+        if (_initRequested) return;
+        _initRequested = true;
+        initialize();
     }
 }
