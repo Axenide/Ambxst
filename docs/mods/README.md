@@ -204,6 +204,12 @@ Ambxst also compares the generation metadata with the current base version and
 Git revision before launch. After a base update, a stale generation is skipped
 and the clean base starts. Settings then reports that a rebuild is required.
 
+`ambxst update` does that rebuild itself: once the new source is in place it
+re-composes the enabled set, prints any mod whose declared compatibility no
+longer matches, and only then restarts. A mod whose patch cannot be merged onto
+the new source stops its own build, and Ambxst starts on the clean base rather
+than on a half-applied tree.
+
 ## Commands
 
 ```bash
