@@ -99,7 +99,7 @@ Singleton {
 
     Timer {
         id: refreshTimer
-        interval: 5000
+        interval: 30000
         running: false
         repeat: true
         onTriggered: {
@@ -139,7 +139,7 @@ Singleton {
         id: axctlSub
 
         path: root.axctlSocketPath
-        connected: false
+        connected: true
 
         parser: SplitParser {
             onRead: data => {
@@ -190,8 +190,6 @@ Singleton {
 
         onError: error => {
             console.warn("Brightness: axctl subscription error:", error);
-            axctlSub.connected = false;
-            axctlSubProbe.restart();
         }
     }
 
