@@ -24,6 +24,12 @@ Item {
 
     property bool popupOpen: devicePopup.isOpen
 
+    // Device nodes must stay bound while a switch request is in flight. The
+    // per-delegate trackers die with the popup in the same event-loop turn.
+    PwObjectTracker {
+        objects: Pipewire.nodes.values.filter(node => !node.isStream)
+    }
+
     Layout.preferredWidth: 36
     Layout.preferredHeight: 36
     Layout.maximumWidth: 36
@@ -86,7 +92,7 @@ Item {
     }
 
     // Find a real output device by PipeWire node ID
-    function findOutputById(nodeId: int) {
+    function findOutputById(nodeId: int): var {
         const outputs = Audio.outputDevices;
         for (let i = 0; i < outputs.length; i++) {
             const n = outputs[i];
@@ -341,7 +347,7 @@ Item {
                         onExited: outputDelegate.itemHovered = false
                         onClicked: {
                             Audio.setDefaultSink(outputDelegate.modelData);
-                            devicePopup.close();
+                            Qt.callLater(() => devicePopup.close());
                         }
                     }
 
@@ -438,7 +444,7 @@ Item {
                         onExited: inputDelegate.itemHovered = false
                         onClicked: {
                             Audio.setDefaultSource(inputDelegate.modelData);
-                            devicePopup.close();
+                            Qt.callLater(() => devicePopup.close());
                         }
                     }
 
