@@ -871,6 +871,9 @@ func (m *Manager) buildGeneration(state State) (string, error) {
 	if err := exportBase(base, tmp); err != nil {
 		return "", fmt.Errorf("export base source: %w", err)
 	}
+	if err := initComposition(tmp, base); err != nil {
+		return "", fmt.Errorf("prepare composition: %w", err)
+	}
 	for _, id := range ordered {
 		manifest := manifests[id]
 		packageRoot := filepath.Join(m.paths.ModPackagesDir(), id)
@@ -879,6 +882,12 @@ func (m *Manager) buildGeneration(state State) (string, error) {
 				return "", fmt.Errorf("mod %s: %w", id, err)
 			}
 		}
+		if err := commitComposition(tmp, "mod "+id); err != nil {
+			return "", fmt.Errorf("mod %s: %w", id, err)
+		}
+	}
+	if err := os.RemoveAll(filepath.Join(tmp, ".git")); err != nil {
+		return "", fmt.Errorf("clear composition history: %w", err)
 	}
 	if _, err := os.Stat(filepath.Join(tmp, "shell.qml")); err != nil {
 		return "", fmt.Errorf("generation has no shell.qml")
@@ -1150,16 +1159,82 @@ func (m *Manager) cleanupGenerations(state State) {
 	}
 }
 
+// initComposition turns the exported base into a throwaway Git repository so
+// patches can be merged three-way instead of matching context exactly. The
+// base object store is borrowed rather than copied, which keeps the pre-image
+// blobs of older mods reachable after an Ambxst update. The repository is
+// removed before the generation is activated.
+func initComposition(generation, base string) error {
+	if err := runCommand(generation, "git", "init", "-q"); err != nil {
+		return err
+	}
+	settings := [][2]string{
+		{"user.email", "mods@ambxst.invalid"},
+		{"user.name", "Ambxst Mods"},
+		{"commit.gpgsign", "false"},
+		{"core.autocrlf", "false"},
+		{"core.hooksPath", filepath.Join(generation, ".git", "unused-hooks")},
+	}
+	for _, setting := range settings {
+		if err := runCommand(generation, "git", "config", setting[0], setting[1]); err != nil {
+			return err
+		}
+	}
+	if objects := gitObjectsDir(base); objects != "" {
+		alternates := filepath.Join(generation, ".git", "objects", "info", "alternates")
+		if err := os.MkdirAll(filepath.Dir(alternates), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(alternates, []byte(objects+"\n"), 0o644); err != nil {
+			return err
+		}
+	}
+	return commitComposition(generation, "base")
+}
+
+func commitComposition(generation, message string) error {
+	if err := runCommand(generation, "git", "add", "-A", "-f", "."); err != nil {
+		return err
+	}
+	return runCommand(generation, "git", "commit", "-q", "--allow-empty", "--no-verify", "-m", message)
+}
+
+func gitObjectsDir(base string) string {
+	cmd := exec.Command("git", "-C", base, "rev-parse", "--git-path", "objects")
+	output, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	directory := strings.TrimSpace(string(output))
+	if directory == "" {
+		return ""
+	}
+	if !filepath.IsAbs(directory) {
+		directory = filepath.Join(base, directory)
+	}
+	if info, err := os.Stat(directory); err != nil || !info.IsDir() {
+		return ""
+	}
+	return directory
+}
+
 func applyOperation(generation, packageRoot string, op Operation) error {
 	source, err := safeJoin(packageRoot, op.Source)
 	if err != nil {
 		return err
 	}
 	if op.Type == "patch" {
-		if err := runCommand(generation, "git", "apply", "--check", "--whitespace=error-all", source); err != nil {
-			return fmt.Errorf("patch check failed: %w", err)
+		if runCommand(generation, "git", "apply", "--check", "--whitespace=error-all", source) == nil {
+			if err := runCommand(generation, "git", "apply", "--whitespace=error-all", source); err != nil {
+				return fmt.Errorf("apply patch: %w", err)
+			}
+			return nil
 		}
-		if err := runCommand(generation, "git", "apply", "--whitespace=error-all", source); err != nil {
+		// The context a patch was written against moves when an earlier mod
+		// edits the same file, or when Ambxst itself changes. A three-way
+		// merge against the recorded pre-image accepts that drift and still
+		// stops on hunks that touch the same lines.
+		if err := runCommand(generation, "git", "apply", "--3way", source); err != nil {
 			return fmt.Errorf("apply patch: %w", err)
 		}
 		return nil

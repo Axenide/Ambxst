@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -733,6 +734,126 @@ func testPaths(root string) *paths.Paths {
 		StateDir:  filepath.Join(root, "state"),
 		CacheDir:  filepath.Join(root, "cache"),
 	}
+}
+
+func TestManagerComposesPatchesThatShareContext(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	original := "first\ntwo\nmiddle\nfour\nlast\n"
+	writeTestFile(t, filepath.Join(base, "shell.qml"), original)
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	first := filepath.Join(root, "first")
+	writeDiffPackage(t, first, "example.first", original, "first\ntwo\nMIDDLE\nfour\nlast\n")
+	second := filepath.Join(root, "second")
+	writeDiffPackage(t, second, "example.second", original, "first\ntwo\nmiddle\nfour\nfive\n")
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Install(second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.first", true); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.SetEnabled("example.second", true)
+	if err != nil {
+		t.Fatalf("second mod was refused although both edits are independent: %v", err)
+	}
+	data, err := os.ReadFile(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, "shell.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "first\ntwo\nMIDDLE\nfour\nfive\n" {
+		t.Fatalf("shared context was not merged: %q", data)
+	}
+	if _, err := os.Stat(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, ".git")); !os.IsNotExist(err) {
+		t.Fatal("the generation still carries the composition repository")
+	}
+}
+
+func TestManagerStopsOnOverlappingPatches(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	original := "first\ntwo\nmiddle\nfour\nlast\n"
+	writeTestFile(t, filepath.Join(base, "shell.qml"), original)
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	first := filepath.Join(root, "first")
+	writeDiffPackage(t, first, "example.first", original, "first\ntwo\nalpha\nfour\nlast\n")
+	second := filepath.Join(root, "second")
+	writeDiffPackage(t, second, "example.second", original, "first\ntwo\nbeta\nfour\nlast\n")
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Install(second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.first", true); err != nil {
+		t.Fatal(err)
+	}
+	previous, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.second", true); err == nil {
+		t.Fatal("two mods rewriting the same line were composed")
+	}
+	current, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if current.ActiveGeneration != previous.ActiveGeneration {
+		t.Fatal("a failed composition replaced the active generation")
+	}
+}
+
+func writeDiffPackage(t *testing.T, root, id, before, after string) {
+	t.Helper()
+	repo := t.TempDir()
+	run := func(args ...string) {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repo
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, output)
+		}
+	}
+	run("init", "-q")
+	run("config", "user.email", "test@example.com")
+	run("config", "user.name", "Test")
+	writeTestFile(t, filepath.Join(repo, "shell.qml"), before)
+	run("add", "shell.qml")
+	run("commit", "-q", "-m", "base")
+	writeTestFile(t, filepath.Join(repo, "shell.qml"), after)
+	diff := exec.Command("git", "diff")
+	diff.Dir = repo
+	patch, err := diff.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(root, "patches", "change.patch"), string(patch))
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              id,
+		Name:            id,
+		Version:         "1.0.0",
+		Operations: []Operation{{
+			Type: "patch", Source: "patches/change.patch",
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(root, ManifestFile), string(data))
 }
 
 func writeOverlayPackage(t *testing.T, root, directory, id, target string) string {
