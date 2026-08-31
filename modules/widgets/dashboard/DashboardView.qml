@@ -3,15 +3,19 @@ import qs.modules.widgets.dashboard
 import qs.modules.services
 
 Item {
+    id: root
+
     implicitWidth: 900
     implicitHeight: 56 + 48 * 6
+    property string screenName: ""
 
     readonly property int leftPanelWidth: 270
 
     Dashboard {
         id: dashboardItem
         anchors.fill: parent
-        leftPanelWidth: parent.leftPanelWidth
+        leftPanelWidth: root.leftPanelWidth
+        screenName: root.screenName
 
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape) {

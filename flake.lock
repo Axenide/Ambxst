@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1774473442,
-        "narHash": "sha256-oq4Ar76RPPnci4Jv36ryevbiUHTaI2mUEr2joosb4WE=",
+        "lastModified": 1788084517,
+        "narHash": "sha256-PUowGa3IiUBuPOe6VRysUD+FJUKYNPLj1QwPY3947IU=",
         "owner": "Axenide",
         "repo": "axctl",
-        "rev": "7c4446094d577a76da23c68821996545399edf02",
+        "rev": "54a2a232fdd1d60240de7628b1d22dc5c1b8a06a",
         "type": "github"
       },
       "original": {
@@ -22,44 +22,24 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1774106199,
-        "narHash": "sha256-US5Tda2sKmjrg2lNHQL3jRQ6p96cgfWh3J1QBliQ8Ws=",
+        "lastModified": 1788179007,
+        "narHash": "sha256-hn1oU2rue2SYK8dAr8+WNZWtbsz1S2W5mnHlSEuh3bo=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "6c9a78c09ff4d6c21d0319114873508a6ec01655",
+        "rev": "34ab99075ac4f7e40cf037eef32cb1c360bb85e9",
         "type": "github"
       },
       "original": {
-        "id": "nixpkgs",
+        "owner": "NixOS",
         "ref": "nixos-unstable",
-        "type": "indirect"
-      }
-    },
-    "quickshell": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1774422996,
-        "narHash": "sha256-mWjBJIbiMPCpljAQDk8RYf+92/lYZ5npHe2r2SJ+QWc=",
-        "ref": "refs/heads/master",
-        "rev": "08058326f04e9b5e55c903b3702405a8d3556ac6",
-        "revCount": 775,
-        "type": "git",
-        "url": "https://git.outfoxxed.me/outfoxxed/quickshell"
-      },
-      "original": {
-        "type": "git",
-        "url": "https://git.outfoxxed.me/outfoxxed/quickshell"
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "root": {
       "inputs": {
         "axctl": "axctl",
-        "nixpkgs": "nixpkgs",
-        "quickshell": "quickshell"
+        "nixpkgs": "nixpkgs"
       }
     }
   },
