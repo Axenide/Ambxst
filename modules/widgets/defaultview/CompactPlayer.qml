@@ -124,17 +124,15 @@ Item {
         }
     }
 
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.NoButton
-        onWheel: wheel => {
-            if (!compactPlayer.player) {
-                wheel.accepted = false;
+    // A pointer handler does not compete with child controls for stacking.
+    WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: event => {
+            if (!compactPlayer.player)
                 return;
-            }
-            if (wheel.angleDelta.y > 0)
+            if (event.angleDelta.y > 0)
                 Audio.incrementVolume();
-            else if (wheel.angleDelta.y < 0)
+            else if (event.angleDelta.y < 0)
                 Audio.decrementVolume();
         }
     }

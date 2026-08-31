@@ -669,13 +669,12 @@ StyledRect {
         return Icons.player;
     }
 
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.NoButton
-        onWheel: wheel => {
-            if (wheel.angleDelta.y > 0)
+    WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: event => {
+            if (event.angleDelta.y > 0)
                 Audio.incrementVolume();
-            else if (wheel.angleDelta.y < 0)
+            else if (event.angleDelta.y < 0)
                 Audio.decrementVolume();
         }
     }
