@@ -40,8 +40,8 @@ Item {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: "EasyEffects"
-                    statusText: EasyEffectsService.bypassed ? "Bypassed" : ""
+                    title: I18n.t("effects.title")
+                    statusText: EasyEffectsService.bypassed ? I18n.t("effects.bypassed") : ""
                     statusColor: Colors.error
                     showToggle: EasyEffectsService.available
                     toggleChecked: !EasyEffectsService.bypassed
@@ -49,14 +49,14 @@ Item {
                     actions: EasyEffectsService.available ? [
                         {
                             icon: Icons.popOpen,
-                            tooltip: "Open EasyEffects",
+                            tooltip: I18n.t("effects.open"),
                             onClicked: function () {
                                 EasyEffectsService.openApp();
                             }
                         },
                         {
                             icon: Icons.sync,
-                            tooltip: "Refresh",
+                            tooltip: I18n.t("effects.refresh"),
                             onClicked: function () {
                                 EasyEffectsService.refresh();
                             }
@@ -85,7 +85,7 @@ Item {
                     // Not available state
                     Text {
                         visible: !EasyEffectsService.available
-                        text: "EasyEffects not installed"
+                        text: I18n.t("effects.not_installed")
                         font.family: Config.theme.font
                         font.pixelSize: Config.theme.fontSize
                         color: Colors.overSurfaceVariant
@@ -100,7 +100,7 @@ Item {
                         visible: EasyEffectsService.available && EasyEffectsService.outputPresets.length > 0
 
                         Text {
-                            text: "Output Presets"
+                            text: I18n.t("effects.output_presets")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -197,7 +197,7 @@ Item {
                         visible: EasyEffectsService.available && EasyEffectsService.inputPresets.length > 0
 
                         Text {
-                            text: "Input Presets"
+                            text: I18n.t("effects.input_presets")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -290,7 +290,7 @@ Item {
                     // Empty state
                     Text {
                         visible: EasyEffectsService.available && EasyEffectsService.outputPresets.length === 0 && EasyEffectsService.inputPresets.length === 0
-                        text: "No presets configured"
+                        text: I18n.t("presets.no_presets")
                         font.family: Config.theme.font
                         font.pixelSize: Config.theme.fontSize
                         color: Colors.overSurfaceVariant
@@ -306,7 +306,7 @@ Item {
                         visible: EasyEffectsService.available && (EasyEffectsService.activeOutputPreset || EasyEffectsService.activeInputPreset)
 
                         Text {
-                            text: "Active"
+                            text: I18n.t("common.active")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium

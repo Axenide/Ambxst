@@ -66,7 +66,7 @@ Item {
         
         if (preset.authorUrl && preset.authorUrl !== "") {
             options.push({
-                text: "Visit Author",
+                text: I18n.t("presets.visit_author"),
                 icon: Icons.globe,
                 highlightColor: Colors.primary,
                 textColor: Styling.srItem("primary"),
@@ -78,7 +78,7 @@ Item {
 
         if (!preset.isOfficial) {
             options.push({
-                text: "Rename",
+                text: I18n.t("common.rename"),
                 icon: Icons.edit,
                 highlightColor: Colors.secondary,
                 textColor: Styling.srItem("secondary"),
@@ -90,7 +90,7 @@ Item {
         }
 
         options.push({
-            text: "Update",
+            text: I18n.t("presets.update"),
             icon: Icons.arrowCounterClockwise,
             highlightColor: Colors.tertiary,
             textColor: Styling.srItem("tertiary"),
@@ -102,7 +102,7 @@ Item {
 
         if (!preset.isOfficial) {
             options.push({
-                text: "Delete",
+                text: I18n.t("common.delete"),
                 icon: Icons.trash,
                 highlightColor: Colors.error,
                 textColor: Styling.srItem("error"),
@@ -191,7 +191,7 @@ Item {
 
     function updateFilteredPresets() {
         var newFilteredPresets = [];
-        var createButtonText = "Create new preset";
+        var createButtonText = I18n.t("presets.create_new");
         var isCreateSpecific = false;
         var presetNameToCreate = "";
 
@@ -207,7 +207,7 @@ Item {
             });
 
             if (!exactMatch && searchText.length > 0) {
-                createButtonText = `Create preset "${searchText}"`;
+                createButtonText = I18n.t("presets.create_specific", searchText);
                 isCreateSpecific = true;
                 presetNameToCreate = searchText;
             }
@@ -427,7 +427,7 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 48
             text: root.searchText
-            placeholderText: "Search or create preset..."
+            placeholderText: I18n.t("presets.search")
 
             onSearchTextChanged: text => {
                 root.searchText = text;
@@ -1225,9 +1225,9 @@ Item {
                                 Text {
                                     text: {
                                         if (isInDeleteMode && !modelData.isCreateButton && !modelData.isCreateSpecificButton) {
-                                            return `Delete "${root.presetToDelete}"?`;
+                                            return I18n.t("presets.confirm_delete", root.presetToDelete);
                                         } else if (isInUpdateMode && !modelData.isCreateButton && !modelData.isCreateSpecificButton) {
-                                            return `Update "${root.presetToUpdate}"`;
+                                            return I18n.t("presets.update_title", root.presetToUpdate);
                                         } else {
                                             return modelData.name;
                                         }
@@ -1290,9 +1290,9 @@ Item {
                             visible: !isInRenameMode && !isInUpdateMode
                             text: {
                                 if (modelData.isCreateButton || modelData.isCreateSpecificButton) {
-                                    return "Tap to create";
+                                    return I18n.t("presets.tap_to_create");
                                 }
-                                return modelData.author ? modelData.author : "Unknown";
+                                return modelData.author ? modelData.author : I18n.t("presets.unknown_author");
                             }
                             color: root.selectedIndex === index ? Styling.srItem("primary") : Colors.outline
                             opacity: 0.7
@@ -1311,7 +1311,7 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "OFFICIAL"
+                                text: I18n.t("presets.official")
                                 font.family: Config.theme.font
                                 font.pixelSize: 10
                                 font.weight: Font.Bold
@@ -1330,7 +1330,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "ACTIVE"
+                            text: I18n.t("presets.active")
                             font.family: Config.theme.font
                             font.pixelSize: 10
                             font.weight: Font.Bold
@@ -1556,7 +1556,7 @@ Item {
                 }
 
                 Text {
-                    text: `Update "${root.presetToUpdate}"`
+                    text: I18n.t("presets.update_title", root.presetToUpdate)
                     font.family: Config.theme.font
                     font.pixelSize: Config.theme.fontSize + 2
                     font.weight: Font.Bold
@@ -1566,7 +1566,7 @@ Item {
             }
 
             Text {
-                text: "Select config files to update:"
+                text: I18n.t("presets.select_config_files")
                 color: Colors.outline
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
@@ -1651,7 +1651,7 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        text: "Cancel"
+                        text: I18n.t("common.cancel")
                         color: Colors.overSurface
                         font.family: Config.theme.font
                     }
@@ -1671,7 +1671,7 @@ Item {
 
                     Text {
                         anchors.centerIn: parent
-                        text: `Update (${root.selectedConfigFiles.length})`
+                        text: I18n.t("presets.update") + ` (${root.selectedConfigFiles.length})`
                         color: Styling.srItem("tertiary")
                         font.family: Config.theme.font
                         font.weight: Font.Bold

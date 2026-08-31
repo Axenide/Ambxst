@@ -103,11 +103,11 @@ PanelWindow {
                         Text {
                             text: {
                                 if (GlobalStates.osdIndicator === "volume")
-                                    return "Volume";
+                                    return I18n.t("osd.volume");
                                 if (GlobalStates.osdIndicator === "mic")
-                                    return "Microphone";
+                                    return I18n.t("osd.mic");
                                 if (GlobalStates.osdIndicator === "brightness")
-                                    return "Brightness";
+                                    return I18n.t("osd.brightness");
                                 return "";
                             }
                             font.family: Config.theme.font

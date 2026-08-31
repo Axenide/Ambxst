@@ -203,7 +203,7 @@ PanelWindow {
 
                 StyledToolTip {
                     show: parent.containsMouse
-                    tooltipText: "Copy"
+                    tooltipText: I18n.t("common.copy")
                 }
             }
 
@@ -214,7 +214,7 @@ PanelWindow {
                 }
                 StyledToolTip {
                     show: parent.containsMouse
-                    tooltipText: "Save & Close"
+                    tooltipText: I18n.t("common.save_close")
                 }
             }
 
@@ -230,7 +230,7 @@ PanelWindow {
                 }
                 StyledToolTip {
                     show: parent.containsMouse
-                    tooltipText: "Edit with Gradia"
+                    tooltipText: I18n.t("wallpapers.edit_gradia")
                 }
             }
 
@@ -249,7 +249,7 @@ PanelWindow {
                 }
                 StyledToolTip {
                     show: parent.containsMouse
-                    tooltipText: "Delete"
+                    tooltipText: I18n.t("common.delete")
                 }
             }
         }

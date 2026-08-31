@@ -238,7 +238,7 @@ Item {
                 
                 Text {
                     anchors.centerIn: parent
-                    text: root.isWorkSession ? "Work Session" : "Rest Session"
+                    text: root.isWorkSession ? I18n.t("pomodoro.work_session") : I18n.t("pomodoro.rest_session")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     font.weight: Font.Bold
@@ -359,7 +359,7 @@ Item {
             spacing: 12
 
             ControlBtn {
-                text: "-1m"
+                text: I18n.t("pomodoro.minus_1m")
                 onClicked: {
                     if (root.timeLeft >= 60) {
                         root.timeLeft -= 60;
@@ -381,7 +381,7 @@ Item {
                 
                 Text {
                     anchors.centerIn: parent
-                    text: root.alarmActive ? "STOP ALARM" : (root.isRunning ? "PAUSE" : (root.isResuming ? "RESUME" : "START " + (root.isWorkSession ? "WORK" : "REST")))
+                    text: root.alarmActive ? I18n.t("pomodoro.stop_alarm") : (root.isRunning ? I18n.t("pomodoro.pause") : (root.isResuming ? I18n.t("pomodoro.resume") : (root.isWorkSession ? I18n.t("pomodoro.start_work") : I18n.t("pomodoro.start_rest"))))
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(0)
                     font.weight: Font.Black
@@ -396,7 +396,7 @@ Item {
             }
 
             ControlBtn {
-                text: "+1m"
+                text: I18n.t("pomodoro.plus_1m")
                 onClicked: {
                     root.timeLeft += 60;
                     if (!root.isRunning) {
@@ -418,7 +418,7 @@ Item {
             RowLayout {
                 spacing: 8
                 Text {
-                    text: "Auto"
+                    text: I18n.t("common.auto")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: Colors.outline
@@ -448,7 +448,7 @@ Item {
             RowLayout {
                 spacing: 8
                 Text {
-                    text: "Sync Spotify"
+                    text: I18n.t("pomodoro.sync_spotify")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: Colors.outline
