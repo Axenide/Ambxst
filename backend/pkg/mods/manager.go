@@ -34,6 +34,16 @@ const (
 type Manager struct {
 	paths *paths.Paths
 	mu    sync.Mutex
+
+	// Scanning every patch on every status call is wasted work: the panel asks
+	// for status after each action and while a banner is up. Keyed by the
+	// package's patch stats, so an updated package rescans on its own.
+	affectedCache map[string]affectedFiles
+}
+
+type affectedFiles struct {
+	stamp string
+	files []string
 }
 
 type State struct {
@@ -154,11 +164,12 @@ func (m *Manager) Install(source string) (Status, error) {
 	}
 	defer os.RemoveAll(tmp)
 
-	packageRoot, normalizedSource, sourceType, err := acquirePackage(source, filepath.Join(tmp, "package"))
+	fetched, err := acquirePackage(source, filepath.Join(tmp, "package"))
 	if err != nil {
 		return Status{}, err
 	}
-	source = normalizedSource
+	packageRoot := fetched.root
+	source = fetched.source
 
 	manifest, err := LoadManifest(packageRoot)
 	if err != nil {
@@ -178,14 +189,13 @@ func (m *Manager) Install(source string) (Status, error) {
 	if err := os.Rename(packageRoot, destination); err != nil {
 		return Status{}, fmt.Errorf("store package: %w", err)
 	}
-	revision := gitRevision(destination)
 	state.Mods = append(state.Mods, InstalledMod{
 		ID:          manifest.ID,
 		Enabled:     false,
 		Order:       len(state.Mods),
 		Source:      source,
-		SourceType:  sourceType,
-		Revision:    revision,
+		SourceType:  fetched.sourceType,
+		Revision:    fetched.revision,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339),
 	})
 	if err := m.saveState(state); err != nil {
@@ -228,6 +238,7 @@ func (m *Manager) InstallDependencies(id string) (Status, error) {
 		root       string
 		source     string
 		sourceType string
+		revision   string
 	}
 	installed := make(map[string]int, len(state.Mods))
 	for i, mod := range state.Mods {
@@ -261,10 +272,11 @@ func (m *Manager) InstallDependencies(id string) (Status, error) {
 				return fmt.Errorf("mod %s requires %s but provides no package source", id, dependencyID)
 			}
 			stageRoot := filepath.Join(tmp, dependencyID)
-			packageRoot, normalizedSource, sourceType, acquireErr := acquirePackage(source, stageRoot)
+			fetched, acquireErr := acquirePackage(source, stageRoot)
 			if acquireErr != nil {
 				return fmt.Errorf("install dependency %s: %w", dependencyID, acquireErr)
 			}
+			packageRoot := fetched.root
 			loaded, loadErr := LoadManifest(packageRoot)
 			if loadErr != nil {
 				return fmt.Errorf("dependency %s: %w", dependencyID, loadErr)
@@ -274,7 +286,8 @@ func (m *Manager) InstallDependencies(id string) (Status, error) {
 			}
 			dependencyManifest = loaded
 			staged[dependencyID] = stagedDependency{
-				root: packageRoot, source: normalizedSource, sourceType: sourceType,
+				root: packageRoot, source: fetched.source, sourceType: fetched.sourceType,
+				revision: fetched.revision,
 			}
 		}
 
@@ -325,7 +338,7 @@ func (m *Manager) InstallDependencies(id string) (Status, error) {
 			Order:       len(next.Mods),
 			Source:      dependency.source,
 			SourceType:  dependency.sourceType,
-			Revision:    gitRevision(destination),
+			Revision:    dependency.revision,
 			InstalledAt: time.Now().UTC().Format(time.RFC3339),
 		})
 		changed = true
@@ -536,6 +549,7 @@ func (m *Manager) Update(id string) (Status, error) {
 }
 
 func (m *Manager) updateLocalSource(state State, index int, installed InstalledMod, packageRoot string) (Status, error) {
+	refreshedRevision := ""
 	tmp, err := os.MkdirTemp(m.paths.ModPackagesDir(), ".update-")
 	if err != nil {
 		return Status{}, err
@@ -562,11 +576,12 @@ func (m *Manager) updateLocalSource(state State, index int, installed InstalledM
 			return Status{}, err
 		}
 	case "git-subdir":
-		acquiredRoot, _, _, acquireErr := acquirePackage(installed.Source, updatedRoot)
+		fetched, acquireErr := acquirePackage(installed.Source, updatedRoot)
 		if acquireErr != nil {
 			return Status{}, acquireErr
 		}
-		updatedRoot = acquiredRoot
+		updatedRoot = fetched.root
+		refreshedRevision = fetched.revision
 	default:
 		return Status{}, fmt.Errorf("mod %q has unsupported source type %q", installed.ID, installed.SourceType)
 	}
@@ -598,7 +613,7 @@ func (m *Manager) updateLocalSource(state State, index int, installed InstalledM
 	}
 
 	next := cloneState(state)
-	next.Mods[index].Revision = ""
+	next.Mods[index].Revision = refreshedRevision
 	if installed.Enabled {
 		if err := m.composeAndActivate(state, &next); err != nil {
 			restore()
@@ -960,6 +975,47 @@ func (m *Manager) resolve(state State, base string) (map[string]Manifest, []stri
 	return manifests, ordered, err
 }
 
+// affectedFilesFor returns manifest.AffectedFiles, reusing the previous answer
+// while every payload file keeps its size and modification time.
+func (m *Manager) affectedFilesFor(manifest Manifest, root string) ([]string, error) {
+	stamp, ok := payloadStamp(manifest, root)
+	if ok {
+		if cached, hit := m.affectedCache[root]; hit && cached.stamp == stamp {
+			return cached.files, nil
+		}
+	}
+	files, err := manifest.AffectedFiles(root)
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		if m.affectedCache == nil {
+			m.affectedCache = make(map[string]affectedFiles)
+		}
+		m.affectedCache[root] = affectedFiles{stamp: stamp, files: files}
+	}
+	return files, nil
+}
+
+func payloadStamp(manifest Manifest, root string) (string, bool) {
+	var builder strings.Builder
+	for _, op := range manifest.Operations {
+		if op.Type != "patch" {
+			continue
+		}
+		path, err := safeJoin(root, op.Source)
+		if err != nil {
+			return "", false
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			return "", false
+		}
+		fmt.Fprintf(&builder, "%s:%d:%d;", op.Source, info.Size(), info.ModTime().UnixNano())
+	}
+	return builder.String(), true
+}
+
 func (m *Manager) statusFor(state State) (Status, error) {
 	base := paths.FindBaseShellSource()
 	status := Status{
@@ -1002,7 +1058,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			})
 			continue
 		}
-		files, err := manifest.AffectedFiles(root)
+		files, err := m.affectedFilesFor(manifest, root)
 		if err != nil {
 			status.Mods = append(status.Mods, ModInfo{
 				ID:          manifest.ID,
@@ -1020,7 +1076,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			continue
 		}
 		compatibilityErr := checkCompatibility(manifest, base)
-		untestedMessage := untestedBase(manifest, base)
+		untestedMessage := untestedBase(manifest, status.BaseRevision)
 		compatibilityMessage := ""
 		if compatibilityErr != nil {
 			compatibilityMessage = compatibilityErr.Error()
@@ -1382,11 +1438,10 @@ func checkCompatibility(manifest Manifest, base string) error {
 // update, and refusing every unlisted revision would disable the whole
 // collection after one upstream commit. Patch composition, the startup health
 // check, and rollback remain the real guards.
-func untestedBase(manifest Manifest, base string) string {
+func untestedBase(manifest Manifest, revision string) string {
 	if len(manifest.Compatibility.TestedBaseCommits) == 0 {
 		return ""
 	}
-	revision := gitRevision(base)
 	if revision == "" {
 		return "the base revision is unknown"
 	}
@@ -1750,8 +1805,12 @@ func writeAtomic(path string, data []byte, mode os.FileMode) error {
 	return os.Rename(tmpPath, path)
 }
 
+// Local git work is fast, but it holds the manager mutex, so a stalled process
+// would freeze every other mods request. Bound it.
+const localCommandTimeout = 2 * time.Minute
+
 func runCommand(directory, name string, args ...string) error {
-	return runCommandTimeout(0, directory, name, args...)
+	return runCommandTimeout(localCommandTimeout, directory, name, args...)
 }
 
 func runCommandTimeout(timeout time.Duration, directory, name string, args ...string) error {
@@ -1785,61 +1844,71 @@ func isGitSource(source string) bool {
 	return strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "ssh://") || strings.HasPrefix(source, "git@")
 }
 
-func acquirePackage(source, destination string) (string, string, string, error) {
+// acquired describes a package fetched into a staging directory. The revision
+// is only known for Git sources; a GitHub directory install keeps it because
+// the clone that carried it is discarded right after.
+type acquired struct {
+	root       string
+	source     string
+	sourceType string
+	revision   string
+}
+
+func acquirePackage(source, destination string) (acquired, error) {
 	source = strings.TrimSpace(source)
 	if source == "" {
-		return "", "", "", fmt.Errorf("source is required")
+		return acquired{}, fmt.Errorf("source is required")
 	}
 	sourceType := "local"
 	if repository, ref, subdirectory, ok := parseGitHubTreeSource(source); ok {
 		sourceType = "git-subdir"
 		if err := runCommandTimeout(5*time.Minute, "", "git", "clone", "--depth=1", "--filter=blob:none", "--sparse", "--branch", ref, repository, destination); err != nil {
-			return "", "", "", fmt.Errorf("clone source: %w", err)
+			return acquired{}, fmt.Errorf("clone source: %w", err)
 		}
 		if err := runCommandTimeout(2*time.Minute, destination, "git", "sparse-checkout", "set", "--no-cone", subdirectory); err != nil {
-			return "", "", "", fmt.Errorf("select package directory: %w", err)
+			return acquired{}, fmt.Errorf("select package directory: %w", err)
 		}
 		packageRoot, err := safeJoin(destination, filepath.FromSlash(subdirectory))
 		if err != nil {
-			return "", "", "", fmt.Errorf("package directory: %w", err)
+			return acquired{}, fmt.Errorf("package directory: %w", err)
 		}
 		if _, err := os.Stat(filepath.Join(packageRoot, ManifestFile)); err != nil {
-			return "", "", "", fmt.Errorf("package directory has no %s", ManifestFile)
+			return acquired{}, fmt.Errorf("package directory has no %s", ManifestFile)
 		}
-		return packageRoot, source, sourceType, nil
+		return acquired{root: packageRoot, source: source, sourceType: sourceType, revision: gitRevision(destination)}, nil
 	} else if isGitSource(source) {
 		sourceType = "git"
 		if err := runCommandTimeout(5*time.Minute, "", "git", "clone", "--depth=1", source, destination); err != nil {
-			return "", "", "", fmt.Errorf("clone source: %w", err)
+			return acquired{}, fmt.Errorf("clone source: %w", err)
 		}
 	} else {
 		absolute, err := filepath.Abs(source)
 		if err != nil {
-			return "", "", "", err
+			return acquired{}, err
 		}
 		info, err := os.Stat(absolute)
 		if err != nil {
-			return "", "", "", fmt.Errorf("inspect source: %w", err)
+			return acquired{}, fmt.Errorf("inspect source: %w", err)
 		}
 		if info.IsDir() {
 			if err := copyTree(absolute, destination, func(path string, entry fs.DirEntry) bool {
 				return path != absolute && entry.IsDir() && entry.Name() == ".git"
 			}); err != nil {
-				return "", "", "", fmt.Errorf("copy source: %w", err)
+				return acquired{}, fmt.Errorf("copy source: %w", err)
 			}
 		} else {
 			sourceType = "archive"
 			if err := extractPackageArchive(absolute, destination); err != nil {
-				return "", "", "", err
+				return acquired{}, err
 			}
 		}
 		source = absolute
 	}
 	packageRoot, err := locatePackageRoot(destination)
 	if err != nil {
-		return "", "", "", err
+		return acquired{}, err
 	}
-	return packageRoot, source, sourceType, nil
+	return acquired{root: packageRoot, source: source, sourceType: sourceType, revision: gitRevision(packageRoot)}, nil
 }
 
 func parseGitHubTreeSource(source string) (string, string, string, bool) {

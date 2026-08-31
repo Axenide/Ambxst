@@ -979,3 +979,27 @@ func writePatchPackage(t *testing.T, root, id, hunk string) {
 	}
 	writeTestFile(t, filepath.Join(root, ManifestFile), string(data))
 }
+
+func TestGitHubDirectoryInstallRecordsRevision(t *testing.T) {
+	if testing.Short() {
+		t.Skip("network integration test")
+	}
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.6\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	manager := NewManager(testPaths(root))
+	status, err := manager.Install("https://github.com/flathead/ambxst-mods/tree/main/packages/volume-scroll")
+	if err != nil {
+		t.Skipf("network unavailable: %v", err)
+	}
+	if len(status.Mods) != 1 {
+		t.Fatalf("expected one installed mod, got %#v", status.Mods)
+	}
+	if status.Mods[0].Revision == "" {
+		t.Fatal("a GitHub directory install recorded no upstream revision")
+	}
+}
