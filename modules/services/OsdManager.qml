@@ -1,5 +1,8 @@
 pragma Singleton
+pragma ComponentBehavior: Bound
+
 import QtQuick
+import Quickshell
 
 /**
  * Tracks which on-screen-display (OSD) instance is currently visible on
