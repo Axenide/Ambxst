@@ -155,7 +155,7 @@ Item {
         Text {
             id: batteryIcon
             anchors.centerIn: parent
-            text: Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfile.getProfileIcon(PowerProfile.currentProfile)
+            text: Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfileClient.getProfileIcon(PowerProfileClient.currentProfile)
             font.family: Icons.font
             font.pixelSize: Battery.available ? 14 : 18
             color: root.popupOpen ? buttonBg.item : Colors.overBackground
@@ -170,10 +170,10 @@ Item {
             Connections {
                 target: Battery
                 function onIsPluggedInChanged() {
-                    batteryIcon.text = Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfile.getProfileIcon(PowerProfile.currentProfile);
+                    batteryIcon.text = Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfileClient.getProfileIcon(PowerProfileClient.currentProfile);
                 }
                 function onAvailableChanged() {
-                    batteryIcon.text = Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfile.getProfileIcon(PowerProfile.currentProfile);
+                    batteryIcon.text = Battery.available ? (Battery.isPluggedIn ? Icons.plug : Icons.lightning) : PowerProfileClient.getProfileIcon(PowerProfileClient.currentProfile);
                 }
             }
         }
@@ -186,7 +186,11 @@ Item {
 
         StyledToolTip {
             visible: root.isHovered && !root.popupOpen
-            tooltipText: Battery.available ? I18n.t("battery.status", Math.round(Battery.percentage)) : I18n.t("battery.power_profile", PowerProfile.getProfileDisplayName(PowerProfile.currentProfile))
+            tooltipText: Battery.available
+                ? (Battery.isCharging
+                    ? I18n.t("battery.status_charging", Math.round(Battery.percentage), I18n.t("battery.charging"))
+                    : I18n.t("battery.status", Math.round(Battery.percentage)))
+                : I18n.t("battery.power_profile", PowerProfileClient.getProfileDisplayName(PowerProfileClient.currentProfile))
         }
     }
 
@@ -278,7 +282,7 @@ Item {
                 spacing: 4
 
                 Repeater {
-                    model: PowerProfile.availableProfiles
+                    model: PowerProfileClient.availableProfiles
 
                     delegate: StyledRect {
                         id: profileButton
@@ -289,9 +293,9 @@ Item {
                         Layout.preferredWidth: 80
                         height: 36
 
-                        readonly property bool isSelected: PowerProfile.currentProfile === modelData
+                        readonly property bool isSelected: PowerProfileClient.currentProfile === modelData
                         readonly property bool isFirst: index === 0
-                        readonly property bool isLast: index === PowerProfile.availableProfiles.length - 1
+                        readonly property bool isLast: index === PowerProfileClient.availableProfiles.length - 1
                         property bool buttonHovered: false
 
                         readonly property real defaultRadius: Styling.radius(0)
@@ -307,7 +311,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: PowerProfile.getProfileIcon(profileButton.modelData)
+                            text: PowerProfileClient.getProfileIcon(profileButton.modelData)
                             font.family: Icons.font
                             font.pixelSize: 18
                             color: profileButton.item
@@ -322,13 +326,13 @@ Item {
                             onExited: profileButton.buttonHovered = false
 
                             onClicked: {
-                                PowerProfile.setProfile(profileButton.modelData);
+                                PowerProfileClient.setProfile(profileButton.modelData);
                             }
                         }
 
                         StyledToolTip {
                             show: profileButton.buttonHovered
-                            tooltipText: PowerProfile.getProfileDisplayName(profileButton.modelData)
+                            tooltipText: PowerProfileClient.getProfileDisplayName(profileButton.modelData)
                         }
                     }
                 }

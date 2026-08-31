@@ -5,6 +5,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
+import qs.modules.services
 
 Singleton {
     id: root
@@ -25,6 +26,9 @@ Singleton {
         property string summary: ""
         property double time
         property string urgency: "normal"
+        property int historyPriority: 0
+        property string replaceKey: ""
+        property var localActionHandlers: ({})
         property Timer timer
 
         // Propiedades para cache de imágenes
@@ -86,6 +90,8 @@ Singleton {
             "summary": notif.summary,
             "time": notif.time,
             "urgency": notif.urgency,
+            "historyPriority": notif.historyPriority,
+            "replaceKey": notif.replaceKey,
             "cachedAppIcon": notif.cachedAppIcon,
             "cachedImage": notif.cachedImage,
             "isCached": notif.isCached
@@ -171,6 +177,8 @@ Singleton {
             "summary": json.summary,
             "time": json.time,
             "urgency": json.urgency,
+            "historyPriority": json.historyPriority || 0,
+            "replaceKey": json.replaceKey || "",
             "cachedAppIcon": json.cachedAppIcon || "",
             "cachedImage": json.cachedImage || "",
             "isCached": json.isCached || true  // Default to true for loaded notifications
@@ -215,6 +223,8 @@ Singleton {
             root.list.forEach(notif => {
                 if (notif.id > maxId)
                     maxId = notif.id;
+                if (notif.id <= -1000000)
+                    root.internalIdCounter = Math.max(root.internalIdCounter, Math.abs(notif.id) - 999999);
             });
             root.idOffset = maxId + 1;
         } catch (e) {
@@ -241,7 +251,9 @@ Singleton {
 
     function appNameListForGroups(groups) {
         return Object.keys(groups).sort((a, b) => {
-            // Sort by time, descending
+            if (groups[b].historyPriority !== groups[a].historyPriority) {
+                return groups[b].historyPriority - groups[a].historyPriority;
+            }
             return groups[b].time - groups[a].time;
         });
     }
@@ -260,6 +272,7 @@ Singleton {
                     appIcon: notif.appIcon,
                     notifications: [],
                     time: 0,
+                    historyPriority: 0,
                     totalCount: 0  // Conteo independiente del almacenamiento
                 };
             }
@@ -267,6 +280,7 @@ Singleton {
             groups[notif.appName].totalCount++;
             // Always set to the latest time in the group
             groups[notif.appName].time = latestTimeForApp[notif.appName] || notif.time;
+            groups[notif.appName].historyPriority = Math.max(groups[notif.appName].historyPriority || 0, notif.historyPriority || 0);
         });
 
         return groups;
@@ -280,6 +294,7 @@ Singleton {
     // Quickshell's notification IDs starts at 1 on each run, while saved notifications
     // can already contain higher IDs. This is for avoiding id collisions
     property int idOffset
+    property int internalIdCounter: 1
     signal initDone
     signal notify(notification: var)
     signal discard(id: var)
@@ -327,6 +342,49 @@ Singleton {
 
             root.notify(newNotifObject);
         }
+    }
+
+    function notifyInternal(options) {
+        if (!options || (!options.summary && !options.body)) {
+            return null;
+        }
+
+        if (options.replaceKey) {
+            const existingIds = root.list.filter(notif => notif && notif.replaceKey === options.replaceKey).map(notif => notif.id);
+            if (existingIds.length > 0) {
+                root.discardNotifications(existingIds);
+            }
+        }
+
+        const notificationId = -1000000 - root.internalIdCounter++;
+        const newNotifObject = notifComponent.createObject(root, {
+            "id": notificationId,
+            "actions": options.actions || [],
+            "appIcon": options.appIcon || "",
+            "appName": options.appName || "Ambxst",
+            "body": options.body || "",
+            "image": options.image || "",
+            "summary": options.summary || "",
+            "time": options.time || Date.now(),
+            "urgency": options.urgency || NotificationUrgency.Normal,
+            "historyPriority": options.historyPriority || 0,
+            "replaceKey": options.replaceKey || "",
+            "localActionHandlers": options.actionHandlers || {},
+            "popup": !root.popupInhibited && options.popup !== false,
+            "isCached": false
+        });
+
+        if (newNotifObject.popup) {
+            newNotifObject.timer = notifTimerComponent.createObject(root, {
+                "id": newNotifObject.id,
+                "interval": options.expireTimeout || 5000
+            });
+        }
+
+        root.list = [...root.list, newNotifObject];
+        saveNotifications();
+        root.notify(newNotifObject);
+        return newNotifObject;
     }
 
     function discardNotification(id) {
@@ -412,12 +470,23 @@ Singleton {
     }
 
     function attemptInvokeAction(id, notifIdentifier, autoDiscard = true) {
+        const notifIndex = root.list.findIndex(notif => notif.id === id);
+        if (notifIndex !== -1) {
+            const localHandlers = root.list[notifIndex].localActionHandlers || {};
+            const localHandler = localHandlers[notifIdentifier];
+            if (typeof localHandler === "function") {
+                localHandler(id);
+            }
+        }
+
         const notifServerIndex = notifServer.trackedNotifications.values.findIndex(notif => notif.id + root.idOffset === id);
         if (notifServerIndex !== -1) {
             const notifServerNotif = notifServer.trackedNotifications.values[notifServerIndex];
             const action = notifServerNotif.actions.find(action => action.identifier === notifIdentifier);
-            action.invoke();
-        } else {}
+            if (action) {
+                action.invoke();
+            }
+        }
         if (autoDiscard) {
             root.discardNotification(id);
         }
@@ -551,7 +620,77 @@ Singleton {
     }
 
     Component.onCompleted: {
-        notifFileView.reload();
+        // Defer notification history reload to not block boot.
+        // The DBus notification server is registered above and live notifications work.
+        notifDeferTimer.start();
+
+        // Subscribe to the notify IPC service so external CLI commands
+        // (colorpicker, screen, …) can route their notifications through
+        // this singleton instead of shelling out to notify-send. Without
+        // this they bypass Ambxst's notification lifecycle and leak into
+        // the system daemon — see cmds_colorpicker.go for the originating
+        // bug. We register the subscription even if BackendService isn't
+        // connected yet; the callback simply won't fire until the socket
+        // is up.
+        root.notifyIpcHandle = BackendService.addSubscription(
+            ["notify"],
+            (service, data) => root.handleNotifyRequest(data)
+        );
+
         root.initDone();
+    }
+
+    property int notifyIpcHandle: -1
+
+    // handleNotifyRequest converts a CLI-driven notify.send event into a
+    // tracked notification. Actions whose source object carries a
+    // `clipboard` field get a synthetic handler that runs wl-copy when
+    // the user clicks them, so cross-process flows (colorpicker formats)
+    // keep working without the CLI blocking on stdin.
+    function handleNotifyRequest(data) {
+        if (!data) return;
+        const rawActions = data.actions || [];
+        const actionHandlers = {};
+        const actions = [];
+        for (let i = 0; i < rawActions.length; i++) {
+            const a = rawActions[i];
+            if (!a || !a.identifier) continue;
+            actions.push({
+                identifier: a.identifier,
+                text: a.text || a.identifier
+            });
+            if (a.clipboard !== undefined && a.clipboard !== null) {
+                const value = a.clipboard;
+                actionHandlers[a.identifier] = function (_id) {
+                    Quickshell.execDetached([
+                        "bash", "-c",
+                        "printf '%s' " + JSON.stringify(value) + " | wl-copy --type text/plain"
+                    ]);
+                };
+            }
+        }
+
+        const opts = {
+            summary: data.summary || "",
+            body: data.body || "",
+            appName: data.appName || "Ambxst",
+            appIcon: data.appIcon || "",
+            image: data.image || "",
+            urgency: data.urgency || "normal",
+            expireTimeout: data.expireTimeout || 5000,
+            replaceKey: data.replaceKey || "",
+            actions: actions,
+            actionHandlers: actionHandlers,
+            popup: true
+        };
+        root.notifyInternal(opts);
+    }
+
+    Timer {
+        id: notifDeferTimer
+        interval: 2000
+        running: false
+        repeat: false
+        onTriggered: notifFileView.reload()
     }
 }

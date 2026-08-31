@@ -102,27 +102,27 @@ StyledRect {
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
                     iconName: Icons.nightLight
-                    isActive: NightLightService.active
-                    tooltipText: NightLightService.active ? I18n.t("controls.night_light_on") : I18n.t("controls.night_light_off")
-                    onClicked: NightLightService.toggle()
+                    isActive: NightLightClient.active
+                    tooltipText: NightLightClient.active ? I18n.t("controls.night_light_on") : I18n.t("controls.night_light_off")
+                    onClicked: NightLightClient.toggle()
                 }
 
                 ControlButton {
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
                     iconName: Icons.caffeine
-                    isActive: CaffeineService.inhibit
-                    tooltipText: CaffeineService.inhibit ? I18n.t("controls.caffeine_on") : I18n.t("controls.caffeine_off")
-                    onClicked: CaffeineService.toggleInhibit()
+                    isActive: CaffeineClient.inhibit
+                    tooltipText: CaffeineClient.inhibit ? I18n.t("controls.caffeine_on") : I18n.t("controls.caffeine_off")
+                    onClicked: CaffeineClient.toggle()
                 }
 
                 ControlButton {
                     Layout.preferredWidth: 48
                     Layout.preferredHeight: 48
                     iconName: Icons.gameMode
-                    isActive: GameModeService.toggled
-                    tooltipText: GameModeService.toggled ? I18n.t("controls.game_mode_on") : I18n.t("controls.game_mode_off")
-                    onClicked: GameModeService.toggle()
+                    isActive: GameModeClient.toggled
+                    tooltipText: GameModeClient.toggled ? I18n.t("controls.game_mode_on") : I18n.t("controls.game_mode_off")
+                    onClicked: GameModeClient.toggle()
                 }
             }
         }

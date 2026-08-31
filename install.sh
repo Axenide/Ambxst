@@ -39,21 +39,16 @@ log_info "Detected: $DISTRO"
 # Maps packages to their binary/check - only for conflict-prone packages
 declare -A BINARY_CHECK=(
   ["matugen"]="matugen"
-  ["quickshell-git"]="qs"
-  ["kitty"]="kitty"
+  ["quickshell"]="qs"
   ["tmux"]="tmux"
   ["fuzzel"]="fuzzel"
   ["brightnessctl"]="brightnessctl"
   ["ddcutil"]="ddcutil"
-  ["grim"]="grim"
-  ["slurp"]="slurp"
   ["jq"]="jq"
   ["playerctl"]="playerctl"
   ["wtype"]="wtype"
   ["mpvpaper"]="mpvpaper"
   ["gradia"]="gradia"
-  ["pipx"]="pipx"
-  ["python-pipx"]="pipx"
   ["zenity"]="zenity"
   ["gpu-screen-recorder"]="gpu-screen-recorder"
 )
@@ -116,19 +111,19 @@ install_dependencies() {
     yes | sudo dnf copr enable iucar/cran
 
     local PKGS=(
-      kitty tmux fuzzel network-manager-applet blueman
+      tmux fuzzel network-manager-applet blueman
       pipewire wireplumber easyeffects playerctl
       qt6-qtbase qt6-qtdeclarative qt6-qtwayland qt6-qtsvg qt6-qttools
       qt6-qtimageformats qt6-qtmultimedia qt6-qtshadertools
       kf6-syntax-highlighting kf6-breeze-icons hicolor-icon-theme
-      brightnessctl ddcutil fontconfig grim slurp ImageMagick jq sqlite upower
-      wl-clipboard wlsunset wtype zbar glib2 pipx zenity power-profiles-daemon
-      python3.12 libnotify flatpak
+      brightnessctl ddcutil fontconfig jq sqlite upower
+      wl-clipboard wlsunset wtype glib2 zenity power-profiles-daemon
+      libnotify flatpak
       tesseract tesseract-langpack-eng tesseract-langpack-spa tesseract-langpack-jpn
       tesseract-langpack-chi_sim tesseract-langpack-chi_tra tesseract-langpack-kor tesseract-langpack-lat
       google-roboto-fonts google-roboto-mono-fonts dejavu-sans-fonts liberation-fonts
       google-noto-fonts-common google-noto-cjk-fonts google-noto-emoji-fonts
-      mpvpaper matugen R-CRAN-phosphoricons adw-gtk3-theme quickshell-git unzip curl
+      mpvpaper matugen R-CRAN-phosphoricons adw-gtk3-theme quickshell unzip curl
     )
 
     log_info "Installing dependencies..."
@@ -164,19 +159,19 @@ install_dependencies() {
     fi
 
     local PKGS=(
-      kitty tmux fuzzel network-manager-applet blueman
+      tmux fuzzel network-manager-applet blueman
       pipewire wireplumber pavucontrol easyeffects ffmpeg x264 playerctl
       qt6-base qt6-declarative qt6-wayland qt6-svg qt6-tools qt6-imageformats qt6-multimedia qt6-shadertools
       libwebp libavif syntax-highlighting breeze-icons hicolor-icon-theme
-      brightnessctl ddcutil fontconfig grim slurp imagemagick jq sqlite upower
-      wl-clipboard wlsunset wtype zbar glib2 python-pipx zenity inetutils power-profiles-daemon
-      python312 libnotify
+      brightnessctl ddcutil fontconfig jq sqlite upower
+      wl-clipboard wlsunset wtype glib2 zenity inetutils power-profiles-daemon
+      libnotify
       tesseract tesseract-data-eng tesseract-data-spa tesseract-data-jpn
       tesseract-data-chi_sim tesseract-data-chi_tra tesseract-data-kor tesseract-data-lat
       ttf-roboto ttf-roboto-mono ttf-dejavu ttf-liberation noto-fonts noto-fonts-cjk noto-fonts-emoji
       ttf-nerd-fonts-symbols
       matugen gpu-screen-recorder wl-clip-persist mpvpaper gradia
-      quickshell-git ttf-phosphor-icons ttf-league-gothic adw-gtk-theme
+      quickshell ttf-phosphor-icons ttf-league-gothic adw-gtk-theme
     )
 
     log_info "Installing dependencies with $AUR_HELPER..."
@@ -313,20 +308,27 @@ setup_repo() {
   log_info "Checking repository status..."
   git -C "$INSTALL_PATH" fetch origin
 
-  local BRANCH
+  local BRANCH REMOTE_REF
   BRANCH=$(git -C "$INSTALL_PATH" rev-parse --abbrev-ref HEAD)
 
-  if [[ "$BRANCH" != "main" ]]; then
-    log_warn "On branch '$BRANCH', not 'main'. Skipping update."
+  if [[ "$BRANCH" == "HEAD" ]]; then
+    log_warn "Detached HEAD. Skipping update."
     return
   fi
 
+  if ! git -C "$INSTALL_PATH" show-ref --verify --quiet "refs/remotes/origin/$BRANCH"; then
+    log_warn "On local-only branch '$BRANCH'. Skipping update."
+    return
+  fi
+
+  REMOTE_REF="origin/$BRANCH"
+
   local HAS_CHANGES=0
   [[ -n "$(git -C "$INSTALL_PATH" status --porcelain)" ]] && HAS_CHANGES=1
-  [[ -n "$(git -C "$INSTALL_PATH" log origin/main..HEAD)" ]] && HAS_CHANGES=1
+  [[ -n "$(git -C "$INSTALL_PATH" log "$REMOTE_REF"..HEAD)" ]] && HAS_CHANGES=1
 
   if [[ "$HAS_CHANGES" -eq 1 ]]; then
-    echo -e "${YELLOW}⚠  Local changes detected on 'main'.${NC}"
+    echo -e "${YELLOW}⚠  Local changes detected on '$BRANCH'.${NC}"
     echo -e "${RED}This will DISCARD all local changes.${NC}"
     read -r -p "Continue? [y/N] " response </dev/tty
     [[ ! "$response" =~ ^[Yy]$ ]] && {
@@ -336,12 +338,55 @@ setup_repo() {
   fi
 
   log_info "Syncing with remote..."
-  git -C "$INSTALL_PATH" reset --hard origin/main
+  git -C "$INSTALL_PATH" reset --hard "$REMOTE_REF"
+}
+
+# === Binary Download ===
+download_binary() {
+  [[ "$DISTRO" == "nixos" ]] && return
+
+  local ARCH
+  case "$(uname -m)" in
+  x86_64) ARCH="amd64" ;;
+  aarch64 | arm64) ARCH="arm64" ;;
+  *)
+    log_error "Unsupported architecture: $(uname -m)."
+    log_warn "Clone https://github.com/Axenide/Ambxst and run 'make install' manually."
+    exit 1
+    ;;
+  esac
+
+  local BASE_URL="https://github.com/Axenide/Ambxst/releases/latest/download"
+
+  log_info "Downloading Ambxst binary (linux-$ARCH)..."
+  curl -fsSL "$BASE_URL/ambxst-linux-$ARCH" -o "/tmp/ambxst-linux-$ARCH" || {
+    log_error "Failed to download the Ambxst binary."
+    log_warn "Clone https://github.com/Axenide/Ambxst and run 'make install' manually."
+    exit 1
+  }
+
+  curl -fsSL "$BASE_URL/SHA256SUMS" -o /tmp/ambxst.SHA256SUMS || {
+    log_error "Failed to download checksums."
+    exit 1
+  }
+
+  (
+    cd /tmp || exit 1
+    sha256sum --check --ignore-missing ambxst.SHA256SUMS >/dev/null
+  ) || {
+    log_error "Checksum verification failed for the downloaded binary."
+    rm -f "/tmp/ambxst-linux-$ARCH" /tmp/ambxst.SHA256SUMS
+    exit 1
+  }
+
+  mv "/tmp/ambxst-linux-$ARCH" /tmp/ambxst
+  rm -f /tmp/ambxst.SHA256SUMS
+  log_success "Binary downloaded"
 }
 
 # === Quickshell Build ===
 install_quickshell() {
-  [[ "$DISTRO" == "nixos" || "$DISTRO" == "fedora" ]] && return
+  [[ "$DISTRO" == "nixos" || "$DISTRO" == "fedora" || "$DISTRO" == "arch" ]] && return
   has_cmd qs && {
     log_info "Quickshell already installed"
     return
@@ -368,21 +413,8 @@ install_axctl() {
   fi
 
   log_info "Installing axctl..."
-  curl -L get.axeni.de/axctl | sh
+  curl -fsSL get.axeni.de/axctl | sh
   log_success "axctl installed"
-}
-
-# === Python Tools ===
-install_python_tools() {
-  [[ "$DISTRO" == "nixos" ]] && return
-  has_cmd pipx || {
-    log_warn "pipx not found, skipping Python tools"
-    return
-  }
-
-  log_info "Installing Python tools..."
-
-  pipx ensurepath 2>/dev/null || true
 }
 
 # === Service Configuration ===
@@ -438,18 +470,15 @@ setup_launcher() {
   [[ -f "$HOME/.local/bin/ambxst" ]] && rm -f "$HOME/.local/bin/ambxst"
 
   sudo mkdir -p "$BIN_DIR"
-  local LAUNCHER="$BIN_DIR/ambxst"
 
-  log_info "Creating launcher at $LAUNCHER..."
-  sudo tee "$LAUNCHER" >/dev/null <<-EOF
-		#!/usr/bin/env bash
-		export PATH="$HOME/.local/bin:\$PATH"
-		export QML2_IMPORT_PATH="$HOME/.local/lib/qml:\$QML2_IMPORT_PATH"
-		export QML_IMPORT_PATH="\$QML2_IMPORT_PATH"
-		exec "$INSTALL_PATH/cli.sh" "\$@"
-	EOF
-  sudo chmod +x "$LAUNCHER"
-  log_success "Launcher created"
+  log_info "Installing ambxst binary to $BIN_DIR/ambxst..."
+  sudo install -m 755 /tmp/ambxst "$BIN_DIR/ambxst"
+  rm -f /tmp/ambxst
+
+  # Record the repo location so the installed binary can find shell sources.
+  mkdir -p "$HOME/.local/share/ambxst"
+  echo "$INSTALL_PATH" >"$HOME/.local/share/ambxst/shell_repo"
+  log_success "Binary installed"
 }
 
 # === Main ===
@@ -457,8 +486,8 @@ migrate_old_paths
 install_dependencies "$1"
 install_axctl
 setup_repo
+download_binary
 install_quickshell
-install_python_tools
 configure_services
 setup_launcher
 

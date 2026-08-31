@@ -185,6 +185,7 @@ StyledRect {
 
     ColumnLayout {
         anchors.centerIn: parent
+        width: parent.width - 32
         spacing: 8
 
         // Disc Area (SeekBar + Cover Art)

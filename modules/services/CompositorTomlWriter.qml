@@ -1,23 +1,29 @@
 pragma Singleton
-
 import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.modules.globals
-import "../../config/KeybindActions.js" as KeybindActions
 
 /**
- * CompositorTomlWriter - Generates TOML configuration for axctl
- * Writes to ~/.local/share/ambxst/axctl.toml
+ * CompositorTomlWriter - Thin IPC client.
+ *
+ * Renders ~/.local/share/ambxst/axctl.toml by delegating to the
+ * compositor service in the ambxst backend. The TOML generation logic,
+ * the KeybindActions catalog and all keybind resolution live in
+ * `backend/pkg/svc/compositor/` (see compositor.Render, compositor.ResolveAction).
+ *
+ * This singleton only:
+ *   1. Assembles the input JSON from Config + Theme + GlobalStates.
+ *   2. Calls "compositor.write" on the daemon.
+ *   3. Re-fires the call whenever one of the upstream signals changes.
  */
 Singleton {
     id: root
 
     property string outputPath: (Quickshell.env("XDG_DATA_HOME") || (Quickshell.env("HOME") + "/.local/share")) + "/ambxst/axctl.toml"
 
-    property Process writeProcess: Process {
-        running: false
+    property Process ipcProcess: Process {
         stdout: SplitParser {}
     }
 
@@ -31,79 +37,10 @@ Singleton {
         const g = Math.round(color.g * 255).toString(16).padStart(2, '0');
         const b = Math.round(color.b * 255).toString(16).padStart(2, '0');
         const a = Math.round(color.a * 255).toString(16).padStart(2, '0');
-
         if (color.a === 1.0) {
             return `rgb(${r}${g}${b})`;
-        } else {
-            return `rgba(${r}${g}${b}${a})`;
         }
-    }
-
-    function colorToHex(color, includeAlpha = false) {
-        const r = Math.round(color.r * 255).toString(16).padStart(2, '0');
-        const g = Math.round(color.g * 255).toString(16).padStart(2, '0');
-        const b = Math.round(color.b * 255).toString(16).padStart(2, '0');
-
-        if (includeAlpha) {
-            const a = Math.round(color.a * 255).toString(16).padStart(2, '0');
-            return `#${r}${g}${b}${a}`;
-        }
-        return `#${r}${g}${b}`;
-    }
-
-    function resolveColorToHex(colorName, alpha = 1.0) {
-        const resolved = Config.resolveColor(colorName);
-        const color = (typeof resolved === 'string') ? Qt.color(resolved) : resolved;
-        if (alpha < 1.0) {
-            return colorToHex(Qt.rgba(color.r, color.g, color.b, alpha), true);
-        }
-        return colorToHex(color, false);
-    }
-
-    function formatBorderColors(colorNames, angle) {
-        if (!colorNames || colorNames.length === 0) {
-            return [];
-        }
-        
-        if (colorNames.length > 1) {
-            // Multi-color gradient
-            const formattedColors = colorNames.map(colorName => {
-                const color = getColorValue(colorName);
-                return formatColorForCompositor(color);
-            }).join(" ");
-            return [`${formattedColors} ${angle}deg`];
-        } else {
-            // Single color
-            const color = getColorValue(colorNames[0]);
-            return [formatColorForCompositor(color)];
-        }
-    }
-
-    function formatInactiveBorderColors(colorNames, angle) {
-        if (!colorNames || colorNames.length === 0) {
-            return [];
-        }
-        
-        if (colorNames.length > 1) {
-            // Multi-color gradient - force full opacity
-            const formattedColors = colorNames.map(colorName => {
-                const color = getColorValue(colorName);
-                const colorWithFullOpacity = Qt.rgba(color.r, color.g, color.b, 1.0);
-                return formatColorForCompositor(colorWithFullOpacity);
-            }).join(" ");
-            return [`${formattedColors} ${angle}deg`];
-        } else {
-            // Single color - force full opacity
-            const color = getColorValue(colorNames[0] || "surface");
-            const colorWithFullOpacity = Qt.rgba(color.r, color.g, color.b, 1.0);
-            return [formatColorForCompositor(colorWithFullOpacity)];
-        }
-    }
-
-    function formatShadowColors(colorName, opacity) {
-        const color = getColorValue(colorName);
-        const colorWithOpacity = Qt.rgba(color.r, color.g, color.b, color.a * opacity);
-        return formatColorForCompositor(colorWithOpacity);
+        return `rgba(${r}${g}${b}${a})`;
     }
 
     function getBarOrientation() {
@@ -111,388 +48,419 @@ Singleton {
         return (position === "left" || position === "right") ? "vertical" : "horizontal";
     }
 
-    function calculateIgnoreAlpha() {
-        let ignoreAlphaValue = 0.0;
-
-        if (Config.compositor.blurExplicitIgnoreAlpha) {
-            ignoreAlphaValue = Config.compositor.blurIgnoreAlphaValue;
-        } else {
-            const barBgOpacity = (Config.theme.srBarBg && Config.theme.srBarBg.opacity !== undefined) ? Config.theme.srBarBg.opacity : 0;
-            const bgOpacity = (Config.theme.srBg && Config.theme.srBg.opacity !== undefined) ? Config.theme.srBg.opacity : 1.0;
-            ignoreAlphaValue = (barBgOpacity > 0 ? Math.min(barBgOpacity, bgOpacity) : bgOpacity);
-        }
-
-        return ignoreAlphaValue.toFixed(2);
+    // Fallback values mirror the JsonAdapter defaults in Config.qml so
+    // the TOML always has usable color names even if Config.compositor
+    // hasn't loaded yet when gatherInput() is called. Without these,
+    // undefined var values are dropped by JSON.stringify, leaving the
+    // border section empty in the generated hyprland.{lua,conf}.
+    function colorOr(arr, fallback) {
+        if (Array.isArray(arr) && arr.length > 0) return arr;
+        return fallback;
+    }
+    function intOr(val, fallback) {
+        return (val === undefined || val === null) ? fallback : val;
+    }
+    function boolOr(val, fallback) {
+        return (val === undefined || val === null) ? fallback : val;
     }
 
-    function generateToml() {
-        let toml = "";
-
-        toml += "[startup]\n";
-        toml += "exec-once = \"ambxst\"\n";
-
-        function tomlEscape(str) {
-            if (str === null || str === undefined)
-                return "";
-            return String(str)
-                .replace(/\\/g, "\\\\")
-                .replace(/\"/g, "\\\"")
-                .replace(/\n/g, "\\n");
-        }
-
-        function tomlString(str) {
-            return "\"" + tomlEscape(str) + "\"";
-        }
-
-        function tomlStringArray(arr) {
-            if (!arr || arr.length === 0)
-                return "[]";
-            const parts = arr.map(s => tomlString(s));
-            return "[" + parts.join(", ") + "]";
-        }
-
-        function pushKeybindEntry(modifiers, key, dispatcher, argument, flags) {
-            if (!key || String(key).trim().length === 0)
-                return;
-            toml += "\n[[keybinds]]\n";
-            toml += `modifiers = ${tomlStringArray(modifiers || [])}\n`;
-            toml += `key = ${tomlString(String(key))}\n`;
-            toml += `dispatcher = ${tomlString(dispatcher || "")}\n`;
-            toml += `argument = ${tomlString(argument || "")}\n`;
-            toml += `flags = ${tomlString(flags || "")}\n`;
-            toml += "enabled = true\n";
-        }
-
-        function resolveBindAction(action, fallback) {
-            const resolved = KeybindActions.resolveAction(action || fallback);
-            if (!resolved) return null;
-            return {
-                dispatcher: resolved.dispatcher || "",
-                argument: resolved.argument || "",
-                flags: resolved.flags || ""
-            };
-        }
-
-        function actionCompatibleWithLayout(action) {
-            if (!action)
-                return false;
-            if (!action.layouts || action.layouts.length === 0)
-                return true;
-            return action.layouts.indexOf(GlobalStates.compositorLayout) !== -1;
-        }
-
-        // Appearance section
-        toml += "[appearance]\n";
-
-        // Gaps
-        toml += "[appearance.gaps]\n";
-        toml += `inner = ${Config.compositor.gapsIn}\n`;
-        toml += `outer = ${Config.compositor.gapsOut}\n`;
-
-        // Border
-        toml += "[appearance.border]\n";
-        toml += `width = ${Config.compositorBorderSize}\n`;
-
-        // Active border colors (supports gradients)
-        const borderColors = Config.compositor.syncBorderColor ? [Config.compositorBorderColor] : Config.compositor.activeBorderColor;
-        const activeBorderFormatted = formatBorderColors(borderColors || ["primary"], Config.compositor.borderAngle);
-        if (activeBorderFormatted.length > 0) {
-            toml += `active_color = "${activeBorderFormatted[0]}"\n`;
-        }
-
-        // Inactive border colors (supports gradients)
-        const inactiveBorderColors = Config.compositor.inactiveBorderColor;
-        const inactiveBorderFormatted = formatInactiveBorderColors(inactiveBorderColors, Config.compositor.inactiveBorderAngle);
-        if (inactiveBorderFormatted.length > 0) {
-            toml += `inactive_color = "${inactiveBorderFormatted[0]}"\n`;
-        }
-
-        toml += `rounding = ${Config.compositorRounding}\n`;
-
-        // Opacity - placeholder (not synced in current implementation)
-        toml += "[appearance.opacity]\n";
-        toml += "active = 1.0\n";
-        toml += "inactive = 1.0\n";
-
-        // Blur - all settings
-        toml += "[appearance.blur]\n";
-        toml += `enabled = ${Config.compositor.blurEnabled}\n`;
-        toml += `size = ${Config.compositor.blurSize}\n`;
-        toml += `passes = ${Config.compositor.blurPasses}\n`;
-
-        // Shadow - all settings
-        toml += "[appearance.shadow]\n";
-        toml += `enabled = ${Config.compositor.shadowEnabled}\n`;
-        toml += `size = ${Config.compositor.shadowRange}\n`;
-        const shadowColorFormatted = formatShadowColors(Config.compositorShadowColor, Config.compositorShadowOpacity);
-        toml += `color = "${shadowColorFormatted}"\n`;
-
-        // Animations
-        toml += "[appearance.animations]\n";
-        toml += "enabled = true\n";
-
-        // Layout (if set)
-        if (GlobalStates.compositorLayout && GlobalStates.compositorLayout.length > 0) {
-            toml += "\n[general]\n";
-            toml += `layout = "${GlobalStates.compositorLayout}"\n`;
-        }
-
-        // Keybinds
-        if (Config.keybindsLoader.loaded && Config.keybindsLoader.adapter) {
-            const adapter = Config.keybindsLoader.adapter;
-            const ambxst = adapter.ambxst;
-
-            function pushCoreBind(keybind) {
-                if (!keybind)
-                    return;
-                const resolved = resolveBindAction(keybind.action, keybind);
-                if (!resolved)
-                    return;
-                pushKeybindEntry(
-                    keybind.modifiers || [],
-                    keybind.key || "",
-                    resolved.dispatcher,
-                    resolved.argument,
-                    resolved.flags
-                );
+    // Resolves a color name (e.g. "primary") through Config.resolveColor
+    // and formats it as the rgba string Hyprland expects. Falls back
+    // to a known-good rgba when the name can't be resolved, so the
+    // generated Lua never lands on a bare "primary" string.
+    function resolveColorName(name, fallbackRgba) {
+        try {
+            const v = Config.resolveColor(name);
+            const color = (typeof v === 'string') ? Qt.color(v) : v;
+            if (color && color.r !== undefined) {
+                return formatColorForCompositor(color);
             }
-
-            if (ambxst) {
-                pushCoreBind(ambxst.launcher);
-                pushCoreBind(ambxst.dashboard);
-                pushCoreBind(ambxst.assistant);
-                pushCoreBind(ambxst.clipboard);
-                pushCoreBind(ambxst.emoji);
-                pushCoreBind(ambxst.notes);
-                pushCoreBind(ambxst.tmux);
-                pushCoreBind(ambxst.wallpapers);
-
-                if (ambxst.system) {
-                    pushCoreBind(ambxst.system.overview);
-                    pushCoreBind(ambxst.system.powermenu);
-                    pushCoreBind(ambxst.system.config);
-                    pushCoreBind(ambxst.system.lockscreen);
-                    pushCoreBind(ambxst.system.tools);
-                    pushCoreBind(ambxst.system.screenshot);
-                    pushCoreBind(ambxst.system.screenrecord);
-                    pushCoreBind(ambxst.system.lens);
-                    if (ambxst.system.reload) pushCoreBind(ambxst.system.reload);
-                    if (ambxst.system.quit) pushCoreBind(ambxst.system.quit);
-                }
-            }
-
-            if (adapter.custom && adapter.custom.length > 0) {
-                for (let i = 0; i < adapter.custom.length; i++) {
-                    const bind = adapter.custom[i];
-                    if (bind && bind.enabled === false)
-                        continue;
-
-                    if (bind && bind.keys && bind.actions) {
-                        for (let k = 0; k < bind.keys.length; k++) {
-                            const keyObj = bind.keys[k];
-                            if (!keyObj || !keyObj.key)
-                                continue;
-                            for (let a = 0; a < bind.actions.length; a++) {
-                                const action = bind.actions[a];
-                                if (!actionCompatibleWithLayout(action))
-                                    continue;
-                                const resolved = resolveBindAction(action, action);
-                                if (!resolved)
-                                    continue;
-                                pushKeybindEntry(
-                                    keyObj.modifiers || [],
-                                    keyObj.key || "",
-                                    resolved.dispatcher,
-                                    resolved.argument,
-                                    resolved.flags
-                                );
-                            }
-                        }
-                    } else if (bind) {
-                        // Legacy single-key format
-                        const resolved = resolveBindAction(bind.action, bind);
-                        if (!resolved)
-                            continue;
-                        pushKeybindEntry(
-                            bind.modifiers || [],
-                            bind.key || "",
-                            resolved.dispatcher,
-                            resolved.argument,
-                            resolved.flags
-                        );
-                    }
-                }
-            }
-        }
-
-        // Layer rules for quickshell
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"quickshell\"\n";
-        toml += "no_anim = true\n";
-
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"quickshell\"\n";
-        toml += "blur = true\n";
-
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"quickshell\"\n";
-        toml += "blur_popups = true\n";
-
-        // Dynamic ignorealpha based on blur settings
-        const ignoreAlphaValue = calculateIgnoreAlpha();
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"quickshell\"\n";
-        toml += "ignore_alpha = true\n";
-        toml += `ignore_alpha_value = ${ignoreAlphaValue}\n`;
-        // Additional layer rules
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"selection\"\n";
-        toml += "no_anim = true\n";
-
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"fabric\"\n";
-        toml += "blur = true\n";
-        toml += "ignore_alpha_value = 0.4\n";
-
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"ambxst\"\n";
-        toml += "blur = true\n";
-        toml += "blur_popups = true\n";
-        toml += "no_anim = true\n";
-        toml += "ignore_alpha_value = 0.5\n";
-
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"overview\"\n";
-        toml += "blur = true\n";
-        toml += "blur_popups = true\n";
-        toml += "no_anim = true\n";
-
-        toml += "\n[[layer_rules]]\n";
-        toml += "namespace = \"presets\"\n";
-        toml += "blur = true\n";
-        toml += "blur_popups = true\n";
-        toml += "no_anim = true\n";
-
-
-
-        // Input section (placeholder for keyboard layout)
-        toml += "\n[input]\n";
-        toml += "[input.keyboard]\n";
-        toml += 'layouts = ""\n';
-        toml += 'variants = ""\n';
-
-        return toml;
+        } catch (e) { /* swallow and fall through */ }
+        return fallbackRgba;
     }
 
-    function writeTomlFile() {
-        const tomlContent = generateToml();
+    function resolveColorList(names, fallbackRgba) {
+        if (!Array.isArray(names) || names.length === 0) return [fallbackRgba];
+        const out = [];
+        for (let i = 0; i < names.length; i++) {
+            out.push(resolveColorName(names[i], fallbackRgba));
+        }
+        return out;
+    }
+
+    function gatherInput() {
+        // Resolved border color/opacity, matching the QML aliases defined
+        // in Config.qml:3476-3480. These aliases already collapse the
+        // sync-* toggles onto the appropriate source (theme vs. compositor
+        // vs. active list), so reading them here keeps the persisted
+        // TOML in lock-step with the live dispatch in CompositorConfig.qml.
+        // Using the raw c.rounding / c.borderSize / c.shadowColor would
+        // skip the sync logic and let the watcher-driven hyprland.lua
+        // regen diverge from the live hl.config() value — e.g. changing
+        // a border color would briefly reset the corners to the raw
+        // compositor.rounding before the dispatch re-applied the synced
+        // theme value.
+        const c = Config.compositor;
+        const borderSize = Config.compositorBorderSize;
+        const rounding = Config.compositorRounding;
+        // Config.compositorBorderColor already resolves the sync case
+        // (theme.srBg.border[0]) vs the unsynced case (active list[0]),
+        // and returns a color NAME we can feed through resolveColorName.
+        const activeRgba = resolveColorName(
+            Config.compositorBorderColor,
+            "rgb(87abf8)"
+        );
+        const inactiveRgba = resolveColorName(
+            c.inactiveBorderColor && c.inactiveBorderColor[0] || "surface",
+            "rgb(272937)"
+        );
+        const shadowColor = resolveColorName(Config.compositorShadowColor, "rgba(00000080)");
+        const shadowColorInactive = resolveColorName(c.shadowColorInactive || "shadow", "rgba(00000080)");
+
+        // Debug breadcrumb so we can see what the QML is actually
+        // resolving at runtime without needing a full Quickshell debug
+        // session.
+        console.log("CompositorTomlWriter:gatherInput", JSON.stringify({
+            activeBorder: c.activeBorderColor,
+            activeRgba: activeRgba,
+            inactiveBorder: c.inactiveBorderColor,
+            inactiveRgba: inactiveRgba,
+            shadowColor: c.shadowColor,
+            shadowRgba: shadowColor,
+            borderSize: borderSize,
+            rounding: rounding,
+        }));
+
+        return {
+            compositor: {
+                gapsIn: intOr(c.gapsIn, 0),
+                gapsOut: intOr(c.gapsOut, 0),
+                borderSize: intOr(borderSize, 2),
+                rounding: rounding,
+                syncBorderColor: boolOr(c.syncBorderColor, false),
+                borderColor: activeRgba,
+                activeBorderColor: [activeRgba],
+                activeBorderAngle: intOr(c.borderAngle, 45),
+                inactiveBorderColor: [inactiveRgba],
+                inactiveBorderAngle: intOr(c.inactiveBorderAngle, 45),
+                shadow: {
+                    enabled: boolOr(c.shadowEnabled, true),
+                    range: intOr(c.shadowRange, 8),
+                    renderPower: intOr(c.shadowRenderPower, 3),
+                    sharp: boolOr(c.shadowSharp, false),
+                    ignoreWindow: boolOr(c.shadowIgnoreWindow, true),
+                    color: shadowColor,
+                    colorInactive: shadowColorInactive,
+                    opacity: c.shadowOpacity !== undefined ? c.shadowOpacity : 0.5,
+                    offset: c.shadowOffset || "0 0",
+                    scale: c.shadowScale !== undefined ? c.shadowScale : 1.0,
+                },
+                blur: {
+                    enabled: boolOr(c.blurEnabled, true),
+                    size: intOr(c.blurSize, 4),
+                    passes: intOr(c.blurPasses, 2),
+                    ignoreOpacity: boolOr(c.blurIgnoreOpacity, true),
+                    explicitIgnoreAlpha: boolOr(c.blurExplicitIgnoreAlpha, false),
+                    ignoreAlphaValue: c.blurIgnoreAlphaValue !== undefined ? c.blurIgnoreAlphaValue : 0.2,
+                    newOptimizations: boolOr(c.blurNewOptimizations, true),
+                    xray: boolOr(c.blurXray, false),
+                    noise: c.blurNoise !== undefined ? c.blurNoise : 0.0,
+                    contrast: c.blurContrast !== undefined ? c.blurContrast : 1.0,
+                    brightness: c.blurBrightness !== undefined ? c.blurBrightness : 1.0,
+                    vibrancy: c.blurVibrancy !== undefined ? c.blurVibrancy : 0.0,
+                    vibrancyDarkness: c.blurVibrancyDarkness !== undefined ? c.blurVibrancyDarkness : 0.0,
+                    special: boolOr(c.blurSpecial, true),
+                    popups: boolOr(c.blurPopups, false),
+                    popupsIgnorealpha: c.blurPopupsIgnorealpha !== undefined ? c.blurPopupsIgnorealpha : 0.2,
+                    inputMethods: boolOr(c.blurInputMethods, false),
+                    inputMethodsIgnorealpha: c.blurInputMethodsIgnorealpha !== undefined ? c.blurInputMethodsIgnorealpha : 0.2,
+                },
+                animations: {
+                    enabled: true,
+                    // axctl threads this through to the workspace
+                    // animation style in hyprland.{lua,conf}. The slide
+                    // runs parallel to the bar so workspaces swap in the
+                    // same axis the bar occupies:
+                    //   bar at top/bottom (horizontal) → slidefade
+                    //   bar at left/right (vertical)    → slidefadevert
+                    workspaceStyle: (Config.bar && (Config.bar.position === "left" || Config.bar.position === "right"))
+                        ? "slidefadevert 20%"
+                        : "slidefade 20%",
+                },
+            },
+            theme: {
+                srBarBgOpacity: (Config.theme.srBarBg && Config.theme.srBarBg.opacity !== undefined) ? Config.theme.srBarBg.opacity : 0,
+                srBgOpacity: (Config.theme.srBg && Config.theme.srBg.opacity !== undefined) ? Config.theme.srBg.opacity : 1.0,
+                shadowColor: Config.theme.shadowColor,
+                shadowOpacity: Config.theme.shadowOpacity,
+            },
+            bar: {
+                position: Config.bar.position,
+            },
+            layout: GlobalStates.compositorLayout,
+            keybinds: gatherKeybinds(),
+        };
+    }
+
+    function gatherKeybinds() {
+        const adapter = Config.keybindsLoader.adapter;
+        if (!adapter) {
+            console.log("CompositorTomlWriter:gatherKeybinds NO ADAPTER");
+            return { ambxst: {}, system: {}, custom: [] };
+        }
+
+        const toAction = (a) => a ? { id: a.id, args: a.args || {} } : null;
+
+        const ambxstMap = adapter.ambxst || {};
+        const ambxst = {};
+        for (const k of ["launcher", "dashboard", "assistant", "clipboard", "emoji", "notes", "tmux", "wallpapers"]) {
+            if (ambxstMap[k])
+                ambxst[k] = {
+                    modifiers: ambxstMap[k].modifiers || [],
+                    key: ambxstMap[k].key || "",
+                    action: toAction(ambxstMap[k].action),
+                };
+        }
+
+        const sys = ambxstMap.system || {};
+        const system = {};
+        for (const k of ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"]) {
+            if (sys[k])
+                system[k] = {
+                    modifiers: sys[k].modifiers || [],
+                    key: sys[k].key || "",
+                    action: toAction(sys[k].action),
+                };
+        }
+
+        // Quickshell's JsonAdapter exposes list<var> as a QVariantList, which
+        // is iterable and has .length but fails Array.isArray(). Coerce to a
+        // real JS array so JSON.stringify preserves the entries and the
+        // Go compositor service sees the custom binds in the payload.
+        let custom = [];
+        if (adapter.custom !== null && adapter.custom !== undefined) {
+            try {
+                custom = Array.from(adapter.custom);
+            } catch (e) {
+                custom = [];
+            }
+        }
+        console.log("CompositorTomlWriter:gatherKeybinds", JSON.stringify({
+            hasAdapter: !!adapter,
+            ambxstKeys: Object.keys(ambxst),
+            systemKeys: Object.keys(system),
+            customLen: custom.length,
+        }));
+        return {
+            ambxst: ambxst,
+            system: system,
+            custom: custom,
+        };
+    }
+
+    // Fallback writer used when the ambxst daemon is unreachable.
+    // Reproduces the [target] block the Go service produces so the
+    // axctl watcher still finds a valid TOML during daemon restarts
+    // or when the IPC socket is stale. The QML previously had the
+    // full generator in-tree; this is a deliberately minimal subset
+    // covering the [target] section only — enough to keep the chain
+    // alive, not enough to compete with the Go service.
+    property Process fallbackProcess: Process {
+        stdout: SplitParser {}
+    }
+
+    function fallbackWrite() {
         const escapedPath = root.outputPath.replace(/'/g, "'\\''");
-        const escapedContent = tomlContent.replace(/'/g, "'\\''");
-
-        writeProcess.command = ["bash", "-c", `mkdir -p "$(dirname '${escapedPath}')" && echo '${escapedContent}' > '${escapedPath}'`];
-        writeProcess.running = true;
-        console.log("CompositorTomlWriter: Written TOML to", root.outputPath);
+        // The Go service writes relative paths so the wiring follows
+        // the TOML directory. The minimal fallback reproduces the
+        // same hyprland target line so axctl at least resolves a
+        // valid path during the outage.
+        const content = "[target]\nhyprland = \"hyprland.lua\"\n";
+        fallbackProcess.command = ["bash", "-c", `mkdir -p "$(dirname '${escapedPath}')" && printf '%s' '${content.replace(/'/g, "'\\''")}' > '${escapedPath}'`];
+        fallbackProcess.running = true;
+        console.warn("CompositorTomlWriter: daemon unreachable, wrote fallback [target] only");
     }
 
-    function refresh() {
-        writeTomlFile();
-    }
-
-    Component.onCompleted: {
-        Qt.callLater(() => {
-            if (Config.loader.loaded) {
-                writeTomlFile();
+    function callWrite() {
+        const payload = JSON.stringify(gatherInput());
+        // The daemon exposes a unix socket; Quickshell.Io.Process doesn't
+        // speak the JSON-RPC framing directly, so we run the ambxst CLI
+        // with a transient request. If the daemon is down (e.g. socket
+        // file is stale), the CLI exits with code 1; we then fall back
+        // to a minimal direct write so axctl still has a valid TOML
+        // to watch and the rest of the shell keeps working.
+        ipcProcess.command = ["ambxst", "ipc", "call", "compositor.write", payload];
+        ipcProcess.exited.connect(function(code) {
+            if (code !== 0) {
+                console.warn("CompositorTomlWriter: daemon call failed, using fallback");
+                fallbackWrite();
             }
         });
+        ipcProcess.running = true;
+        console.log("CompositorTomlWriter: requested compositor.write via ambxst CLI");
     }
 
+    // Tracks whether the QML's keybind adapter is ready. We hold the
+    // initial TOML regen until both the daemon's compositor service
+    // and the binds.json adapter are populated, so the very first
+    // write doesn't go out with an empty keybinds block.
+    //
+    // Important: the keybinds loader runs a 1s createKeybindsTimer +
+    // 0.5s repairKeybindsTimer before binds.json is fully populated.
+    // adapter.ambxst may exist early (we'd consider it "ready")
+    // while adapter.custom is still empty. So readiness must require
+    // Config.keybindsInitialLoadComplete AND a non-empty custom list,
+    // otherwise the first write silently drops the 98 custom binds.
+    property bool configReady: false
+    property bool keybindsReady: false
+
+    Component.onCompleted: {
+        configReady = !!Config.loader.loaded;
+        keybindsReady = _computeKeybindsReady();
+        if (configReady && keybindsReady) {
+            callWrite();
+        } else {
+            tomlDeferTimer.start();
+            tomlTimeoutTimer.start();
+        }
+    }
+
+    function _computeKeybindsReady() {
+        const a = Config.keybindsLoader.adapter;
+        if (!a) return false;
+        if (!Config.keybindsInitialLoadComplete) return false;
+        // The adapter must have populated the keybinds tree, including
+        // the custom list. Without checking custom we can fire a
+        // premature write that drops all user keybinds. Quickshell's
+        // list<var> arrives as a QVariantList which fails Array.isArray(),
+        // so check length-bearing iterability instead.
+        const hasCustom = a.custom !== null && a.custom !== undefined && typeof a.custom.length === "number";
+        return !!(a.ambxst && hasCustom);
+    }
+
+    function _onReady() {
+        configReady = !!Config.loader.loaded;
+        keybindsReady = _computeKeybindsReady();
+        if (configReady && keybindsReady) {
+            tomlDeferTimer.stop();
+            tomlTimeoutTimer.stop();
+            callWrite();
+        }
+    }
+
+    Timer {
+        id: tomlDeferTimer
+        interval: 3000
+        running: false
+        repeat: true
+        onTriggered: _onReady()
+    }
+
+    Timer {
+        id: tomlTimeoutTimer
+        interval: 6000
+        running: false
+        repeat: false
+        onTriggered: {
+            console.warn("CompositorTomlWriter: config or keybinds not ready after 6s, writing with available data");
+            callWrite();
+        }
+    }
+
+    // Match the previous QML signal set so we don't lose regen triggers.
     property Connections configConnections: Connections {
         target: Config.loader
         function onLoaded() {
-            writeTomlFile();
+            root._onReady();
         }
     }
 
     property Connections keybindsConnections: Connections {
         target: Config.keybindsLoader
-        function onLoaded() { writeTomlFile(); }
-        function onFileChanged() { writeTomlFile(); }
-        function onAdapterUpdated() { writeTomlFile(); }
-        function onPathChanged() { writeTomlFile(); }
+        function onLoaded() {
+            root._onReady();
+        }
+        function onFileChanged() { root.callWrite(); }
+        function onAdapterUpdated() {
+            // adapter.custom may arrive in a separate onAdapterUpdated
+            // tick after ambxst. Re-check readiness and fire if it's
+            // the first time we see a non-empty custom list.
+            root._onReady();
+        }
+        function onPathChanged() { root.callWrite(); }
     }
 
-    // Compositor section connections
+    // Config.qml flips keybindsInitialLoadComplete to true once the
+    // repair migration has run. Subscribe so the deferred first write
+    // happens right after the keybinds are fully populated, not on a
+    // 6s timer that may race the migration.
+    property Connections keybindsReadyConnection: Connections {
+        target: Config
+        function onKeybindsInitialLoadCompleteChanged() {
+            root._onReady();
+        }
+    }
+
     property Connections compositorConnections: Connections {
         target: Config.compositor
-        
-        // Border settings
-        function onBorderSizeChanged() { writeTomlFile(); }
-        function onRoundingChanged() { writeTomlFile(); }
-        function onGapsInChanged() { writeTomlFile(); }
-        function onGapsOutChanged() { writeTomlFile(); }
-        function onActiveBorderColorChanged() { writeTomlFile(); }
-        function onInactiveBorderColorChanged() { writeTomlFile(); }
-        function onBorderAngleChanged() { writeTomlFile(); }
-        function onInactiveBorderAngleChanged() { writeTomlFile(); }
-        
-        // Sync settings that affect derived values
-        function onSyncRoundnessChanged() { writeTomlFile(); }
-        function onSyncBorderWidthChanged() { writeTomlFile(); }
-        function onSyncBorderColorChanged() { writeTomlFile(); }
-        function onSyncShadowOpacityChanged() { writeTomlFile(); }
-        function onSyncShadowColorChanged() { writeTomlFile(); }
-        
-        // Shadow settings
-        function onShadowEnabledChanged() { writeTomlFile(); }
-        function onShadowRangeChanged() { writeTomlFile(); }
-        function onShadowRenderPowerChanged() { writeTomlFile(); }
-        function onShadowSharpChanged() { writeTomlFile(); }
-        function onShadowIgnoreWindowChanged() { writeTomlFile(); }
-        function onShadowColorChanged() { writeTomlFile(); }
-        function onShadowColorInactiveChanged() { writeTomlFile(); }
-        function onShadowOpacityChanged() { writeTomlFile(); }
-        function onShadowOffsetChanged() { writeTomlFile(); }
-        function onShadowScaleChanged() { writeTomlFile(); }
-        
-        // Blur settings
-        function onBlurEnabledChanged() { writeTomlFile(); }
-        function onBlurSizeChanged() { writeTomlFile(); }
-        function onBlurPassesChanged() { writeTomlFile(); }
-        function onBlurIgnoreOpacityChanged() { writeTomlFile(); }
-        function onBlurExplicitIgnoreAlphaChanged() { writeTomlFile(); }
-        function onBlurIgnoreAlphaValueChanged() { writeTomlFile(); }
-        function onBlurNewOptimizationsChanged() { writeTomlFile(); }
-        function onBlurXrayChanged() { writeTomlFile(); }
-        function onBlurNoiseChanged() { writeTomlFile(); }
-        function onBlurContrastChanged() { writeTomlFile(); }
-        function onBlurBrightnessChanged() { writeTomlFile(); }
-        function onBlurVibrancyChanged() { writeTomlFile(); }
-        function onBlurVibrancyDarknessChanged() { writeTomlFile(); }
-        function onBlurSpecialChanged() { writeTomlFile(); }
-        function onBlurPopupsChanged() { writeTomlFile(); }
-        function onBlurPopupsIgnorealphaChanged() { writeTomlFile(); }
-        function onBlurInputMethodsChanged() { writeTomlFile(); }
-        function onBlurInputMethodsIgnorealphaChanged() { writeTomlFile(); }
+        function onBorderSizeChanged() { root.callWrite(); }
+        function onRoundingChanged() { root.callWrite(); }
+        function onGapsInChanged() { root.callWrite(); }
+        function onGapsOutChanged() { root.callWrite(); }
+        function onActiveBorderColorChanged() { root.callWrite(); }
+        function onInactiveBorderColorChanged() { root.callWrite(); }
+        function onBorderAngleChanged() { root.callWrite(); }
+        function onInactiveBorderAngleChanged() { root.callWrite(); }
+        function onSyncRoundnessChanged() { root.callWrite(); }
+        function onSyncBorderWidthChanged() { root.callWrite(); }
+        function onSyncBorderColorChanged() { root.callWrite(); }
+        function onSyncShadowOpacityChanged() { root.callWrite(); }
+        function onSyncShadowColorChanged() { root.callWrite(); }
+        function onShadowEnabledChanged() { root.callWrite(); }
+        function onShadowRangeChanged() { root.callWrite(); }
+        function onShadowRenderPowerChanged() { root.callWrite(); }
+        function onShadowSharpChanged() { root.callWrite(); }
+        function onShadowIgnoreWindowChanged() { root.callWrite(); }
+        function onShadowColorChanged() { root.callWrite(); }
+        function onShadowColorInactiveChanged() { root.callWrite(); }
+        function onShadowOpacityChanged() { root.callWrite(); }
+        function onShadowOffsetChanged() { root.callWrite(); }
+        function onShadowScaleChanged() { root.callWrite(); }
+        function onBlurEnabledChanged() { root.callWrite(); }
+        function onBlurSizeChanged() { root.callWrite(); }
+        function onBlurPassesChanged() { root.callWrite(); }
+        function onBlurIgnoreOpacityChanged() { root.callWrite(); }
+        function onBlurExplicitIgnoreAlphaChanged() { root.callWrite(); }
+        function onBlurIgnoreAlphaValueChanged() { root.callWrite(); }
+        function onBlurNewOptimizationsChanged() { root.callWrite(); }
+        function onBlurXrayChanged() { root.callWrite(); }
+        function onBlurNoiseChanged() { root.callWrite(); }
+        function onBlurContrastChanged() { root.callWrite(); }
+        function onBlurBrightnessChanged() { root.callWrite(); }
+        function onBlurVibrancyChanged() { root.callWrite(); }
+        function onBlurVibrancyDarknessChanged() { root.callWrite(); }
+        function onBlurSpecialChanged() { root.callWrite(); }
+        function onBlurPopupsChanged() { root.callWrite(); }
+        function onBlurPopupsIgnorealphaChanged() { root.callWrite(); }
+        function onBlurInputMethodsChanged() { root.callWrite(); }
+        function onBlurInputMethodsIgnorealphaChanged() { root.callWrite(); }
     }
 
-    // Theme connections (for blur ignorealpha calculation and shadow color sync)
     property Connections themeConnections: Connections {
         target: Config.theme
-        function onSrBarBgChanged() { writeTomlFile(); }
-        function onSrBgChanged() { writeTomlFile(); }
-        function onShadowColorChanged() { writeTomlFile(); }
-        function onShadowOpacityChanged() { writeTomlFile(); }
+        function onSrBarBgChanged() { root.callWrite(); }
+        function onSrBgChanged() { root.callWrite(); }
+        function onShadowColorChanged() { root.callWrite(); }
+        function onShadowOpacityChanged() { root.callWrite(); }
     }
 
-    // Bar position connection (for workspace animation orientation)
     property Connections barConnections: Connections {
         target: Config.bar
-        function onPositionChanged() { writeTomlFile(); }
+        function onPositionChanged() { root.callWrite(); }
     }
 
-    // GlobalStates connection (for layout)
     property Connections globalStatesConnections: Connections {
         target: GlobalStates
-        function onCompositorLayoutChanged() { writeTomlFile(); }
+        function onCompositorLayoutChanged() { root.callWrite(); }
     }
 }

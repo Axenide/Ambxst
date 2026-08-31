@@ -75,6 +75,9 @@ PanelWindow {
 
     property var activeWindows: []
 
+    // OCR/QR reuse this overlay restricted to plain area selection.
+    property bool regionOnly: Screenshot.captureMode === "ocr" || Screenshot.captureMode === "qr"
+
     property var modes: [
         {
             name: "region",
@@ -107,6 +110,9 @@ PanelWindow {
     function close() {
         screenshotPopup.state = "idle";
         GlobalStates.screenshotToolVisible = false;
+        if (Screenshot.captureMode === "ocr" || Screenshot.captureMode === "qr") {
+            Screenshot.captureMode = "normal";
+        }
     }
 
     function executeCapture() {
@@ -343,12 +349,11 @@ PanelWindow {
             color: Colors.background
             border.color: Colors.surface
             border.width: 1
-            visible: screenshotPopup.state === "active"
+            visible: screenshotPopup.state === "active" && !screenshotPopup.regionOnly
 
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
-                // preventStealing: true 
             }
 
             ActionGrid {

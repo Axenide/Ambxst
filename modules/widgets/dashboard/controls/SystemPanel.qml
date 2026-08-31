@@ -147,6 +147,10 @@ Item {
                             text: I18n.t("settings.system.idle")
                             sectionId: "idle"
                         }
+                        SectionButton {
+                            text: "Terminal"
+                            sectionId: "terminal"
+                        }
                     }
 
                     // =====================
@@ -895,6 +899,111 @@ Item {
                         }
                     }
 
+                    // =====================
+                    // TERMINAL SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "terminal"
+                        property string settingsSection: "terminal"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Terminal"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        Text {
+                            text: "Ambxst uses your terminal to launch the tmux manager and to show update progress."
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overSurfaceVariant
+                            opacity: 0.7
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        TextInputRow {
+                            label: "Terminal"
+                            variant: "bg"
+                            value: Config.general.terminal ?? "kitty"
+                            placeholder: "foot, kitty, ghostty, alacritty, wezterm…"
+                            onValueEdited: newValue => {
+                                const v = newValue.trim();
+                                if (v !== Config.general.terminal) {
+                                    Config.general.terminal = v;
+                                }
+                            }
+                        }
+
+                        StyledRect {
+                            variant: "pane"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: advColumn.implicitHeight + 24
+                            radius: Styling.radius(-2)
+
+                            ColumnLayout {
+                                id: advColumn
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 8
+
+                                ToggleRow {
+                                    label: "Advanced options"
+                                    description: "Use a custom command template for terminals that don't accept the standard `-e` flag"
+                                    checked: Config.general.terminalAdvanced ?? false
+                                    onToggled: checked => {
+                                        if (checked !== Config.general.terminalAdvanced) {
+                                            Config.general.terminalAdvanced = checked;
+                                        }
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    visible: Config.general.terminalAdvanced ?? false
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        text: "$TERMINAL is replaced by the value above. $COMMAND is the full bash command Ambxst wants to run."
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        color: Colors.overSurfaceVariant
+                                        opacity: 0.7
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+
+                                    TextInputRow {
+                                        label: "Open with"
+                                        variant: "bg"
+                                        value: Config.general.terminalCommand ?? "$TERMINAL -e $COMMAND"
+                                        placeholder: "$TERMINAL -e $COMMAND"
+                                        onValueEdited: newValue => {
+                                            if (newValue !== Config.general.terminalCommand) {
+                                                Config.general.terminalCommand = newValue;
+                                            }
+                                        }
+                                    }
+
+                                    Text {
+                                        text: "Examples: \"$TERMINAL -e $COMMAND\" · \"gnome-terminal -- $COMMAND\" · \"konsole -e $COMMAND\""
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-3)
+                                        color: Colors.overSurfaceVariant
+                                        opacity: 0.7
+                                        wrapMode: Text.WordWrap
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // Bottom spacing
                     Item {
                         Layout.fillWidth: true
@@ -986,6 +1095,7 @@ Item {
         property string label: ""
         property string value: ""
         property string placeholder: ""
+        property string variant: "common"
         signal valueEdited(string newValue)
 
         Layout.fillWidth: true
@@ -1000,7 +1110,7 @@ Item {
         }
 
         StyledRect {
-            variant: "common"
+            variant: textInputRowRoot.variant
             Layout.fillWidth: true
             Layout.preferredHeight: 32
             radius: Styling.radius(-2)
