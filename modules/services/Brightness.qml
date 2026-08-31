@@ -145,6 +145,8 @@ Singleton {
             onRead: data => {
                 if (!data)
                     return;
+                if (!data.includes("Event.BrightnessChanged"))
+                    return;
                 let msg;
                 try {
                     msg = JSON.parse(data);
