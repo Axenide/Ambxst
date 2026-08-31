@@ -255,9 +255,15 @@ Rectangle {
             isIcon: true
         },
         {
+            icon: Icons.calendarBlank,
+            label: I18n.t("settings.calendar"),
+            section: 9,
+            isIcon: true
+        },
+        {
             icon: Qt.resolvedUrl("../../../../assets/ambxst/ambxst-icon.svg"),
             label: "Ambxst",
-            section: 9,
+            section: 10,
             isIcon: false
         }
     ]
@@ -593,8 +599,12 @@ Rectangle {
                     section: 8
                 },
                 {
-                    component: "ShellPanel.qml",
+                    component: "CalendarPanel.qml",
                     section: 9
+                },
+                {
+                    component: "ShellPanel.qml",
+                    section: 10
                 }
             ]
 

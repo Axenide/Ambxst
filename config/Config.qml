@@ -22,6 +22,7 @@ import "defaults/system.js" as SystemDefaults
 import "defaults/dock.js" as DockDefaults
 import "defaults/ai.js" as AiDefaults
 import "defaults/general.js" as GeneralDefaults
+import "defaults/calendar.js" as CalendarDefaults
 import "ConfigValidator.js" as ConfigValidator
 
 Singleton {
@@ -57,9 +58,10 @@ Singleton {
     property bool dockReady: false
     property bool aiReady: false
     property bool generalReady: false
+    property bool calendarReady: false
     property bool keybindsInitialLoadComplete: false
 
-    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady && generalReady
+    property bool initialLoadComplete: themeReady && barReady && workspacesReady && overviewReady && notchReady && compositorReady && performanceReady && weatherReady && desktopReady && lockscreenReady && prefixReady && systemReady && dockReady && aiReady && generalReady && calendarReady
 
     // Compatibility aliases
     property alias loader: themeLoader
@@ -87,6 +89,7 @@ Singleton {
             "cp -n '" + root.presetDir + "/dock.json' '" + root.configDir + "/dock.json' 2>/dev/null || true; " +
             "cp -n '" + root.presetDir + "/ai.json' '" + root.configDir + "/ai.json' 2>/dev/null || true; " +
             "cp -n '" + root.presetDir + "/system.json' '" + root.configDir + "/system.json' 2>/dev/null || true; " +
+            "cp -n '" + root.presetDir + "/calendar.json' '" + root.configDir + "/calendar.json' 2>/dev/null || true; " +
             "echo 'Preset files copied if missing'"
         ]
     }
@@ -1225,6 +1228,57 @@ Singleton {
             property string terminal: "kitty"
             property bool terminalAdvanced: false
             property string terminalCommand: "$TERMINAL -e $COMMAND"
+        }
+    }
+
+    // ============================================
+    // CALENDAR MODULE
+    // ============================================
+    FileView {
+        id: calendarLoader
+        path: root.configDir + "/calendar.json"
+        atomicWrites: true
+        watchChanges: true
+        onLoaded: {
+            if (!root.calendarReady) {
+                validateModule("calendar", calendarLoader, CalendarDefaults.data, () => {
+                    root.calendarReady = true;
+                });
+            }
+        }
+        onLoadFailed: {
+            if (error.toString().includes("FileNotFound") && !root.calendarReady) {
+                handleMissingConfig("calendar", calendarLoader, CalendarDefaults.data, () => {
+                    root.calendarReady = true;
+                });
+            }
+        }
+        onFileChanged: {
+            root.pauseAutoSave = true;
+            reload();
+            root.pauseAutoSave = false;
+        }
+        onPathChanged: reload()
+        onAdapterUpdated: {
+            if (root.calendarReady && !root.pauseAutoSave)
+                calendarLoader.writeAdapter();
+        }
+
+        adapter: JsonAdapter {
+            property bool enabled: true
+            property int syncInterval: 15
+            property bool notifications: true
+            property bool barIndicator: true
+            property bool barShowNextEvent: false
+            property int defaultReminder: 15
+            property string googleClientId: ""
+            property string googleClientSecret: ""
+            property list<var> accounts: []
+            property var calendars: ({})
+            property bool soundOnArrival: true
+            property bool blinkOnArrival: true
+            property string arrivalSoundPath: ""
+            property bool barAlwaysShow: false
         }
     }
 
@@ -3510,6 +3564,9 @@ Singleton {
     // General configuration
     property QtObject general: generalLoader.adapter
 
+    // Calendar configuration
+    property QtObject calendar: calendarLoader.adapter
+
     // Module save functions
     function saveBar() {
         barLoader.writeAdapter();
@@ -3555,6 +3612,9 @@ Singleton {
     }
     function saveGeneral() {
         generalLoader.writeAdapter();
+    }
+    function saveCalendar() {
+        calendarLoader.writeAdapter();
     }
 
     // Color helpers
