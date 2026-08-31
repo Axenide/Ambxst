@@ -90,6 +90,11 @@ generation remains unchanged. Overlay replacements still verify the target
 checksum at the point where they run. Dependencies are applied before
 dependents; user load order resolves the remaining order.
 
+A mod that adds a Settings section must claim a new `section` id and register
+its panel under the same id. Renumbering the existing sections looks harmless in
+one package and breaks as soon as a second package does it: the sidebar and the
+panel list drift apart, and an entry opens somebody else's panel.
+
 `compatibility.ambxst` is a hard requirement: a mod outside the range is never
 built. `compatibility.testedBaseCommits` is advisory. The base moves with every
 Ambxst update, so an unlisted revision only marks the package as untested in
