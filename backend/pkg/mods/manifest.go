@@ -26,21 +26,22 @@ var settingKeyPattern = regexp.MustCompile(`^[a-z][a-zA-Z0-9]*$`)
 var sha256Pattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
 type Manifest struct {
-	Schema          string        `json:"$schema,omitempty"`
-	ManifestVersion int           `json:"manifestVersion"`
-	ID              string        `json:"id"`
-	Name            string        `json:"name"`
-	Version         string        `json:"version"`
-	Description     string        `json:"description"`
-	License         string        `json:"license,omitempty"`
-	Author          string        `json:"author,omitempty"`
-	Compatibility   Compatibility `json:"compatibility,omitempty"`
-	Dependencies    []string      `json:"dependencies,omitempty"`
-	Conflicts       []string      `json:"conflicts,omitempty"`
-	Commands        []string      `json:"commands,omitempty"`
-	Permissions     []string      `json:"permissions,omitempty"`
-	Settings        *SettingsRef  `json:"settings,omitempty"`
-	Operations      []Operation   `json:"operations"`
+	Schema            string            `json:"$schema,omitempty"`
+	ManifestVersion   int               `json:"manifestVersion"`
+	ID                string            `json:"id"`
+	Name              string            `json:"name"`
+	Version           string            `json:"version"`
+	Description       string            `json:"description"`
+	License           string            `json:"license,omitempty"`
+	Author            string            `json:"author,omitempty"`
+	Compatibility     Compatibility     `json:"compatibility,omitempty"`
+	Dependencies      []string          `json:"dependencies,omitempty"`
+	DependencySources map[string]string `json:"dependencySources,omitempty"`
+	Conflicts         []string          `json:"conflicts,omitempty"`
+	Commands          []string          `json:"commands,omitempty"`
+	Permissions       []string          `json:"permissions,omitempty"`
+	Settings          *SettingsRef      `json:"settings,omitempty"`
+	Operations        []Operation       `json:"operations"`
 }
 
 type Compatibility struct {
@@ -130,6 +131,17 @@ func (m Manifest) Validate(root string) error {
 		}
 		references[id] = true
 	}
+	for id, source := range m.DependencySources {
+		if !idPattern.MatchString(id) {
+			return fmt.Errorf("invalid dependency source id %q", id)
+		}
+		if !stringInList(m.Dependencies, id) {
+			return fmt.Errorf("dependency source %q is not declared as a dependency", id)
+		}
+		if strings.TrimSpace(source) == "" {
+			return fmt.Errorf("dependency source %q is empty", id)
+		}
+	}
 	if len(m.Operations) == 0 {
 		return fmt.Errorf("mod has no operations")
 	}
@@ -178,6 +190,15 @@ func (m Manifest) Validate(root string) error {
 		}
 	}
 	return validatePackageTree(root)
+}
+
+func stringInList(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
+			return true
+		}
+	}
+	return false
 }
 
 func LoadSettingsSchema(path string) (SettingsSchema, error) {

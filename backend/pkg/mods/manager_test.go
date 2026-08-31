@@ -169,6 +169,142 @@ func TestTopologicalOrderUsesDependenciesBeforeUserOrder(t *testing.T) {
 	}
 }
 
+func TestParseGitHubTreeSource(t *testing.T) {
+	repository, ref, subdirectory, ok := parseGitHubTreeSource(
+		"https://github.com/flathead/ambxst-mods/tree/main/packages/i18n",
+	)
+	if !ok {
+		t.Fatal("expected GitHub tree URL to be recognized")
+	}
+	if repository != "https://github.com/flathead/ambxst-mods.git" || ref != "main" || subdirectory != "packages/i18n" {
+		t.Fatalf("unexpected GitHub tree source: %q %q %q", repository, ref, subdirectory)
+	}
+	if _, _, _, ok := parseGitHubTreeSource("https://example.com/owner/repo/tree/main/package"); ok {
+		t.Fatal("non-GitHub URL was recognized as a tree source")
+	}
+}
+
+func TestGitHubTreeSourceIntegration(t *testing.T) {
+	if os.Getenv("AMBXST_TEST_GITHUB") != "1" {
+		t.Skip("set AMBXST_TEST_GITHUB=1 to run network integration tests")
+	}
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	manager := NewManager(testPaths(root))
+	status, err := manager.Install("https://github.com/flathead/ambxst-mods/tree/main/packages/i18n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods) != 1 || status.Mods[0].ID != "community.i18n" || status.Mods[0].SourceType != "git-subdir" {
+		t.Fatalf("unexpected tree install status: %#v", status.Mods)
+	}
+}
+
+func TestManagerInstallsAndEnablesRequiredMods(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	dependencyRoot := writeOverlayPackage(t, root, "dependency", "example.i18n", "I18n.qml")
+	parentRoot := filepath.Join(root, "parent")
+	writeTestFile(t, filepath.Join(parentRoot, "Feature.qml"), "Item {}\n")
+	parentManifest := Manifest{
+		ManifestVersion:   APIVersion,
+		ID:                "example.feature",
+		Name:              "Feature",
+		Version:           "1.0.0",
+		Dependencies:      []string{"example.i18n"},
+		DependencySources: map[string]string{"example.i18n": dependencyRoot},
+		Operations: []Operation{{
+			Type: "overlay", Source: "Feature.qml", Target: "Feature.qml",
+		}},
+	}
+	data, err := json.Marshal(parentManifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(parentRoot, ManifestFile), string(data))
+
+	manager := NewManager(testPaths(root))
+	status, err := manager.Install(parentRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods[0].DependencyState) != 1 || status.Mods[0].DependencyState[0].Installed {
+		t.Fatalf("missing dependency was not reported: %#v", status.Mods[0].DependencyState)
+	}
+
+	status, err = manager.InstallDependencies("example.feature")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods) != 2 || status.Mods[0].Enabled || !status.Mods[1].Enabled {
+		t.Fatalf("unexpected dependency state: %#v", status.Mods)
+	}
+	if !status.Mods[0].DependencyState[0].Installed || !status.Mods[0].DependencyState[0].Enabled {
+		t.Fatalf("ready dependency was not reported: %#v", status.Mods[0].DependencyState)
+	}
+	active := filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration)
+	if _, err := os.Stat(filepath.Join(active, "I18n.qml")); err != nil {
+		t.Fatalf("dependency was not composed: %v", err)
+	}
+
+	status, err = manager.SetEnabled("example.feature", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.Mods[0].Enabled || !status.Mods[1].Enabled {
+		t.Fatalf("parent and dependency were not enabled: %#v", status.Mods)
+	}
+}
+
+func TestManagerRejectsDependencyWithUnexpectedID(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	wrongRoot := writeOverlayPackage(t, root, "wrong", "example.wrong", "Wrong.qml")
+	parentRoot := filepath.Join(root, "parent")
+	writeTestFile(t, filepath.Join(parentRoot, "Feature.qml"), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion:   APIVersion,
+		ID:                "example.feature",
+		Name:              "Feature",
+		Version:           "1.0.0",
+		Dependencies:      []string{"example.required"},
+		DependencySources: map[string]string{"example.required": wrongRoot},
+		Operations: []Operation{{
+			Type: "overlay", Source: "Feature.qml", Target: "Feature.qml",
+		}},
+	}
+	data, _ := json.Marshal(manifest)
+	writeTestFile(t, filepath.Join(parentRoot, ManifestFile), string(data))
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(parentRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.InstallDependencies("example.feature"); err == nil {
+		t.Fatal("expected mismatched dependency id to fail")
+	}
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods) != 1 || status.Mods[0].Enabled {
+		t.Fatalf("failed dependency install changed state: %#v", status.Mods)
+	}
+}
+
 func TestManagerComposesNonOverlappingPatchesToSameFile(t *testing.T) {
 	root := t.TempDir()
 	base := filepath.Join(root, "base")

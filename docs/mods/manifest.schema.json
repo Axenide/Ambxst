@@ -34,6 +34,13 @@
       }
     },
     "dependencies": { "$ref": "#/$defs/modIds" },
+    "dependencySources": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+      },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
     "conflicts": { "$ref": "#/$defs/modIds" },
     "commands": {
       "type": "array",

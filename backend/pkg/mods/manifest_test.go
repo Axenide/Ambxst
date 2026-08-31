@@ -25,6 +25,24 @@ func TestManifestRejectsUnsafeOverlayTarget(t *testing.T) {
 	}
 }
 
+func TestManifestRejectsUndeclaredDependencySource(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "payload.qml"), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion:   APIVersion,
+		ID:                "example.mod",
+		Name:              "Example",
+		Version:           "1.0.0",
+		DependencySources: map[string]string{"example.base": "https://example.test/base.git"},
+		Operations: []Operation{{
+			Type: "overlay", Source: "payload.qml", Target: "payload.qml",
+		}},
+	}
+	if err := manifest.Validate(root); err == nil {
+		t.Fatal("expected undeclared dependency source to fail validation")
+	}
+}
+
 func TestPatchTargets(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "change.patch")
 	writeTestFile(t, path, "--- a/one.qml\n+++ b/one.qml\n@@ -1 +1 @@\n-old\n+new\n--- /dev/null\n+++ b/two.qml\n@@ -0,0 +1 @@\n+new\n")

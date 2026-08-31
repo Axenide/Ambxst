@@ -49,6 +49,7 @@ the replacement fails validation or generation composition.
     "testedBaseCommits": ["full-git-commit"]
   },
   "dependencies": [],
+  "dependencySources": {},
   "conflicts": [],
   "commands": [],
   "permissions": ["Reads active media state"],
@@ -84,6 +85,25 @@ remaining order.
 `commands` declares executables that must be available before composition.
 `permissions` is review metadata shown to the user. It is not a sandbox or an
 authorization mechanism: installed QML runs with the user's permissions.
+
+Required mods are listed by ID in `dependencies`. A distributable package can
+also map a dependency ID to its package repository in `dependencySources`:
+
+```json
+"dependencies": ["community.i18n"],
+"dependencySources": {
+  "community.i18n": "https://github.com/example/ambxst-mod-i18n.git"
+}
+```
+
+Settings shows missing and disabled requirements before the mod can be enabled.
+It downloads them only after the user chooses **Install required mods**. The
+source package must declare the expected ID; a different manifest is rejected.
+
+The package source field accepts a local directory, an archive, a Git repository,
+or a GitHub directory URL such as
+`https://github.com/owner/repository/tree/main/packages/example`. GitHub directory
+installs use a shallow sparse checkout and retain the original URL for updates.
 
 ## Settings schema
 

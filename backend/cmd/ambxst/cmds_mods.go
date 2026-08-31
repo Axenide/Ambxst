@@ -27,6 +27,11 @@ func runMods(args []string) {
 			modsUsage("Usage: ambxst mods install <directory|archive|git-url>")
 		}
 		status, err = callMods("install", map[string]any{"source": args[1]})
+	case "install-dependencies":
+		if len(args) != 2 {
+			modsUsage("Usage: ambxst mods install-dependencies <id>")
+		}
+		status, err = callMods("installDependencies", map[string]any{"id": args[1]})
 	case "enable", "disable":
 		if len(args) != 2 {
 			modsUsage("Usage: ambxst mods " + command + " <id>")
@@ -85,6 +90,8 @@ func callMods(method string, params map[string]any) (modpkg.Status, error) {
 		return manager.Status()
 	case "install":
 		return manager.Install(params["source"].(string))
+	case "installDependencies":
+		return manager.InstallDependencies(params["id"].(string))
 	case "setEnabled":
 		return manager.SetEnabled(params["id"].(string), params["enabled"].(bool))
 	case "remove":
@@ -143,6 +150,7 @@ func modsUsage(message string) {
 		"Commands:\n" +
 		"    list                             Show installed mods and generation state\n" +
 		"    install <source>                 Install from a directory, archive, or Git URL\n" +
+		"    install-dependencies <id>        Install and enable a mod's requirements\n" +
 		"    enable <id>                      Enable a mod and build a generation\n" +
 		"    disable <id>                     Disable a mod and build a generation\n" +
 		"    update <id>                      Refresh a mod from its original source\n" +

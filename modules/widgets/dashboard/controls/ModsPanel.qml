@@ -17,6 +17,94 @@ Item {
     property string selectedId: ""
     property string removeArmedId: ""
 
+    readonly property bool i18nActive: (ModsService.mods ?? []).some(mod =>
+        mod.id === "community.i18n" && mod.enabled)
+    readonly property var fallbackText: ({
+        "common.off": "Off",
+        "common.on": "On",
+        "common.save": "Save",
+        "mods.active": "Active",
+        "mods.affected_files": "Affected files",
+        "mods.base": "Base",
+        "mods.confirm_remove": "Confirm remove",
+        "mods.conflicts": "Conflicts",
+        "mods.dependency_disabled": "Disabled",
+        "mods.dependency_missing": "Missing",
+        "mods.dependency_ready": "Ready",
+        "mods.disable": "Disable",
+        "mods.disabled": "Disabled",
+        "mods.drag_order": "Drag to change load order",
+        "mods.empty": "No mods are installed. Add a package source above.",
+        "mods.enable": "Enable",
+        "mods.enabled": "Enabled",
+        "mods.incompatible": "Incompatible",
+        "mods.install": "Install",
+        "mods.install_dependencies": "Install required mods",
+        "mods.invalid_number": "Enter a valid number.",
+        "mods.load_order": "Load order %1",
+        "mods.loading_settings": "Loading settings…",
+        "mods.move_down": "Move down",
+        "mods.move_up": "Move up",
+        "mods.no_matches": "No installed mods match this search.",
+        "mods.none": "None",
+        "mods.package_error": "Package error",
+        "mods.package_source": "Package source",
+        "mods.package_status": "Package status",
+        "mods.permissions": "Declared permissions",
+        "mods.rebuild": "Rebuild",
+        "mods.rebuild_required": "Rebuild required: %1",
+        "mods.refresh": "Refresh mod state",
+        "mods.remove": "Remove",
+        "mods.required_mods": "Required mods",
+        "mods.restart_now": "Restart now",
+        "mods.restart_required": "Restart Ambxst to load the active generation.",
+        "mods.revision": "Revision",
+        "mods.rollback": "Rollback",
+        "mods.search": "Search installed mods…",
+        "mods.select": "Select",
+        "mods.select_hint": "Select a mod to inspect its package details.",
+        "mods.settings": "Settings",
+        "mods.sort_load_order": "Sort: Load order",
+        "mods.sort_name": "Sort: Name",
+        "mods.sort_state": "Sort: State",
+        "mods.source": "Source",
+        "mods.source_placeholder": "Local directory, package archive, or Git URL",
+        "mods.status_dependencies_installed": "Required mods installed and enabled.",
+        "mods.status_disabled": "Mod disabled.",
+        "mods.status_enabled": "Mod enabled.",
+        "mods.status_installed": "Mod installed in the disabled state.",
+        "mods.status_order_updated": "Load order updated.",
+        "mods.status_rebuilt": "Generation rebuilt.",
+        "mods.status_removed": "Mod removed.",
+        "mods.status_rolled_back": "Previous generation restored.",
+        "mods.status_setting_saved": "Setting saved.",
+        "mods.status_updated": "Mod updated.",
+        "mods.title": "Mods",
+        "mods.trust_warning": "Packages run with your user permissions. Install code only from sources you trust.",
+        "mods.unknown": "Unknown",
+        "mods.unknown_error": "Unknown error",
+        "mods.unknown_version": "Unknown version",
+        "mods.update": "Update",
+        "mods.working": "Working…"
+    })
+
+    function tr(key, argument) {
+        if (root.i18nActive) {
+            try {
+                if (typeof I18n !== "undefined" && typeof I18n.t === "function")
+                    return I18n.t(key, argument);
+            } catch (error) {
+                // The English fallback keeps Mods available if the translator is unavailable.
+            }
+        }
+        const fallback = root.fallbackText[key] ?? key;
+        return argument === undefined ? fallback : fallback.replace("%1", String(argument));
+    }
+
+    function dependenciesReady(mod) {
+        return (mod?.dependencyState ?? []).every(dependency => dependency.enabled);
+    }
+
     readonly property int contentWidth: Math.min(width, maxContentWidth)
     readonly property var filteredMods: {
         const query = root.searchQuery.trim().toLowerCase();
@@ -97,19 +185,19 @@ Item {
         spacing: 8
 
         PanelTitlebar {
-            title: "Mods"
-            statusText: ModsService.busy ? "Working…" : ""
+            title: root.tr("mods.title")
+            statusText: ModsService.busy ? root.tr("mods.working") : ""
             actions: [
                 {
                     icon: Icons.arrowCounterClockwise,
-                    tooltip: "Refresh mod state",
+                    tooltip: root.tr("mods.refresh"),
                     enabled: !ModsService.busy,
                     onClicked: function () { ModsService.refresh(); }
                 }
             ]
 
             ActionButton {
-                text: "Rebuild"
+                text: root.tr("mods.rebuild")
                 onClicked: ModsService.rebuild()
             }
         }
@@ -117,6 +205,7 @@ Item {
         StyledRect {
             visible: !ModsService.generationCurrent || ModsService.restartRequired
                 || ModsService.errorMessage !== "" || ModsService.statusMessage !== ""
+                || ModsService.statusMessageKey !== ""
             Layout.fillWidth: true
             Layout.preferredHeight: statusRow.implicitHeight + 16
             variant: ModsService.errorMessage !== "" || !ModsService.generationCurrent ? "focus" : "common"
@@ -140,8 +229,9 @@ Item {
                 Text {
                     Layout.fillWidth: true
                     text: ModsService.errorMessage !== "" ? ModsService.errorMessage
-                        : !ModsService.generationCurrent ? "Rebuild required: " + ModsService.generationError
-                        : ModsService.restartRequired ? "Restart Ambxst to load the active generation."
+                        : !ModsService.generationCurrent ? root.tr("mods.rebuild_required", ModsService.generationError)
+                        : ModsService.restartRequired ? root.tr("mods.restart_required")
+                        : ModsService.statusMessageKey !== "" ? root.tr(ModsService.statusMessageKey)
                         : ModsService.statusMessage
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
@@ -151,14 +241,14 @@ Item {
 
                 ActionButton {
                     visible: !ModsService.generationCurrent
-                    text: "Rebuild"
+                    text: root.tr("mods.rebuild")
                     primary: true
                     onClicked: ModsService.rebuild()
                 }
 
                 ActionButton {
                     visible: ModsService.restartRequired
-                    text: "Restart now"
+                    text: root.tr("mods.restart_now")
                     primary: true
                     onClicked: ModsService.restart()
                 }
@@ -170,7 +260,7 @@ Item {
             spacing: 4
 
             Text {
-                text: "Package source"
+                text: root.tr("mods.package_source")
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.weight: Font.Medium
@@ -185,15 +275,15 @@ Item {
                     id: sourceInput
                     Layout.fillWidth: true
                     implicitHeight: 40
-                    placeholderText: "Local directory, package archive, or Git URL"
+                    placeholderText: root.tr("mods.source_placeholder")
                     color: Colors.overBackground
                     placeholderTextColor: Colors.outline
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     selectByMouse: true
                     enabled: !ModsService.busy
-                    Accessible.name: "Package source"
-                    Accessible.description: "Local directory, package archive, or Git URL"
+                    Accessible.name: root.tr("mods.package_source")
+                    Accessible.description: root.tr("mods.source_placeholder")
 
                     background: StyledRect {
                         variant: sourceInput.activeFocus ? "focus" : "common"
@@ -210,7 +300,7 @@ Item {
                 }
 
                 ActionButton {
-                    text: "Install"
+                    text: root.tr("mods.install")
                     primary: true
                     enabled: !ModsService.busy && sourceInput.text.trim() !== ""
                     onClicked: {
@@ -222,7 +312,7 @@ Item {
 
         Text {
             Layout.fillWidth: true
-            text: "Packages run with your user permissions. Install code only from sources you trust."
+            text: root.tr("mods.trust_warning")
             font.family: Config.theme.font
             font.pixelSize: Styling.fontSize(-2)
             color: Colors.outline
@@ -248,15 +338,15 @@ Item {
 
                     SearchInput {
                         Layout.fillWidth: true
-                        placeholderText: "Search installed mods…"
+                        placeholderText: root.tr("mods.search")
                         clearOnEscape: true
                         onSearchTextChanged: text => root.searchQuery = text
                     }
 
                     ActionButton {
-                        text: root.sortMode === "name" ? "Sort: Name"
-                            : root.sortMode === "state" ? "Sort: State"
-                            : "Sort: Load order"
+                        text: root.sortMode === "name" ? root.tr("mods.sort_name")
+                            : root.sortMode === "state" ? root.tr("mods.sort_state")
+                            : root.tr("mods.sort_load_order")
                         onClicked: root.sortMode = root.sortMode === "name" ? "state"
                             : root.sortMode === "state" ? "loadOrder"
                             : "name"
@@ -274,8 +364,8 @@ Item {
                         anchors.centerIn: parent
                         width: Math.min(parent.width - 32, 260)
                         text: ModsService.mods.length === 0
-                            ? "No mods are installed. Add a package source above."
-                            : "No installed mods match this search."
+                            ? root.tr("mods.empty")
+                            : root.tr("mods.no_matches")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         color: Colors.outline
@@ -313,7 +403,8 @@ Item {
                                     enableShadow: false
                                     activeFocusOnTab: true
                                     Accessible.role: Accessible.ListItem
-                                    Accessible.name: modelData.name + ", " + (modelData.enabled ? "enabled" : "disabled")
+                                    Accessible.name: modelData.name + ", " + (modelData.enabled
+                                        ? root.tr("mods.enabled") : root.tr("mods.disabled"))
                                     Accessible.onPressAction: root.selectedId = modelData.id
 
                                     Keys.onReturnPressed: root.selectedId = modelData.id
@@ -360,7 +451,7 @@ Item {
                                             color: modRow.item
                                             opacity: reorderDrag.active ? 1 : 0.65
                                             Accessible.role: Accessible.Button
-                                            Accessible.name: "Drag to change load order"
+                                            Accessible.name: root.tr("mods.drag_order")
 
                                             DragHandler {
                                                 id: reorderDrag
@@ -399,10 +490,10 @@ Item {
 
                                             Text {
                                                 Layout.fillWidth: true
-                                                text: (modRow.modelData.version || "Unknown version") + " · "
-                                                    + (!modRow.modelData.valid ? "Package error"
-                                                    : !modRow.modelData.compatible ? "Incompatible"
-                                                    : modRow.modelData.enabled ? "Enabled" : "Disabled")
+                                                text: (modRow.modelData.version || root.tr("mods.unknown_version")) + " · "
+                                                    + (!modRow.modelData.valid ? root.tr("mods.package_error")
+                                                    : !modRow.modelData.compatible ? root.tr("mods.incompatible")
+                                                    : modRow.modelData.enabled ? root.tr("mods.enabled") : root.tr("mods.disabled"))
                                                 font.family: Config.theme.font
                                                 font.pixelSize: Styling.fontSize(-2)
                                                 color: modRow.item
@@ -412,10 +503,11 @@ Item {
                                         }
 
                                         ActionButton {
-                                            text: modRow.modelData.enabled ? "Disable" : "Enable"
+                                            text: modRow.modelData.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
                                             primary: !modRow.modelData.enabled
                                             enabled: !ModsService.busy && (modRow.modelData.enabled
-                                                || (modRow.modelData.valid && modRow.modelData.compatible))
+                                                || (modRow.modelData.valid && modRow.modelData.compatible
+                                                    && root.dependenciesReady(modRow.modelData)))
                                             onClicked: {
                                                 root.selectedId = modRow.modelData.id;
                                                 ModsService.setEnabled(modRow.modelData.id, !modRow.modelData.enabled);
@@ -473,7 +565,7 @@ Item {
                 Text {
                     visible: !root.selectedMod
                     anchors.centerIn: parent
-                    text: "Select a mod to inspect its package details."
+                    text: root.tr("mods.select_hint")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: Colors.outline
@@ -540,8 +632,8 @@ Item {
                             visible: (root.selectedMod?.error ?? "") !== ""
                                 || (root.selectedMod?.compatibilityError ?? "") !== ""
                             Layout.fillWidth: true
-                            text: "Package status\n" + (root.selectedMod?.error
-                                || root.selectedMod?.compatibilityError || "Unknown error")
+                            text: root.tr("mods.package_status") + "\n" + (root.selectedMod?.error
+                                || root.selectedMod?.compatibilityError || root.tr("mods.unknown_error"))
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.error
@@ -552,7 +644,7 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: "Source\n" + (root.selectedMod?.source ?? "Unknown")
+                            text: root.tr("mods.source") + "\n" + (root.selectedMod?.source ?? root.tr("mods.unknown"))
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground
@@ -562,7 +654,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             visible: (root.selectedMod?.revision ?? "") !== ""
-                            text: "Revision\n" + (root.selectedMod?.revision ?? "")
+                            text: root.tr("mods.revision") + "\n" + (root.selectedMod?.revision ?? "")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground
@@ -571,7 +663,8 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: "Affected files\n" + ((root.selectedMod?.affectedFiles ?? []).join("\n") || "None")
+                            text: root.tr("mods.affected_files") + "\n"
+                                + ((root.selectedMod?.affectedFiles ?? []).join("\n") || root.tr("mods.none"))
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground
@@ -584,20 +677,20 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "Load order " + String((root.selectedMod?.order ?? 0) + 1)
+                                text: root.tr("mods.load_order", String((root.selectedMod?.order ?? 0) + 1))
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
                                 color: Colors.overBackground
                             }
 
                             ActionButton {
-                                text: "Move up"
+                                text: root.tr("mods.move_up")
                                 enabled: !ModsService.busy && (root.selectedMod?.order ?? 0) > 0
                                 onClicked: ModsService.move(root.selectedMod.id, -1)
                             }
 
                             ActionButton {
-                                text: "Move down"
+                                text: root.tr("mods.move_down")
                                 enabled: !ModsService.busy && (root.selectedMod?.order ?? 0) < ModsService.mods.length - 1
                                 onClicked: ModsService.move(root.selectedMod.id, 1)
                             }
@@ -606,19 +699,68 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             visible: (root.selectedMod?.permissions ?? []).length > 0
-                            text: "Declared permissions\n" + (root.selectedMod?.permissions ?? []).join(", ")
+                            text: root.tr("mods.permissions") + "\n" + (root.selectedMod?.permissions ?? []).join(", ")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground
                             wrapMode: Text.Wrap
                         }
 
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            visible: (root.selectedMod?.dependencyState ?? []).length > 0
+                            spacing: 4
+
+                            Text {
+                                text: root.tr("mods.required_mods")
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                font.weight: Font.DemiBold
+                                color: Colors.overBackground
+                            }
+
+                            Repeater {
+                                model: root.selectedMod?.dependencyState ?? []
+
+                                delegate: RowLayout {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: modelData.id
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        color: Colors.overBackground
+                                        elide: Text.ElideMiddle
+                                    }
+
+                                    Text {
+                                        text: modelData.enabled ? root.tr("mods.dependency_ready")
+                                            : modelData.installed ? root.tr("mods.dependency_disabled")
+                                            : root.tr("mods.dependency_missing")
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        font.weight: Font.Medium
+                                        color: modelData.enabled ? Colors.success : Colors.warning
+                                    }
+                                }
+                            }
+
+                            ActionButton {
+                                visible: !root.dependenciesReady(root.selectedMod)
+                                text: root.tr("mods.install_dependencies")
+                                primary: true
+                                enabled: !ModsService.busy
+                                onClicked: ModsService.installDependencies(root.selectedMod.id)
+                            }
+                        }
+
                         Text {
                             Layout.fillWidth: true
-                            visible: (root.selectedMod?.dependencies ?? []).length > 0
-                                || (root.selectedMod?.commands ?? []).length > 0
-                            text: "Requirements\n" + (root.selectedMod?.dependencies ?? [])
-                                .concat(root.selectedMod?.commands ?? []).join(", ")
+                            visible: (root.selectedMod?.commands ?? []).length > 0
+                            text: root.tr("mods.requirements") + "\n" + (root.selectedMod?.commands ?? []).join(", ")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground
@@ -628,7 +770,7 @@ Item {
                         Text {
                             Layout.fillWidth: true
                             visible: (root.selectedMod?.conflicts ?? []).length > 0
-                            text: "Conflicts\n" + (root.selectedMod?.conflicts ?? []).join(", ")
+                            text: root.tr("mods.conflicts") + "\n" + (root.selectedMod?.conflicts ?? []).join(", ")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overBackground
@@ -643,7 +785,7 @@ Item {
                             Separator { Layout.fillWidth: true }
 
                             Text {
-                                text: "Settings"
+                                text: root.tr("mods.settings")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.DemiBold
@@ -652,7 +794,7 @@ Item {
 
                             Text {
                                 visible: ModsService.settingsBusy
-                                text: "Loading settings…"
+                                text: root.tr("mods.loading_settings")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-2)
                                 color: Colors.outline
@@ -674,7 +816,7 @@ Item {
                                         else if (settingRow.modelData.type === "number")
                                             value = parseFloat(text);
                                         if (typeof value === "number" && !Number.isFinite(value)) {
-                                            ModsService.errorMessage = "Enter a valid number.";
+                                            ModsService.errorMessage = root.tr("mods.invalid_number");
                                             return;
                                         }
                                         ModsService.setSetting(root.selectedMod.id, settingRow.modelData.key, value);
@@ -711,7 +853,8 @@ Item {
 
                                         ActionButton {
                                             visible: settingRow.modelData.type === "boolean"
-                                            text: ModsService.settingsValues[settingRow.modelData.key] ? "On" : "Off"
+                                            text: ModsService.settingsValues[settingRow.modelData.key]
+                                                ? root.tr("common.on") : root.tr("common.off")
                                             primary: !!ModsService.settingsValues[settingRow.modelData.key]
                                             onClicked: ModsService.setSetting(
                                                 root.selectedMod.id,
@@ -729,7 +872,7 @@ Item {
                                                     if (options[i].value === value)
                                                         return options[i].label;
                                                 }
-                                                return String(value ?? "Select");
+                                                return String(value ?? root.tr("mods.select"));
                                             }
                                             onClicked: {
                                                 const options = settingRow.modelData.options ?? [];
@@ -771,7 +914,7 @@ Item {
                                         }
 
                                         ActionButton {
-                                            text: "Save"
+                                            text: root.tr("common.save")
                                             enabled: !ModsService.busy && !ModsService.settingsBusy
                                             onClicked: settingRow.saveTextValue(settingInput.text)
                                         }
@@ -785,14 +928,15 @@ Item {
                             spacing: 6
 
                             ActionButton {
-                                text: "Update"
+                                text: root.tr("mods.update")
                                 onClicked: ModsService.update(root.selectedMod.id, root.selectedMod.enabled)
                             }
 
                             Item { Layout.fillWidth: true }
 
                             ActionButton {
-                                text: root.removeArmedId === root.selectedMod?.id ? "Confirm remove" : "Remove"
+                                text: root.removeArmedId === root.selectedMod?.id
+                                    ? root.tr("mods.confirm_remove") : root.tr("mods.remove")
                                 destructive: true
                                 onClicked: {
                                     if (root.removeArmedId !== root.selectedMod.id) {
@@ -815,9 +959,9 @@ Item {
 
             Text {
                 Layout.fillWidth: true
-                text: "Base " + (ModsService.baseVersion || "unknown")
+                text: root.tr("mods.base") + " " + (ModsService.baseVersion || root.tr("mods.unknown"))
                     + (ModsService.baseRevision ? " · " + ModsService.baseRevision.substring(0, 12) : "")
-                    + " · Active " + (ModsService.activeGeneration || "base")
+                    + " · " + root.tr("mods.active") + " " + (ModsService.activeGeneration || "base")
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-2)
                 color: Colors.outline
@@ -826,7 +970,7 @@ Item {
 
             ActionButton {
                 visible: ModsService.previousGeneration !== ""
-                text: "Rollback"
+                text: root.tr("mods.rollback")
                 onClicked: ModsService.rollback()
             }
         }

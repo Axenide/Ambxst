@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -53,27 +54,35 @@ type InstalledMod struct {
 }
 
 type ModInfo struct {
-	ID                 string   `json:"id"`
-	Name               string   `json:"name"`
-	Version            string   `json:"version"`
-	Description        string   `json:"description"`
-	License            string   `json:"license,omitempty"`
-	Author             string   `json:"author,omitempty"`
-	Enabled            bool     `json:"enabled"`
-	Order              int      `json:"order"`
-	Source             string   `json:"source"`
-	SourceType         string   `json:"sourceType"`
-	Revision           string   `json:"revision,omitempty"`
-	Dependencies       []string `json:"dependencies,omitempty"`
-	Conflicts          []string `json:"conflicts,omitempty"`
-	Commands           []string `json:"commands,omitempty"`
-	Permissions        []string `json:"permissions,omitempty"`
-	AffectedFiles      []string `json:"affectedFiles"`
-	HasSettings        bool     `json:"hasSettings"`
-	Valid              bool     `json:"valid"`
-	Error              string   `json:"error,omitempty"`
-	Compatible         bool     `json:"compatible"`
-	CompatibilityError string   `json:"compatibilityError,omitempty"`
+	ID                 string           `json:"id"`
+	Name               string           `json:"name"`
+	Version            string           `json:"version"`
+	Description        string           `json:"description"`
+	License            string           `json:"license,omitempty"`
+	Author             string           `json:"author,omitempty"`
+	Enabled            bool             `json:"enabled"`
+	Order              int              `json:"order"`
+	Source             string           `json:"source"`
+	SourceType         string           `json:"sourceType"`
+	Revision           string           `json:"revision,omitempty"`
+	Dependencies       []string         `json:"dependencies,omitempty"`
+	DependencyState    []DependencyInfo `json:"dependencyState,omitempty"`
+	Conflicts          []string         `json:"conflicts,omitempty"`
+	Commands           []string         `json:"commands,omitempty"`
+	Permissions        []string         `json:"permissions,omitempty"`
+	AffectedFiles      []string         `json:"affectedFiles"`
+	HasSettings        bool             `json:"hasSettings"`
+	Valid              bool             `json:"valid"`
+	Error              string           `json:"error,omitempty"`
+	Compatible         bool             `json:"compatible"`
+	CompatibilityError string           `json:"compatibilityError,omitempty"`
+}
+
+type DependencyInfo struct {
+	ID        string `json:"id"`
+	Source    string `json:"source,omitempty"`
+	Installed bool   `json:"installed"`
+	Enabled   bool   `json:"enabled"`
 }
 
 type ModSettings struct {
@@ -140,40 +149,11 @@ func (m *Manager) Install(source string) (Status, error) {
 	}
 	defer os.RemoveAll(tmp)
 
-	packageRoot := filepath.Join(tmp, "package")
-	sourceType := "local"
-	if isGitSource(source) {
-		sourceType = "git"
-		if err := runCommandTimeout(5*time.Minute, "", "git", "clone", "--depth=1", source, packageRoot); err != nil {
-			return Status{}, fmt.Errorf("clone source: %w", err)
-		}
-	} else {
-		absolute, err := filepath.Abs(source)
-		if err != nil {
-			return Status{}, err
-		}
-		info, err := os.Stat(absolute)
-		if err != nil {
-			return Status{}, fmt.Errorf("inspect source: %w", err)
-		}
-		if info.IsDir() {
-			if err := copyTree(absolute, packageRoot, func(path string, entry fs.DirEntry) bool {
-				return path != absolute && entry.IsDir() && entry.Name() == ".git"
-			}); err != nil {
-				return Status{}, fmt.Errorf("copy source: %w", err)
-			}
-		} else {
-			sourceType = "archive"
-			if err := extractPackageArchive(absolute, packageRoot); err != nil {
-				return Status{}, err
-			}
-		}
-		source = absolute
-	}
-	packageRoot, err = locatePackageRoot(packageRoot)
+	packageRoot, normalizedSource, sourceType, err := acquirePackage(source, filepath.Join(tmp, "package"))
 	if err != nil {
 		return Status{}, err
 	}
+	source = normalizedSource
 
 	manifest, err := LoadManifest(packageRoot)
 	if err != nil {
@@ -208,6 +188,153 @@ func (m *Manager) Install(source string) (Status, error) {
 		return Status{}, err
 	}
 	return m.statusFor(state)
+}
+
+// InstallDependencies installs missing requirements and enables the complete
+// dependency chain. The selected mod remains in its current state.
+func (m *Manager) InstallDependencies(id string) (Status, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	state, err := m.loadState()
+	if err != nil {
+		return Status{}, err
+	}
+	_, ok := findInstalled(state, id)
+	if !ok {
+		return Status{}, fmt.Errorf("mod %q is not installed", id)
+	}
+	root := filepath.Join(m.paths.ModPackagesDir(), id)
+	manifest, err := LoadManifest(root)
+	if err != nil {
+		return Status{}, fmt.Errorf("mod %s: %w", id, err)
+	}
+	if len(manifest.Dependencies) == 0 {
+		return m.statusFor(state)
+	}
+
+	tmp, err := os.MkdirTemp(m.paths.ModPackagesDir(), ".dependencies-")
+	if err != nil {
+		return Status{}, err
+	}
+	defer os.RemoveAll(tmp)
+
+	type stagedDependency struct {
+		root       string
+		source     string
+		sourceType string
+	}
+	installed := make(map[string]int, len(state.Mods))
+	for i, mod := range state.Mods {
+		installed[mod.ID] = i
+	}
+	staged := make(map[string]stagedDependency)
+	visiting := map[string]bool{id: true}
+	visited := make(map[string]bool)
+	order := make([]string, 0)
+
+	var visit func(string, string) error
+	visit = func(dependencyID, source string) error {
+		if visited[dependencyID] {
+			return nil
+		}
+		if visiting[dependencyID] {
+			return fmt.Errorf("dependency cycle includes %s", dependencyID)
+		}
+		visiting[dependencyID] = true
+
+		var dependencyManifest Manifest
+		if installedIndex, exists := installed[dependencyID]; exists {
+			packageRoot := filepath.Join(m.paths.ModPackagesDir(), state.Mods[installedIndex].ID)
+			loaded, loadErr := LoadManifest(packageRoot)
+			if loadErr != nil {
+				return fmt.Errorf("dependency %s: %w", dependencyID, loadErr)
+			}
+			dependencyManifest = loaded
+		} else {
+			if strings.TrimSpace(source) == "" {
+				return fmt.Errorf("mod %s requires %s but provides no package source", id, dependencyID)
+			}
+			stageRoot := filepath.Join(tmp, dependencyID)
+			packageRoot, normalizedSource, sourceType, acquireErr := acquirePackage(source, stageRoot)
+			if acquireErr != nil {
+				return fmt.Errorf("install dependency %s: %w", dependencyID, acquireErr)
+			}
+			loaded, loadErr := LoadManifest(packageRoot)
+			if loadErr != nil {
+				return fmt.Errorf("dependency %s: %w", dependencyID, loadErr)
+			}
+			if loaded.ID != dependencyID {
+				return fmt.Errorf("dependency source for %s contains mod %s", dependencyID, loaded.ID)
+			}
+			dependencyManifest = loaded
+			staged[dependencyID] = stagedDependency{
+				root: packageRoot, source: normalizedSource, sourceType: sourceType,
+			}
+		}
+
+		for _, childID := range dependencyManifest.Dependencies {
+			if err := visit(childID, dependencyManifest.DependencySources[childID]); err != nil {
+				return err
+			}
+		}
+		visiting[dependencyID] = false
+		visited[dependencyID] = true
+		order = append(order, dependencyID)
+		return nil
+	}
+	for _, dependencyID := range manifest.Dependencies {
+		if err := visit(dependencyID, manifest.DependencySources[dependencyID]); err != nil {
+			return Status{}, err
+		}
+	}
+
+	next := cloneState(state)
+	added := make([]string, 0, len(staged))
+	changed := false
+	for _, dependencyID := range order {
+		if installedIndex, exists := findInstalled(next, dependencyID); exists {
+			if !next.Mods[installedIndex].Enabled {
+				next.Mods[installedIndex].Enabled = true
+				changed = true
+			}
+			continue
+		}
+		dependency := staged[dependencyID]
+		destination := filepath.Join(m.paths.ModPackagesDir(), dependencyID)
+		if _, statErr := os.Stat(destination); statErr == nil {
+			return Status{}, fmt.Errorf("package directory already exists for %q", dependencyID)
+		} else if !os.IsNotExist(statErr) {
+			return Status{}, statErr
+		}
+		if err := os.Rename(dependency.root, destination); err != nil {
+			for _, addedID := range added {
+				_ = os.RemoveAll(filepath.Join(m.paths.ModPackagesDir(), addedID))
+			}
+			return Status{}, fmt.Errorf("store dependency %s: %w", dependencyID, err)
+		}
+		added = append(added, dependencyID)
+		next.Mods = append(next.Mods, InstalledMod{
+			ID:          dependencyID,
+			Enabled:     true,
+			Order:       len(next.Mods),
+			Source:      dependency.source,
+			SourceType:  dependency.sourceType,
+			Revision:    gitRevision(destination),
+			InstalledAt: time.Now().UTC().Format(time.RFC3339),
+		})
+		changed = true
+	}
+	if !changed {
+		return m.statusFor(state)
+	}
+	if err := m.composeAndActivate(state, &next); err != nil {
+		for _, addedID := range added {
+			_ = os.RemoveAll(filepath.Join(m.paths.ModPackagesDir(), addedID))
+		}
+		return Status{}, err
+	}
+	return m.statusForRestart(next, true)
 }
 
 func (m *Manager) SetEnabled(id string, enabled bool) (Status, error) {
@@ -429,12 +556,20 @@ func (m *Manager) updateLocalSource(state State, index int, installed InstalledM
 		if err := extractPackageArchive(installed.Source, updatedRoot); err != nil {
 			return Status{}, err
 		}
+	case "git-subdir":
+		acquiredRoot, _, _, acquireErr := acquirePackage(installed.Source, updatedRoot)
+		if acquireErr != nil {
+			return Status{}, acquireErr
+		}
+		updatedRoot = acquiredRoot
 	default:
 		return Status{}, fmt.Errorf("mod %q has unsupported source type %q", installed.ID, installed.SourceType)
 	}
-	updatedRoot, err = locatePackageRoot(updatedRoot)
-	if err != nil {
-		return Status{}, err
+	if installed.SourceType != "git-subdir" {
+		updatedRoot, err = locatePackageRoot(updatedRoot)
+		if err != nil {
+			return Status{}, err
+		}
 	}
 	manifest, err := LoadManifest(updatedRoot)
 	if err != nil {
@@ -832,6 +967,10 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			status.GenerationError = err.Error()
 		}
 	}
+	installedByID := make(map[string]InstalledMod, len(state.Mods))
+	for _, installed := range state.Mods {
+		installedByID[installed.ID] = installed
+	}
 	for _, installed := range state.Mods {
 		root := filepath.Join(m.paths.ModPackagesDir(), installed.ID)
 		manifest, err := LoadManifest(root)
@@ -871,6 +1010,16 @@ func (m *Manager) statusFor(state State) (Status, error) {
 		if compatibilityErr != nil {
 			compatibilityMessage = compatibilityErr.Error()
 		}
+		dependencyState := make([]DependencyInfo, 0, len(manifest.Dependencies))
+		for _, dependencyID := range manifest.Dependencies {
+			dependency, dependencyInstalled := installedByID[dependencyID]
+			dependencyState = append(dependencyState, DependencyInfo{
+				ID:        dependencyID,
+				Source:    manifest.DependencySources[dependencyID],
+				Installed: dependencyInstalled,
+				Enabled:   dependencyInstalled && dependency.Enabled,
+			})
+		}
 		status.Mods = append(status.Mods, ModInfo{
 			ID:                 manifest.ID,
 			Name:               manifest.Name,
@@ -884,6 +1033,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			SourceType:         installed.SourceType,
 			Revision:           installed.Revision,
 			Dependencies:       manifest.Dependencies,
+			DependencyState:    dependencyState,
 			Conflicts:          manifest.Conflicts,
 			Commands:           manifest.Commands,
 			Permissions:        manifest.Permissions,
@@ -1449,6 +1599,82 @@ func runCommandTimeout(timeout time.Duration, directory, name string, args ...st
 
 func isGitSource(source string) bool {
 	return strings.HasPrefix(source, "https://") || strings.HasPrefix(source, "ssh://") || strings.HasPrefix(source, "git@")
+}
+
+func acquirePackage(source, destination string) (string, string, string, error) {
+	source = strings.TrimSpace(source)
+	if source == "" {
+		return "", "", "", fmt.Errorf("source is required")
+	}
+	sourceType := "local"
+	if repository, ref, subdirectory, ok := parseGitHubTreeSource(source); ok {
+		sourceType = "git-subdir"
+		if err := runCommandTimeout(5*time.Minute, "", "git", "clone", "--depth=1", "--filter=blob:none", "--sparse", "--branch", ref, repository, destination); err != nil {
+			return "", "", "", fmt.Errorf("clone source: %w", err)
+		}
+		if err := runCommandTimeout(2*time.Minute, destination, "git", "sparse-checkout", "set", "--no-cone", subdirectory); err != nil {
+			return "", "", "", fmt.Errorf("select package directory: %w", err)
+		}
+		packageRoot, err := safeJoin(destination, filepath.FromSlash(subdirectory))
+		if err != nil {
+			return "", "", "", fmt.Errorf("package directory: %w", err)
+		}
+		if _, err := os.Stat(filepath.Join(packageRoot, ManifestFile)); err != nil {
+			return "", "", "", fmt.Errorf("package directory has no %s", ManifestFile)
+		}
+		return packageRoot, source, sourceType, nil
+	} else if isGitSource(source) {
+		sourceType = "git"
+		if err := runCommandTimeout(5*time.Minute, "", "git", "clone", "--depth=1", source, destination); err != nil {
+			return "", "", "", fmt.Errorf("clone source: %w", err)
+		}
+	} else {
+		absolute, err := filepath.Abs(source)
+		if err != nil {
+			return "", "", "", err
+		}
+		info, err := os.Stat(absolute)
+		if err != nil {
+			return "", "", "", fmt.Errorf("inspect source: %w", err)
+		}
+		if info.IsDir() {
+			if err := copyTree(absolute, destination, func(path string, entry fs.DirEntry) bool {
+				return path != absolute && entry.IsDir() && entry.Name() == ".git"
+			}); err != nil {
+				return "", "", "", fmt.Errorf("copy source: %w", err)
+			}
+		} else {
+			sourceType = "archive"
+			if err := extractPackageArchive(absolute, destination); err != nil {
+				return "", "", "", err
+			}
+		}
+		source = absolute
+	}
+	packageRoot, err := locatePackageRoot(destination)
+	if err != nil {
+		return "", "", "", err
+	}
+	return packageRoot, source, sourceType, nil
+}
+
+func parseGitHubTreeSource(source string) (string, string, string, bool) {
+	parsed, err := url.Parse(source)
+	if err != nil || !strings.EqualFold(parsed.Hostname(), "github.com") {
+		return "", "", "", false
+	}
+	parts := strings.Split(strings.Trim(parsed.EscapedPath(), "/"), "/")
+	if len(parts) < 5 || parts[2] != "tree" {
+		return "", "", "", false
+	}
+	for i := range parts {
+		parts[i], err = url.PathUnescape(parts[i])
+		if err != nil || parts[i] == "" || parts[i] == "." || parts[i] == ".." {
+			return "", "", "", false
+		}
+	}
+	repository := "https://github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git") + ".git"
+	return repository, parts[3], strings.Join(parts[4:], "/"), true
 }
 
 func gitRevision(directory string) string {

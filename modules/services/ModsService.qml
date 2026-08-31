@@ -22,6 +22,7 @@ Singleton {
     property bool restartRequired: false
     property string errorMessage: ""
     property string statusMessage: ""
+    property string statusMessageKey: ""
     property string settingsModId: ""
     property var settingsFields: []
     property var settingsValues: ({})
@@ -45,6 +46,7 @@ Singleton {
         root.busy = true;
         root.errorMessage = "";
         root.statusMessage = "";
+        root.statusMessageKey = "";
         BackendService.call(method, params ?? {}, (result, error) => {
             root.busy = false;
             if (error) {
@@ -52,7 +54,7 @@ Singleton {
                 return;
             }
             root.applyStatus(result);
-            root.statusMessage = successMessage ?? "";
+            root.statusMessageKey = successMessage ?? "";
             if (result?.restartRequired ?? requiresRestart)
                 root.restartRequired = true;
             if (onSuccess)
@@ -65,36 +67,40 @@ Singleton {
     }
 
     function install(source) {
-        root.request("mods.install", { source }, "Mod installed in the disabled state.", false,
+        root.request("mods.install", { source }, "mods.status_installed", false,
             () => root.installed(source));
     }
 
+    function installDependencies(id) {
+        root.request("mods.installDependencies", { id }, "mods.status_dependencies_installed", true);
+    }
+
     function setEnabled(id, enabled) {
-        root.request("mods.setEnabled", { id, enabled }, enabled ? "Mod enabled." : "Mod disabled.", true);
+        root.request("mods.setEnabled", { id, enabled }, enabled ? "mods.status_enabled" : "mods.status_disabled", true);
     }
 
     function update(id, enabled) {
-        root.request("mods.update", { id }, "Mod updated.", enabled);
+        root.request("mods.update", { id }, "mods.status_updated", enabled);
     }
 
     function remove(id, enabled) {
-        root.request("mods.remove", { id }, "Mod removed.", enabled);
+        root.request("mods.remove", { id }, "mods.status_removed", enabled);
     }
 
     function move(id, direction) {
-        root.request("mods.move", { id, direction }, "Load order updated.", root.activeGeneration !== "");
+        root.request("mods.move", { id, direction }, "mods.status_order_updated", root.activeGeneration !== "");
     }
 
     function moveTo(id, position) {
-        root.request("mods.move", { id, position }, "Load order updated.", root.activeGeneration !== "");
+        root.request("mods.move", { id, position }, "mods.status_order_updated", root.activeGeneration !== "");
     }
 
     function rebuild() {
-        root.request("mods.rebuild", {}, "Generation rebuilt.", true);
+        root.request("mods.rebuild", {}, "mods.status_rebuilt", true);
     }
 
     function rollback() {
-        root.request("mods.rollback", {}, "Previous generation restored.", true);
+        root.request("mods.rollback", {}, "mods.status_rolled_back", true);
     }
 
     function loadSettings(id) {
@@ -136,7 +142,7 @@ Singleton {
             }
             root.settingsFields = result?.fields ?? [];
             root.settingsValues = result?.values ?? ({});
-            root.statusMessage = "Setting saved.";
+            root.statusMessageKey = "mods.status_setting_saved";
             root.settingChanged(id, key, result?.values?.[key] ?? value);
             if (result?.restartRequired)
                 root.restartRequired = true;
