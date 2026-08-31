@@ -2439,7 +2439,7 @@ Singleton {
                         {
                             "dispatcher": "exec",
                             "argument": "axctl brightness adjust 0.05",
-                            "flags": "le",
+                            "flags": "l",
                             "layouts": []
                         }
                     ],
@@ -2457,7 +2457,7 @@ Singleton {
                         {
                             "dispatcher": "exec",
                             "argument": "axctl brightness adjust -0.05",
-                            "flags": "le",
+                            "flags": "l",
                             "layouts": []
                         }
                     ],
