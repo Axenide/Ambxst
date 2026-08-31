@@ -23,8 +23,18 @@ NotchAnimationBehavior {
         property int currentTab: GlobalStates.dashboardCurrentTab
     }
 
-    readonly property var tabModel: [Icons.widgets, Icons.wallpapers, Icons.heartbeat]
+    readonly property bool resourcesInDashboard: !(Config.system.resources && Config.system.resources.location === "bar")
+    readonly property var tabModel: {
+        let m = [Icons.widgets, Icons.wallpapers];
+        if (root.resourcesInDashboard) m.push(Icons.heartbeat);
+        return m;
+    }
     readonly property int tabCount: tabModel.length
+
+    onResourcesInDashboardChanged: {
+        if (!resourcesInDashboard && root.state.currentTab === 2)
+            stack.navigateToTab(0);
+    }
     readonly property int tabSpacing: 8
 
     readonly property int tabWidth: 48
@@ -455,9 +465,10 @@ NotchAnimationBehavior {
                     z: visible ? 1 : 0
                 }
 
-                // Tab 2: Metrics
+                // Tab 2: Metrics (only when resources are displayed in dashboard, not bar)
                 TabLoader {
                     property int index: 2
+                    active: (root.shouldTabBeLoaded(index) || root.state.currentTab === index) && root.resourcesInDashboard
                     sourceComponent: metricsComponent
                     z: visible ? 1 : 0
                 }

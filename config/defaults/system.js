@@ -44,5 +44,22 @@ var data = {
         "restTime": 300,
         "autoStart": false,
         "syncSpotify": false
+    },
+    "resources": {
+        "enabled": true,
+        "location": "dashboard",
+        "barSide": "left",
+        "show": {
+            "cpu": true,
+            "ram": true,
+            "gpu": true,
+            "disk": true,
+            "barCpu": true,
+            "barRam": true,
+            "barGpu": true,
+            "barDisk": true,
+            "dashTemp": true,
+            "barTemp": true
+        }
     }
 }

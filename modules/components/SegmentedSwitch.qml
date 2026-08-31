@@ -74,8 +74,8 @@ StyledRect {
                     required property int index
 
                     Layout.fillHeight: true
+                    Layout.fillWidth: true
                     Layout.minimumWidth: root.buttonSize
-                    Layout.preferredWidth: contentRow.implicitWidth + 16 // Add some padding
 
                     focusPolicy: Qt.NoFocus
                     hoverEnabled: true
