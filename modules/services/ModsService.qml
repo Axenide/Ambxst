@@ -85,6 +85,10 @@ Singleton {
         root.request("mods.move", { id, direction }, "Load order updated.", root.activeGeneration !== "");
     }
 
+    function moveTo(id, position) {
+        root.request("mods.move", { id, position }, "Load order updated.", root.activeGeneration !== "");
+    }
+
     function rebuild() {
         root.request("mods.rebuild", {}, "Generation rebuilt.", true);
     }

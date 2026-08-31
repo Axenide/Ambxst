@@ -300,16 +300,40 @@ func (m *Manager) Move(id string, direction int) (Status, error) {
 	if !ok {
 		return Status{}, fmt.Errorf("mod %q is not installed", id)
 	}
-	target := index + direction
+	return m.moveTo(state, index, index+direction)
+}
+
+func (m *Manager) MoveTo(id string, position int) (Status, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, err := m.loadState()
+	if err != nil {
+		return Status{}, err
+	}
+	index, ok := findInstalled(state, id)
+	if !ok {
+		return Status{}, fmt.Errorf("mod %q is not installed", id)
+	}
+	return m.moveTo(state, index, position)
+}
+
+func (m *Manager) moveTo(state State, index, target int) (Status, error) {
 	if target < 0 || target >= len(state.Mods) {
+		return Status{}, fmt.Errorf("position must be between 0 and %d", len(state.Mods)-1)
+	}
+	if target == index {
 		return m.statusFor(state)
 	}
 	next := cloneState(state)
-	next.Mods[index], next.Mods[target] = next.Mods[target], next.Mods[index]
+	moved := next.Mods[index]
+	next.Mods = append(next.Mods[:index], next.Mods[index+1:]...)
+	next.Mods = append(next.Mods, InstalledMod{})
+	copy(next.Mods[target+1:], next.Mods[target:])
+	next.Mods[target] = moved
 	for i := range next.Mods {
 		next.Mods[i].Order = i
 	}
-	rebuild := next.Mods[index].Enabled && next.Mods[target].Enabled
+	rebuild := enabledOrderChanged(state.Mods, next.Mods)
 	if rebuild {
 		if err := m.composeAndActivate(state, &next); err != nil {
 			return Status{}, err
@@ -318,6 +342,23 @@ func (m *Manager) Move(id string, direction int) (Status, error) {
 		return Status{}, err
 	}
 	return m.statusForRestart(next, rebuild)
+}
+
+func enabledOrderChanged(before, after []InstalledMod) bool {
+	beforeIndex := 0
+	for _, mod := range after {
+		if !mod.Enabled {
+			continue
+		}
+		for beforeIndex < len(before) && !before[beforeIndex].Enabled {
+			beforeIndex++
+		}
+		if beforeIndex >= len(before) || before[beforeIndex].ID != mod.ID {
+			return true
+		}
+		beforeIndex++
+	}
+	return false
 }
 
 func (m *Manager) Update(id string) (Status, error) {

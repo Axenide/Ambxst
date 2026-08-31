@@ -320,6 +320,21 @@ Item {
                                     Keys.onEnterPressed: root.selectedId = modelData.id
                                     Keys.onSpacePressed: root.selectedId = modelData.id
 
+                                    DropArea {
+                                        anchors.fill: parent
+                                        keys: ["ambxstMod"]
+                                        enabled: root.sortMode === "loadOrder" && root.searchQuery === ""
+                                        property int loadOrder: modRow.modelData.order
+
+                                        StyledRect {
+                                            anchors.fill: parent
+                                            visible: parent.containsDrag
+                                            variant: "focus"
+                                            radius: Styling.radius(-2)
+                                            enableShadow: false
+                                        }
+                                    }
+
                                     MouseArea {
                                         id: rowMouse
                                         anchors.fill: parent
@@ -336,6 +351,36 @@ Item {
                                         anchors.leftMargin: 10
                                         anchors.rightMargin: 8
                                         spacing: 8
+
+                                        Text {
+                                            visible: root.sortMode === "loadOrder" && root.searchQuery === ""
+                                            text: Icons.dotsNine
+                                            font.family: Icons.font
+                                            font.pixelSize: 17
+                                            color: modRow.item
+                                            opacity: reorderDrag.active ? 1 : 0.65
+                                            Accessible.role: Accessible.Button
+                                            Accessible.name: "Drag to change load order"
+
+                                            DragHandler {
+                                                id: reorderDrag
+                                                target: dragPreview
+                                                xAxis.enabled: false
+                                                enabled: !ModsService.busy
+                                                onActiveChanged: {
+                                                    if (active) {
+                                                        dragPreview.x = modRow.x;
+                                                        dragPreview.y = modRow.y;
+                                                        return;
+                                                    }
+                                                    const target = dragPreview.Drag.target;
+                                                    if (target && target.loadOrder !== undefined
+                                                            && target.loadOrder !== modRow.modelData.order)
+                                                        ModsService.moveTo(modRow.modelData.id, target.loadOrder);
+                                                    dragPreview.Drag.drop();
+                                                }
+                                            }
+                                        }
 
                                         ColumnLayout {
                                             Layout.fillWidth: true
@@ -375,6 +420,39 @@ Item {
                                                 ModsService.setEnabled(modRow.modelData.id, !modRow.modelData.enabled);
                                             }
                                         }
+                                    }
+
+                                    Item {
+                                        id: dragPreview
+                                        parent: modList
+                                        width: modRow.width
+                                        height: modRow.height
+                                        visible: reorderDrag.active
+                                        z: 100
+
+                                        StyledRect {
+                                            anchors.fill: parent
+                                            variant: "primary"
+                                            radius: Styling.radius(-2)
+
+                                            Text {
+                                                anchors.fill: parent
+                                                anchors.margins: 10
+                                                text: modRow.modelData.name
+                                                font.family: Config.theme.font
+                                                font.pixelSize: Styling.fontSize(-1)
+                                                font.weight: Font.DemiBold
+                                                color: parent.item
+                                                verticalAlignment: Text.AlignVCenter
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+
+                                        Drag.active: reorderDrag.active
+                                        Drag.source: modRow
+                                        Drag.hotSpot.x: width / 2
+                                        Drag.hotSpot.y: height / 2
+                                        Drag.keys: ["ambxstMod"]
                                     }
                                 }
                             }

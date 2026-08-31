@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -201,6 +202,37 @@ func TestManagerComposesNonOverlappingPatchesToSameFile(t *testing.T) {
 	}
 	if string(data) != "one\ntwo\nmiddle\nfour\nfive\n" {
 		t.Fatalf("patches were not composed in order: %q", data)
+	}
+}
+
+func TestManagerMovesModToExactPosition(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	manager := NewManager(testPaths(root))
+	for i, id := range []string{"example.first", "example.second", "example.third"} {
+		packageRoot := writeOverlayPackage(t, root, id, id, fmt.Sprintf("Feature%d.qml", i))
+		if _, err := manager.Install(packageRoot); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := manager.SetEnabled(id, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	status, err := manager.MoveTo("example.first", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"example.second", "example.third", "example.first"}
+	for i, mod := range status.Mods {
+		if mod.ID != want[i] || mod.Order != i {
+			t.Fatalf("unexpected order at %d: %#v", i, status.Mods)
+		}
 	}
 }
 

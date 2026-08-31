@@ -171,7 +171,10 @@ ambxst mods disable org.example.feature
 ambxst mods remove org.example.feature
 ```
 
-The same operations are available in **Settings → Mods**.
+The same operations are available in **Settings → Mods**. Switch the list to
+**Sort: Load order**, then drag the handle beside a package to place it at an
+exact position. The manager rebuilds enabled packages in that order; the new
+generation takes effect after Ambxst restarts.
 
 ## Example
 

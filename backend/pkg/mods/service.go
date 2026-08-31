@@ -96,6 +96,7 @@ func (s *Service) update(raw json.RawMessage) (any, error) {
 type moveParams struct {
 	ID        string `json:"id"`
 	Direction int    `json:"direction"`
+	Position  *int   `json:"position"`
 }
 
 func (s *Service) move(raw json.RawMessage) (any, error) {
@@ -105,6 +106,9 @@ func (s *Service) move(raw json.RawMessage) (any, error) {
 	}
 	if !idPattern.MatchString(params.ID) {
 		return nil, fmt.Errorf("invalid mod id %q", params.ID)
+	}
+	if params.Position != nil {
+		return s.manager.MoveTo(params.ID, *params.Position)
 	}
 	return s.manager.Move(params.ID, params.Direction)
 }
