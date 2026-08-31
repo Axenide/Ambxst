@@ -19,6 +19,12 @@ Item {
     property string removeArmedId: ""
     property bool filesExpanded: false
 
+    // Reordering state. dropIndex is derived from where the floating card sits,
+    // not from a drop target, because Drag.target is already cleared by the
+    // time the handler reports the release.
+    property string draggingId: ""
+    property int dropIndex: -1
+
     // Pending action awaiting the trust confirmation. "" means no prompt.
     property string confirmKind: ""
     property string confirmSource: ""
@@ -568,7 +574,11 @@ Item {
                         delegate: StyledRect {
                             id: modRow
                             required property var modelData
+                            required property int index
                             readonly property bool current: root.effectiveId === modelData.id
+                            readonly property bool dropTarget: root.draggingId !== ""
+                                && root.draggingId !== modelData.id
+                                && root.dropIndex === index
 
                             Layout.fillWidth: true
                             Layout.preferredHeight: 54
@@ -585,19 +595,12 @@ Item {
                             Keys.onEnterPressed: root.selectedId = modelData.id
                             Keys.onSpacePressed: root.selectedId = modelData.id
 
-                            DropArea {
+                            StyledRect {
                                 anchors.fill: parent
-                                keys: ["ambxstMod"]
-                                enabled: root.sortMode === "loadOrder" && root.searchQuery === ""
-                                property int loadOrder: modRow.modelData.order
-
-                                StyledRect {
-                                    anchors.fill: parent
-                                    visible: parent.containsDrag
-                                    variant: "focus"
-                                    radius: Styling.radius(-2)
-                                    enableShadow: false
-                                }
+                                visible: modRow.dropTarget
+                                variant: "focus"
+                                radius: Styling.radius(-2)
+                                enableShadow: false
                             }
 
                             MouseArea {
@@ -637,13 +640,15 @@ Item {
                                                 const point = modRow.mapToItem(dragPreview.parent, 0, 0);
                                                 dragPreview.x = point.x;
                                                 dragPreview.y = point.y;
+                                                root.draggingId = modRow.modelData.id;
+                                                root.dropIndex = modRow.index;
                                                 return;
                                             }
-                                            const target = dragPreview.Drag.target;
-                                            if (target && target.loadOrder !== undefined
-                                                    && target.loadOrder !== modRow.modelData.order)
-                                                ModsService.moveTo(modRow.modelData.id, target.loadOrder);
-                                            dragPreview.Drag.drop();
+                                            const landing = root.dropIndex;
+                                            root.draggingId = "";
+                                            root.dropIndex = -1;
+                                            if (landing >= 0 && landing !== modRow.index)
+                                                ModsService.moveTo(modRow.modelData.id, landing);
                                         }
                                     }
                                 }
@@ -710,6 +715,14 @@ Item {
                                 visible: reorderDrag.active
                                 z: 100
 
+                                onYChanged: {
+                                    if (!reorderDrag.active)
+                                        return;
+                                    const pitch = modRow.height + modList.spacing;
+                                    const slot = Math.round((dragPreview.y - modList.y) / pitch);
+                                    root.dropIndex = Math.max(0, Math.min(root.filteredMods.length - 1, slot));
+                                }
+
                                 StyledRect {
                                     id: dragPreviewSurface
                                     anchors.fill: parent
@@ -729,11 +742,6 @@ Item {
                                     }
                                 }
 
-                                Drag.active: reorderDrag.active
-                                Drag.source: modRow
-                                Drag.hotSpot.x: width / 2
-                                Drag.hotSpot.y: height / 2
-                                Drag.keys: ["ambxstMod"]
                             }
                         }
                     }
