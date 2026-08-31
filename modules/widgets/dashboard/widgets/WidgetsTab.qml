@@ -273,18 +273,19 @@ Rectangle {
                             brightnessIcon.brightnessIconRotation = (value / 1.0) * 180;
                             brightnessIcon.brightnessIconScale = 0.8 + (value / 1.0) * 0.2;
 
+                            GlobalStates.suppressOsdTemporarily();
                             if (Brightness.syncBrightness) {
                                 // Sync all monitors
                                 for (let i = 0; i < Brightness.monitors.length; i++) {
                                     let mon = Brightness.monitors[i];
                                     if (mon && mon.ready) {
-                                        mon.setBrightness(value);
+                                        mon.setBrightness(value, true);
                                     }
                                 }
                             } else {
                                 // Only current monitor
                                 if (currentMonitor && currentMonitor.ready) {
-                                    currentMonitor.setBrightness(value);
+                                    currentMonitor.setBrightness(value, true);
                                 }
                             }
                         }
@@ -293,16 +294,21 @@ Rectangle {
                             brightnessContainer.parent.circularControlDragging = isDragging;
                         }
 
+                        Binding {
+                            target: brightnessSlider
+                            property: "brightnessValue"
+                            value: brightnessSlider.currentMonitor?.brightness ?? 0
+                            when: !brightnessSlider.isDragging
+                            restoreMode: Binding.RestoreBinding
+                            onValueChanged: {
+                                brightnessIcon.brightnessIconRotation = (brightnessSlider.brightnessValue / 1.0) * 180;
+                                brightnessIcon.brightnessIconScale = 0.8 + (brightnessSlider.brightnessValue / 1.0) * 0.2;
+                            }
+                        }
+
                         Connections {
                             target: brightnessSlider.currentMonitor
                             ignoreUnknownSignals: true
-                            function onBrightnessChanged() {
-                                if (brightnessSlider.currentMonitor && brightnessSlider.currentMonitor.ready && !brightnessSlider.isDragging) {
-                                    brightnessSlider.brightnessValue = brightnessSlider.currentMonitor.brightness;
-                                    brightnessIcon.brightnessIconRotation = (brightnessSlider.brightnessValue / 1.0) * 180;
-                                    brightnessIcon.brightnessIconScale = 0.8 + (brightnessSlider.brightnessValue / 1.0) * 0.2;
-                                }
-                            }
                             function onReadyChanged() {
                                 if (brightnessSlider.currentMonitor && brightnessSlider.currentMonitor.ready) {
                                     brightnessSlider.brightnessValue = brightnessSlider.currentMonitor.brightness;

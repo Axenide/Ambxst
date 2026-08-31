@@ -19,6 +19,7 @@ Singleton {
     id: root
 
     signal brightnessChanged(real value, var screen)
+    signal osdShouldShow(var screen)
 
     property var ddcMonitors: []
     readonly property list<BrightnessMonitor> monitors: Quickshell.screens.map(screen => monitorComp.createObject(root, {
@@ -66,7 +67,7 @@ Singleton {
             return;
         const monitor = monitors.find(m => focusedMonitor.name === m.screen.name);
         if (monitor && monitor.ready)
-            monitor.setBrightness(monitor.brightness + 0.05);
+            monitor.setBrightness(monitor.brightness + 0.05, false);
     }
 
     function decreaseBrightness(): void {
@@ -75,7 +76,7 @@ Singleton {
             return;
         const monitor = monitors.find(m => focusedMonitor.name === m.screen.name);
         if (monitor && monitor.ready)
-            monitor.setBrightness(monitor.brightness - 0.05);
+            monitor.setBrightness(monitor.brightness - 0.05, false);
     }
 
     reloadableId: "brightness"
@@ -156,10 +157,20 @@ Singleton {
                 const value = msg.params.value;
                 if (typeof name !== "string" || typeof value !== "number")
                     return;
+
+                if (name === "") {
+                    for (let i = 0; i < root.monitors.length; ++i) {
+                        const m = root.monitors[i];
+                        if (m && m.ready)
+                            m.applyReportedBrightness(value, true);
+                    }
+                    return;
+                }
+
                 for (let i = 0; i < root.monitors.length; ++i) {
                     const m = root.monitors[i];
                     if (m && m.ready && m.monitorName() === name) {
-                        m.applyReportedBrightness(value);
+                        m.applyReportedBrightness(value, false);
                         break;
                     }
                 }
@@ -230,9 +241,9 @@ Singleton {
                     const mon = root.monitors[j];
                     if (mon && mon.ready) {
                         const name = mon.isDdc ? ("ddc-" + mon.busNum) : "backlight";
-                        const entry = parsed.find(e => e.name === name);
+                        const entry = parsed.find(e => (e.key && e.key === name) || e.name === name);
                         if (entry && entry.brightness !== undefined) {
-                            mon.applyReportedBrightness(entry.brightness);
+                            mon.applyReportedBrightness(entry.brightness, false);
                         }
                     }
                 }
@@ -293,9 +304,30 @@ Singleton {
         property real lastWrittenValue: 0
         property int lastWrittenAt: 0
 
+        // Two-flag system (DMS pattern) — separates user-driven writes
+        // from external/keybind-driven changes. userControlledAt drops
+        // echoes during the drag window; pendingOsd flags the next echo
+        // to trigger the OSD.
+        property int userControlledAt: 0
+        property bool pendingOsd: false
+
+        function isUserControlled(): bool {
+            return Date.now() - monitor.userControlledAt < 1000;
+        }
+        function markUserControlled(): void {
+            monitor.userControlledAt = Date.now();
+        }
+        function markPendingOsd(): void {
+            monitor.pendingOsd = true;
+        }
+
         onBrightnessChanged: {
             if (monitor.ready) {
                 root.brightnessChanged(monitor.brightness, monitor.screen);
+                if (monitor.pendingOsd) {
+                    monitor.pendingOsd = false;
+                    root.osdShouldShow(monitor.screen);
+                }
             }
         }
 
@@ -313,19 +345,15 @@ Singleton {
             root.brightnessChanged(monitor.brightness, monitor.screen);
         }
 
-        // Called by the listProc result handler when a fresh value
-        // arrives.
-        function applyReportedBrightness(value) {
+        function applyReportedBrightness(value, broadcast: bool) {
             if (value === undefined)
                 return;
-            // Filter echoes of our own writes (subscription races the
-            // fork+exec we just fired, and DDC read-back quantizes).
-            if (Date.now() - monitor.lastWrittenAt < 1500
+            if (monitor.isUserControlled() && !broadcast)
+                return;
+            if (!broadcast
+                && Date.now() - monitor.lastWrittenAt < 1500
                 && Math.abs(value - monitor.lastWrittenValue) < 0.02)
                 return;
-            // Skip no-op assignments (QML re-fires onBrightnessChanged
-            // even when the value didn't change, which makes the OSD
-            // re-animate and the slider bindings recompute).
             if (Math.abs(value - monitor.brightness) < 0.001)
                 return;
             monitor.brightness = value;
@@ -351,9 +379,13 @@ Singleton {
             proc.running = true;
         }
 
-        function setBrightness(value: real): void {
+        function setBrightness(value: real, suppressOsd: bool): void {
             value = Math.max(0.01, Math.min(1, value));
             monitor.brightness = value;
+            if (suppressOsd)
+                monitor.markUserControlled();
+            else
+                monitor.markPendingOsd();
             setTimer.restart();
         }
 

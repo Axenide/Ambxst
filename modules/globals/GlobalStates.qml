@@ -188,6 +188,23 @@ Singleton {
     property bool osdVisible: false
     property string osdIndicator: "volume" // volume, mic, brightness
 
+    // Global suppression for the OSD during user-driven changes (slider
+    // drag). Mirrors DMS SessionData.suppressOSD: any UI-driven call to
+    // suppressOsdTemporarily() arms a 2 s timer that flips this flag
+    // back to false. While true, OSD shows are gated out.
+    property bool suppressOsd: true
+
+    Timer {
+        id: suppressOsdTimer
+        interval: 2000
+        onTriggered: root.suppressOsd = false
+    }
+
+    function suppressOsdTemporarily(): void {
+        root.suppressOsd = true;
+        suppressOsdTimer.restart();
+    }
+
     // Screenshot Tool state
     property bool screenshotToolVisible: false
     // property string screenshotToolMode: "normal" // DEPRECATED

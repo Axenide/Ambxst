@@ -208,28 +208,32 @@ Item {
                 iconScale: 0.8 + (sliderValue / 1.0) * 0.2
 
                 onValueChanged: newValue => {
+                    GlobalStates.suppressOsdTemporarily();
                     if (Brightness.syncBrightness) {
                         for (let i = 0; i < Brightness.monitors.length; i++) {
                             let mon = Brightness.monitors[i];
                             if (mon && mon.ready) {
-                                mon.setBrightness(newValue);
+                                mon.setBrightness(newValue, true);
                             }
                         }
                     } else if (currentMonitor && currentMonitor.ready) {
-                        currentMonitor.setBrightness(newValue);
+                        currentMonitor.setBrightness(newValue, true);
                     }
                 }
 
                 onIconClicked: {}
 
+                Binding {
+                    target: brightnessRow
+                    property: "sliderValue"
+                    value: brightnessRow.currentMonitor?.brightness ?? 0.5
+                    when: !brightnessRow.dragging
+                    restoreMode: Binding.RestoreBinding
+                }
+
                 Connections {
                     target: brightnessRow.currentMonitor ?? null
                     ignoreUnknownSignals: true
-                    function onBrightnessChanged() {
-                        if (brightnessRow.currentMonitor) {
-                            brightnessRow.sliderValue = brightnessRow.currentMonitor.brightness;
-                        }
-                    }
                     function onReadyChanged() {
                         if (brightnessRow.currentMonitor?.ready) {
                             brightnessRow.sliderValue = brightnessRow.currentMonitor.brightness;
