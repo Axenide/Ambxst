@@ -123,6 +123,79 @@ Singleton {
         }
     }
 
+    // Subscribe to `Event.BrightnessChanged` so the OSD and sliders
+    // react to brightness changes from anywhere — keybinds, idle hooks,
+    // external `axctl brightness …` calls — not only from this QML.
+    // axctl emits the event with `{monitor, value}`; we route each one
+    // into the matching BrightnessMonitor and let the existing signal
+    // machinery update the OSD.
+    readonly property string axctlSocketPath: {
+        const env = Quickshell.env("AXCTL_SOCKET");
+        return (env && env.length > 0) ? env : "/tmp/axctl-1000.sock";
+    }
+
+    Socket {
+        id: axctlSub
+
+        path: root.axctlSocketPath
+        connected: false
+
+        parser: SplitParser {
+            onRead: data => {
+                if (!data)
+                    return;
+                let msg;
+                try {
+                    msg = JSON.parse(data);
+                } catch (e) {
+                    return;
+                }
+                if (msg.method !== "Event.BrightnessChanged" || !msg.params)
+                    return;
+                const name = msg.params.monitor;
+                const value = msg.params.value;
+                if (typeof name !== "string" || typeof value !== "number")
+                    return;
+                for (let i = 0; i < root.monitors.length; ++i) {
+                    const m = root.monitors[i];
+                    if (m && m.ready && m.monitorName() === name) {
+                        m.applyReportedBrightness(value);
+                        break;
+                    }
+                }
+            }
+        }
+
+        onConnectionStateChanged: {
+            if (axctlSub.connected) {
+                axctlSub.write(JSON.stringify({
+                    id: 1,
+                    method: "System.Subscribe",
+                    params: {}
+                }) + "\n");
+                axctlSub.flush();
+            }
+        }
+
+        onError: error => {
+            console.warn("Brightness: axctl subscription error:", error);
+            axctlSub.connected = false;
+            axctlSubProbe.restart();
+        }
+    }
+
+    Timer {
+        id: axctlSubProbe
+        interval: 5000
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!axctlSub.connected) {
+                axctlSub.connected = true;
+            }
+        }
+    }
+
     // Refreshes the per-screen DDC bus cache from `axctl brightness
     // list` and pushes each reported value into its BrightnessMonitor.
     Process {
