@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Axenide/Ambxst/dev/docs/mods/manifest.schema.json",
+  "title": "Ambxst mod manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestVersion", "id", "name", "version", "operations"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "manifestVersion": { "const": 1 },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+    },
+    "name": { "type": "string", "minLength": 1 },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "description": { "type": "string" },
+    "license": { "type": "string" },
+    "author": { "type": "string" },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "api": { "const": 1 },
+        "ambxst": { "type": "string" },
+        "testedBaseCommits": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 7 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "dependencies": { "$ref": "#/$defs/modIds" },
+    "conflicts": { "$ref": "#/$defs/modIds" },
+    "commands": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "permissions": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "settings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema"],
+      "properties": {
+        "schema": { "$ref": "#/$defs/relativePath" }
+      }
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/overlay" },
+          { "$ref": "#/$defs/patch" }
+        ]
+      }
+    }
+  },
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "(^/|(^|/)\\.\\.(/|$))" }
+    },
+    "modIds": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+      },
+      "uniqueItems": true
+    },
+    "overlay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "source", "target"],
+      "properties": {
+        "type": { "const": "overlay" },
+        "source": { "$ref": "#/$defs/relativePath" },
+        "target": { "$ref": "#/$defs/relativePath" },
+        "replace": { "type": "boolean" },
+        "expectedSha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "replace": { "const": true } },
+            "required": ["replace"]
+          },
+          "then": { "required": ["expectedSha256"] }
+        }
+      ]
+    },
+    "patch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "source"],
+      "properties": {
+        "type": { "const": "patch" },
+        "source": { "$ref": "#/$defs/relativePath" }
+      }
+    }
+  }
+}

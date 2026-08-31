@@ -1,0 +1,553 @@
+package mods
+
+import (
+	"archive/tar"
+	"archive/zip"
+	"bytes"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"ambxst/backend/pkg/paths"
+)
+
+func TestManagerInstallEnableDisable(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	writeTestFile(t, filepath.Join(base, "assets", "ambxst", "icon.svg"), "<svg/>\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	packageRoot := filepath.Join(root, "package")
+	writeTestFile(t, filepath.Join(packageRoot, "payload", "Feature.qml"), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              "example.feature",
+		Name:            "Example feature",
+		Version:         "1.0.0",
+		Compatibility: Compatibility{
+			API:    APIVersion,
+			Ambxst: ">=1.2.0 <1.3.0",
+		},
+		Operations: []Operation{{
+			Type:   "overlay",
+			Source: "payload/Feature.qml",
+			Target: "modules/example/Feature.qml",
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+
+	p := &paths.Paths{
+		ConfigDir: filepath.Join(root, "config"),
+		DataDir:   filepath.Join(root, "data"),
+		StateDir:  filepath.Join(root, "state"),
+		CacheDir:  filepath.Join(root, "cache"),
+	}
+	manager := NewManager(p)
+	status, err := manager.Install(packageRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods) != 1 || status.Mods[0].Enabled {
+		t.Fatalf("unexpected install status: %#v", status.Mods)
+	}
+
+	status, err = manager.SetEnabled("example.feature", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ActiveGeneration == "" || !status.Mods[0].Enabled {
+		t.Fatalf("mod was not activated: %#v", status)
+	}
+	activePath := filepath.Join(p.ModGenerationsDir(), status.ActiveGeneration)
+	if _, err := os.Stat(filepath.Join(activePath, "modules", "example", "Feature.qml")); err != nil {
+		t.Fatalf("generation does not contain the overlay: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(activePath, "assets", "ambxst", "icon.svg")); err != nil {
+		t.Fatalf("base asset directory was omitted: %v", err)
+	}
+	if _, err := os.Stat(p.ModPendingActivationFile()); err != nil {
+		t.Fatalf("activation was not marked pending: %v", err)
+	}
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.6\n")
+	status, err = manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.GenerationCurrent || status.GenerationError == "" {
+		t.Fatalf("stale generation was not reported: %#v", status)
+	}
+	if manager.HasPendingActivation() {
+		t.Fatal("stale generation retained a startup health check")
+	}
+
+	status, err = manager.SetEnabled("example.feature", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ActiveGeneration != "" || status.Mods[0].Enabled {
+		t.Fatalf("mod was not disabled: %#v", status)
+	}
+	if _, err := os.Stat(p.ModPendingActivationFile()); !os.IsNotExist(err) {
+		t.Fatalf("pending activation still exists: %v", err)
+	}
+}
+
+func TestManagerRecoversFailedActivation(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	packageRoot := filepath.Join(root, "package")
+	writeTestFile(t, filepath.Join(packageRoot, "Feature.qml"), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              "example.recovery",
+		Name:            "Recovery fixture",
+		Version:         "1.0.0",
+		Operations: []Operation{{
+			Type: "overlay", Source: "Feature.qml", Target: "Feature.qml",
+		}},
+	}
+	data, _ := json.Marshal(manifest)
+	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+
+	p := &paths.Paths{
+		ConfigDir: filepath.Join(root, "config"),
+		DataDir:   filepath.Join(root, "data"),
+		StateDir:  filepath.Join(root, "state"),
+		CacheDir:  filepath.Join(root, "cache"),
+	}
+	manager := NewManager(p)
+	if _, err := manager.Install(packageRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.recovery", true); err != nil {
+		t.Fatal(err)
+	}
+	recovered, err := manager.RecoverFailedActivation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !recovered {
+		t.Fatal("pending activation was not recovered")
+	}
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ActiveGeneration != "" || status.Mods[0].Enabled {
+		t.Fatalf("failed generation remained active: %#v", status)
+	}
+}
+
+func TestTopologicalOrderUsesDependenciesBeforeUserOrder(t *testing.T) {
+	installed := []InstalledMod{
+		{ID: "child", Order: 0, Enabled: true},
+		{ID: "base", Order: 1, Enabled: true},
+	}
+	manifests := map[string]Manifest{
+		"child": {ID: "child", Dependencies: []string{"base"}},
+		"base":  {ID: "base"},
+	}
+	ordered, err := topologicalOrder(installed, manifests)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ordered) != 2 || ordered[0] != "base" || ordered[1] != "child" {
+		t.Fatalf("unexpected order: %#v", ordered)
+	}
+}
+
+func TestConsecutiveBuildsKeepLastKnownGoodGeneration(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	p := testPaths(root)
+	manager := NewManager(p)
+	first := writeOverlayPackage(t, root, "first", "example.first", "First.qml")
+	second := writeOverlayPackage(t, root, "second", "example.second", "Second.qml")
+	if _, err := manager.Install(first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Install(second); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.first", true); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.SetEnabled("example.second", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.PreviousGeneration != "" {
+		t.Fatalf("untested generation became a rollback target: %#v", status)
+	}
+	recovered, err := manager.RecoverFailedActivation()
+	if err != nil || !recovered {
+		t.Fatalf("recover pending generation: recovered=%v err=%v", recovered, err)
+	}
+	status, err = manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ActiveGeneration != "" || status.Mods[0].Enabled || status.Mods[1].Enabled {
+		t.Fatalf("recovery did not restore the base generation: %#v", status)
+	}
+}
+
+func TestRollbackDoesNotExposeUntestedGeneration(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	p := testPaths(root)
+	manager := NewManager(p)
+	first := writeOverlayPackage(t, root, "first", "example.first", "First.qml")
+	second := writeOverlayPackage(t, root, "second", "example.second", "Second.qml")
+	if _, err := manager.Install(first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Install(second); err != nil {
+		t.Fatal(err)
+	}
+	firstStatus, err := manager.SetEnabled("example.first", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.MarkHealthy(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.second", true); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.Rollback()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ActiveGeneration != firstStatus.ActiveGeneration || status.PreviousGeneration != "" {
+		t.Fatalf("untested generation remained available: %#v", status)
+	}
+	if _, err := os.Stat(p.ModPendingActivationFile()); !os.IsNotExist(err) {
+		t.Fatalf("rollback left a pending activation: %v", err)
+	}
+}
+
+func TestBaseActivationCanRecoverKnownGoodGeneration(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	p := testPaths(root)
+	manager := NewManager(p)
+	packageRoot := writeOverlayPackage(t, root, "source", "example.base-recovery", "Feature.qml")
+	if _, err := manager.Install(packageRoot); err != nil {
+		t.Fatal(err)
+	}
+	active, err := manager.SetEnabled("example.base-recovery", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := manager.MarkHealthy(); err != nil {
+		t.Fatal(err)
+	}
+	disabled, err := manager.SetEnabled("example.base-recovery", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disabled.ActiveGeneration != "" || !disabled.RestartRequired || !manager.HasPendingActivation() {
+		t.Fatalf("base activation was not tracked: %#v", disabled)
+	}
+	recovered, err := manager.RecoverFailedActivation()
+	if err != nil || !recovered {
+		t.Fatalf("recover base activation: recovered=%v err=%v", recovered, err)
+	}
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ActiveGeneration != active.ActiveGeneration || !status.Mods[0].Enabled {
+		t.Fatalf("known-good generation was not restored: %#v", status)
+	}
+}
+
+func TestInstallZipArchiveAndPersistSettings(t *testing.T) {
+	root := t.TempDir()
+	packageRoot := filepath.Join(root, "source")
+	writeTestFile(t, filepath.Join(packageRoot, "Feature.qml"), "Item {}\n")
+	writeTestFile(t, filepath.Join(packageRoot, "settings.json"), `{
+  "version": 1,
+  "fields": [{"key":"limit","label":"Limit","type":"integer","default":3,"minimum":1,"maximum":5}]
+}`)
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              "example.archive",
+		Name:            "Archive fixture",
+		Version:         "1.0.0",
+		Settings:        &SettingsRef{Schema: "settings.json"},
+		Operations: []Operation{{
+			Type: "overlay", Source: "Feature.qml", Target: "Feature.qml",
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+
+	archivePath := filepath.Join(root, "package.zip")
+	archiveFile, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	zipWriter := zip.NewWriter(archiveFile)
+	for _, name := range []string{ManifestFile, "Feature.qml", "settings.json"} {
+		entry, err := zipWriter.Create("package/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		contents, err := os.ReadFile(filepath.Join(packageRoot, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := entry.Write(contents); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := zipWriter.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := archiveFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	manager := NewManager(testPaths(root))
+	status, err := manager.Install(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods) != 1 || status.Mods[0].SourceType != "archive" {
+		t.Fatalf("unexpected archive install status: %#v", status.Mods)
+	}
+	settings, err := manager.Settings("example.archive")
+	if err != nil || settings.Values["limit"] != float64(3) {
+		t.Fatalf("unexpected default settings: %#v err=%v", settings, err)
+	}
+	if _, err := manager.SetSetting("example.archive", "limit", float64(7)); err == nil {
+		t.Fatal("out-of-range setting was accepted")
+	}
+	settings, err = manager.SetSetting("example.archive", "limit", float64(5))
+	if err != nil || settings.Values["limit"] != float64(5) {
+		t.Fatalf("setting was not persisted: %#v err=%v", settings, err)
+	}
+}
+
+func TestUpdateLocalSourceRestoresPackageOnValidationFailure(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	packageRoot := filepath.Join(root, "source")
+	writeTestFile(t, filepath.Join(packageRoot, "Feature.qml"), "Item { property int value: 1 }\n")
+	writeManifest := func(id, version string) {
+		manifest := Manifest{
+			ManifestVersion: APIVersion,
+			ID:              id,
+			Name:            "Local update fixture",
+			Version:         version,
+			Operations: []Operation{{
+				Type: "overlay", Source: "Feature.qml", Target: "Feature.qml",
+			}},
+		}
+		data, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+	}
+	writeManifest("example.local-update", "1.0.0")
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(packageRoot); err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(packageRoot, "Feature.qml"), "Item { property int value: 2 }\n")
+	writeManifest("example.local-update", "1.1.0")
+	status, err := manager.Update("example.local-update")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Mods[0].Version != "1.1.0" || status.RestartRequired {
+		t.Fatalf("local update was not installed cleanly: %#v", status)
+	}
+
+	writeManifest("example.changed-id", "2.0.0")
+	if _, err := manager.Update("example.local-update"); err == nil {
+		t.Fatal("package id change was accepted")
+	}
+	status, err = manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Mods[0].Version != "1.1.0" {
+		t.Fatalf("failed update replaced the installed package: %#v", status.Mods[0])
+	}
+}
+
+func TestPackageTarRejectsPathTraversal(t *testing.T) {
+	var buffer bytes.Buffer
+	writer := tar.NewWriter(&buffer)
+	contents := []byte("unsafe")
+	if err := writer.WriteHeader(&tar.Header{Name: "../outside", Mode: 0o644, Size: int64(len(contents))}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write(contents); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := extractTar(&buffer, t.TempDir(), false, maxPackageFiles, maxPackageBytes); err == nil {
+		t.Fatal("archive path traversal was accepted")
+	}
+}
+
+func TestExtractTarAcceptsPAXHeaders(t *testing.T) {
+	var buffer bytes.Buffer
+	writer := tar.NewWriter(&buffer)
+	if err := writer.WriteHeader(&tar.Header{
+		Name:     "pax_global_header",
+		Typeflag: tar.TypeXGlobalHeader,
+		PAXRecords: map[string]string{
+			"comment": "test revision",
+		},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	contents := []byte("Item {}\n")
+	if err := writer.WriteHeader(&tar.Header{Name: "shell.qml", Mode: 0o644, Size: int64(len(contents))}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := writer.Write(contents); err != nil {
+		t.Fatal(err)
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	destination := t.TempDir()
+	if err := extractTar(&buffer, destination, true, 0, 0); err != nil {
+		t.Fatalf("extract PAX archive: %v", err)
+	}
+	if data, err := os.ReadFile(filepath.Join(destination, "shell.qml")); err != nil || string(data) != string(contents) {
+		t.Fatalf("unexpected extracted file: data=%q err=%v", data, err)
+	}
+}
+
+func TestStatusKeepsInvalidPackageVisible(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	p := testPaths(root)
+	manager := NewManager(p)
+	packageRoot := writeOverlayPackage(t, root, "source", "example.invalid", "Feature.qml")
+	if _, err := manager.Install(packageRoot); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(p.ModPackagesDir(), "example.invalid", ManifestFile)); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods) != 1 || status.Mods[0].Valid || status.Mods[0].Error == "" {
+		t.Fatalf("invalid package was hidden: %#v", status.Mods)
+	}
+}
+
+func TestStatusReportsCompatibilityWithoutActivating(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	packageRoot := filepath.Join(root, "source")
+	writeTestFile(t, filepath.Join(packageRoot, "Feature.qml"), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              "example.incompatible",
+		Name:            "Incompatible fixture",
+		Version:         "1.0.0",
+		Compatibility:   Compatibility{Ambxst: ">=2.0.0"},
+		Operations: []Operation{{
+			Type: "overlay", Source: "Feature.qml", Target: "Feature.qml",
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+
+	manager := NewManager(testPaths(root))
+	status, err := manager.Install(packageRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(status.Mods) != 1 || !status.Mods[0].Valid || status.Mods[0].Compatible || status.Mods[0].CompatibilityError == "" {
+		t.Fatalf("compatibility state was not reported: %#v", status.Mods)
+	}
+}
+
+func testPaths(root string) *paths.Paths {
+	return &paths.Paths{
+		ConfigDir: filepath.Join(root, "config"),
+		DataDir:   filepath.Join(root, "data"),
+		StateDir:  filepath.Join(root, "state"),
+		CacheDir:  filepath.Join(root, "cache"),
+	}
+}
+
+func writeOverlayPackage(t *testing.T, root, directory, id, target string) string {
+	t.Helper()
+	packageRoot := filepath.Join(root, directory)
+	writeTestFile(t, filepath.Join(packageRoot, target), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              id,
+		Name:            id,
+		Version:         "1.0.0",
+		Operations: []Operation{{
+			Type: "overlay", Source: target, Target: target,
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+	return packageRoot
+}
