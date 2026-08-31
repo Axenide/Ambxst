@@ -205,6 +205,7 @@ Item {
                 }
 
                 icon: Icons.sun
+                sliderValue: currentMonitor?.brightness ?? 0
                 progressColor: Styling.srItem("overprimary")
                 wavy: true
                 wavyAmplitude: 1.5 * sliderValue
@@ -228,21 +229,14 @@ Item {
 
                 onIconClicked: {}
 
-                // Drive sliderValue from the kernel-reported brightness while
-                // the user is NOT actively dragging. While dragging, the
-                // mouse handler owns sliderValue; restoreMode RestoreNone
-                // keeps the user's drag value intact when this binding pauses.
-                Binding {
-                    target: brightnessRow
-                    property: "sliderValue"
-                    value: brightnessRow.currentMonitor?.brightness ?? 0
-                    when: !brightnessRow.dragging
-                    restoreMode: Binding.RestoreNone
-                }
-
                 Connections {
                     target: brightnessRow.currentMonitor ?? null
                     ignoreUnknownSignals: true
+                    function onBrightnessChanged() {
+                        if (brightnessRow.currentMonitor) {
+                            brightnessRow.sliderValue = brightnessRow.currentMonitor.brightness;
+                        }
+                    }
                     function onReadyChanged() {
                         if (brightnessRow.currentMonitor?.ready) {
                             brightnessRow.sliderValue = brightnessRow.currentMonitor.brightness;
