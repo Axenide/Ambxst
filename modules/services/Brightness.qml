@@ -292,13 +292,31 @@ Singleton {
             }
         }
 
-        // We need a delay for DDC monitors because they can be quite slow and might act weird with rapid changes
+        // Rate-limited write: writing ddcutil for every keypress during a
+        // sustained hold would saturate the DDC bus (every ddcutil setvcp
+        // takes ~100ms+). Instead we write on the leading edge of activity
+        // (snappy single-press feedback) and then fire periodic trailing
+        // writes every 200ms while activity continues, so the actual
+        // monitor brightness tracks the QML state smoothly during a held
+        // bind instead of waiting until release and jumping in one big
+        // DDC transaction (which is what produced the "drops to min, then
+        // snaps up" perception during sustained keypress).
         property var setTimer: Timer {
             id: setTimer
-            interval: monitor.isDdc ? 300 : 0
+            interval: 200
+            repeat: true
             onTriggered: {
+                if (setProc.running) return;
                 syncBrightness();
             }
+        }
+        // Stops the periodic trailing writes 200ms after the last activity
+        // so we don't keep writing to the hardware every 200ms forever
+        // after a single press.
+        property var stopTimer: Timer {
+            interval: 200
+            repeat: false
+            onTriggered: monitor.setTimer.stop()
         }
 
         function syncBrightness() {
@@ -316,7 +334,11 @@ Singleton {
             monitor.brightness = value;
             monitor.lastUserWriteAt = Date.now();
             monitor.lastUserWriteValue = value;
-            setTimer.restart();
+            if (!monitor.setTimer.running && !setProc.running) {
+                syncBrightness();
+            }
+            monitor.setTimer.start();
+            monitor.stopTimer.restart();
         }
 
         Component.onCompleted: {
