@@ -115,8 +115,8 @@ var ACTION_CATALOG = [
     { id: "audio.volume-down", label: "Volume Down", category: "Audio", dispatcher: "exec", argument: "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-", flags: "le" },
     { id: "audio.mute-toggle", label: "Mute Audio", category: "Audio", dispatcher: "exec", argument: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", flags: "le" },
 
-    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "axctl brightness adjust 0.05", flags: "le" },
-    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "axctl brightness adjust -0.05", flags: "le" },
+    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness +5", flags: "le" },
+    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness -5", flags: "le" },
 
     { id: "system.calculator", label: "Calculator", category: "System", dispatcher: "exec", argument: "notify-send \"Soon\"" },
     { id: "system.lock", label: "Lock Session", category: "System", dispatcher: "exec", argument: "loginctl lock-session" },
@@ -284,8 +284,8 @@ function actionFromLegacy(dispatcher, argument, flags) {
         if (arg.indexOf("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%+") === 0) return { id: "audio.volume-up", args: {} };
         if (arg.indexOf("wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-") === 0) return { id: "audio.volume-down", args: {} };
         if (arg.indexOf("wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle") === 0) return { id: "audio.mute-toggle", args: {} };
-        if (arg.indexOf("axctl brightness adjust 0.05") === 0) return { id: "brightness.up", args: {} };
-        if (arg.indexOf("axctl brightness adjust -0.05") === 0) return { id: "brightness.down", args: {} };
+        if (arg.indexOf("ambxst brightness +5") === 0) return { id: "brightness.up", args: {} };
+        if (arg.indexOf("ambxst brightness -5") === 0) return { id: "brightness.down", args: {} };
         if (arg === "notify-send \"Soon\"") return { id: "system.calculator", args: {} };
         if (arg === "loginctl lock-session" && flags === "l") return { id: "system.lock-locked", args: {} };
         if (arg === "loginctl lock-session") return { id: "system.lock", args: {} };

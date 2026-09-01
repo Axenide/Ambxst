@@ -43,6 +43,14 @@ func (p *Paths) SocketPath() string {
 	return filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ambxst.sock")
 }
 
+// QsPidFile stores the PID of the supervised Quickshell child. External
+// CLI invocations (e.g. `ambxst brightness ...`) read this file to dispatch
+// `qs ipc` calls back into the running shell — without it they would have
+// to fall back to scanning processes via pgrep, which is racy.
+func (p *Paths) QsPidFile() string {
+	return filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ambxst-qs.pid")
+}
+
 func (p *Paths) AxctlToml() string {
 	return filepath.Join(p.DataDir, "axctl.toml")
 }

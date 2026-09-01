@@ -140,69 +140,6 @@ Singleton {
         id: setProc
     }
 
-    // Subscribe to axctl's Event.BrightnessChanged so the OSD and
-    // sliders react to kernel changes from anywhere — the Hyprland
-    // keybinds (which dispatch directly to `axctl brightness adjust`)
-    // and the idle pre-lock dim. We update monitor.brightness on each
-    // event; the existing onBrightnessChanged handler emits
-    // root.brightnessChanged which the OSD's Connections listens to.
-    readonly property string axctlSocketPath: {
-        const env = Quickshell.env("AXCTL_SOCKET");
-        return (env && env.length > 0) ? env : "/tmp/axctl-1000.sock";
-    }
-
-    Socket {
-        id: axctlSub
-        path: root.axctlSocketPath
-        connected: true
-
-        parser: SplitParser {
-            onRead: data => {
-                if (!data || !data.includes("Event.BrightnessChanged"))
-                    return;
-                let msg;
-                try { msg = JSON.parse(data); } catch (e) { return; }
-                if (msg.method !== "Event.BrightnessChanged" || !msg.params)
-                    return;
-                const name = msg.params.monitor;
-                const value = msg.params.value;
-                if (typeof name !== "string" || typeof value !== "number")
-                    return;
-
-                if (name === "") {
-                    for (let i = 0; i < root.monitors.length; ++i) {
-                        const m = root.monitors[i];
-                        if (m && m.ready) m.applyReportedBrightness(value);
-                    }
-                    return;
-                }
-
-                for (let i = 0; i < root.monitors.length; ++i) {
-                    const m = root.monitors[i];
-                    if (m && m.ready && m.monitorName() === name) {
-                        m.applyReportedBrightness(value);
-                        break;
-                    }
-                }
-            }
-        }
-
-        onConnectionStateChanged: {
-            if (axctlSub.connected) {
-                axctlSub.write(JSON.stringify({
-                    id: 1,
-                    method: "System.Subscribe",
-                    params: {}
-                }) + "\n");
-                axctlSub.flush();
-            }
-        }
-
-        onError: error => {
-            console.warn("Brightness: axctl subscription error:", error);
-        }
-    }
-
     component BrightnessMonitor: QtObject {
         id: monitor
 
@@ -237,21 +174,9 @@ Singleton {
         }
         readonly property bool isDdc: !useBrightnessctl && !!ddcEntry
         readonly property string busNum: isDdc ? ddcEntry.busNum : ""
-        // Canonical monitor key used to match axctl's Event.BrightnessChanged
-        // broadcasts: "ddc-<bus>" for DDC, "backlight" for internal panels.
-        function monitorName(): string {
-            return monitor.isDdc ? ("ddc-" + monitor.busNum) : "backlight";
-        }
         property int rawMaxBrightness: 100
         property real brightness
         property bool ready: false
-
-        // Brief window after our own write where we ignore the matching
-        // echo from axctl — prevents the slider/OSD from snapping back
-        // to the kernel value mid-drag. DDC quantizes to whole percent,
-        // so we use a 0.02 tolerance around lastWrittenValue.
-        property real lastWrittenValue: 0
-        property int lastWrittenAt: 0
 
         onBrightnessChanged: {
             if (monitor.ready) {
@@ -314,8 +239,6 @@ Singleton {
         function syncBrightness() {
             if (isDdc && !busNum)
                 return;
-            monitor.lastWrittenAt = Date.now();
-            monitor.lastWrittenValue = monitor.brightness;
             const rounded = Math.round(monitor.brightness * monitor.rawMaxBrightness);
             setProc.command = isDdc ? ["ddcutil", "-b", busNum, "setvcp", "10", rounded] : ["brightnessctl", "--class", "backlight", "s", rounded, "--quiet"];
             setProc.startDetached();
@@ -325,20 +248,6 @@ Singleton {
             value = Math.max(0.01, Math.min(1, value));
             monitor.brightness = value;
             setTimer.restart();
-        }
-
-        // Called by the axctl event subscription when the kernel value
-        // changes from outside (Hyprland keybinds, idle hook, external
-        // CLI). Skips echoes of our own writes.
-        function applyReportedBrightness(value) {
-            if (value === undefined)
-                return;
-            if (Date.now() - monitor.lastWrittenAt < 1500
-                && Math.abs(value - monitor.lastWrittenValue) < 0.02)
-                return;
-            if (Math.abs(value - monitor.brightness) < 0.001)
-                return;
-            monitor.brightness = value;
         }
 
         Component.onCompleted: {

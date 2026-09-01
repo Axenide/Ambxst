@@ -264,6 +264,12 @@ func (d *Daemon) spawnQS(qsBin, shellQML string) error {
 		return err
 	}
 	d.qsCmd = cmd
+	// Publish the Quickshell PID so sibling CLI invocations can dispatch
+	// `qs ipc` calls back into the running shell (e.g. `ambxst brightness`
+	// notifying the QML IpcHandler so the OSD fires on keybind).
+	if pidPath := d.paths.QsPidFile(); pidPath != "" {
+		_ = os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", cmd.Process.Pid)), 0o644)
+	}
 	return nil
 }
 
@@ -281,6 +287,9 @@ func (d *Daemon) shutdown() {
 				_ = d.qsCmd.Process.Kill()
 			}
 			<-done
+		}
+		if pidPath := d.paths.QsPidFile(); pidPath != "" {
+			_ = os.Remove(pidPath)
 		}
 		d.qsCmd = nil
 	}
