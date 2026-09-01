@@ -78,7 +78,12 @@ QtObject {
                 break;
             case "media-next": MprisController.next(); break;
             case "media-prev": MprisController.previous(); break;
-                
+
+            // Brightness (routes through the same setBrightness path the slider uses,
+            // avoiding a per-press fork of the Go CLI + qs ipc chain).
+            case "brightness-up": Brightness.increaseAll(); break;
+            case "brightness-down": Brightness.decreaseAll(); break;
+
             default: console.warn("Unknown IPC command:", command);
         }
     }

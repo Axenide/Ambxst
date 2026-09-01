@@ -2438,7 +2438,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "ambxst brightness +5",
+                            "argument": "sh -c 'echo brightness-up > /tmp/ambxst_ipc.pipe'",
                             "flags": "le",
                             "layouts": []
                         }
@@ -2456,7 +2456,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "ambxst brightness -5",
+                            "argument": "sh -c 'echo brightness-down > /tmp/ambxst_ipc.pipe'",
                             "flags": "le",
                             "layouts": []
                         }

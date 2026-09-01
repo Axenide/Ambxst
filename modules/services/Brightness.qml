@@ -70,6 +70,22 @@ Singleton {
             monitor.setBrightness(monitor.brightness - 0.05);
     }
 
+    function increaseAll(): void {
+        for (let i = 0; i < monitors.length; i++) {
+            const mon = monitors[i];
+            if (mon && mon.ready)
+                mon.setBrightness(mon.brightness + 0.05);
+        }
+    }
+
+    function decreaseAll(): void {
+        for (let i = 0; i < monitors.length; i++) {
+            const mon = monitors[i];
+            if (mon && mon.ready)
+                mon.setBrightness(mon.brightness - 0.05);
+        }
+    }
+
     reloadableId: "brightness"
 
     onMonitorsChanged: {
