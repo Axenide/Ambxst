@@ -106,8 +106,8 @@ var catalog = []ActionSpec{
 	{ID: "audio.volume-down", Label: "Volume Down", Category: "Audio", Dispatcher: "exec", Argument: "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-", Flags: "le"},
 	{ID: "audio.mute-toggle", Label: "Mute Audio", Category: "Audio", Dispatcher: "exec", Argument: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", Flags: "le"},
 
-	{ID: "brightness.up", Label: "Brightness Up", Category: "Brightness", Dispatcher: "exec", Argument: "axctl brightness adjust 0.05", Flags: "le"},
-	{ID: "brightness.down", Label: "Brightness Down", Category: "Brightness", Dispatcher: "exec", Argument: "axctl brightness adjust -0.05", Flags: "le"},
+	{ID: "brightness.up", Label: "Brightness Up", Category: "Brightness", Dispatcher: "exec", Argument: "ambxst brightness +5", Flags: "le"},
+	{ID: "brightness.down", Label: "Brightness Down", Category: "Brightness", Dispatcher: "exec", Argument: "ambxst brightness -5", Flags: "le"},
 
 	{ID: "system.calculator", Label: "Calculator", Category: "System", Dispatcher: "exec", Argument: `notify-send "Soon"`},
 	{ID: "system.lock", Label: "Lock Session", Category: "System", Dispatcher: "exec", Argument: "loginctl lock-session"},
@@ -264,9 +264,9 @@ func ActionFromLegacy(dispatcher, argument, flags string) Action {
 			return Action{ID: "audio.volume-down", Args: map[string]any{}}
 		case strings.HasPrefix(arg, "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"):
 			return Action{ID: "audio.mute-toggle", Args: map[string]any{}}
-		case strings.HasPrefix(arg, "axctl brightness adjust 0.05"):
+		case strings.HasPrefix(arg, "ambxst brightness +5"):
 			return Action{ID: "brightness.up", Args: map[string]any{}}
-		case strings.HasPrefix(arg, "axctl brightness adjust -0.05"):
+		case strings.HasPrefix(arg, "ambxst brightness -5"):
 			return Action{ID: "brightness.down", Args: map[string]any{}}
 		case arg == `notify-send "Soon"`:
 			return Action{ID: "system.calculator", Args: map[string]any{}}
