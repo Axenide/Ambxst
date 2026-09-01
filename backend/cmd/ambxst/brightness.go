@@ -215,7 +215,7 @@ func notifyQsBrightness(pid int, method, arg0, monitor string) {
 	if !hasBinary("qs") {
 		return
 	}
-	args := []string{"--pid", strconv.Itoa(pid), "call", "brightness", method, arg0, monitor}
+	args := []string{"ipc", "--pid", strconv.Itoa(pid), "call", "brightness", method, arg0, monitor}
 	cmd := exec.Command("qs", args...)
 	cmd.Stdout = nil
 	cmd.Stderr = os.Stderr
