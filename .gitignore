@@ -4,3 +4,6 @@ scripts/__pycache__
 .sisyphus
 result
 /ambxst
+
+# Keep Go package sources visible when a global ignore file excludes pkg/.
+!/backend/pkg/

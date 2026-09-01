@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
-	"net"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -44,6 +44,9 @@ func main() {
 			return
 		case "goodbye":
 			runGoodbye()
+			return
+		case "mods":
+			runMods(args[1:])
 			return
 		}
 	}
@@ -128,6 +131,7 @@ func newClient() *ipc.Client {
 }
 
 // runIpc dispatches a JSON-RPC call to the running ambxst process.
+//
 //	ambxst ipc call <service.method> <json>
 func runIpc(args []string) int {
 	if len(args) < 2 || args[0] != "call" {
@@ -383,6 +387,7 @@ Commands:
         -tint                       Enable tint for this wallpaper only
         -monitor <id|name>          Apply to a specific monitor
     preset [-l|"Name"]              List or apply a preset (name supports quotes)
+    mods [command]                   Manage Ambxst modifications
     help                             Show this help message
     version, -v, --version           Show Ambxst version
     goodbye                          Uninstall Ambxst

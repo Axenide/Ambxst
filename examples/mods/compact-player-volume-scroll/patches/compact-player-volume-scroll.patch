@@ -1,0 +1,20 @@
+diff --git a/modules/widgets/defaultview/CompactPlayer.qml b/modules/widgets/defaultview/CompactPlayer.qml
+index 265b87e8..3a9a8e24 100644
+--- a/modules/widgets/defaultview/CompactPlayer.qml
++++ b/modules/widgets/defaultview/CompactPlayer.qml
+@@ -127,3 +127,15 @@ Item {
++    WheelHandler {
++        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
++        onWheel: event => {
++            if (!compactPlayer.player)
++                return;
++            if (event.angleDelta.y > 0)
++                Audio.incrementVolume();
++            else if (event.angleDelta.y < 0)
++                Audio.decrementVolume();
++        }
++    }
++
+     StyledRect {
+         variant: "common"
+         anchors.fill: parent

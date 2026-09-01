@@ -70,18 +70,19 @@ Rectangle {
         property int currentPanelIndex: 0
         property var aggregatedItems: []
         property bool isIndexing: false
+        readonly property var panels: contentArea.panelComponents.filter(panel => panel.section !== 10)
 
         // Helper to load panels one by one
         Loader {
             id: indexerLoader
             active: settingsIndexer.isIndexing
             asynchronous: true
-            source: settingsIndexer.isIndexing && settingsIndexer.currentPanelIndex < contentArea.panelComponents.length ? contentArea.panelComponents[settingsIndexer.currentPanelIndex].component : ""
+            source: settingsIndexer.isIndexing && settingsIndexer.currentPanelIndex < settingsIndexer.panels.length ? settingsIndexer.panels[settingsIndexer.currentPanelIndex].component : ""
 
             onStatusChanged: {
                 if (status === Loader.Ready && item) {
                     // Scrape
-                    const sectionId = contentArea.panelComponents[settingsIndexer.currentPanelIndex].section;
+                    const sectionId = settingsIndexer.panels[settingsIndexer.currentPanelIndex].section;
                     const newItems = SettingsCrawler.crawl(item, sectionId);
                     settingsIndexer.aggregatedItems = settingsIndexer.aggregatedItems.concat(newItems);
 
@@ -95,7 +96,7 @@ Rectangle {
         }
 
         onCurrentPanelIndexChanged: {
-            if (currentPanelIndex >= contentArea.panelComponents.length) {
+            if (currentPanelIndex >= settingsIndexer.panels.length) {
                 // Done
                 if (isIndexing) {
                     isIndexing = false;
@@ -259,6 +260,12 @@ Rectangle {
             label: "Ambxst",
             section: 9,
             isIcon: false
+        },
+        {
+            icon: Icons.plug,
+            label: "Mods",
+            section: 10,
+            isIcon: true
         }
     ]
 
@@ -538,7 +545,7 @@ Rectangle {
             clip: true
 
             property int previousSection: 0
-            readonly property int maxContentWidth: 480
+            readonly property int maxContentWidth: root.currentSection === 10 ? 760 : 480
 
             // Track section changes for animation direction
             onVisibleChanged: {
@@ -595,6 +602,10 @@ Rectangle {
                 {
                     component: "ShellPanel.qml",
                     section: 9
+                },
+                {
+                    component: "ModsPanel.qml",
+                    section: 10
                 }
             ]
 

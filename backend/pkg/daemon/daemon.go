@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"ambxst/backend/pkg/ipc"
+	"ambxst/backend/pkg/mods"
 	"ambxst/backend/pkg/paths"
 	"ambxst/backend/pkg/svc"
 	"ambxst/backend/pkg/svc/caffeine"
@@ -45,21 +46,23 @@ type Daemon struct {
 	paths *paths.Paths
 	srv   *ipc.Server
 
-	ui          *svc.UIService
-	sleep       *sleep.Service
-	clipboard   *clipboard.Service
-	network     *network.Service
-	compositor  *compositor.Service
-	caffeine    *caffeine.Service
-	gamemode    *gamemode.Service
-	powerprof   *powerprofile.Service
-	nightlight  *nightlight.Service
-	recorder    *recordersvc.Service
+	ui         *svc.UIService
+	sleep      *sleep.Service
+	clipboard  *clipboard.Service
+	network    *network.Service
+	compositor *compositor.Service
+	caffeine   *caffeine.Service
+	gamemode   *gamemode.Service
+	powerprof  *powerprofile.Service
+	nightlight *nightlight.Service
+	recorder   *recordersvc.Service
+	mods       *mods.Manager
 
-	shutdownCh  chan struct{}
+	shutdownCh   chan struct{}
 	shutdownOnce sync.Once
 
-	qsCmd *exec.Cmd
+	qsCmd  *exec.Cmd
+	qsDone <-chan error
 }
 
 // New wires every service into a freshly constructed server. The caller is
@@ -139,6 +142,11 @@ func New() (*Daemon, error) {
 	presetSvc := preset.NewService(d.paths)
 	presetSvc.Register(d.srv)
 
+	modsManager := mods.NewManager(d.paths)
+	modsSvc := mods.NewService(modsManager)
+	modsSvc.Register(d.srv)
+	d.mods = modsManager
+
 	shotSvc := screenshot.NewService(d.paths)
 	shotSvc.Register(d.srv)
 
@@ -184,11 +192,11 @@ func (d *Daemon) TriggerShutdown() {
 // requested, or a terminating signal is received. On exit it tears down
 // every child it owns in the right order:
 //
-//	1. close the IPC listener (refuse new connections)
-//	2. SIGTERM → Quickshell; SIGKILL its process group if it ignores
-//	3. compositor.Close()  → axctl daemon + axctl subscribe
-//	4. clipboard.Close()   → wl-paste --watch
-//	5. sleep.Close()       → dbus connection
+//  1. close the IPC listener (refuse new connections)
+//  2. SIGTERM → Quickshell; SIGKILL its process group if it ignores
+//  3. compositor.Close()  → axctl daemon + axctl subscribe
+//  4. clipboard.Close()   → wl-paste --watch
+//  5. sleep.Close()       → dbus connection
 func (d *Daemon) Run(qsBin, shellQML string) error {
 	if err := d.srv.Listen(); err != nil {
 		return fmt.Errorf("ipc listen: %w", err)
@@ -231,20 +239,65 @@ func (d *Daemon) Run(qsBin, shellQML string) error {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer signal.Stop(sigCh)
 
-	qsDone := make(chan error, 1)
-	go func() { qsDone <- d.qsCmd.Wait() }()
-
-	select {
-	case s := <-sigCh:
-		log.Printf("[ambxst] received %v, shutting down", s)
-	case <-d.shutdownCh:
-		log.Printf("[ambxst] shutdown requested via IPC")
-	case err := <-qsDone:
-		log.Printf("[ambxst] qs exited: %v", err)
+	d.qsDone = waitForProcess(d.qsCmd)
+	var healthTimer *time.Timer
+	var healthCh <-chan time.Time
+	if d.mods != nil && d.mods.HasPendingActivation() {
+		healthTimer = time.NewTimer(8 * time.Second)
+		healthCh = healthTimer.C
 	}
+	defer func() {
+		if healthTimer != nil {
+			healthTimer.Stop()
+		}
+	}()
 
-	d.shutdown()
-	return nil
+	for {
+		select {
+		case s := <-sigCh:
+			log.Printf("[ambxst] received %v, shutting down", s)
+			d.shutdown()
+			return nil
+		case <-d.shutdownCh:
+			log.Printf("[ambxst] shutdown requested via IPC")
+			d.shutdown()
+			return nil
+		case <-healthCh:
+			if err := d.mods.MarkHealthy(); err != nil {
+				log.Printf("[ambxst] mod activation health check: %v", err)
+			}
+			healthCh = nil
+		case err := <-d.qsDone:
+			log.Printf("[ambxst] qs exited: %v", err)
+			d.qsCmd = nil
+			d.qsDone = nil
+			if healthCh != nil {
+				recovered, recoverErr := d.mods.RecoverFailedActivation()
+				if recoverErr != nil {
+					log.Printf("[ambxst] mod activation rollback: %v", recoverErr)
+				}
+				healthCh = nil
+				if recovered {
+					fallback := filepath.Join(paths.FindShellSource(), "shell.qml")
+					log.Printf("[ambxst] retrying with previous shell generation")
+					if spawnErr := d.spawnQS(qsBin, fallback); spawnErr != nil {
+						d.shutdown()
+						return fmt.Errorf("spawn rollback shell: %w", spawnErr)
+					}
+					d.qsDone = waitForProcess(d.qsCmd)
+					continue
+				}
+			}
+			d.shutdown()
+			return nil
+		}
+	}
+}
+
+func waitForProcess(cmd *exec.Cmd) <-chan error {
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	return done
 }
 
 // spawnQS launches Quickshell as a child of the current process, in its
@@ -276,22 +329,23 @@ func (d *Daemon) spawnQS(qsBin, shellQML string) error {
 func (d *Daemon) shutdown() {
 	if d.qsCmd != nil && d.qsCmd.Process != nil {
 		_ = d.qsCmd.Process.Signal(syscall.SIGTERM)
-		done := make(chan struct{})
-		go func() { _ = d.qsCmd.Wait(); close(done) }()
-		select {
-		case <-done:
-		case <-time.After(1500 * time.Millisecond):
-			if pgid, err := syscall.Getpgid(d.qsCmd.Process.Pid); err == nil && pgid > 0 {
-				_ = syscall.Kill(-pgid, syscall.SIGKILL)
-			} else {
-				_ = d.qsCmd.Process.Kill()
+		if d.qsDone != nil {
+			select {
+			case <-d.qsDone:
+			case <-time.After(1500 * time.Millisecond):
+				if pgid, err := syscall.Getpgid(d.qsCmd.Process.Pid); err == nil && pgid > 0 {
+					_ = syscall.Kill(-pgid, syscall.SIGKILL)
+				} else {
+					_ = d.qsCmd.Process.Kill()
+				}
+				<-d.qsDone
 			}
-			<-done
 		}
 		if pidPath := d.paths.QsPidFile(); pidPath != "" {
 			_ = os.Remove(pidPath)
 		}
 		d.qsCmd = nil
+		d.qsDone = nil
 	}
 
 	if d.compositor != nil && d.compositor.Manager() != nil {

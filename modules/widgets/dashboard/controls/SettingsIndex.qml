@@ -11,11 +11,16 @@ QtObject {
     // it will try to guess what users would want to search, not the feature name only
 
     // Main Sections:
-    // 0: Network, 1: Bluetooth, 2: Mixer, 3: Effects, 4: Theme, 5: Binds, 6: System, 7: Compositor, 8: Ambxst
+    // 0: Network, 1: Bluetooth, 2: Mixer, 3: AI, 4: Effects, 5: Theme, 6: Binds, 7: System, 8: Compositor, 9: Ambxst, 10: Mods
     
     property var dynamicItems: []
 
     readonly property var staticItems: [
+        // --- Mods ---
+        { label: "Mods", keywords: "extensions plugins modifications packages", section: 10, subSection: "", subLabel: "", icon: Icons.plug, isIcon: true },
+        { label: "Install mod", keywords: "add local directory archive git repository source", section: 10, subSection: "", subLabel: "Mods", icon: Icons.plug, isIcon: true },
+        { label: "Rollback generation", keywords: "restore recover previous failed", section: 10, subSection: "", subLabel: "Mods", icon: Icons.arrowCounterClockwise, isIcon: true },
+
         // --- Network ---
         { label: "Network", keywords: "internet wifi connection ethernet ip", section: 0, subSection: "", subLabel: "", icon: Icons.wifiHigh, isIcon: true },
         

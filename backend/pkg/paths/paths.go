@@ -105,6 +105,30 @@ func (p *Paths) ShellPathFile() string {
 	return filepath.Join(p.DataDir, "shell_repo")
 }
 
+func (p *Paths) ModsDir() string {
+	return filepath.Join(p.DataDir, "mods")
+}
+
+func (p *Paths) ModPackagesDir() string {
+	return filepath.Join(p.ModsDir(), "packages")
+}
+
+func (p *Paths) ModGenerationsDir() string {
+	return filepath.Join(p.ModsDir(), "generations")
+}
+
+func (p *Paths) ModPendingActivationFile() string {
+	return filepath.Join(p.ModsDir(), "pending-activation.json")
+}
+
+func (p *Paths) ModStateFile() string {
+	return filepath.Join(p.ConfigDir, "mods.json")
+}
+
+func (p *Paths) ModSettingsDir() string {
+	return filepath.Join(p.ConfigDir, "mods")
+}
+
 // ShellSourceDir returns the absolute path to the Ambxst shell source
 // tree (see FindShellSource for the lookup rules). Callers that already
 // hold a *Paths simply ignore it; the receiver is unused.
