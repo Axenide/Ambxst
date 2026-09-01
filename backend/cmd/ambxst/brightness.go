@@ -9,15 +9,23 @@ import (
 	"syscall"
 )
 
-// runBrightness is a thin shim that drives both `axctl brightness` and the
-// QML side via Quickshell IPC. The axctl call applies the hardware change
-// (idempotent across multiple writers); the IPC hop notifies the running
-// shell so the OSD fires and the in-QML brightness state stays consistent
-// with what axctl reports.
+// runBrightness drives Quickshell IPC directly for set/adjust/pull so the
+// CLI recycles the exact same path the UI sliders use:
 //
-// Replicates the legacy `ambxst brightness ...` CLI surface — existing
-// keybinds (`Config.qml` default Hyprland binds) and the idle listener
-// (`config/defaults/system.js`) keep working without modification.
+//	CLI keybind
+//	  └─ qs ipc call brightness.adjust/set <value> ""
+//	       └─ QML IpcHandler
+//	            └─ mon.setBrightness(value)  ← slider-equivalent
+//	                 ├─ monitor.brightness = value  (QML state → OSD fires)
+//	                 └─ setTimer.restart()           (debounced write)
+//
+// This was the design of the 1.1.5 bash CLI. By dropping the parallel
+// `axctl brightness ...` call we avoid a second ddcutil write per bind
+// press — that's what produced the latency on DDC displays and the bus
+// saturation under key-repeat. Save/restore still go through axctl
+// because they're file-backed operations and don't need OSD updates
+// (restore additionally calls `brightness.pull` so the OSD does fire
+// after the hardware restore completes).
 func runBrightness(args []string) {
 	if !hasBinary("axctl") {
 		fmt.Fprintln(os.Stderr, "Error: axctl is required for brightness control")
@@ -42,21 +50,7 @@ func runBrightness(args []string) {
 		axctlRun("brightness", "list")
 		return
 	case arg2 == "-r" || arg2 == "--restore":
-		// Restore still goes through per-monitor `qs ipc set` so the OSD
-		// fires once per affected monitor. axctl's restore only persists
-		// back to hardware; without the IPC hop the OSD stays dark.
-		qsPid := readQsPid()
-		if qsPid == 0 {
-			axctlRun("brightness", "restore")
-			fmt.Println("Restored brightness for all monitors")
-			return
-		}
-		monitor := arg3
-		axctlRun("brightness", "restore")
-		// The saved values live in axctl's own TSV; we don't read it here
-		// (CLI can't easily parse). ask the QML side to pull them.
-		notifyQsBrightness(qsPid, "restore", "", monitor)
-		fmt.Println("Restored brightness for all monitors")
+		runBrightnessRestore(arg3)
 		return
 	}
 
@@ -96,7 +90,7 @@ func runBrightness(args []string) {
 		}
 		return
 	} else {
-		fmt.Println("Error: Invalid brightness value. Must be 0-100 or +/-delta.")
+		fmt.Fprintln(os.Stderr, "Error: Invalid brightness value. Must be 0-100 or +/-delta.")
 		os.Exit(1)
 	}
 
@@ -108,19 +102,11 @@ func runBrightness(args []string) {
 		}
 	}
 
+	qsPid := readQsPidOrExit()
+
 	if relativeDelta != "" {
 		normalized := relativeDeltaNorm(relativeDelta)
-		if monitor == "" {
-			axctlRun("brightness", "adjust", fmt.Sprintf("%g", normalized))
-		} else {
-			axctlRun("brightness", "adjust", monitor, fmt.Sprintf("%g", normalized))
-		}
-		qsPid := readQsPid()
-		if qsPid != 0 {
-			notifyQsBrightness(qsPid, "adjust", strconv.FormatFloat(normalized, 'g', -1, 64), monitor)
-		} else {
-			fmt.Fprintln(os.Stderr, "Warning: Quickshell not running, OSD will not show")
-		}
+		notifyQsBrightness(qsPid, "adjust", strconv.FormatFloat(normalized, 'g', -1, 64), monitor)
 		if monitor == "" {
 			fmt.Printf("Adjusted brightness by %s%% for all monitors\n", relativeDelta)
 		} else {
@@ -131,25 +117,35 @@ func runBrightness(args []string) {
 
 	vInt, _ := strconv.Atoi(value)
 	if vInt < 0 || vInt > 100 {
-		fmt.Println("Error: Brightness must be between 0 and 100")
+		fmt.Fprintln(os.Stderr, "Error: Brightness must be between 0 and 100")
 		os.Exit(1)
 	}
 	normalized := percentToNorm(value)
-	if monitor == "" {
-		axctlRun("brightness", "set", fmt.Sprintf("%g", normalized))
-	} else {
-		axctlRun("brightness", "set", monitor, fmt.Sprintf("%g", normalized))
-	}
-	qsPid := readQsPid()
-	if qsPid != 0 {
-		notifyQsBrightness(qsPid, "set", strconv.FormatFloat(normalized, 'g', -1, 64), monitor)
-	} else {
-		fmt.Fprintln(os.Stderr, "Warning: Quickshell not running, OSD will not show")
-	}
+	notifyQsBrightness(qsPid, "set", strconv.FormatFloat(normalized, 'g', -1, 64), monitor)
 	if monitor == "" {
 		fmt.Printf("Set brightness to %s%% for all monitors\n", value)
 	} else {
 		fmt.Printf("Set brightness to %s%% for %s\n", value, monitor)
+	}
+}
+
+// runBrightnessRestore writes the saved values back to hardware via axctl
+// then asks the running shell to re-read each monitor via `brightness.pull`,
+// which fires the OSD. The pull goes through ddcutil/brightnessctl
+// independently of axctl — same source of truth (the kernel/DDC device) as
+// the slider path, so OSD reflects what actually landed.
+func runBrightnessRestore(monitor string) {
+	qsPid := readQsPidOrExit()
+	if monitor == "" {
+		axctlRun("brightness", "restore")
+	} else {
+		axctlRun("brightness", "restore", monitor)
+	}
+	notifyQsBrightness(qsPid, "pull", "", monitor)
+	if monitor == "" {
+		fmt.Println("Restored brightness for all monitors")
+	} else {
+		fmt.Printf("Restored brightness for %s\n", monitor)
 	}
 }
 
@@ -168,6 +164,24 @@ func axctlRun(args ...string) {
 		fmt.Fprintf(os.Stderr, "Error: axctl: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// readQsPidOrExit returns the supervised Quickshell PID or exits with a
+// clear error. Mirrors the legacy bash script behavior where every
+// brightness invocation required a running Ambxst shell — we don't fall
+// back to axctl because that would re-introduce the duplicate ddcutil
+// write the CLI was specifically designed to avoid.
+func readQsPidOrExit() int {
+	if !hasBinary("qs") {
+		fmt.Fprintln(os.Stderr, "Error: qs not found in PATH")
+		os.Exit(1)
+	}
+	pid := readQsPid()
+	if pid == 0 {
+		fmt.Fprintln(os.Stderr, "Error: Ambxst is not running")
+		os.Exit(1)
+	}
+	return pid
 }
 
 // readQsPid returns the supervised Quickshell PID from
@@ -206,15 +220,10 @@ func qsPidPath() string {
 }
 
 // notifyQsBrightness invokes `qs ipc --pid <pid> call brightness <method>
-// <arg0> <monitorOrEmpty>` so the running shell updates its in-QML state
-// and emits the brightnessChanged signal the OSD listens to.
-//
-// Failure is non-fatal: the axctl hardware write already succeeded, so
-// brightness changed even if the IPC hop (and the OSD) doesn't fire.
+// <arg0> <monitorOrEmpty>`. Failure is fatal here (the caller already
+// resolved QS via readQsPidOrExit), so a non-zero exit signals "shutting
+// down" or "IPC disconnect" to the user.
 func notifyQsBrightness(pid int, method, arg0, monitor string) {
-	if !hasBinary("qs") {
-		return
-	}
 	args := []string{"ipc", "--pid", strconv.Itoa(pid), "call", "brightness", method, arg0, monitor}
 	cmd := exec.Command("qs", args...)
 	cmd.Stdout = nil
