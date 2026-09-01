@@ -334,10 +334,15 @@ Singleton {
             monitor.brightness = value;
             monitor.lastUserWriteAt = Date.now();
             monitor.lastUserWriteValue = value;
-            if (!monitor.setTimer.running && !setProc.running) {
-                syncBrightness();
+            if (!monitor.setTimer.running) {
+                // Leading edge: first call after a pause writes immediately
+                // for snappy single-press feedback, then arms the periodic
+                // trailing timer.
+                if (!setProc.running) syncBrightness();
+                monitor.setTimer.start();
             }
-            monitor.setTimer.start();
+            // Re-arm the watchdog that stops the trailing timer 200ms after
+            // the last activity — keeps it alive while presses keep coming.
             monitor.stopTimer.restart();
         }
 
@@ -388,22 +393,20 @@ Singleton {
         }
 
         function adjust(delta: real, monitorName: string) {
-            if (!monitorName || monitorName === "") {
-                // Adjust all monitors
-                for (let i = 0; i < root.monitors.length; ++i) {
-                    const mon = root.monitors[i];
-                    if (mon && mon.ready) {
-                        mon.setBrightness(mon.brightness + delta);
-                    }
-                }
-            } else {
-                // Adjust specific monitor
-                const monitor = root.monitors.find(m => m.screen.name === monitorName);
-                if (monitor && monitor.ready) {
-                    monitor.setBrightness(monitor.brightness + delta);
-                } else {
-                    console.warn("Monitor not found or not ready:", monitorName);
-                }
+            // Mirrors ControlSliderRow.onValueChanged: read the current
+            // QML value, apply the step, clamp, and pass the ABSOLUTE target
+            // to setBrightness — the same call signature the slider uses.
+            // IPC doesn't know which bar the user is on, so bind keys affect
+            // every ready monitor (parallels how global media keys affect
+            // the default sink via wpctl).
+            const targets = (monitorName && monitorName !== "")
+                ? [root.monitors.find(m => m.screen.name === monitorName)].filter(x => x)
+                : root.monitors;
+            for (let i = 0; i < targets.length; ++i) {
+                const mon = targets[i];
+                if (!mon || !mon.ready) continue;
+                const target = Math.max(0.01, Math.min(1, mon.brightness + delta));
+                mon.setBrightness(target);
             }
         }
 
