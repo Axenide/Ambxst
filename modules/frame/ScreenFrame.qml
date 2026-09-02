@@ -50,7 +50,7 @@ Item {
     readonly property int sidebarMargin: 4
     readonly property int sidebarExpansion: sidebarPinned ? (sidebarWidth + thickness) : 0
 
-    readonly property string barPos: Config.bar?.position ?? "top"
+    readonly property string barPos: Config.barPositionForScreen(targetScreen.name)
     // Bar height is 44. Total size = Thickness (Outer) + Bar (44) + Thickness (Inner)
     readonly property int barExpansion: 44 + thickness
     readonly property int topThickness: hasFullscreenWindow ? 0 : (thickness + ((containBar && barPos === "top") ? barExpansion : 0))

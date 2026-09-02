@@ -150,6 +150,7 @@ QtObject {
         // Ambxst > Bar
         { label: "Bar", keywords: "panel taskbar top bottom", section: 8, subSection: "bar", subLabel: "Ambxst > Bar", icon: Icons.layout, isIcon: true },
         { label: "Bar Position", keywords: "top bottom left right edge", section: 8, subSection: "bar", subLabel: "Ambxst > Bar", icon: Icons.layout, isIcon: true },
+        { label: "Bar Per-Monitor Position", keywords: "screen monitor display edge override", section: 8, subSection: "bar", subLabel: "Ambxst > Bar", icon: Icons.layout, isIcon: true },
         { label: "Launcher Icon", keywords: "logo symbol path", section: 8, subSection: "bar", subLabel: "Ambxst > Bar", icon: Icons.layout, isIcon: true },
         { label: "Launcher Icon Tint", keywords: "color theme", section: 8, subSection: "bar", subLabel: "Ambxst > Bar", icon: Icons.palette, isIcon: true },
         { label: "Launcher Icon Full Tint", keywords: "monochrome color", section: 8, subSection: "bar", subLabel: "Ambxst > Bar", icon: Icons.palette, isIcon: true },
@@ -168,6 +169,8 @@ QtObject {
         
         // Ambxst > Notch
         { label: "Notch", keywords: "island dynamic island center", section: 8, subSection: "notch", subLabel: "Ambxst > Notch", icon: Icons.layout, isIcon: true },
+        { label: "Notch Position", keywords: "top bottom edge", section: 8, subSection: "notch", subLabel: "Ambxst > Notch", icon: Icons.layout, isIcon: true },
+        { label: "Notch Per-Monitor Position", keywords: "screen monitor display edge override", section: 8, subSection: "notch", subLabel: "Ambxst > Notch", icon: Icons.layout, isIcon: true },
         
         // Ambxst > Workspaces
         { label: "Workspaces", keywords: "virtual desktop spaces", section: 8, subSection: "workspaces", subLabel: "Ambxst > Workspaces", icon: Icons.squaresFour, isIcon: true },
@@ -189,6 +192,7 @@ QtObject {
         { label: "Dock Enabled", keywords: "show hide toggle", section: 8, subSection: "dock", subLabel: "Ambxst > Dock", icon: Icons.layout, isIcon: true },
         { label: "Dock Mode", keywords: "default floating integrated style", section: 8, subSection: "dock", subLabel: "Ambxst > Dock", icon: Icons.layout, isIcon: true },
         { label: "Dock Position", keywords: "left bottom right edge", section: 8, subSection: "dock", subLabel: "Ambxst > Dock", icon: Icons.layout, isIcon: true },
+        { label: "Dock Per-Monitor Position", keywords: "screen monitor display edge override", section: 8, subSection: "dock", subLabel: "Ambxst > Dock", icon: Icons.layout, isIcon: true },
         { label: "Dock Height", keywords: "size thickness pixels", section: 8, subSection: "dock", subLabel: "Ambxst > Dock", icon: Icons.layout, isIcon: true },
         { label: "Dock Icon Size", keywords: "width height pixels apps", section: 8, subSection: "dock", subLabel: "Ambxst > Dock", icon: Icons.layout, isIcon: true },
         { label: "Dock Spacing", keywords: "gap between icons", section: 8, subSection: "dock", subLabel: "Ambxst > Dock", icon: Icons.layout, isIcon: true },

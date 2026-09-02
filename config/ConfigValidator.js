@@ -9,6 +9,13 @@ function validate(current, defaults, keyName) {
         return clone(defaults);
     }
 
+    if (keyName === "screenPositions") {
+        if (typeof current !== 'object' || Array.isArray(current)) {
+            return clone(defaults);
+        }
+        return clone(current);
+    }
+
     if (Array.isArray(defaults)) {
         if (!Array.isArray(current)) {
             return clone(defaults);

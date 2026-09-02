@@ -10,6 +10,7 @@ import qs.modules.theme
 import qs.modules.bar.workspaces
 import qs.modules.services
 import qs.modules.components
+import qs.modules.globals
 import qs.config
 
 Item {
@@ -17,6 +18,7 @@ Item {
 
     required property var player
     required property bool notchHovered
+    property string screenName: ""
 
     onPlayerChanged: {
         if (!player) {
@@ -596,7 +598,8 @@ Item {
         id: playerPopup
         anchorItem: playerIcon
         bar: ({
-                position: Config.bar?.position ?? "top"
+                position: Config.barPositionForScreen(compactPlayer.screenName),
+                barPosition: Config.barPositionForScreen(compactPlayer.screenName)
             })
 
         contentWidth: 250
