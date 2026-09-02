@@ -546,6 +546,7 @@ Singleton {
             property bool showPinButton: true
             property bool availableOnFullscreen: false
             property bool use12hFormat: false
+            property bool showKeyboardLayout: true
             property bool containBar: false
             property bool keepBarShadow: false
             property bool keepBarBorder: false
