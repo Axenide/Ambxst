@@ -3,7 +3,6 @@ pragma Singleton
 import QtQuick
 import QtQml
 import Quickshell
-import Quickshell.Io
 import qs.config
 
 Singleton {
@@ -14,58 +13,36 @@ Singleton {
     property string beforeSleepCmd: Config.system.idle.general.before_sleep_cmd ?? "loginctl lock-session"
     property string afterSleepCmd: Config.system.idle.general.after_sleep_cmd ?? "ambxst screen on"
 
-    // Login Lock Daemon
-    // Helper script that listens to Lock signal and executes lockCmd from config
-    property var loginLockProc: Process {
-        id: loginLockProc
-        running: true
-        command: ["bash", Qt.resolvedUrl("../../scripts/loginlock.sh").toString().replace("file://", "")]
-        onExited: exitCode => {
-            if (exitCode !== 0) {
-                console.warn("loginlock.sh exited with code " + exitCode + ". Restarting...");
-                loginLockRestartTimer.start();
-            }
+    // Sleep/Lock monitoring is handled by the Go daemon (login1 DBus).
+    // The daemon executes the configured commands itself and emits
+    // SUSPEND/WAKE/LOCK events that drive the QML state below.
+    property int sleepSubscription: -1
+
+    // Keep the daemon command config in sync.
+    function syncSleepCommands() {
+        BackendService.call("sleep.setCommands", {
+            before: root.beforeSleepCmd,
+            after: root.afterSleepCmd,
+            lock: root.lockCmd
+        });
+    }
+
+    function handleSleepEvent(service, data) {
+        if (service !== "sleep" || !data) return;
+        const event = data.event;
+        if (event === "SUSPEND") {
+            root.lockBeforeSleep();
+            SuspendManager.onPrepareForSleep();
+        } else if (event === "WAKE") {
+            SuspendManager.onWakingUp();
+        } else if (event === "LOCK") {
+            root.lockBeforeSleep();
         }
     }
 
-    property var loginLockRestartTimer: Timer {
-        id: loginLockRestartTimer
-        interval: 1000
-        repeat: false
-        onTriggered: loginLockProc.running = true
-    }
-
-    // Sleep Monitor Daemon
-    // Helper script that listens to PrepareForSleep signal and executes sleep commands from config
-    property var sleepMonitorProc: Process {
-        id: sleepMonitorProc
-        running: true
-        command: ["bash", Qt.resolvedUrl("../../scripts/sleep_monitor.sh").toString().replace("file://", "")]
-        
-        stdout: SplitParser {
-            onRead: data => {
-                const signal = data.trim();
-                if (signal === "SUSPEND") {
-                    SuspendManager.onPrepareForSleep();
-                } else if (signal === "WAKE") {
-                    SuspendManager.onWakingUp();
-                }
-            }
-        }
-
-        onExited: exitCode => {
-            if (exitCode !== 0) {
-                console.warn("sleep_monitor.sh exited with code " + exitCode + ". Restarting...");
-                sleepMonitorRestartTimer.start();
-            }
-        }
-    }
-
-    property var sleepMonitorRestartTimer: Timer {
-        id: sleepMonitorRestartTimer
-        interval: 1000
-        repeat: false
-        onTriggered: sleepMonitorProc.running = true
+    Component.onCompleted: {
+        root.sleepSubscription = BackendService.addSubscription(["sleep"], (service, data) => root.handleSleepEvent(service, data));
+        syncSleepCommands();
     }
 
     // Master Idle Logic
@@ -115,6 +92,19 @@ Singleton {
             `, root, "dynamicProc");
         } catch (e) {
             console.error("Failed to create process for command:", cmd, e);
+        }
+    }
+
+    function shouldUseInternalSleepLock() {
+        const cmd = (root.beforeSleepCmd || "").trim();
+        return cmd === "loginctl lock-session"
+            || cmd === "loginctl lock-sessions"
+            || cmd === "ambxst lock";
+    }
+
+    function lockBeforeSleep() {
+        if (root.shouldUseInternalSleepLock()) {
+            LockscreenService.lock();
         }
     }
 

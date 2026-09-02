@@ -34,6 +34,12 @@ PopupWindow {
     // Logical open state (changes immediately, not after animation)
     property bool isOpen: false
 
+    // Optional group identifier. Popups that share a groupId are
+    // mutually exclusive: opening one closes the others in the same
+    // group. Defaults to "bar" so the bar's flyout controls, clock
+    // popups, layout selector, etc. don't stack on top of each other.
+    property string groupId: "bar"
+
     // Signal emitted when popup is closed externally (click outside)
     signal closedExternally
 
@@ -172,6 +178,11 @@ PopupWindow {
         // Debug positioning
         console.log("BarPopup OPEN - position:", barPosition, "anchorItem:", anchorItem.width, "x", anchorItem.height, "rect.x:", anchor.rect.x, "rect.y:", anchor.rect.y);
 
+        // Group-aware mutual exclusion: ask Visibilities to close any
+        // sibling popups already open in the same groupId, then
+        // register this popup so future opens in the group close us.
+        Visibilities.registerBarPopup(root);
+
         // Set logical state immediately
         isOpen = true;
 
@@ -193,6 +204,10 @@ PopupWindow {
     function close() {
         if (!visible)
             return;
+
+        // Drop our registration so future opens in the same group
+        // don't try to close a popup that's already gone.
+        Visibilities.unregisterBarPopup(root);
 
         // Set logical state immediately
         isOpen = false;
@@ -220,5 +235,12 @@ PopupWindow {
         onTriggered: {
             root.visible = false;
         }
+    }
+
+    Component.onDestruction: {
+        // Make sure a popup that's torn down (parent destroyed, panel
+        // reloaded, etc.) doesn't leave a stale entry that blocks
+        // future opens in its group.
+        Visibilities.unregisterBarPopup(root);
     }
 }

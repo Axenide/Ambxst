@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.modules.services
+import qs.modules.globals
 import "ai"
 import "ai/strategies"
 
@@ -66,13 +67,13 @@ Singleton {
             isRestored = true;
     }
 
+    property bool _restored: false
     Connections {
         target: StateService
-        function onStateLoaded() {
-            restoreModel();
+        function onInitializedChanged() {
+            root._restore();
         }
     }
-
     Connections {
         target: KeyStore
         function onKeysChanged() {
@@ -80,15 +81,34 @@ Singleton {
         }
     }
 
-    Component.onCompleted: {
-        if (StateService.initialized)
-            restoreModel();
+    Component.onCompleted: root._restore()
 
+    function _restore() {
+        if (StateService.initialized && !root._restored) {
+            root._restored = true;
+            restoreModel();
+        }
+    }
+
+    // Lazy init: trigger fetchAvailableModels/reloadHistory/createNewChat
+    // when AI sidebar is opened for the first time.
+    property bool _aiInitialized: false
+    function _ensureInit() {
+        if (_aiInitialized) return;
+        _aiInitialized = true;
         if (models.length === 0)
             fetchAvailableModels();
-
         reloadHistory();
         createNewChat();
+    }
+
+    // Trigger lazy init when AI sidebar is opened
+    Connections {
+        target: GlobalStates
+        function onAssistantVisibleChanged() {
+            if (GlobalStates.assistantVisible)
+                root._ensureInit();
+        }
     }
 
     // ============================================
@@ -609,25 +629,7 @@ Singleton {
     }
 
     function reloadHistory() {
-        let pyScript = `import os, json, glob
-chat_dir = "${chatDir}"
-os.makedirs(chat_dir, exist_ok=True)
-files = sorted(glob.glob(chat_dir + "/*.json"), key=os.path.getmtime, reverse=True)
-for f in files:
-    id = os.path.basename(f)[:-5]
-    title = "New Chat"
-    try:
-        with open(f, 'r') as fp:
-            data = json.load(fp)
-            for msg in data:
-                if msg.get("role") == "user":
-                    title = msg.get("content", "")[:40].replace("\\n", " ").strip()
-                    if len(msg.get("content", "")) > 40: title += "..."
-                    break
-    except: pass
-    print(f"{id}|{title}")
-`;
-        listHistoryProcess.command = ["python3", "-c", pyScript];
+        listHistoryProcess.command = ["ambxst", "chatlist", chatDir];
         listHistoryProcess.running = true;
     }
 

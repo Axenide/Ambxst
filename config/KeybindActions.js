@@ -80,11 +80,17 @@ var ACTION_CATALOG = [
     { id: "workspace.move-window-special", label: "Move Window to Special Workspace", category: "Workspace", dispatcher: "movetoworkspace", argument: "special" },
     { id: "workspace.move-window-special-silent", label: "Move Window to Special Workspace (Silent)", category: "Workspace", dispatcher: "movetoworkspacesilent", argument: "special" },
 
-    { id: "scrolling.focus", label: "Focus (Scrolling)", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {
-        return "focus " + directionToLetter(args.direction);
+    { id: "scrolling.focus", label: "Focus", category: "Window", dispatcher: "movefocus", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "up" }], argumentBuilder: function (args) {
+        return directionToLetter(args.direction);
     } },
-    { id: "scrolling.move-window", label: "Move Window (Scrolling)", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
-        return "movewindowto " + directionToLetter(args.direction);
+    { id: "scrolling.move-window", label: "Move Window", category: "Window", dispatcher: "movewindow", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
+        return directionToLetter(args.direction);
+    } },
+    { id: "monocle.focus", label: "Cycle Focus", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
+    } },
+    { id: "monocle.move-window", label: "Cycle Window", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
     } },
     { id: "scrolling.resize-column", label: "Resize Column", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "delta", label: "Delta", placeholder: "+0.1 / -0.1", defaultValue: "+0.1" }], argumentBuilder: function (args) {
         return "colresize " + String(args.delta || "").trim();
@@ -109,8 +115,8 @@ var ACTION_CATALOG = [
     { id: "audio.volume-down", label: "Volume Down", category: "Audio", dispatcher: "exec", argument: "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-", flags: "le" },
     { id: "audio.mute-toggle", label: "Mute Audio", category: "Audio", dispatcher: "exec", argument: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", flags: "le" },
 
-    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness +5", flags: "le" },
-    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness -5", flags: "le" },
+    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "sh -c 'echo brightness-up > /tmp/ambxst_ipc.pipe'", flags: "le" },
+    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "sh -c 'echo brightness-down > /tmp/ambxst_ipc.pipe'", flags: "le" },
 
     { id: "system.calculator", label: "Calculator", category: "System", dispatcher: "exec", argument: "notify-send \"Soon\"" },
     { id: "system.lock", label: "Lock Session", category: "System", dispatcher: "exec", argument: "loginctl lock-session" },

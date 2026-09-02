@@ -55,7 +55,14 @@ QtObject {
             case "tools": toggleSimpleModule("tools"); break;
             case "config": toggleSettings(); break;
             case "screenshot": Screenshot.initialize(); GlobalStates.screenshotToolVisible = true; break;
-            case "screenrecord": ScreenRecorder.initialize(); GlobalStates.screenRecordToolVisible = true; break;
+            case "screenrecord":
+                ScreenRecorder.initialize();
+                if (ScreenRecorder.isRecording) {
+                    ScreenRecorder.toggleRecording();
+                } else {
+                    GlobalStates.screenRecordToolVisible = true;
+                }
+                break;
             case "lens": 
                 Screenshot.initialize();
                 Screenshot.captureMode = "lens";
@@ -71,7 +78,12 @@ QtObject {
                 break;
             case "media-next": MprisController.next(); break;
             case "media-prev": MprisController.previous(); break;
-                
+
+            // Brightness (routes through the same setBrightness path the slider uses,
+            // avoiding a per-press fork of the Go CLI + qs ipc chain).
+            case "brightness-up": Brightness.increaseAll(); break;
+            case "brightness-down": Brightness.decreaseAll(); break;
+
             default: console.warn("Unknown IPC command:", command);
         }
     }
@@ -84,11 +96,29 @@ QtObject {
         }
     }
 
-    function toggleSettings() {
-        GlobalStates.settingsWindowVisible = !GlobalStates.settingsWindowVisible;
-        if (GlobalStates.settingsWindowVisible) {
-            Visibilities.setActiveModule("");
+    // Commands sent via `ambxst run <cmd>` go through the Go daemon now.
+    // The daemon pushes a "ui.command" event on the "ui" service stream;
+    // route it into the same runner.
+    Component.onCompleted: {
+        BackendService.addSubscription(["ui"], (service, data) => {
+            if (service === "ui.command" && typeof data === "string" && data !== "") {
+                root.run(data);
+            }
+        });
+    }
+
+    function toggleSettings(screenName) {
+        const willOpen = !GlobalStates.settingsWindowVisible;
+        if (willOpen) {
+            const targetMonitor = screenName ? AxctlService.monitorFor(screenName) : AxctlService.focusedMonitor;
+            GlobalStates.settingsTargetWorkspaceId = targetMonitor?.activeWorkspace?.id || AxctlService.focusedMonitor?.activeWorkspace?.id || AxctlService.focusedWorkspace?.id || 0;
+            GlobalStates.settingsTargetScreenName = targetMonitor?.name || AxctlService.focusedMonitor?.name || "";
+            if (targetMonitor && targetMonitor.id !== AxctlService.focusedMonitor?.id) {
+                AxctlService.dispatch(`focusmonitor ${targetMonitor.id}`);
+            }
+            Qt.callLater(() => Visibilities.setActiveModule(""));
         }
+        GlobalStates.settingsWindowVisible = willOpen;
     }
 
     function toggleSimpleModule(moduleName) {

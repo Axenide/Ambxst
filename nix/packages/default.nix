@@ -1,5 +1,5 @@
 # Main Ambxst package
-{ pkgs, lib, self, system, axctl }:
+{ pkgs, lib, self, system, axctl, version }:
 
 let
   quickshellPkg = pkgs.quickshell;
@@ -39,10 +39,13 @@ let
     </fontconfig>
   '';
 
+  # Build the Go backend (daemon + CLI)
+  backendPkg = import ./backend.nix { inherit pkgs lib version; };
+
   # Copy shell sources to the Nix store
   shellSrc = pkgs.stdenv.mkDerivation {
     pname = "ambxst-shell";
-    version = lib.removeSuffix "\n" (builtins.readFile ../../version);
+    inherit version;
     src = lib.cleanSource self;
     dontBuild = true;
     installPhase = ''
@@ -53,6 +56,7 @@ let
 
   launcher = pkgs.writeShellScriptBin "ambxst" ''
     export AMBXST_QS="${quickshellPkg}/bin/qs"
+    export AMBXST_SHELL="${shellSrc}"
     export PATH="${envAmbxst}/bin:$PATH"
 
     # Set QML2_IMPORT_PATH to include modules from envAmbxst (like syntax-highlighting)
@@ -62,12 +66,12 @@ let
     # Make bundled fonts available to fontconfig
     export FONTCONFIG_PATH="${fontconfigConf}/etc/fonts:''${FONTCONFIG_PATH:-}"
 
-    # Delegate execution to CLI (now in the Nix store)
-    exec ${shellSrc}/cli.sh "$@"
+    # Delegate execution to the Go backend
+    exec ${backendPkg}/bin/ambxst "$@"
   '';
 
 in pkgs.buildEnv {
-  name = "Ambxst";
+  name = "Ambxst-${version}";
   paths = [ envAmbxst launcher ];
   meta.mainProgram = "ambxst";
 }

@@ -78,6 +78,7 @@ PanelWindow {
 
     property string colorPresetsDir: Quickshell.env("HOME") + "/.config/ambxst/colors"
     property string officialColorPresetsDir: decodeURIComponent(Qt.resolvedUrl("../../../../assets/colors").toString().replace("file://", ""))
+
     onColorPresetsDirChanged: console.log("Color Presets Directory:", colorPresetsDir)
     property list<string> colorPresets: []
     onColorPresetsChanged: console.log("Color Presets Updated:", colorPresets)
@@ -216,11 +217,10 @@ PanelWindow {
 
         console.log("Generating lockscreen frame for:", filePath);
 
-        var scriptPath = decodeURIComponent(Qt.resolvedUrl("../../../../scripts/lockwall.py").toString().replace("file://", ""));
         // QUICKSHELL-GIT: var dataPath = Quickshell.cacheDir;
         var dataPath = Quickshell.env("HOME") + "/.cache/ambxst";
 
-        lockscreenWallpaperScript.command = ["python3", scriptPath, filePath, dataPath];
+        lockscreenWallpaperScript.command = ["ambxst", "lockwall", filePath, dataPath];
 
         lockscreenWallpaperScript.running = true;
     }
@@ -532,7 +532,7 @@ PanelWindow {
         // Store the current active path so updateMpvRuntime knows which one to use
         wallpaper.mpvShaderPath = currentShaderPath;
 
-        var cmd = ["python3", "-c", "import sys, os, pathlib; " + "d = pathlib.Path(sys.argv[1]); " + "d.mkdir(parents=True, exist_ok=True); " + "[f.unlink() for f in d.iterdir() if f.is_file()]; " + "pathlib.Path(sys.argv[2]).write_text(sys.argv[3]); " + "print('Wrote shader to ' + sys.argv[2]); " + "legacy_dir = os.path.dirname(sys.argv[1]); " + "[pathlib.Path(legacy_dir, f).unlink(missing_ok=True) for f in ['mpv_tint_0.glsl', 'mpv_tint_1.glsl', 'mpv_tint.glsl']]", mpvShaderDir, currentShaderPath, shaderContent];
+        var cmd = ["ambxst", "writeshader", mpvShaderDir, currentShaderPath, shaderContent];
 
         mpvShaderWriter.command = cmd;
         mpvShaderWriter.running = true;
@@ -659,27 +659,38 @@ PanelWindow {
 
         GlobalStates.wallpaperManager = wallpaper;
 
-        // Verificar si existe wallpapers.json, si no, crear con fallback
+        // Verify wallpapers.json exists, create with fallback if not
         checkWallpapersJson.running = true;
 
-        // Initial scans - do these once after config is loaded
+        // Initial scans - color presets are needed for the wallpapers tab SchemeSelector.
         scanColorPresets();
-        // Start directory monitoring
         presetsWatcher.reload();
         officialPresetsWatcher.reload();
-        // Load initial wallpaper config - this will trigger onWallPathChanged which does the actual scan
+        // Load initial wallpaper config - triggers onWallPathChanged which does the actual scan
         wallpaperConfig.reload();
 
-        // Generate lockscreen frame for initial wallpaper after a short delay
+        // Lockscreen frame and MPV shader generation deferred 5s after boot to reduce peak memory.
         Qt.callLater(function () {
             if (currentWallpaper) {
-                generateLockscreenFrame(currentWallpaper);
+                lockscreenFrameTimer.start();
             }
-            // Force shader generation on startup if enabled
             if (tintEnabled) {
                 updateMpvShader();
             }
         });
+    }
+
+    // Deferred lockscreen frame generation to avoid blocking boot
+    Timer {
+        id: lockscreenFrameTimer
+        interval: 5000
+        running: false
+        repeat: false
+        onTriggered: {
+            if (currentWallpaper) {
+                generateLockscreenFrame(currentWallpaper);
+            }
+        }
     }
 
     FileView {
@@ -842,12 +853,11 @@ PanelWindow {
         }
     }
 
-    // Proceso para generar thumbnails de videos
+        // Proceso para generar thumbnails de videos
     Process {
         id: thumbnailGeneratorScript
         running: false
-        // QUICKSHELL-GIT: command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../../../scripts/thumbgen.py").toString().replace("file://", "")), Quickshell.cacheDir + "/wallpapers.json", Quickshell.cacheDir, fallbackDir]
-        command: ["python3", decodeURIComponent(Qt.resolvedUrl("../../../../scripts/thumbgen.py").toString().replace("file://", "")), Quickshell.env("HOME") + "/.cache/ambxst" + "/wallpapers.json", Quickshell.env("HOME") + "/.cache/ambxst", fallbackDir]
+        command: ["ambxst", "thumbs", Quickshell.env("HOME") + "/.cache/ambxst" + "/wallpapers.json", Quickshell.env("HOME") + "/.cache/ambxst", fallbackDir]
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -1007,7 +1017,7 @@ PanelWindow {
         }
     }
 
-    // Directory watcher for user color presets
+    // Directory watcher for user color presets.
     FileView {
         id: presetsWatcher
         path: colorPresetsDir
@@ -1020,7 +1030,7 @@ PanelWindow {
         }
     }
 
-    // Directory watcher for official color presets
+    // Directory watcher for official color presets.
     FileView {
         id: officialPresetsWatcher
         path: officialColorPresetsDir

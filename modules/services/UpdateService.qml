@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import qs.modules.services
 
 Singleton {
     id: root
@@ -134,29 +135,36 @@ Singleton {
     function sendUpdateNotification(newVersion) {
         const summary = "Ambxst update available!";
         const body = newVersion + " available! (Installed " + root.currentVersion + ")";
-        const cmd = "notify-send -a 'Ambxst Update' -i system-software-update -w '" + summary + "' '" + body + "' --action=changelog=Changelog --action=later='Maybe later' --action=update=Update";
-        
-        notificationProcess.running = false;
-        notificationProcess.command = ["bash", "-c", cmd];
-        notificationProcess.running = true;
-    }
 
-    property Process notificationProcess: Process {
-        id: notificationProcess
-        stdout: StdioCollector {
-            id: stdoutCollector
-        }
-        onExited: exitCode => {
-            const action = stdoutCollector.text.trim();
-            if (action === "changelog") {
-                Quickshell.execDetached(["xdg-open", root.changelogUrl]);
-            } else if (action === "later") {
-                root.nextCheckTime = Date.now() + 8 * 3600000;
-                root.saveCache();
-            } else if (action === "update") {
-                const updateCmd = "kitty -o allow_remote_control=yes --listen-on unix:/tmp/mykitty sh -c \"sleep 0.2 && kitten @ --to unix:/tmp/mykitty send-text 'ambxst update'; exec $SHELL\"";
-                Quickshell.execDetached(["bash", "-c", updateCmd]);
+        // Routed through Ambxst's Notifications service so it can be
+        // dismissed/tracked like every other Ambxst notification instead
+        // of leaking into the system daemon. The actions keep their
+        // previous behavior via localActionHandlers — `attemptInvokeAction`
+        // fires them when the user clicks a button.
+        Notifications.notifyInternal({
+            summary: summary,
+            body: body,
+            appName: "Ambxst Update",
+            appIcon: "system-software-update",
+            urgency: "normal",
+            replaceKey: "ambxst-update-available",
+            actions: [
+                { identifier: "changelog", text: "Changelog" },
+                { identifier: "later",     text: "Maybe later" },
+                { identifier: "update",    text: "Update" }
+            ],
+            actionHandlers: {
+                "changelog": function () {
+                    Quickshell.execDetached(["xdg-open", root.changelogUrl]);
+                },
+                "later": function () {
+                    root.nextCheckTime = Date.now() + 8 * 3600000;
+                    root.saveCache();
+                },
+                "update": function () {
+                    TerminalService.execDetached("ambxst update; exec $SHELL");
+                }
             }
-        }
+        });
     }
 }
