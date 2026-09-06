@@ -402,6 +402,75 @@ Item {
                                 }
                             }
 
+                            // Match Systray Icon Color toggle
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                Text {
+                                    text: "Theme System Tray Icons"
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    color: Colors.overBackground
+                                    Layout.fillWidth: true
+                                }
+
+                                Switch {
+                                    id: matchSysTrayIconColorSwitch
+                                    checked: Config.theme.matchSysTrayIconColor
+
+                                    readonly property bool configValue: Config.theme.matchSysTrayIconColor
+
+                                    onConfigValueChanged: {
+                                        if (checked !== configValue) {
+                                            checked = configValue;
+                                        }
+                                    }
+
+                                    onCheckedChanged: {
+                                        if (checked !== Config.theme.matchSysTrayIconColor) {
+                                            GlobalStates.markThemeChanged();
+                                            Config.theme.matchSysTrayIconColor = checked;
+                                        }
+                                    }
+
+                                    indicator: Rectangle {
+                                        implicitWidth: 40
+                                        implicitHeight: 20
+                                        x: matchSysTrayIconColorSwitch.leftPadding
+                                        y: parent.height / 2 - height / 2
+                                        radius: height / 2
+                                        color: matchSysTrayIconColorSwitch.checked ? Styling.srItem("overprimary") : Colors.surfaceBright
+                                        border.color: matchSysTrayIconColorSwitch.checked ? Styling.srItem("overprimary") : Colors.outline
+
+                                        Behavior on color {
+                                            enabled: Config.animDuration > 0
+                                            ColorAnimation {
+                                                duration: Config.animDuration / 2
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            x: matchSysTrayIconColorSwitch.checked ? parent.width - width - 2 : 2
+                                            y: 2
+                                            width: parent.height - 4
+                                            height: width
+                                            radius: width / 2
+                                            color: matchSysTrayIconColorSwitch.checked ? Colors.background : Colors.overSurfaceVariant
+
+                                            Behavior on x {
+                                                enabled: Config.animDuration > 0
+                                                NumberAnimation {
+                                                    duration: Config.animDuration / 2
+                                                    easing.type: Easing.OutCubic
+                                                }
+                                            }
+                                        }
+                                    }
+                                    background: null
+                                }
+                            }
+
                             // Enable Corners toggle
                             RowLayout {
                                 Layout.fillWidth: true

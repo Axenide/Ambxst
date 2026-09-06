@@ -164,11 +164,23 @@ MouseArea {
         width: parent.width
         height: parent.height
         smooth: true
+        // Keep the raw icon hidden when the tinted layer is active.
+        opacity: systrayIconTint.active ? 0 : 1
+    }
+
+    Tinted {
+        id: systrayIconTint
+        sourceItem: trayIcon
+        anchors.fill: trayIcon
+        active: Config.matchSysTrayIconColor
+        fullTint: true
+        tintColor: Config.tintIcons ? Styling.srItem("overprimary") : Colors.overBackground
     }
 
     Tinted {
         sourceItem: trayIcon
         anchors.fill: trayIcon
+        active: Config.tintIcons && !Config.matchSysTrayIconColor
     }
 
     StyledToolTip {

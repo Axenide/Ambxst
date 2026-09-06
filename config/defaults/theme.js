@@ -9,6 +9,7 @@ var data = {
     "monoFont": "Iosevka Nerd Font Mono",
     "monoFontSize": 14,
     "tintIcons": false,
+    "matchSysTrayIconColor": false,
     "enableCorners": true,
     "animDuration": 300,
     "shadowOpacity": 0.5,
