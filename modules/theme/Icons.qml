@@ -125,6 +125,8 @@ QtObject {
     readonly property string chromium: "<font face='Symbols Nerd Font Mono'></font>"
     readonly property string telegram: "<font face='Symbols Nerd Font Mono'></font>"
 
+    // Calendar
+    readonly property string calendarBlank: "\ue0d0"
     // Clock
     readonly property string clock: ""
     readonly property string alarm: ""

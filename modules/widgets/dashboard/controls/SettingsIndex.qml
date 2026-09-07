@@ -207,7 +207,13 @@ QtObject {
         { label: "Desktop Text Color", keywords: "label font", section: 8, subSection: "desktop", subLabel: "Ambxst > Desktop", icon: Icons.palette, isIcon: true },
         
         // Ambxst > System
-        { label: "Shell System", keywords: "config settings ambxst", section: 8, subSection: "system", subLabel: "Ambxst > System", icon: Icons.circuitry, isIcon: true }
+        { label: "Shell System", keywords: "config settings ambxst", section: 8, subSection: "system", subLabel: "Ambxst > System", icon: Icons.circuitry, isIcon: true },
+
+        // --- Calendar ---
+        { label: "Calendar", keywords: "events google caldav schedule sync reminder notifications", section: 9, subSection: "", subLabel: "", icon: Icons.calendarBlank, isIcon: true },
+        { label: "Calendar Accounts", keywords: "google caldav nextcloud connect login oauth", section: 9, subSection: "accounts", subLabel: "Calendar > Accounts", icon: Icons.calendarBlank, isIcon: true },
+        { label: "Calendar Sync", keywords: "interval refresh update", section: 9, subSection: "settings", subLabel: "Calendar > Settings", icon: Icons.sync, isIcon: true },
+        { label: "Calendar Notifications", keywords: "reminder alert notify", section: 9, subSection: "settings", subLabel: "Calendar > Settings", icon: Icons.bell, isIcon: true }
     ]
 
     property var items: staticItems.concat(dynamicItems)

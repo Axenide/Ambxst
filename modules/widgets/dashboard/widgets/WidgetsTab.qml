@@ -13,11 +13,30 @@ import qs.config
 import "calendar"
 
 Rectangle {
+    id: root
     color: "transparent"
     implicitWidth: 600
     implicitHeight: 750
 
     property int leftPanelWidth: 0
+    property int calDay: 0
+    property int calMonth: 0
+    property int calYear: 0
+
+    function resetCalendarState() {
+        calDay = 0;
+        calMonth = 0;
+        calYear = 0;
+        calendarWidget.clearSelection();
+    }
+
+    Connections {
+        target: GlobalStates
+        function onDashboardOpenChanged() {
+            if (!GlobalStates.dashboardOpen)
+                resetCalendarState();
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -57,23 +76,172 @@ Rectangle {
                     }
 
                     Calendar {
+                        id: calendarWidget
                         Layout.fillWidth: true
                         Layout.preferredHeight: width
+                        onOpenCalendarSettings: {
+                            GlobalStates.settingsWindowVisible = true;
+                            Qt.callLater(() => { GlobalStates.settingsCurrentTab = 9; });
+                        }
+                        onDaySelected: (d, m, y) => {
+                            calDay = d;
+                            calMonth = m;
+                            calYear = y;
+                        }
                     }
 
+                    // Today's events panel
                     StyledRect {
+                        id: todayEventsPanel
+                        visible: CalendarService.hasAccounts && allEvents.length > 0
                         variant: "pane"
+                        radius: Styling.radius(4)
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 150
+                        implicitHeight: todayEventsCol.implicitHeight + 16
+
+                        property var allEvents: CalendarService.todayEvents()
+                        property var upcomingEvents: {
+                            const now = new Date();
+                            return allEvents.filter(ev => {
+                                if (ev.allDay) return true;
+                                try { return new Date(ev.end || ev.start) >= now; } catch(e) { return true; }
+                            });
+                        }
+                        property var pastEvents: {
+                            const now = new Date();
+                            return allEvents.filter(ev => {
+                                if (ev.allDay) return false;
+                                try { return new Date(ev.end || ev.start) < now; } catch(e) { return false; }
+                            });
+                        }
+
+                        Connections {
+                            target: CalendarService
+                            function onEventsChanged() { todayEventsPanel.allEvents = CalendarService.todayEvents(); }
+                        }
+
+                        component EventRow: RowLayout {
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 8
+                            Rectangle {
+                                width: 3; height: 32; radius: 2
+                                color: CalendarService.calendarColor(modelData.calendarId)
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 1
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: modelData.title || "Untitled"
+                                    font.family: Config.defaultFont
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    font.weight: Font.Medium
+                                    color: Colors.overSurface
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    text: {
+                                        if (modelData.allDay) return "All day";
+                                        const s = modelData.start || "";
+                                        const e = modelData.end || "";
+                                        const st = s.includes("T") ? s.split("T")[1].substring(0,5) : "";
+                                        const et = e.includes("T") ? e.split("T")[1].substring(0,5) : "";
+                                        return st + (et ? " – " + et : "");
+                                    }
+                                    font.family: Config.defaultFont
+                                    font.pixelSize: Styling.fontSize(-3)
+                                    color: Colors.outline
+                                }
+                            }
+                        }
+
+                        ColumnLayout {
+                            id: todayEventsCol
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            anchors.margins: 8
+                            spacing: 4
+
+                            // Upcoming section
+                            Text {
+                                visible: todayEventsPanel.upcomingEvents.length > 0
+                                text: "Upcoming"
+                                font.family: Config.defaultFont
+                                font.pixelSize: Styling.fontSize(-3)
+                                font.weight: Font.Medium
+                                color: Colors.outline
+                                Layout.topMargin: 2
+                            }
+
+                            Repeater {
+                                model: todayEventsPanel.upcomingEvents
+                                delegate: EventRow {}
+                            }
+
+                            // Past section
+                            Text {
+                                visible: todayEventsPanel.pastEvents.length > 0
+                                text: "Past"
+                                font.family: Config.defaultFont
+                                font.pixelSize: Styling.fontSize(-3)
+                                font.weight: Font.Medium
+                                color: Colors.outline
+                                Layout.topMargin: todayEventsPanel.upcomingEvents.length > 0 ? 4 : 2
+                                opacity: 0.6
+                            }
+
+                            Repeater {
+                                model: todayEventsPanel.pastEvents
+                                delegate: Item {
+                                    required property var modelData
+                                    Layout.fillWidth: true
+                                    implicitHeight: pastRow.implicitHeight
+                                    opacity: 0.5
+                                    EventRow {
+                                        id: pastRow
+                                        anchors.left: parent.left
+                                        anchors.right: parent.right
+                                        modelData: parent.modelData
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
-        // Notification History
-        NotificationHistory {
+        // Notification / Event detail area
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            NotificationHistory {
+                anchors.fill: parent
+                opacity: root.calDay === 0 ? 1 : 0
+                visible: opacity > 0
+                Behavior on opacity {
+                    enabled: Config.animDuration > 0
+                    NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+                }
+            }
+
+            EventDetailPanel {
+                anchors.fill: parent
+                opacity: root.calDay > 0 ? 1 : 0
+                visible: opacity > 0
+                day: root.calDay
+                month: root.calMonth
+                year: root.calYear
+                onClosed: { root.calDay = 0; calendarWidget.clearSelection(); }
+                Behavior on opacity {
+                    enabled: Config.animDuration > 0
+                    NumberAnimation { duration: Config.animDuration / 2; easing.type: Easing.OutCubic }
+                }
+            }
         }
 
         // Circular controls column

@@ -1,8 +1,12 @@
+pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
+import qs.modules.globals
 import "layout.js" as CalendarLayout
 
 Item {
@@ -28,13 +32,48 @@ Item {
         onTriggered: root.currentDate = new Date()
     }
 
-    // Helper function to get localized day abbreviation
+    // Currently selected day for EventPopup
+    property int selectedDay: 0
+    property int selectedMonth: 0
+    property int selectedYear: 0
+    property var selectedDayEvents: []
+
+    // Viewing month/year for passing to day buttons
+    readonly property int viewingMonth: viewingDate.getMonth() + 1
+    readonly property int viewingYear: viewingDate.getFullYear()
+
+    signal openCalendarSettings()
+    signal daySelected(int day, int month, int year)
+
+    function clearSelection() {
+        selectedDay = 0;
+        selectedMonth = 0;
+        selectedYear = 0;
+    }
+
     function getDayAbbrev(dayIndex) {
-        // Create a date for a known Monday (e.g., 2024-01-01 was a Monday)
         var d = new Date(2024, 0, 1 + dayIndex);
         var dayName = d.toLocaleDateString(Qt.locale(), "ddd");
-        // Capitalize first letter and limit to 2 chars
         return (dayName.charAt(0).toUpperCase() + dayName.slice(1, 2)).replace(".", "");
+    }
+
+    function openDayPopup(dayData, item) {
+        const d = parseInt(dayData.day);
+        if (isNaN(d)) return;
+        // Determine actual month/year for this day cell
+        let m = root.viewingMonth;
+        let y = root.viewingYear;
+        if (dayData.today === -1) {
+            // Day from adjacent month — not current viewing month
+            if (d > 15) { m--; } else { m++; }
+            if (m < 1) { m = 12; y--; }
+            if (m > 12) { m = 1; y++; }
+        }
+        root.selectedDay = d;
+        root.selectedMonth = m;
+        root.selectedYear = y;
+        root.selectedDayEvents = CalendarService.eventsForDate(y, m, d);
+        root.daySelected(d, m, y);
     }
 
     ColumnLayout {
@@ -58,6 +97,34 @@ Item {
                     Layout.fillWidth: true
                     Layout.maximumHeight: 32
                     spacing: 4
+
+                    // Gear button for calendar settings
+                    StyledRect {
+                        id: gearButton
+                        variant: gearMouseArea.pressed ? "primary" : (gearMouseArea.containsMouse ? "focus" : "internalbg")
+                        Layout.preferredWidth: 32
+                        Layout.fillHeight: true
+                        radius: Styling.radius(0)
+                        visible: true
+
+                        readonly property color buttonItem: gearMouseArea.pressed ? itemColor : Styling.srItem("overprimary")
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: Icons.gear
+                            font.family: Icons.font
+                            font.pixelSize: 14
+                            color: gearButton.buttonItem
+                        }
+
+                        MouseArea {
+                            id: gearMouseArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: root.openCalendarSettings()
+                            cursorShape: Qt.PointingHandCursor
+                        }
+                    }
 
                     StyledRect {
                         id: titleRect
@@ -185,8 +252,33 @@ Item {
                                         model: 7
                                         delegate: CalendarDayButton {
                                             required property int index
-                                            day: calendarLayout[rowIndex][index].day
-                                            isToday: calendarLayout[rowIndex][index].today
+                                            readonly property var cellData: calendarLayout[rowIndex][index]
+                                            day: cellData.day
+                                            isToday: cellData.today
+                                            year: {
+                                                let y = root.viewingYear;
+                                                if (cellData.today === -1) {
+                                                    let m = root.viewingMonth;
+                                                    const d = parseInt(cellData.day);
+                                                    if (d > 15) { m--; } else { m++; }
+                                                    if (m < 1) y--;
+                                                    if (m > 12) y++;
+                                                }
+                                                return y;
+                                            }
+                                            month: {
+                                                if (cellData.today === -1) {
+                                                    let m = root.viewingMonth;
+                                                    const d = parseInt(cellData.day);
+                                                    if (d > 15) { m--; } else { m++; }
+                                                    if (m < 1) m = 12;
+                                                    if (m > 12) m = 1;
+                                                    return m;
+                                                }
+                                                return root.viewingMonth;
+                                            }
+                                            isSelected: root.selectedDay > 0 && parseInt(cellData.day) === root.selectedDay && month === root.selectedMonth && year === root.selectedYear
+                                            onClicked: root.openDayPopup(cellData, this)
                                         }
                                     }
                                 }
@@ -195,6 +287,8 @@ Item {
                     }
                 }
             }
+
+
         }
     }
 }
