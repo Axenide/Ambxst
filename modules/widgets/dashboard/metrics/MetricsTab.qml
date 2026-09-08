@@ -22,6 +22,13 @@ Rectangle {
     property var linuxLogos: null
     property real chartZoom: 1.0
 
+    // Dashboard-specific visibility from config
+    readonly property bool showCpu:  Config.system.resources && Config.system.resources.show ? Config.system.resources.show.cpu  !== false : true
+    readonly property bool showRam:  Config.system.resources && Config.system.resources.show ? Config.system.resources.show.ram  !== false : true
+    readonly property bool showGpu:  Config.system.resources && Config.system.resources.show ? Config.system.resources.show.gpu  !== false : true
+    readonly property bool showDisk: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.disk !== false : true
+    readonly property bool showTemp: Config.system.resources && Config.system.resources.show ? Config.system.resources.show.dashTemp !== false : true
+
     // Adjust history points based on zoom and repaint chart
     onChartZoomChanged: {
         // Store enough history to support zoom out
@@ -368,6 +375,7 @@ Rectangle {
                         Column {
                             width: parent.width
                             spacing: 4
+                            visible: root.showCpu
 
                             ResourceItem {
                                 width: parent.width
@@ -403,7 +411,7 @@ Rectangle {
                                 }
 
                                 Text {
-                                    visible: SystemResources.cpuTemp >= 0
+                                    visible: root.showTemp && SystemResources.cpuTemp >= 0
                                     text: Icons.temperature
                                     font.family: Icons.font
                                     font.pixelSize: Styling.fontSize(-2)
@@ -411,7 +419,7 @@ Rectangle {
                                 }
 
                                 Text {
-                                    visible: SystemResources.cpuTemp >= 0
+                                    visible: root.showTemp && SystemResources.cpuTemp >= 0
                                     text: `${SystemResources.cpuTemp}°`
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-2)
@@ -425,6 +433,7 @@ Rectangle {
                         Column {
                             width: parent.width
                             spacing: 4
+                            visible: root.showRam
 
                             ResourceItem {
                                 width: parent.width
@@ -468,7 +477,7 @@ Rectangle {
                         // GPUs (if detected) - show one bar per GPU
                         Repeater {
                             id: gpuRepeater
-                            model: SystemResources.gpuDetected ? SystemResources.gpuCount : 0
+                            model: (root.showGpu && SystemResources.gpuDetected) ? SystemResources.gpuCount : 0
 
                             Column {
                                 required property int index
@@ -535,7 +544,7 @@ Rectangle {
                                     }
 
                                     Text {
-                                        visible: (SystemResources.gpuTemps[index] ?? -1) >= 0
+                                        visible: root.showTemp && (SystemResources.gpuTemps[index] ?? -1) >= 0
                                         text: Icons.temperature
                                         font.family: Icons.font
                                         font.pixelSize: Styling.fontSize(-2)
@@ -555,7 +564,7 @@ Rectangle {
                                     }
 
                                     Text {
-                                        visible: (SystemResources.gpuTemps[index] ?? -1) >= 0
+                                        visible: root.showTemp && (SystemResources.gpuTemps[index] ?? -1) >= 0
                                         text: `${SystemResources.gpuTemps[index]}°`
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-2)
@@ -569,7 +578,7 @@ Rectangle {
                         // Disks
                         Repeater {
                             id: diskRepeater
-                            model: SystemResources.validDisks
+                            model: root.showDisk ? SystemResources.validDisks : []
 
                             Column {
                                 required property string modelData
@@ -781,13 +790,15 @@ Rectangle {
                             }
 
                             // Draw CPU line (red)
-                            drawLine(SystemResources.cpuHistory, Colors.red);
+                            if (root.showCpu)
+                                drawLine(SystemResources.cpuHistory, Colors.red);
 
                             // Draw RAM line (cyan)
-                            drawLine(SystemResources.ramHistory, Colors.cyan);
+                            if (root.showRam)
+                                drawLine(SystemResources.ramHistory, Colors.cyan);
 
                             // Draw GPU lines (color based on vendor)
-                            if (SystemResources.gpuDetected && SystemResources.gpuCount > 0) {
+                            if (root.showGpu && SystemResources.gpuDetected && SystemResources.gpuCount > 0) {
                                 for (let i = 0; i < SystemResources.gpuCount; i++) {
                                     if (SystemResources.gpuHistories[i] && SystemResources.gpuHistories[i].length > 0) {
                                         // Get vendor-specific color

@@ -56,9 +56,12 @@ Singleton {
 
     property int subscriptionHandle: -1
 
-    // Subscription only lives while the dashboard Metrics tab is open,
-    // preserving the original resource-saving behaviour (no dGPU polling).
-    readonly property bool monitoringActive: GlobalStates.dashboardOpen && GlobalStates.dashboardCurrentTab === 2 && root.validDisks.length > 0
+    // Keep the daemon subscription dormant unless a visible surface needs it.
+    readonly property bool monitoringActive: (Config.system.resources?.enabled ?? true)
+        && ((GlobalStates.dashboardOpen && GlobalStates.dashboardCurrentTab === 2)
+            || Config.system.resources?.location === "bar"
+            || Config.system.resources?.location === "both")
+        && root.validDisks.length > 0
 
     onMonitoringActiveChanged: {
         if (monitoringActive) activateMonitor();

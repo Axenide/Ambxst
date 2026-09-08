@@ -1049,6 +1049,23 @@ Singleton {
                 property bool autoStart: false
                 property bool syncSpotify: false
             }
+            property JsonObject resources: JsonObject {
+                property bool enabled: true
+                property string location: "dashboard"
+                property string barSide: "left"
+                property JsonObject show: JsonObject {
+                    property bool cpu: true
+                    property bool ram: true
+                    property bool gpu: true
+                    property bool disk: true
+                    property bool barCpu: true
+                    property bool barRam: true
+                    property bool barGpu: true
+                    property bool barDisk: true
+                    property bool dashTemp: true
+                    property bool barTemp: true
+                }
+            }
         }
     }
 
