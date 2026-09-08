@@ -541,7 +541,7 @@ Item {
 
                     Text {
                         Layout.alignment: Qt.AlignHCenter
-                        text: Icons.plug
+                        text: Icons.puzzlePiece
                         font.family: Icons.font
                         font.pixelSize: 28
                         color: Colors.outline

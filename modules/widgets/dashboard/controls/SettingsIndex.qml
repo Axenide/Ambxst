@@ -17,8 +17,8 @@ QtObject {
 
     readonly property var staticItems: [
         // --- Mods ---
-        { label: "Mods", keywords: "extensions plugins modifications packages", section: 10, subSection: "", subLabel: "", icon: Icons.plug, isIcon: true },
-        { label: "Install mod", keywords: "add local directory archive git repository source", section: 10, subSection: "", subLabel: "Mods", icon: Icons.plug, isIcon: true },
+        { label: "Mods", keywords: "extensions plugins modifications packages", section: 10, subSection: "", subLabel: "", icon: Icons.puzzlePiece, isIcon: true },
+        { label: "Install mod", keywords: "add local directory archive git repository source", section: 10, subSection: "", subLabel: "Mods", icon: Icons.puzzlePiece, isIcon: true },
         { label: "Rollback generation", keywords: "restore recover previous failed", section: 10, subSection: "", subLabel: "Mods", icon: Icons.arrowCounterClockwise, isIcon: true },
 
         // --- Network ---

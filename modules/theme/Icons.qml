@@ -254,6 +254,8 @@ QtObject {
     readonly property string magicWand: ""
     readonly property string google: ""
 
+    readonly property string puzzlePiece: ""
+
     // Aliases for missing icons
     readonly property string palette: paintBrush
     readonly property string cornersOut: arrowsOut

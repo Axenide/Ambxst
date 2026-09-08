@@ -256,16 +256,16 @@ Rectangle {
             isIcon: true
         },
         {
+            icon: Icons.puzzlePiece,
+            label: "Mods",
+            section: 10,
+            isIcon: true
+        },
+        {
             icon: Qt.resolvedUrl("../../../../assets/ambxst/ambxst-icon.svg"),
             label: "Ambxst",
             section: 9,
             isIcon: false
-        },
-        {
-            icon: Icons.plug,
-            label: "Mods",
-            section: 10,
-            isIcon: true
         }
     ]
 
