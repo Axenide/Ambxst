@@ -20,6 +20,7 @@ Singleton {
     property bool busy: false
     property bool loaded: false
     property bool restartRequired: false
+    property bool bypassVersionCheck: false
     property string errorMessage: ""
     property string statusMessage: ""
     property string statusMessageKey: ""
@@ -37,6 +38,7 @@ Singleton {
         root.previousGeneration = result?.previousGeneration ?? "";
         root.generationCurrent = result?.generationCurrent ?? true;
         root.generationError = result?.generationError ?? "";
+        root.bypassVersionCheck = result?.bypassVersionCheck ?? false;
         // The backend owns this flag. Latching it to true locally kept the
         // restart banner on screen after the daemon had already cleared it.
         root.restartRequired = result?.restartRequired ?? false;
@@ -100,6 +102,10 @@ Singleton {
 
     function rebuild() {
         root.request("mods.rebuild", {}, "mods.status_rebuilt", true);
+    }
+
+    function setBypassVersionCheck(enabled) {
+        root.request("mods.setBypassVersionCheck", { enabled }, "mods.status_bypass_saved", false);
     }
 
     function rollback() {

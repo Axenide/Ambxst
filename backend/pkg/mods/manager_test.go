@@ -899,6 +899,87 @@ func TestManagerKeepsBothInsertionsAtTheSameAnchor(t *testing.T) {
 	}
 }
 
+func TestManagerBypassesVersionCheckGlobally(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.3.0\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	packageRoot := filepath.Join(root, "package")
+	writeTestFile(t, filepath.Join(packageRoot, "payload", "Feature.qml"), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              "old.feature",
+		Name:            "Old feature",
+		Version:         "1.0.0",
+		Compatibility: Compatibility{
+			API:    APIVersion,
+			Ambxst: ">=1.2.0 <1.3.0",
+		},
+		Operations: []Operation{{
+			Type:   "overlay",
+			Source: "payload/Feature.qml",
+			Target: "modules/example/Feature.qml",
+		}},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(packageRoot); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := manager.SetEnabled("old.feature", true); err == nil {
+		t.Fatal("an incompatible mod was enabled without the bypass")
+	}
+
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Mods[0].Compatible || status.Mods[0].CompatibilityError == "" {
+		t.Fatalf("compatibility was not reported: %#v", status.Mods[0])
+	}
+
+	status, err = manager.SetBypassVersionCheck(true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !status.BypassVersionCheck {
+		t.Fatal("bypass flag was not persisted")
+	}
+
+	status, err = manager.SetEnabled("old.feature", true)
+	if err != nil {
+		t.Fatalf("the bypass did not allow enabling: %v", err)
+	}
+	if !status.Mods[0].Enabled || status.Mods[0].Compatible || status.Mods[0].CompatibilityError == "" {
+		t.Fatalf("an incompatible mod must stay enabled and marked incompatible: %#v", status.Mods[0])
+	}
+	activePath := filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration)
+	if _, err := os.Stat(filepath.Join(activePath, "modules", "example", "Feature.qml")); err != nil {
+		t.Fatalf("generation does not contain the overlay: %v", err)
+	}
+
+	status, err = manager.SetBypassVersionCheck(false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.BypassVersionCheck {
+		t.Fatal("bypass flag was not cleared")
+	}
+
+	if _, err := manager.SetEnabled("old.feature", false); err != nil {
+		t.Fatalf("disabling an incompatible mod must work without the bypass: %v", err)
+	}
+}
+
 func writeDiffPackage(t *testing.T, root, id, before, after string) {
 	t.Helper()
 	repo := t.TempDir()

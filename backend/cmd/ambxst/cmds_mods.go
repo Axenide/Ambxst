@@ -56,6 +56,11 @@ func runMods(args []string) {
 			modsUsage("Usage: ambxst mods " + command)
 		}
 		status, err = callMods(command, nil)
+	case "bypass":
+		if len(args) != 2 || (args[1] != "on" && args[1] != "off") {
+			modsUsage("Usage: ambxst mods bypass <on|off>")
+		}
+		status, err = callMods("setBypassVersionCheck", map[string]any{"enabled": args[1] == "on"})
 	case "help", "--help", "-h":
 		modsUsage("")
 	default:
@@ -104,6 +109,8 @@ func callMods(method string, params map[string]any) (modpkg.Status, error) {
 		return manager.Rebuild()
 	case "rollback":
 		return manager.Rollback()
+	case "setBypassVersionCheck":
+		return manager.SetBypassVersionCheck(params["enabled"].(bool))
 	default:
 		return modpkg.Status{}, fmt.Errorf("unsupported mods method %q", method)
 	}
@@ -119,6 +126,9 @@ func printModStatus(status modpkg.Status) {
 		fmt.Println("Active generation: base")
 	} else {
 		fmt.Println("Active generation:", status.ActiveGeneration)
+	}
+	if status.BypassVersionCheck {
+		fmt.Println("Version check: bypassed")
 	}
 	if len(status.Mods) == 0 {
 		fmt.Println("No mods installed.")
@@ -158,6 +168,7 @@ func modsUsage(message string) {
 		"    move <id> <up|down>              Change patch load order\n" +
 		"    rebuild                          Rebuild the enabled mod set\n" +
 		"    rollback                         Activate the previous generation\n" +
+		"    bypass <on|off>                  Toggle the Ambxst version compatibility requirement\n" +
 		"    help                             Show this help\n")
 	if message != "" {
 		os.Exit(2)

@@ -48,6 +48,7 @@ type affectedFiles struct {
 
 type State struct {
 	Version            int            `json:"version"`
+	BypassVersionCheck bool           `json:"bypassVersionCheck,omitempty"`
 	Mods               []InstalledMod `json:"mods"`
 	ActiveGeneration   string         `json:"activeGeneration,omitempty"`
 	PreviousGeneration string         `json:"previousGeneration,omitempty"`
@@ -116,6 +117,7 @@ type Status struct {
 	GenerationCurrent  bool      `json:"generationCurrent"`
 	GenerationError    string    `json:"generationError,omitempty"`
 	RestartRequired    bool      `json:"restartRequired"`
+	BypassVersionCheck bool      `json:"bypassVersionCheck"`
 	Mods               []ModInfo `json:"mods"`
 }
 
@@ -375,6 +377,28 @@ func (m *Manager) SetEnabled(id string, enabled bool) (Status, error) {
 		return Status{}, err
 	}
 	return m.statusForRestart(next, true)
+}
+
+// SetBypassVersionCheck toggles the global Ambxst version requirement. With it
+// on, a package outside its declared compatibility range still composes; the
+// status keeps reporting it as incompatible. Nothing is rebuilt: the change
+// applies from the next build.
+func (m *Manager) SetBypassVersionCheck(enabled bool) (Status, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, err := m.loadState()
+	if err != nil {
+		return Status{}, err
+	}
+	if state.BypassVersionCheck == enabled {
+		return m.statusFor(state)
+	}
+	next := cloneState(state)
+	next.BypassVersionCheck = enabled
+	if err := m.saveState(next); err != nil {
+		return Status{}, err
+	}
+	return m.statusFor(next)
 }
 
 func (m *Manager) Rebuild() (Status, error) {
@@ -948,7 +972,7 @@ func (m *Manager) resolve(state State, base string) (map[string]Manifest, []stri
 		if err != nil {
 			return nil, nil, fmt.Errorf("mod %s: %w", mod.ID, err)
 		}
-		if err := checkCompatibility(manifest, base); err != nil {
+		if err := checkCompatibility(manifest, base); err != nil && !state.BypassVersionCheck {
 			return nil, nil, fmt.Errorf("mod %s: %w", mod.ID, err)
 		}
 		for _, command := range manifest.Commands {
@@ -1025,6 +1049,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 		ActiveGeneration:   state.ActiveGeneration,
 		PreviousGeneration: state.PreviousGeneration,
 		GenerationCurrent:  true,
+		BypassVersionCheck: state.BypassVersionCheck,
 		Mods:               make([]ModInfo, 0, len(state.Mods)),
 	}
 	if pending, ok := m.readPendingActivation(); ok && pending.Generation == state.ActiveGeneration {

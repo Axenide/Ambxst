@@ -41,6 +41,9 @@ Item {
         "mods.affected_files": "Affected files",
         "mods.author": "Author",
         "mods.base": "Base",
+        "mods.bypass_title": "Bypass Ambxst version check",
+        "mods.bypass_description": "Let mods enable even when their declared Ambxst range does not include this release. They keep showing as incompatible. Applies from the next build.",
+        "mods.status_bypass_saved": "Version check bypass updated.",
         "mods.confirm_enable_body": "Enabling rebuilds the shell with this package's source changes. Its code then runs with your user permissions, like the rest of Ambxst. Read the patch and check who wrote it first.",
         "mods.confirm_enable_title": "Do you trust this mod?",
         "mods.confirm_install_body": "Installing downloads the package and leaves it disabled. Nothing from it runs until you enable it, which is the moment to have read the code.",
@@ -490,6 +493,51 @@ Item {
                 }
             }
 
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: bypassRow.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                RowLayout {
+                    id: bypassRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            text: root.tr("mods.bypass_title")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.DemiBold
+                            color: Colors.overBackground
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.bypass_description")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    ActionButton {
+                        text: ModsService.bypassVersionCheck ? root.tr("common.on") : root.tr("common.off")
+                        primary: ModsService.bypassVersionCheck
+                        enabled: !ModsService.busy
+                        onClicked: ModsService.setBypassVersionCheck(!ModsService.bypassVersionCheck)
+                    }
+                }
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 Layout.topMargin: 2
@@ -694,7 +742,7 @@ Item {
                                     text: modRow.modelData.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
                                     primary: !modRow.modelData.enabled
                                     enabled: !ModsService.busy && (modRow.modelData.enabled
-                                        || (modRow.modelData.valid && modRow.modelData.compatible
+                                        || ((modRow.modelData.valid && (modRow.modelData.compatible || ModsService.bypassVersionCheck))
                                             && root.dependenciesReady(modRow.modelData)))
                                     onClicked: {
                                         root.selectedId = modRow.modelData.id;
@@ -1179,7 +1227,7 @@ Item {
                             text: root.selectedMod?.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
                             primary: !root.selectedMod?.enabled
                             enabled: !ModsService.busy && (root.selectedMod?.enabled
-                                || (root.selectedMod?.valid && root.selectedMod?.compatible
+                                || ((root.selectedMod?.valid && (root.selectedMod?.compatible || ModsService.bypassVersionCheck))
                                     && root.dependenciesReady(root.selectedMod)))
                             onClicked: {
                                 if (root.selectedMod.enabled) {

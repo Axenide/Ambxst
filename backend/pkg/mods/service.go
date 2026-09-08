@@ -30,6 +30,7 @@ func (s *Service) Register(server *ipc.Server) {
 			"rollback":            s.rollback,
 			"settings":            s.settings,
 			"setSetting":          s.setSetting,
+			"setBypassVersionCheck": s.setBypassVersionCheck,
 		},
 	})
 }
@@ -153,4 +154,16 @@ func (s *Service) setSetting(raw json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("invalid mod id or setting key")
 	}
 	return s.manager.SetSetting(params.ID, params.Key, params.Value)
+}
+
+type bypassParams struct {
+	Enabled bool `json:"enabled"`
+}
+
+func (s *Service) setBypassVersionCheck(raw json.RawMessage) (any, error) {
+	var params bypassParams
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid bypass request: %w", err)
+	}
+	return s.manager.SetBypassVersionCheck(params.Enabled)
 }

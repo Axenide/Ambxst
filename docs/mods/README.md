@@ -96,7 +96,12 @@ one package and breaks as soon as a second package does it: the sidebar and the
 panel list drift apart, and an entry opens somebody else's panel.
 
 `compatibility.ambxst` is a hard requirement: a mod outside the range is never
-built. `compatibility.testedBaseCommits` is advisory. The base moves with every
+built. The user can relax it globally with the **Bypass Ambxst version check**
+toggle in Settings → Mods, or with `ambxst mods bypass on`, which lets any
+package compose regardless of its declared range. The bypass is a state flag,
+not a per-mod setting: the status keeps reporting bypassed packages as
+incompatible, and the toggle applies from the next build.
+`compatibility.testedBaseCommits` is advisory. The base moves with every
 Ambxst update, so an unlisted revision only marks the package as untested in
 Settings; composition, the health window, and rollback remain the real guards.
 
