@@ -90,7 +90,7 @@ PanelWindow {
 
     readonly property var compositorMonitor: AxctlService.monitorFor(targetScreen)
     readonly property bool hasFullscreenWindow: {
-        if (!compositorMonitor)
+        if (!compositorMonitor || !compositorMonitor.activeWorkspace)
             return false;
 
         const activeWorkspaceId = compositorMonitor.activeWorkspace.id;
@@ -98,7 +98,7 @@ PanelWindow {
 
         // Check active toplevel first (fast path)
         const toplevel = ToplevelManager.activeToplevel;
-        if (toplevel && toplevel.fullscreen && AxctlService.focusedMonitor.id === monId) {
+        if (toplevel && toplevel.fullscreen && AxctlService.focusedMonitor && AxctlService.focusedMonitor.id === monId) {
             return true;
         }
 
@@ -264,7 +264,7 @@ PanelWindow {
                 let margin = (frameOn && !frameWrapped) ? (Config.bar?.frameThickness ?? 6) : 0;
                 if (unifiedPanel.barEnabled && unifiedPanel.barPosition === "bottom" && unifiedPanel.barPinned) {
                     margin += unifiedPanel.barTargetHeight + unifiedPanel.barOuterMargin + (unifiedPanel.containBar ? Config.bar.frameThickness : 0);
-                } else if (unifiedPanel.dockEnabled && dockContent.dockPosition === "bottom" && dockContent.pinned) {
+                } else if (unifiedPanel.dockEnabled && dockContent.position === "bottom" && dockContent.pinned) {
                     margin += dockContent.dockHeight;
                 }
                 return margin;

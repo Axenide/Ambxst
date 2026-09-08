@@ -29,9 +29,9 @@ Item {
     readonly property bool isDefault: theme === "default"
 
     // Position configuration with fallback logic to avoid bar collision
-    readonly property string userPosition: Config.dock?.position ?? "bottom"
-    readonly property string barPosition: Config.bar?.position ?? "top"
-    readonly property string notchPosition: Config.notchPosition ?? "top"
+    readonly property string userPosition: Config.dockPositionForScreen(screen.name)
+    readonly property string barPosition: Config.barPositionForScreen(screen.name)
+    readonly property string notchPosition: Config.notchPositionForScreen(screen.name)
 
     // Effective position
     readonly property string position: {

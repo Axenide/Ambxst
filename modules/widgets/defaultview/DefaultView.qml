@@ -10,6 +10,7 @@ Item {
     id: root
     anchors.top: parent.top
     focus: false
+    property string screenName: ""
 
     // Layout constants
     readonly property int notificationPadding: 16
@@ -24,7 +25,7 @@ Item {
     property bool isNavigating: false
 
     // Position detection
-    readonly property string notchPosition: Config.notchPosition ?? "top"
+    readonly property string notchPosition: Config.notchPositionForScreen(screenName)
     readonly property bool isBottom: notchPosition === "bottom"
 
     HoverHandler {
@@ -157,6 +158,7 @@ Item {
                 height: 32
                 player: activePlayer
                 notchHovered: expandedState
+                screenName: root.screenName
             }
 
             Separator {

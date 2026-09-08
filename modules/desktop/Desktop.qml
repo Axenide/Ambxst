@@ -12,7 +12,7 @@ PanelWindow {
 
     property int barSize: Config.showBackground ? 44 : 40
     property int bottomTextMargin: 32
-    property string barPosition: ["top", "bottom", "left", "right"].includes(Config.bar.position) ? Config.bar.position : "top"
+    property string barPosition: Config.barPositionForScreen(screen?.name ?? "")
 
     anchors {
         top: true
