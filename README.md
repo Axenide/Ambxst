@@ -169,7 +169,7 @@ Nope! Besides the Ambxst import block in your `hyprland.conf` or `hyprland.lua`,
 - [x] Multi-monitor support
 - [x] Customizable keybindings
 - [x] [Mod manager with native Settings integration](docs/mods/README.md)
-- [ ] Compatibility with other Wayland compositors
+- [x] Compatibility with other Wayland compositors
 
 ---
 
