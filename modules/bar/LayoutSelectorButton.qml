@@ -107,7 +107,7 @@ Item {
 
         StyledToolTip {
             visible: root.isHovered && !root.popupOpen
-            tooltipText: "Layout: " + root.getLayoutDisplayName(GlobalStates.compositorLayout)
+            tooltipText: I18n.t("bar.tooltip.layout", root.getLayoutDisplayName(GlobalStates.compositorLayout))
         }
     }
 

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 // Componente para la barra de filtros de tipo de archivo
@@ -290,7 +291,7 @@ FocusScope {
 
                             Text {
                                 id: filterText
-                                text: label
+                                text: type === "image" ? I18n.t("wallpapers.filter_images") : type === "video" ? I18n.t("wallpapers.filter_videos") : label
                                 font.family: Config.theme.font
                                 font.pixelSize: Config.theme.fontSize
                                 color: filterTag.item

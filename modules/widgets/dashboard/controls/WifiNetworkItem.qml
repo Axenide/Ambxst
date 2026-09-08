@@ -109,10 +109,10 @@ Item {
                     visible: root.network?.active || root.expanded
                     text: {
                         if (root.network?.active)
-                            return "Connected";
+                            return I18n.t("wifi.connected");
                         if (root.network?.isSecure)
-                            return "Secured";
-                        return "Open";
+                            return I18n.t("wifi.secured");
+                        return I18n.t("wifi.open");
                     }
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-2)
@@ -138,7 +138,7 @@ Item {
 
                 Text {
                     anchors.centerIn: parent
-                    text: "5G"
+                    text: I18n.t("wifi.band_5g")
                     font.family: Config.theme.font
                     font.pixelSize: 10
                     font.weight: Font.Bold
@@ -166,7 +166,7 @@ Item {
                 id: passwordInput
                 Layout.fillWidth: true
                 visible: root.network?.askingPassword ?? false
-                placeholderText: "Enter password..."
+                placeholderText: I18n.t("wifi.password")
                 passwordMode: true
                 implicitHeight: 40
                 variant: "internalbg"
@@ -200,7 +200,7 @@ Item {
                     }
 
                     contentItem: Text {
-                        text: root.network?.active ? "Disconnect" : "Connect"
+                        text: root.network?.active ? I18n.t("wifi.disconnect") : I18n.t("wifi.connect")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         color: root.network?.active ? Colors.overSurfaceVariant : Styling.srItem("primary")

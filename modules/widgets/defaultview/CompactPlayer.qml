@@ -75,13 +75,13 @@ Item {
     readonly property string noMediaText: {
         const displayType = Config.notch.noMediaDisplay ?? "userHost";
         if (displayType === "userHost") return userHostText;
-        if (displayType === "compositor") return "AxctlService";
-        return Config.notch.customText ?? "Ambxst";
+        if (displayType === "compositor") return I18n.t("notch.compositor");
+        return Config.notch.customText ?? I18n.t("notch.ambxst");
     }
 
     readonly property string displayedTitle: {
         if (player) {
-            return (player.trackArtist ? player.trackArtist + " - " : "") + (player.trackTitle || "Unknown");
+            return (player.trackArtist ? player.trackArtist + " - " : "") + (player.trackTitle || I18n.t("player.unknown"));
         }
         return focusedTitle || noMediaText;
     }
@@ -644,7 +644,7 @@ Item {
                         }
 
                         Text {
-                            text: playerItem.modelData.trackTitle || playerItem.modelData.identity || "Unknown Player"
+                            text: playerItem.modelData.trackTitle || playerItem.modelData.identity || I18n.t("player.unknown_player")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             color: playerItem.item

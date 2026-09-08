@@ -104,11 +104,11 @@ Item {
                     text: {
                         let status = "";
                         if (root.device?.connected) {
-                            status = "Connected";
+                            status = I18n.t("bluetooth.connected");
                         } else if (root.device?.paired) {
-                            status = "Paired";
+                            status = I18n.t("bluetooth.paired");
                         } else {
-                            status = "Not paired";
+                            status = I18n.t("bluetooth.not_paired");
                         }
 
                         if (root.device?.batteryAvailable) {
@@ -193,7 +193,7 @@ Item {
                 }
 
                 contentItem: Text {
-                    text: "Forget"
+                    text: I18n.t("bluetooth.forget")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: Styling.srItem("error")
@@ -221,7 +221,7 @@ Item {
                 }
 
                 contentItem: Text {
-                    text: root.device?.connected ? "Disconnect" : "Connect"
+                    text: root.device?.connected ? I18n.t("bluetooth.disconnect") : I18n.t("bluetooth.connect")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: root.device?.connected ? Colors.overSurfaceVariant : Styling.srItem("primary")

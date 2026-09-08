@@ -338,7 +338,7 @@ Rectangle {
                     }
 
                     Text {
-                        text: "System"
+                        text: I18n.t("settings.system")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-2)
                         color: Colors.overBackground

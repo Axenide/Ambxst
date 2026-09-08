@@ -1042,6 +1042,7 @@ Singleton {
                 property bool chi_sim: false
                 property bool chi_tra: false
                 property bool kor: false
+                property bool rus: false
             }
             property JsonObject pomodoro: JsonObject {
                 property int workTime: 1500
@@ -1049,6 +1050,7 @@ Singleton {
                 property bool autoStart: false
                 property bool syncSpotify: false
             }
+            property string language: "auto"
         }
     }
 

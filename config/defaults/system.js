@@ -37,12 +37,14 @@ var data = {
         "jpn": false,
         "chi_sim": false,
         "chi_tra": false,
-        "kor": false
+        "kor": false,
+        "rus": false
     },
     "pomodoro": {
         "workTime": 1500,
         "restTime": 300,
         "autoStart": false,
         "syncSpotify": false
-    }
+    },
+    "language": "auto"
 }

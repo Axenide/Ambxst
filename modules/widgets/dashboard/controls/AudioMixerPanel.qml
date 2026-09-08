@@ -41,19 +41,19 @@ Item {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: "Sound"
+                    title: I18n.t("mixer.title")
 
                     actions: [
                         {
                             icon: Audio.protectionEnabled ? Icons.shieldCheck : Icons.shield,
-                            tooltip: Audio.protectionEnabled ? "Volume protection enabled" : "Volume protection disabled",
+                            tooltip: Audio.protectionEnabled ? I18n.t("mixer.protection_enabled") : I18n.t("mixer.protection_disabled"),
                             onClicked: function () {
                                 Audio.setProtectionEnabled(!Audio.protectionEnabled);
                             }
                         },
                         {
                             icon: Icons.popOpen,
-                            tooltip: "Open PipeWire Volume Control",
+                            tooltip: I18n.t("mixer.open_pavucontrol"),
                             onClicked: function () {
                                 Quickshell.execDetached(["pavucontrol"]);
                             }
@@ -89,7 +89,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Output"
+                                    text: I18n.t("mixer.output")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.Medium
@@ -133,7 +133,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Input"
+                                    text: I18n.t("mixer.input")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(-1)
                                     font.weight: Font.Medium
@@ -168,7 +168,7 @@ Item {
 
                     // Section: Devices
                     Text {
-                        text: root.showOutput ? "Output Device" : "Input Device"
+                        text: root.showOutput ? I18n.t("mixer.output_device") : I18n.t("mixer.input_device")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         font.weight: Font.Medium
@@ -203,7 +203,7 @@ Item {
 
                     // Section: Volume Mixer
                     Text {
-                        text: "Volume Mixer"
+                        text: I18n.t("mixer.volume_mixer")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         font.weight: Font.Medium
@@ -233,7 +233,7 @@ Item {
                     // Empty state for apps
                     Text {
                         visible: (root.showOutput ? Audio.outputAppNodes : Audio.inputAppNodes).length === 0
-                        text: "No applications using audio"
+                        text: I18n.t("mixer.no_apps")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-1)
                         color: Colors.outline

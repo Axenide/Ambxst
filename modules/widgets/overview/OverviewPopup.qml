@@ -159,7 +159,7 @@ PanelWindow {
                     Layout.alignment: Qt.AlignVCenter
 
                     variant: "common"
-                    placeholderText: qsTr("Search windows...")
+                    placeholderText: I18n.t("overview.search")
                     handleTabNavigation: true
                     clearOnEscape: false
 

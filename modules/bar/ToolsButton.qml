@@ -6,7 +6,7 @@ import qs.modules.services
 ToggleButton {
     id: toolsButton
     buttonIcon: Icons.toolbox
-    tooltipText: "Tools"
+    tooltipText: I18n.t("bar.tooltip.tools")
     onToggle: function () {
         if (Visibilities.currentActiveModule === "tools") {
             Visibilities.setActiveModule("");

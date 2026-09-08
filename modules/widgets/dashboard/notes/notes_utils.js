@@ -25,22 +25,32 @@ function getCurrentTimestamp() {
  * @param {string} isoTimestamp - ISO timestamp string
  * @returns {string} Formatted date string
  */
-function formatTimestamp(isoTimestamp) {
+function formatTimestamp(isoTimestamp, t) {
     if (!isoTimestamp) return "";
     try {
         var date = new Date(isoTimestamp);
         var now = new Date();
         var diffMs = now - date;
         var diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays === 0) {
-            // Today - show time
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         } else if (diffDays === 1) {
-            return "Yesterday";
+            return t ? t("notifications.yesterday") : "Yesterday";
         } else if (diffDays < 7) {
-            return diffDays + " days ago";
+            return t ? t("notes.days_ago", diffDays) : diffDays + " days ago";
         } else {
+            if (t) {
+                var monthKeys = [
+                    "calendar.month.january", "calendar.month.february",
+                    "calendar.month.march", "calendar.month.april",
+                    "calendar.month.may", "calendar.month.june",
+                    "calendar.month.july", "calendar.month.august",
+                    "calendar.month.september", "calendar.month.october",
+                    "calendar.month.november", "calendar.month.december"
+                ];
+                return t(monthKeys[date.getMonth()]) + " " + date.getDate();
+            }
             return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
         }
     } catch (e) {

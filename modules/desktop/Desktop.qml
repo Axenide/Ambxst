@@ -105,7 +105,7 @@ PanelWindow {
                         console.log("Context menu requested for:", itemName);
                         Visibilities.contextMenu.openCustomMenu([
                             {
-                                text: "Open",
+                                text: I18n.t("desktop.open"),
                                 icon: Icons.launch,
                                 isSeparator: false,
                                 onTriggered: function () {
@@ -121,7 +121,7 @@ PanelWindow {
                                 text: ""
                             },
                             {
-                                text: "Delete",
+                                text: I18n.t("desktop.delete"),
                                 icon: Icons.trash,
                                 textColor: Colors.overError,
                                 highlightColor: Colors.error,
@@ -239,7 +239,7 @@ PanelWindow {
 
         Text {
             anchors.centerIn: parent
-            text: "Loading desktop..."
+            text: I18n.t("lockscreen.loading")
             color: "white"
             font.family: Config.defaultFont
             font.pixelSize: Styling.fontSize(0)

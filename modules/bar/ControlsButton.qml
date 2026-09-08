@@ -30,7 +30,7 @@ Item {
 
     StyledToolTip {
         show: root.isHovered && !root.popupOpen
-        tooltipText: "Audio & Brightness Controls"
+        tooltipText: I18n.t("bar.tooltip.controls")
     }
 
     HoverHandler {

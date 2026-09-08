@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Dialogs
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 
 // Inline color picker view for ThemePanel
@@ -171,7 +172,7 @@ Item {
                 }
 
                 Text {
-                    text: "Custom"
+                    text: I18n.t("color_picker.custom")
                     font.family: Styling.defaultFont
                     font.pixelSize: Styling.fontSize(-1)
                     color: Colors.overBackground
@@ -204,7 +205,7 @@ Item {
 
                     StyledToolTip {
                         visible: pickerMouseArea.containsMouse
-                        text: "Color picker"
+                        text: I18n.t("color_picker.picker")
                     }
                 }
             }

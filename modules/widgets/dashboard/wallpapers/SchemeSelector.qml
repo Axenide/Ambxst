@@ -5,6 +5,7 @@ import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -118,21 +119,21 @@ Item {
 
     function getSchemeDisplayName(scheme) {
         const map = {
-            "scheme-content": "Content",
-            "scheme-expressive": "Expressive",
-            "scheme-fidelity": "Fidelity",
-            "scheme-fruit-salad": "Fruit Salad",
-            "scheme-monochrome": "Monochrome",
-            "scheme-neutral": "Neutral",
-            "scheme-rainbow": "Rainbow",
-            "scheme-tonal-spot": "Tonal Spot"
+            "scheme-content": I18n.t("wallpapers.scheme_content"),
+            "scheme-expressive": I18n.t("wallpapers.scheme_expressive"),
+            "scheme-fidelity": I18n.t("wallpapers.scheme_fidelity"),
+            "scheme-fruit-salad": I18n.t("wallpapers.scheme_fruit_salad"),
+            "scheme-monochrome": I18n.t("wallpapers.scheme_monochrome"),
+            "scheme-neutral": I18n.t("wallpapers.scheme_neutral"),
+            "scheme-rainbow": I18n.t("wallpapers.scheme_rainbow"),
+            "scheme-tonal-spot": I18n.t("wallpapers.scheme_tonal_spot")
         };
         return map[scheme] || scheme;
     }
 
     function getCurrentDisplayName() {
         if (!GlobalStates.wallpaperManager)
-            return "Select Scheme";
+            return I18n.t("wallpapers.select_scheme");
 
         if (GlobalStates.wallpaperManager.activeColorPreset) {
             return GlobalStates.wallpaperManager.activeColorPreset;
@@ -142,7 +143,7 @@ Item {
             return getSchemeDisplayName(GlobalStates.wallpaperManager.currentMatugenScheme);
         }
 
-        return "Select Scheme";
+        return I18n.t("wallpapers.select_scheme");
     }
 
     // Layout properties (can be overridden by parent)

@@ -8,6 +8,7 @@ import Quickshell
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -343,7 +344,7 @@ Item {
                 Layout.fillWidth: true
             }
             Text {
-                text: "Right click to remove"
+                text: I18n.t("compositor.right_click_remove")
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-2)
                 color: Colors.overSurfaceVariant
@@ -556,7 +557,7 @@ Item {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "Compositor" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
+                    title: root.currentSection === "" ? I18n.t("settings.compositor") : I18n.t("compositor." + root.currentSection)
                     statusText: GlobalStates.compositorHasChanges ? "Unsaved changes" : ""
                     statusColor: Colors.error
 
@@ -564,7 +565,7 @@ Item {
                         let baseActions = [
                             {
                                 icon: Icons.arrowCounterClockwise,
-                                tooltip: "Discard changes",
+                                tooltip: I18n.t("compositor.discard"),
                                 enabled: GlobalStates.compositorHasChanges,
                                 onClicked: function () {
                                     GlobalStates.discardCompositorChanges();
@@ -572,7 +573,7 @@ Item {
                             },
                             {
                                 icon: Icons.disk,
-                                tooltip: "Apply changes",
+                                tooltip: I18n.t("compositor.apply"),
                                 enabled: GlobalStates.compositorHasChanges,
                                 onClicked: function () {
                                     GlobalStates.applyCompositorChanges();
@@ -584,7 +585,7 @@ Item {
                             return [
                                 {
                                     icon: Icons.arrowLeft,
-                                    tooltip: "Back",
+                                    tooltip: I18n.t("compositor.back"),
                                     onClicked: function () {
                                         root.currentSection = "";
                                     }
@@ -608,14 +609,14 @@ Item {
                     spacing: 8
 
                     CompositorTabButton {
-                        label: "AxctlService"
+                        label: I18n.t("settings.compositor.axctl")
                         image: "../../../../assets/compositors/hyprland.svg"
                         isSelected: stackLayout.currentIndex === 0
                         onClicked: stackLayout.currentIndex = 0
                     }
 
                     CompositorTabButton {
-                        label: "Coming Soon"
+                        label: I18n.t("common.coming_soon")
                         icon: Icons.clock
                         isSelected: stackLayout.currentIndex === 1
                         onClicked: stackLayout.currentIndex = 1
@@ -650,19 +651,19 @@ Item {
                             spacing: 8
 
                             SectionButton {
-                                text: "General"
+                                text: I18n.t("compositor.general")
                                 sectionId: "general"
                             }
                             SectionButton {
-                                text: "Colors"
+                                text: I18n.t("compositor.colors")
                                 sectionId: "colors"
                             }
                             SectionButton {
-                                text: "Shadows"
+                                text: I18n.t("compositor.shadows")
                                 sectionId: "shadows"
                             }
                             SectionButton {
-                                text: "Blur"
+                                text: I18n.t("compositor.blur")
                                 sectionId: "blur"
                             }
                         }
@@ -674,7 +675,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "General"
+                                text: I18n.t("compositor.general")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -683,7 +684,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Sync Border Size"
+                                label: I18n.t("compositor.sync_border_size")
                                 checked: Config.compositor.syncBorderWidth ?? false
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -692,7 +693,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Border Size"
+                                label: I18n.t("settings.compositor.border_size")
                                 value: Config.compositor.borderSize ?? 2
                                 minValue: 0
                                 maxValue: 999
@@ -705,7 +706,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Sync Rounding"
+                                label: I18n.t("compositor.sync_rounding")
                                 checked: Config.compositor.syncRoundness ?? true
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -714,7 +715,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Rounding"
+                                label: I18n.t("compositor.rounding")
                                 value: Config.compositor.rounding ?? 16
                                 minValue: 0
                                 maxValue: 999
@@ -727,7 +728,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Gaps In"
+                                label: I18n.t("compositor.gaps_in")
                                 value: Config.compositor.gapsIn ?? 5
                                 minValue: 0
                                 maxValue: 50
@@ -739,7 +740,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Gaps Out"
+                                label: I18n.t("compositor.gaps_out")
                                 value: Config.compositor.gapsOut ?? 10
                                 minValue: 0
                                 maxValue: 50
@@ -751,7 +752,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Border Angle"
+                                label: I18n.t("compositor.border_angle")
                                 value: Config.compositor.borderAngle ?? 45
                                 minValue: 0
                                 maxValue: 360
@@ -763,7 +764,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Inactive Angle"
+                                label: I18n.t("compositor.inactive_angle")
                                 value: Config.compositor.inactiveBorderAngle ?? 45
                                 minValue: 0
                                 maxValue: 360
@@ -787,7 +788,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Colors"
+                                text: I18n.t("compositor.colors")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -796,7 +797,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Sync Border Color"
+                                label: I18n.t("compositor.sync_border_color")
                                 checked: Config.compositor.syncBorderColor ?? false
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -806,7 +807,7 @@ Item {
 
                             // Active Border Color
                             BorderGradientRow {
-                                label: "Active Border"
+                                label: I18n.t("compositor.active_border")
                                 colors: Config.compositor.activeBorderColor || ["primary"]
                                 dialogTitle: "Edit Active Border Color"
                                 enabled: !Config.compositor.syncBorderColor
@@ -818,7 +819,7 @@ Item {
 
                             // Inactive Border Color
                             BorderGradientRow {
-                                label: "Inactive Border"
+                                label: I18n.t("compositor.inactive_border")
                                 colors: Config.compositor.inactiveBorderColor || ["surface"]
                                 dialogTitle: "Edit Inactive Border Color"
                                 onColorsEdited: newColors => {
@@ -840,7 +841,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Shadows"
+                                text: I18n.t("compositor.shadows")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -849,7 +850,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Enabled"
+                                label: I18n.t("settings.compositor.shadows_enabled")
                                 checked: Config.compositor.shadowEnabled ?? true
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -858,7 +859,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Sync Color"
+                                label: I18n.t("settings.compositor.sync_shadow_color")
                                 checked: Config.compositor.syncShadowColor ?? false
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -867,7 +868,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Sync Opacity"
+                                label: I18n.t("settings.compositor.sync_shadow_opacity")
                                 checked: Config.compositor.syncShadowOpacity ?? false
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -876,7 +877,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Range"
+                                label: I18n.t("settings.compositor.shadow_range")
                                 value: Config.compositor.shadowRange ?? 4
                                 minValue: 0
                                 maxValue: 100
@@ -888,7 +889,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Offset X"
+                                label: I18n.t("compositor.offset_x")
                                 value: parseInt((Config.compositor.shadowOffset ?? "0 0").split(" ")[0]) || 0
                                 minValue: -50
                                 maxValue: 50
@@ -902,7 +903,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Offset Y"
+                                label: I18n.t("compositor.offset_y")
                                 value: parseInt((Config.compositor.shadowOffset ?? "0 0").split(" ")[1]) || 0
                                 minValue: -50
                                 maxValue: 50
@@ -916,7 +917,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Render Power"
+                                label: I18n.t("settings.compositor.shadow_power")
                                 value: Config.compositor.shadowRenderPower ?? 3
                                 minValue: 1
                                 maxValue: 4
@@ -927,7 +928,7 @@ Item {
                             }
 
                             DecimalInputRow {
-                                label: "Scale"
+                                label: I18n.t("settings.compositor.shadow_scale")
                                 value: Config.compositor.shadowScale ?? 1.0
                                 minValue: 0.0
                                 maxValue: 1.0
@@ -938,7 +939,7 @@ Item {
                             }
 
                             DecimalInputRow {
-                                label: "Opacity"
+                                label: I18n.t("compositor.opacity")
                                 value: Config.compositor.shadowOpacity ?? 0.5
                                 minValue: 0.0
                                 maxValue: 1.0
@@ -950,7 +951,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Sharp"
+                                label: I18n.t("compositor.sharp")
                                 checked: Config.compositor.shadowSharp ?? false
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -959,7 +960,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Ignore Window"
+                                label: I18n.t("compositor.ignore_window")
                                 checked: Config.compositor.shadowIgnoreWindow ?? true
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -980,7 +981,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Blur"
+                                text: I18n.t("compositor.blur")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -989,7 +990,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Enabled"
+                                label: I18n.t("settings.compositor.blur_enabled")
                                 checked: Config.compositor.blurEnabled ?? true
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -998,7 +999,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Size"
+                                label: I18n.t("settings.compositor.blur_size")
                                 value: Config.compositor.blurSize ?? 8
                                 minValue: 0
                                 maxValue: 20
@@ -1009,7 +1010,7 @@ Item {
                             }
 
                             NumberInputRow {
-                                label: "Passes"
+                                label: I18n.t("settings.compositor.blur_passes")
                                 value: Config.compositor.blurPasses ?? 1
                                 minValue: 0
                                 maxValue: 4
@@ -1020,7 +1021,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Xray"
+                                label: I18n.t("settings.compositor.blur_xray")
                                 checked: Config.compositor.blurXray ?? false
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -1029,7 +1030,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "New Optimizations"
+                                label: I18n.t("settings.compositor.blur_new_optimizations")
                                 checked: Config.compositor.blurNewOptimizations ?? true
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -1038,7 +1039,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Ignore Opacity"
+                                label: I18n.t("settings.compositor.blur_ignore_opacity")
                                 checked: Config.compositor.blurIgnoreOpacity ?? true
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -1047,7 +1048,7 @@ Item {
                             }
 
                             ToggleRow {
-                                label: "Explicit Ignorealpha"
+                                label: I18n.t("settings.compositor.blur_ignorealpha")
                                 checked: Config.compositor.blurExplicitIgnoreAlpha ?? false
                                 onToggled: value => {
                                     GlobalStates.markCompositorChanged();
@@ -1056,7 +1057,7 @@ Item {
                             }
 
                             DecimalInputRow {
-                                label: "Ignorealpha Value"
+                                label: I18n.t("settings.compositor.blur_ignorealpha_value")
                                 value: Config.compositor.blurIgnoreAlphaValue ?? 0.2
                                 minValue: 0.0
                                 maxValue: 1.0
@@ -1068,7 +1069,7 @@ Item {
                             }
 
                             DecimalInputRow {
-                                label: "Noise"
+                                label: I18n.t("settings.compositor.blur_noise")
                                 value: Config.compositor.blurNoise ?? 0.01
                                 minValue: 0.0
                                 maxValue: 1.0
@@ -1079,7 +1080,7 @@ Item {
                             }
 
                             DecimalInputRow {
-                                label: "Contrast"
+                                label: I18n.t("settings.compositor.blur_contrast")
                                 value: Config.compositor.blurContrast ?? 0.89
                                 minValue: 0.0
                                 maxValue: 2.0
@@ -1090,7 +1091,7 @@ Item {
                             }
 
                             DecimalInputRow {
-                                label: "Brightness"
+                                label: I18n.t("settings.compositor.blur_brightness")
                                 value: Config.compositor.blurBrightness ?? 0.81
                                 minValue: 0.0
                                 maxValue: 2.0
@@ -1101,7 +1102,7 @@ Item {
                             }
 
                             DecimalInputRow {
-                                label: "Vibrancy"
+                                label: I18n.t("settings.compositor.blur_vibrancy")
                                 value: Config.compositor.blurVibrancy ?? 0.17
                                 minValue: 0.0
                                 maxValue: 1.0
@@ -1140,7 +1141,7 @@ Item {
                             }
 
                             Text {
-                                text: "Coming Soon"
+                                text: I18n.t("common.coming_soon")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(2)
                                 font.bold: true
@@ -1149,7 +1150,7 @@ Item {
                             }
 
                             Text {
-                                text: "Support for more compositors\nis planned for future updates."
+                                text: I18n.t("compositor.coming_soon_text")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overSurfaceVariant

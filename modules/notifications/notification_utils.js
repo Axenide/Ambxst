@@ -1,4 +1,4 @@
-const getFriendlyNotifTimeString = (timestamp) => {
+const getFriendlyNotifTimeString = (timestamp, t) => {
     if (!timestamp) return '';
     const messageTime = new Date(timestamp);
     const now = new Date();
@@ -6,7 +6,7 @@ const getFriendlyNotifTimeString = (timestamp) => {
 
     // Less than 1 minute
     if (diffMs < 60000)
-        return 'Now';
+        return t ? t("notifications.now") : 'Now';
 
     // Same day - show relative time
     if (messageTime.toDateString() === now.toDateString()) {
@@ -28,9 +28,20 @@ const getFriendlyNotifTimeString = (timestamp) => {
 
     // Yesterday (fallback, shouldn't reach here normally)
     if (messageTime.toDateString() === new Date(now.getTime() - 86400000).toDateString())
-        return 'Yesterday';
+        return t ? t("notifications.yesterday") : 'Yesterday';
 
     // Older dates (fallback for very old notifications)
+    if (t) {
+        const monthKeys = [
+            "calendar.month.january", "calendar.month.february",
+            "calendar.month.march", "calendar.month.april",
+            "calendar.month.may", "calendar.month.june",
+            "calendar.month.july", "calendar.month.august",
+            "calendar.month.september", "calendar.month.october",
+            "calendar.month.november", "calendar.month.december"
+        ];
+        return t(monthKeys[messageTime.getMonth()]) + " " + messageTime.getDate();
+    }
     return Qt.formatDateTime(messageTime, "MMMM dd");
 };
 

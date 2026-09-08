@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 
 // Reusable color picker button with preview and label
@@ -30,7 +31,7 @@ StyledRect {
     readonly property string displayName: {
         if (!currentColor) return "";
         const val = currentColor.toString();
-        return val.startsWith("#") ? "Custom" : val;
+        return val.startsWith("#") ? I18n.t("theme.custom") : val;
     }
 
     RowLayout {
