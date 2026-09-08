@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Axenide/Ambxst/dev/docs/mods/settings.schema.json",
+  "title": "Ambxst mod settings schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "fields"],
+  "properties": {
+    "version": { "const": 1 },
+    "fields": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/field" }
+    }
+  },
+  "$defs": {
+    "baseField": {
+      "type": "object",
+      "required": ["key", "label", "type", "default"],
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z][a-zA-Z0-9]*$"
+        },
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "restartRequired": { "type": "boolean" }
+      }
+    },
+    "field": {
+      "oneOf": [
+        {
+          "allOf": [
+            { "$ref": "#/$defs/baseField" },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "key": true,
+                "label": true,
+                "description": true,
+                "restartRequired": true,
+                "type": { "const": "boolean" },
+                "default": { "type": "boolean" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/baseField" },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "key": true,
+                "label": true,
+                "description": true,
+                "restartRequired": true,
+                "type": { "const": "string" },
+                "default": { "type": "string" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/baseField" },
+            {
+              "additionalProperties": false,
+              "properties": {
+                "key": true,
+                "label": true,
+                "description": true,
+                "restartRequired": true,
+                "type": { "enum": ["integer", "number"] },
+                "default": { "type": "number" },
+                "minimum": { "type": "number" },
+                "maximum": { "type": "number" }
+              }
+            }
+          ]
+        },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/baseField" },
+            {
+              "additionalProperties": false,
+              "required": ["options"],
+              "properties": {
+                "key": true,
+                "label": true,
+                "description": true,
+                "restartRequired": true,
+                "type": { "const": "enum" },
+                "default": { "type": "string" },
+                "options": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["label", "value"],
+                    "properties": {
+                      "label": { "type": "string", "minLength": 1 },
+                      "value": { "type": "string", "minLength": 1 }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

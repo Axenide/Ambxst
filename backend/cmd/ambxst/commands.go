@@ -43,8 +43,48 @@ func runUpdate() {
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: update failed: %v\n", err)
+		restartAmbxst()
+		return
 	}
+	rebuildModsAfterUpdate()
 	restartAmbxst()
+}
+
+// The shell source has just changed, so an existing generation was composed
+// from the previous one and Ambxst would start without it. Re-compose here
+// instead of leaving the user on the clean base until they open Settings.
+func rebuildModsAfterUpdate() {
+	status, err := callMods("status", nil)
+	if err != nil {
+		return
+	}
+	enabled := false
+	for _, mod := range status.Mods {
+		if mod.Enabled {
+			enabled = true
+			break
+		}
+	}
+	if !enabled {
+		return
+	}
+	fmt.Println("Rebuilding mods for the new Ambxst version...")
+	rebuilt, err := callMods("rebuild", nil)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: mods were not rebuilt: %v\n", err)
+		fmt.Fprintln(os.Stderr, "Ambxst starts without them. Settings > Mods can retry the build.")
+		return
+	}
+	for _, mod := range rebuilt.Mods {
+		if !mod.Compatible {
+			fmt.Printf("  %s is not compatible with this version: %s\n", mod.ID, mod.CompatibilityError)
+			continue
+		}
+		if mod.Untested {
+			fmt.Printf("  %s: %s\n", mod.ID, mod.UntestedMessage)
+		}
+	}
+	fmt.Println("Mods rebuilt.")
 }
 
 func runRefresh() {
