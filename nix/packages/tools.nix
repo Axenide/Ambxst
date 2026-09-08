@@ -5,6 +5,7 @@ with pkgs; [
   brightnessctl
   ddcutil
   fontconfig
+  git
   glib
   jq
 
