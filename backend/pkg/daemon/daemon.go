@@ -120,6 +120,7 @@ func New() (*Daemon, error) {
 	gmSvc := gamemode.NewService(d.paths)
 	gmSvc.Register(d.srv)
 	d.gamemode = gmSvc
+	compSvc.SetGameModeFn(gmSvc.IsEnabled)
 
 	caffeineSvc := caffeine.NewService(d.paths)
 	caffeineSvc.Register(d.srv)

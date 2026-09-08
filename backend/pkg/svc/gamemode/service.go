@@ -2,10 +2,7 @@ package gamemode
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"os/exec"
-	"strings"
 	"sync"
 
 	"ambxst/backend/pkg/ipc"
@@ -14,31 +11,21 @@ import (
 
 const stateKey = "gameMode"
 
-var disableKeywords = strings.Join([]string{
-	"keyword animations:enabled 0",
-	"keyword decoration:shadow:enabled 0",
-	"keyword decoration:blur:enabled 0",
-	"keyword general:gaps_in 0",
-	"keyword general:gaps_out 0",
-	"keyword general:border_size 1",
-	"keyword decoration:rounding 0",
-}, "; ")
-
+// Service owns the GameMode state. It persists the toggle to states.json
+// and broadcasts changes to subscribers; the compositor-side effects are
+// applied by the compositor service (TOML override layer) and the QML
+// shell (live eval + Config.animDuration), both reacting to the broadcast.
 type Service struct {
 	paths *paths.Paths
 	mu    sync.Mutex
 	cur   bool
-
-	applyFn func(enable bool) error
 
 	subsMu sync.Mutex
 	subs   []*ipc.Subscriber
 }
 
 func NewService(p *paths.Paths) *Service {
-	s := &Service{paths: p}
-	s.applyFn = s.defaultApply
-	return s
+	return &Service{paths: p}
 }
 
 func (s *Service) Register(srv *ipc.Server) {
@@ -122,29 +109,18 @@ func (s *Service) save(v bool) {
 	_ = os.Rename(tmp, s.paths.StatesFile())
 }
 
-// applyFn is the side-effect hook used to mutate the compositor. Tests
-// override this to avoid shelling out to axctl.
-func (s *Service) defaultApply(enable bool) error {
-	if enable {
-		return s.runAxctl("config", "apply", disableKeywords)
-	}
-	return s.runAxctl("config", "reload")
-}
-
-func (s *Service) runAxctl(args ...string) error {
-	cmd := exec.Command("axctl", args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+// IsEnabled reports the current GameMode state. Used by the compositor
+// service to normalize every rendered TOML.
+func (s *Service) IsEnabled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.cur
 }
 
 func (s *Service) toggle(_ json.RawMessage) (any, error) {
 	s.mu.Lock()
 	next := !s.cur
 	s.mu.Unlock()
-	if err := s.applyFn(next); err != nil {
-		return nil, fmt.Errorf("axctl: %w", err)
-	}
 	s.cur = next
 	s.save(next)
 	s.broadcast()
@@ -157,9 +133,6 @@ func (s *Service) set(params json.RawMessage) (any, error) {
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, err
-	}
-	if err := s.applyFn(p.Enabled); err != nil {
-		return nil, fmt.Errorf("axctl: %w", err)
 	}
 	s.mu.Lock()
 	s.cur = p.Enabled

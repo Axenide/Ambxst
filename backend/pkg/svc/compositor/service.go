@@ -16,6 +16,11 @@ import (
 type Service struct {
 	paths PathResolver
 	mgr   *Manager
+
+	// gameModeFn reports whether GameMode is active. Every rendered TOML
+	// is normalized through it so a user edit during GameMode persists
+	// the user's values without leaking them into the live compositor.
+	gameModeFn func() bool
 }
 
 // PathResolver is the minimal surface the service needs from *paths.Paths.
@@ -61,6 +66,16 @@ func (s *Service) Register(srv *ipc.Server) {
 	})
 }
 
+// SetGameModeFn wires the GameMode state provider. Safe to leave unset;
+// the TOML then always renders with the user's values.
+func (s *Service) SetGameModeFn(fn func() bool) {
+	s.gameModeFn = fn
+}
+
+func (s *Service) gameMode() bool {
+	return s.gameModeFn != nil && s.gameModeFn()
+}
+
 // render returns the generated TOML without writing it to disk. Useful
 // for unit tests, dry-runs, and clients that prefer to write themselves.
 func (s *Service) render(params json.RawMessage) (any, error) {
@@ -68,7 +83,7 @@ func (s *Service) render(params json.RawMessage) (any, error) {
 	if err := json.Unmarshal(params, &in); err != nil {
 		return nil, fmt.Errorf("compositor.render: %w", err)
 	}
-	return map[string]any{"toml": Render(in)}, nil
+	return map[string]any{"toml": Render(in, s.gameMode())}, nil
 }
 
 // write renders and atomically writes the TOML to the canonical path.
@@ -80,7 +95,7 @@ func (s *Service) write(params json.RawMessage) (any, error) {
 	if err := json.Unmarshal(params, &in); err != nil {
 		return nil, fmt.Errorf("compositor.write: %w", err)
 	}
-	content := Render(in)
+	content := Render(in, s.gameMode())
 	var path string
 	if s.paths != nil {
 		path = s.paths.AxctlToml()

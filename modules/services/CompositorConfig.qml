@@ -135,6 +135,15 @@ QtObject {
             return;
         }
 
+        // While GameMode is active the compositor runs the gamemode
+        // overrides; persist the user's edit through the TOML path but
+        // leave the live state untouched so the mode is not torn down
+        // mid-session. On exit the values are restored from config.
+        if (GameModeClient.toggled) {
+            CompositorTomlWriter.callWrite();
+            return;
+        }
+
         const c = Config.compositor;
 
         // Determine border colors in Lua-ready form. Sync forces
@@ -233,6 +242,52 @@ QtObject {
         // shell restart and any unrelated compositor change picks them up
         // via the watcher (when that path works).
         CompositorTomlWriter.callWrite();
+    }
+
+    // Applies the GameMode appearance overrides live through the same
+    // eval path as applyCompositorConfigInternal. Single-statement eval:
+    // the [[BATCH]] pipeline splits on ';', so no second Lua statement
+    // can ride along. The persisted leg goes through the TOML (the Go
+    // renderer injects the same overrides server-side); borderangle is
+    // covered by animations being disabled globally.
+    function applyGameModeLive() {
+        const luaExpression = "hl.config(" + luaLiteral({
+            animations: {
+                enabled: false,
+            },
+            decoration: {
+                shadow: { enabled: false },
+                blur: { enabled: false },
+                active_opacity: 1.0,
+                inactive_opacity: 1.0,
+                fullscreen_opacity: 1.0,
+                rounding: 0,
+            },
+            general: {
+                gaps_in: 0,
+                gaps_out: 0,
+                border_size: 1,
+            },
+        }) + ")";
+
+        BackendService.notify("compositor.eval", { expression: luaExpression });
+
+        // Regenerate the TOML so the overrides persist and any watcher
+        // regen stays consistent with the live dispatch.
+        CompositorTomlWriter.callWrite();
+    }
+
+    property Connections gameModeConnections: Connections {
+        target: GameModeClient
+        function onToggledChanged() {
+            if (GameModeClient.toggled) {
+                applyGameModeLive();
+            } else {
+                // Restore the user's values live; the TOML regen inside
+                // applyCompositorConfigInternal drops the overrides.
+                applyCompositorConfig();
+            }
+        }
     }
 
     property Connections configConnections: Connections {

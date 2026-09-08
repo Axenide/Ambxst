@@ -584,14 +584,15 @@ WlSessionLockSurface {
         }
     }
 
-    // Timer to unlock after exit animation
-    Timer {
-        id: unlockTimer
-        interval: Config.animDuration * 2  // Wait for zoom out (1x) + fade out (1x)
-        onTriggered: {
-            GlobalStates.lockscreenVisible = false;
-        }
+// Timer to unlock after exit animation
+Timer {
+    id: unlockTimer
+    // A Timer with interval 0 never fires in Qt; ensure a minimum interval
+    interval: Config.animDuration > 0 ? Config.animDuration * 2 : 1
+    onTriggered: {
+        GlobalStates.lockscreenVisible = false;
     }
+}
 
     // Processes for user info
     Process {
@@ -696,6 +697,10 @@ WlSessionLockSurface {
                 console.warn("PAM auth failed with result:", result);
                 if (Config.animDuration > 0) {
                     wrongPasswordAnim.start();
+                } else {
+                    passwordInput.text = "";
+                    authenticating = false;
+                    passwordInputBox.showError = false;
                 }
             }
         }
