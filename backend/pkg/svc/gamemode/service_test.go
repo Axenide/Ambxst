@@ -17,7 +17,6 @@ func newTestService(t *testing.T) (*Service, string) {
 		t.Fatal(err)
 	}
 	svc := NewService(&paths.Paths{StateDir: dir})
-	svc.applyFn = func(_ bool) error { return nil }
 	return svc, states
 }
 

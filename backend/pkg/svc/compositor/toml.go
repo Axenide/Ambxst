@@ -6,12 +6,14 @@ import (
 	"strings"
 )
 
-// Render builds the axctl.toml content for the given input. It is a
+// Render builds the axctl.toml content for the given input. When gameMode
+// is active the appearance section is overridden with performance-first
+// values (no animations, blur, shadows, gaps or rounding). It is a
 // faithful port of modules/services/CompositorTomlWriter.qml's
 // generateToml() — every section, key order, and escaping rule is kept
 // in sync to keep the two generators interchangeable during the QML→Go
 // transition.
-func Render(in Input) string {
+func Render(in Input, gameMode bool) string {
 	var b strings.Builder
 
 	// [target] — must be first so axctl's [target] path resolution kicks
@@ -33,7 +35,7 @@ func Render(in Input) string {
 	b.WriteString(`exec-once = "ambxst"` + "\n")
 
 	// [appearance]
-	writeAppearance(&b, in)
+	writeAppearance(&b, in, gameMode)
 
 	// [general] (layout)
 	if in.Layout != "" {
@@ -56,8 +58,25 @@ func Render(in Input) string {
 	return b.String()
 }
 
-func writeAppearance(b *strings.Builder, in Input) {
+// gameModeOverrides strips every visual flourish from the compositor
+// config: no gaps, 1px border, no rounding/blur/shadow/animations. Border
+// colors and layer rules are preserved (they don't cost frames).
+func gameModeOverrides(c CompositorConfig) CompositorConfig {
+	c.GapsIn = 0
+	c.GapsOut = 0
+	c.BorderSize = 1
+	c.Rounding = 0
+	c.Blur.Enabled = false
+	c.Shadow.Enabled = false
+	c.Animations.Enabled = false
+	return c
+}
+
+func writeAppearance(b *strings.Builder, in Input, gameMode bool) {
 	c := in.Compositor
+	if gameMode {
+		c = gameModeOverrides(c)
+	}
 	b.WriteString("[appearance]\n")
 
 	// gaps

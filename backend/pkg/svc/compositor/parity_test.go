@@ -13,7 +13,7 @@ import (
 // reproduce.
 func TestRenderMatchesCurrentAxctlToml(t *testing.T) {
 	in := realishInput()
-	out := Render(in)
+	out := Render(in, false)
 
 	// Spot-check the structural keys that the QML writer always emits.
 	// If any of these drift, the daemon-side parser or axctl's TOML

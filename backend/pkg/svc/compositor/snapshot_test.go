@@ -14,7 +14,7 @@ func TestRenderOutputSnapshot(t *testing.T) {
 	if os.Getenv("DUMP_TOML") != "1" {
 		t.Skip("set DUMP_TOML=1 to dump")
 	}
-	out := Render(realishInput())
+	out := Render(realishInput(), false)
 	fmt.Println("---- begin TOML ----")
 	fmt.Println(out)
 	fmt.Println("---- end TOML ----")
@@ -24,7 +24,7 @@ func TestRenderOutputSnapshot(t *testing.T) {
 // for layer_rules. The QML writer emits blur, blur_popups, no_anim;
 // this guard catches accidental reordering during refactors.
 func TestRenderLayoutRulesOrder(t *testing.T) {
-	out := Render(realishInput())
+	out := Render(realishInput(), false)
 	ambxstIdx := strings.Index(out, `namespace = "^ambxst(:.*)?$"`)
 	if ambxstIdx == -1 {
 		t.Fatal("ambxst layer rule missing")
