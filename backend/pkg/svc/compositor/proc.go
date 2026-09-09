@@ -108,8 +108,13 @@ func (m *Manager) startDaemon() error {
 	return nil
 }
 
-// axctlSocketPath reproduces the path axctl itself uses for its IPC socket.
+// axctlSocketPath reproduces the path axctl itself uses for its IPC socket
+// (runtime dir first, legacy /tmp fallback — must stay in sync with axctl's
+// defaultSocketPath).
 func axctlSocketPath() string {
+	if runtime := os.Getenv("XDG_RUNTIME_DIR"); runtime != "" {
+		return filepath.Join(runtime, "axctl.sock")
+	}
 	return fmt.Sprintf("/tmp/axctl-%d.sock", os.Getuid())
 }
 
