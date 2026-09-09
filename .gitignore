@@ -7,6 +7,3 @@ result
 
 # Keep Go package sources visible when a global ignore file excludes pkg/.
 !/backend/pkg/
-
-
-.freebuff/
