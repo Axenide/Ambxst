@@ -188,6 +188,7 @@ If you are having trouble or have any questions:
 - [soramane](https://github.com/soramanew) for helping me when I started with Quickshell. (You probably don't remember, but still, heh.)
 - [tr1x_em](https://trix.is-a.dev/) for being a great friend and helping me find great tools. You rock!
 - [Darsh](https://github.com/its-darsh) for not killing me when I left Fabric. u_u (Also for being a great friend and creating Fabric! Without Fabric, Ax-Shell wouldn't exist, so Ambxst wouldn't either. Thank you!)
+- [Cal](https://github.com/callenflynn) for being the most awesomest >~<
 - [Mario](https://github.com/mariokhz) for being a great friend and showing me Quickshell!
 - [Samouly](https://samouly.is-a.dev/) for being Samouly. :3
 - [Brys](https://github.com/brys0) for being his continuous support and for being a great friend!
