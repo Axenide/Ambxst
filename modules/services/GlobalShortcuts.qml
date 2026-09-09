@@ -12,11 +12,16 @@ QtObject {
     id: root
 
     readonly property string appId: "ambxst"
-    readonly property string ipcPipe: "/tmp/ambxst_ipc.pipe"
+    // Per-user runtime dir instead of /tmp: /tmp is world-shared and its
+    // sticky bit lets a second local account permanently squat the FIFO.
+    // The shell expression keeps this working even when XDG_RUNTIME_DIR
+    // is not exported to the compositor session.
+    readonly property string ipcDir: "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    readonly property string ipcName: "ambxst_ipc.pipe"
 
     // High-performance Pipe Listener (Daemon mode)
     property Process pipeListener: Process {
-        command: ["bash", "-c", "rm -f " + root.ipcPipe + "; mkfifo " + root.ipcPipe + "; tail -f " + root.ipcPipe]
+        command: ["bash", "-c", 'd="' + root.ipcDir + '"; mkdir -p "$d"; rm -f "$d/' + root.ipcName + '"; mkfifo "$d/' + root.ipcName + '"; tail -f "$d/' + root.ipcName + '"']
         running: true
         
         stdout: SplitParser {

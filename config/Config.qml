@@ -2443,7 +2443,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "sh -c 'echo brightness-up > /tmp/ambxst_ipc.pipe'",
+                            "argument": "sh -c 'echo brightness-up > \"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ambxst_ipc.pipe\"'",
                             "flags": "le",
                             "layouts": []
                         }
@@ -2461,7 +2461,7 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "exec",
-                            "argument": "sh -c 'echo brightness-down > /tmp/ambxst_ipc.pipe'",
+                            "argument": "sh -c 'echo brightness-down > \"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ambxst_ipc.pipe\"'",
                             "flags": "le",
                             "layouts": []
                         }

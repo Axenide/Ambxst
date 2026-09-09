@@ -368,7 +368,7 @@ func (d *Daemon) shutdown() {
 	// Defensive sweep: any child that escaped the process group cleanup
 	// (e.g. tail -f on a FIFO that survived Quickshell's SIGTERM) gets a
 	// targeted kill. Cheap and idempotent.
-	exec.Command("pkill", "-f", "tail -f /tmp/ambxst_ipc.pipe").Run()
+	exec.Command("pkill", "-f", `tail -f .*ambxst_ipc\.pipe`).Run()
 	exec.Command("pkill", "-f", "axctl.*daemon").Run()
 	exec.Command("pkill", "-f", "axctl subscribe").Run()
 	exec.Command("pkill", "-f", "wl-paste --watch").Run()

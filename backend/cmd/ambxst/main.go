@@ -346,12 +346,22 @@ func quitAmbxst() {
 }
 
 func cleanupOrphans() {
-	exec.Command("pkill", "-f", "tail -f /tmp/ambxst_ipc.pipe").Run()
+	exec.Command("pkill", "-f", `tail -f .*ambxst_ipc\.pipe`).Run()
 	exec.Command("pkill", "-f", "axctl.*daemon").Run()
 	exec.Command("pkill", "-f", "axctl subscribe").Run()
 	exec.Command("pkill", "-f", "qs.*shell.qml").Run()
 	exec.Command("pkill", "-f", "wl-paste --watch").Run()
-	os.Remove("/tmp/ambxst_ipc.pipe")
+	_ = os.Remove(ipcPipePath())
+	_ = os.Remove("/tmp/ambxst_ipc.pipe")
+}
+
+// ipcPipePath resolves the per-user FIFO the Quickshell keybind listener
+// reads from; /run/user/<uid> keeps it out of the shared /tmp namespace.
+func ipcPipePath() string {
+	if runtime := os.Getenv("XDG_RUNTIME_DIR"); runtime != "" {
+		return filepath.Join(runtime, "ambxst_ipc.pipe")
+	}
+	return fmt.Sprintf("/run/user/%d/ambxst_ipc.pipe", os.Getuid())
 }
 
 func showHelp() {
