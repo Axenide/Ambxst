@@ -6,8 +6,6 @@ Remaining Bash utilities. All Python and most Bash logic has moved into the Go b
 ## WHERE TO LOOK
 | Script | Language | Called By | Role |
 |--------|----------|-----------|------|
-| `clipboard_check.sh` | Bash | Go clipboard svc | Validates clipboard state and deduplication |
-| `clipboard_insert.sh` | Bash | Go clipboard svc | Inserts items into clipboard via `wl-copy` |
 | `google_lens.sh` | Bash | ToolsMenu / Screenshot svc | Google Lens image search (takes image path as $1) |
 | `brightness_list.sh` | Bash | Go brightness cmd | Enumerates available brightness devices |
 
@@ -17,6 +15,7 @@ Remaining Bash utilities. All Python and most Bash logic has moved into the Go b
 | `system_monitor.py` | `svc/systemmonitor` (IPC) |
 | `weather.sh` | `svc/weather` (IPC) |
 | `clipboard_watch.sh` | `svc/clipboard` watch (IPC) |
+| `clipboard_check.sh`, `clipboard_insert.sh` | `svc/clipboard` native capture+insert (encrypted SQLite via ncruces driver) |
 | `sleep_monitor.sh`, `loginlock.sh` | `svc/sleep` (IPC) |
 | `daemon_priority.sh` | CLI `runShell()` |
 | `keystore.py` | `svc/keystore` (IPC) |

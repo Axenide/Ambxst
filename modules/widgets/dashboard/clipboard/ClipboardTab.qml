@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
-import Quickshell.Io
 import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.components
@@ -580,26 +579,11 @@ Item {
     }
 
     function copyToClipboard(itemId) {
-        // Find the item to determine its type
+        // The daemon copies from the encrypted store (text, file URI or
+        // image blob) with the right MIME type.
         for (var i = 0; i < root.allItems.length; i++) {
             if (root.allItems[i].id === itemId) {
-                var item = root.allItems[i];
-                if (item.isImage && item.binaryPath) {
-                    // Copy image with correct MIME type
-                    copyProcess.command = ["sh", "-c", "cat '" + item.binaryPath + "' | wl-copy --type '" + item.mime + "'"];
-                } else if (item.isFile) {
-                    // Copy file URI with text/uri-list MIME type, removing carriage returns
-                    copyProcess.command = ["sh", "-c", "sqlite3 '" + ClipboardService.dbPath + "' \"SELECT full_content FROM clipboard_items WHERE id = " + itemId + ";\" | tr -d '\\r' | wl-copy --type text/uri-list"];
-                } else {
-                    // Optimized path for text: use the already loaded safeCurrentContent if it matches
-                    if (root.contentMatchesSelection && root.currentItemId === itemId && root.currentFullContent) {
-                        copyProcess.command = ["sh", "-c", "printf '%s' " + ClipboardUtils.escapeShellArg(root.currentFullContent) + " | wl-copy"];
-                    } else {
-                        // Fallback: Copy text as plain text from DB
-                        copyProcess.command = ["sh", "-c", "sqlite3 '" + ClipboardService.dbPath + "' \"SELECT full_content FROM clipboard_items WHERE id = " + itemId + ";\" | wl-copy"];
-                    }
-                }
-                copyProcess.running = true;
+                ClipboardService.copyItem(itemId, root.allItems[i].mime);
                 break;
             }
         }
@@ -647,7 +631,10 @@ Item {
                 let item = root.allItems[root.selectedIndex];
                 if (item.isImage && !ClipboardService.getImageData(item.id)) {
                     ClipboardService.decodeToDataUrl(item.id, item.mime);
-                } else if (!item.isImage) {
+                } else if (item.isImage) {
+                    // Materialize the blob for drag-and-drop / open
+                    ClipboardService.requestImagePath(item.id);
+                } else {
                     // Obtener contenido completo para texto
                     ClipboardService.getFullContent(item.id);
                 }
@@ -680,18 +667,6 @@ Item {
             // Only clear loading state if this response is for the currently selected item
             if (root.currentSelectedItem && root.currentSelectedItem.id === requestItemId) {
                 root.loadingLinkPreview = false;
-            }
-        }
-    }
-
-    // Proceso para copiar al portapapeles
-    Process {
-        id: copyProcess
-        running: false
-
-        onExited: function (code) {
-            if (code === 0) {
-                ClipboardService.checkClipboard();
             }
         }
     }
@@ -3492,6 +3467,7 @@ Item {
                                     Drag.dragType: Drag.Automatic
                                     Drag.supportedActions: Qt.CopyAction
                                     Drag.mimeData: {
+                                        ClipboardService.revision;
                                         if (!previewPanel.currentItem)
                                             return {};
 
@@ -3503,10 +3479,10 @@ Item {
                                             return {
                                                 "text/uri-list": content
                                             };
-                                        } else if (item.isImage && item.binaryPath) {
+                                        } else if (item.isImage && ClipboardService.getImagePath(item.id)) {
                                             // Image from clipboard: send as file URI
                                             return {
-                                                "text/uri-list": "file://" + item.binaryPath
+                                                "text/uri-list": "file://" + ClipboardService.getImagePath(item.id)
                                             };
                                         } else {
                                             // Text: send as plain text

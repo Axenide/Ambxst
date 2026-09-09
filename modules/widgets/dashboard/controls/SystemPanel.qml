@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -145,6 +146,10 @@ Item {
                         SectionButton {
                             text: "Terminal"
                             sectionId: "terminal"
+                        }
+                        SectionButton {
+                            text: "Clipboard"
+                            sectionId: "clipboard"
                         }
                     }
 
@@ -902,6 +907,69 @@ Item {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // =====================
+                    // CLIPBOARD SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "clipboard"
+                        property string settingsSection: "clipboard"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Clipboard"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        Text {
+                            text: "History is capped at 50 items and stored encrypted. Images are kept inside the database."
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overSurfaceVariant
+                            opacity: 0.7
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        StyledRect {
+                            variant: "pane"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: clipColumn.implicitHeight + 24
+                            radius: Styling.radius(-2)
+
+                            ColumnLayout {
+                                id: clipColumn
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 8
+
+                                ToggleRow {
+                                    label: "Move to /tmp"
+                                    description: "Unpinned history lives in tmpfs and is wiped on reboot. Pinned items stay in the local share."
+                                    checked: Config.system.clipboard?.tmpfs ?? false
+                                    onToggled: checked => {
+                                        if (checked === (Config.system.clipboard?.tmpfs ?? false))
+                                            return;
+                                        Config.system.clipboard.tmpfs = checked;
+                                        // Tell the daemon to switch stores; it
+                                        // also re-reads this flag on boot.
+                                        BackendService.call("clipboard.setTmpMode", {enabled: checked});
+                                    }
+                                }
+                            }
+                        }
+
+                        // Bottom spacing
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
                         }
                     }
 

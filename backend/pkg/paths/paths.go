@@ -75,12 +75,40 @@ func (p *Paths) ColorsFile() string {
 	return filepath.Join(p.CacheDir, "colors.json")
 }
 
+// ClipboardDB is the legacy plaintext database; kept only so the daemon
+// can migrate its contents into the encrypted stores and delete it.
 func (p *Paths) ClipboardDB() string {
 	return filepath.Join(p.DataDir, "clipboard.db")
 }
 
 func (p *Paths) ClipboardDataDir() string {
 	return filepath.Join(p.DataDir, "clipboard-data")
+}
+
+func (p *Paths) ClipboardPinnedDB() string {
+	return filepath.Join(p.DataDir, "clipboard-pinned.db")
+}
+
+// ClipboardUnpinnedDB is the local-share location for unpinned history
+// (used when the tmpfs toggle is off).
+func (p *Paths) ClipboardUnpinnedDB() string {
+	return filepath.Join(p.DataDir, "clipboard-unpinned.db")
+}
+
+// ClipboardTmpDB is the tmpfs location for unpinned history (toggle on).
+// It lives under XDG_RUNTIME_DIR so it is wiped on reboot.
+func (p *Paths) ClipboardTmpDB() string {
+	return filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ambxst", "clipboard-unpinned.db")
+}
+
+func (p *Paths) ClipboardKeyFile() string {
+	return filepath.Join(p.StateDir, "clipboard.key")
+}
+
+// ClipboardImageCacheDir is a tmpfs cache where image blobs are
+// materialized for drag-and-drop / external open.
+func (p *Paths) ClipboardImageCacheDir() string {
+	return filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ambxst", "clipboard-img")
 }
 
 func (p *Paths) KeysDB() string {

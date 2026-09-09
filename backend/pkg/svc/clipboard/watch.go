@@ -2,21 +2,22 @@ package clipboard
 
 import (
 	"bufio"
+	"bytes"
+	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"syscall"
 )
 
-// watchProc runs `wl-paste --watch` (clipboard_watch.sh behaviour) and emits
-// clipboard.refresh events. The heavy lift (mime detection, hashing, file
-// storage) stays in scripts/clipboard_check.sh — the same dependency set the
-// shell used (wl-paste, sqlite3 CLI). Go owns the process lifecycle and the
-// event stream; QML no longer spawns watcher processes.
+// watchProc runs `wl-paste --watch` and handles every clipboard change
+// natively in Go (mime detection, hashing, blob storage) — the previous
+// shell pipeline (scripts/clipboard_check.sh + clipboard_insert.sh +
+// sqlite3 CLI) is gone. Each change that yields content triggers an
+// upsert in the unpinned store and a clipboard.refresh event.
 type watchProc struct {
-	svc     *Service
-	stopCh  chan struct{}
+	svc    *Service
+	stopCh chan struct{}
 }
 
 type eventSender interface {
@@ -51,13 +52,12 @@ func (w *watchProc) run(sub eventSender) {
 			return
 		default:
 		}
-		// Mirror clipboard_watch.sh: pipe stdin, run check, print REFRESH_LIST.
-		// checkScript() reuses scripts/clipboard_check.sh + clipboard_insert.sh.
-		cmd := exec.Command("sh", "-c", "wl-paste --watch bash -c 'cat >/dev/null; "+w.svc.checkScript()+" "+w.checkArgs()+" && echo REFRESH_LIST || echo check-failed >&2'")
-		// Put the watcher in its own process group so we can kill the entire
-		// group (sh + wl-paste + descendants) on stop. Without this, killing
-		// only `sh` leaves wl-paste as a zombie/orphan consuming clipboard
-		// subscriptions and memory on every daemon restart.
+		cmd := exec.Command("wl-paste", "--watch", "sh", "-c", "cat >/dev/null; echo REFRESH_LIST")
+		// Put the watcher in its own process group so we can kill the
+		// entire group (sh + wl-paste + descendants) on stop. Without
+		// this, killing only `sh` leaves wl-paste as a zombie/orphan
+		// consuming clipboard subscriptions and memory on every daemon
+		// restart.
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
@@ -71,7 +71,10 @@ func (w *watchProc) run(sub eventSender) {
 			defer close(done)
 			sc := bufio.NewScanner(stdout)
 			for sc.Scan() {
-				if strings.TrimSpace(sc.Text()) == "REFRESH_LIST" {
+				if strings.TrimSpace(sc.Text()) != "REFRESH_LIST" {
+					continue
+				}
+				if w.svc.checkAndInsert() {
 					sub.Send("clipboard.refresh", map[string]any{"ok": true})
 				}
 			}
@@ -90,34 +93,55 @@ func (w *watchProc) run(sub eventSender) {
 	}
 }
 
-// checkScript returns the path of scripts/clipboard_check.sh.
-func (s *Service) checkScript() string {
-	return s.scriptsDir() + "/clipboard_check.sh"
-}
-
-// checkArgs renders the three args the check script needs.
-func (w *watchProc) checkArgs() string {
-	db := w.svc.paths.ClipboardDB()
-	dataDir := w.svc.paths.ClipboardDataDir()
-	return shellQuote(db) + " " + shellQuote(w.svc.scriptsDir()+"/clipboard_insert.sh") + " " + shellQuote(dataDir)
-}
-
-// scriptsDir finds the repo scripts dir: AMBXST_SHELL (Nix) or the dev
-// layout relative to the binary (repo/backend → repo/scripts).
-func (s *Service) scriptsDir() string {
-	if dir := os.Getenv("AMBXST_SHELL"); dir != "" {
-		return dir + "/scripts"
+// checkAndInsert captures the current clipboard content (uri-list, image
+// or plain text — in that priority order) and upserts it into the
+// unpinned store. Returns whether content was captured.
+func (s *Service) checkAndInsert() bool {
+	// Files first (text/uri-list).
+	if out, err := exec.Command("wl-paste", "--type", "text/uri-list").Output(); err == nil {
+		content := bytes.ReplaceAll(out, []byte("\r"), nil)
+		size := int64(0)
+		if p := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(content)), "file://")); p != "" {
+			if fi, err := os.Stat(p); err == nil {
+				size = fi.Size()
+			}
+		}
+		return s.insertUnpinned("text/uri-list", content, false, size)
 	}
-	if exe, err := os.Executable(); err == nil {
-		parent := filepath.Dir(exe)
-		if filepath.Base(parent) == "backend" {
-			return filepath.Join(filepath.Dir(parent), "scripts")
+
+	// Images.
+	if types, err := exec.Command("wl-paste", "--list-types").Output(); err == nil {
+		for _, line := range strings.Split(string(types), "\n") {
+			mime := strings.TrimSpace(line)
+			if !strings.HasPrefix(mime, "image/") {
+				continue
+			}
+			data, err := exec.Command("wl-paste", "--type", mime).Output()
+			if err == nil && len(data) > 0 {
+				return s.insertUnpinned(mime, data, true, int64(len(data)))
+			}
 		}
 	}
-	if cwd, err := os.Getwd(); err == nil {
-		if _, statErr := os.Stat(filepath.Join(cwd, "scripts", "clipboard_check.sh")); statErr == nil {
-			return filepath.Join(cwd, "scripts")
+
+	// Plain text — prefer UTF-8 charset to preserve unicode characters.
+	for _, mime := range []string{"text/plain;charset=utf-8", "text/plain"} {
+		if out, err := exec.Command("wl-paste", "--type", mime).Output(); err == nil {
+			content := bytes.ReplaceAll(out, []byte("\r"), nil)
+			return s.insertUnpinned(mime, content, false, int64(len(content)))
 		}
 	}
-	return filepath.Join(os.Getenv("HOME"), ".local/src/ambxst", "scripts")
+	return false
+}
+
+func (s *Service) insertUnpinned(mime string, content []byte, isImage bool, size int64) bool {
+	st, err := s.getStore()
+	if err != nil {
+		log.Printf("[clipboard] insert: %v", err)
+		return false
+	}
+	inserted, err := st.insertUnpinned(mime, content, isImage, size)
+	if err != nil {
+		log.Printf("[clipboard] insert: %v", err)
+	}
+	return inserted
 }

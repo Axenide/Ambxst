@@ -32,6 +32,28 @@ github.com/makiuchi-d/gozxing/qrcode
 github.com/makiuchi-d/gozxing/qrcode/decoder
 github.com/makiuchi-d/gozxing/qrcode/detector
 github.com/makiuchi-d/gozxing/qrcode/encoder
+# github.com/ncruces/go-sqlite3 v0.35.4
+## explicit; go 1.26.0
+github.com/ncruces/go-sqlite3
+github.com/ncruces/go-sqlite3/driver
+github.com/ncruces/go-sqlite3/ext/fts5
+github.com/ncruces/go-sqlite3/internal/dotlk
+github.com/ncruces/go-sqlite3/internal/errutil
+github.com/ncruces/go-sqlite3/internal/sqlite3_wrap
+github.com/ncruces/go-sqlite3/internal/testenv
+github.com/ncruces/go-sqlite3/internal/util
+github.com/ncruces/go-sqlite3/util/sql3util
+github.com/ncruces/go-sqlite3/util/vfsutil
+github.com/ncruces/go-sqlite3/vfs
+github.com/ncruces/go-sqlite3/vfs/adiantum
+# github.com/ncruces/go-sqlite3-wasm/v5 v5.0.35304
+## explicit; go 1.26.0
+github.com/ncruces/go-sqlite3-wasm/v5
+github.com/ncruces/go-sqlite3-wasm/v5/fts5
+github.com/ncruces/go-sqlite3-wasm/v5/parser
+# github.com/ncruces/julianday v1.0.0
+## explicit; go 1.17
+github.com/ncruces/julianday
 # github.com/pmezard/go-difflib v1.0.0
 ## explicit
 github.com/pmezard/go-difflib/difflib
@@ -39,6 +61,12 @@ github.com/pmezard/go-difflib/difflib
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
+# golang.org/x/crypto v0.55.0
+## explicit; go 1.25.0
+golang.org/x/crypto/argon2
+golang.org/x/crypto/blake2b
+golang.org/x/crypto/internal/poly1305
+golang.org/x/crypto/poly1305
 # golang.org/x/image v0.45.0
 ## explicit; go 1.25.0
 golang.org/x/image/bmp
@@ -58,7 +86,9 @@ golang.org/x/net/html
 golang.org/x/net/html/atom
 # golang.org/x/sys v0.47.0
 ## explicit; go 1.25.0
+golang.org/x/sys/cpu
 golang.org/x/sys/unix
+golang.org/x/sys/windows
 # golang.org/x/text v0.41.0
 ## explicit; go 1.25.0
 golang.org/x/text/encoding
@@ -81,3 +111,9 @@ golang.org/x/xerrors/internal
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# lukechampine.com/adiantum v1.1.1
+## explicit; go 1.20
+lukechampine.com/adiantum
+lukechampine.com/adiantum/hbsh
+lukechampine.com/adiantum/internal/xchacha
+lukechampine.com/adiantum/nh

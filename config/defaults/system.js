@@ -44,5 +44,8 @@ var data = {
         "restTime": 300,
         "autoStart": false,
         "syncSpotify": false
+    },
+    "clipboard": {
+        "tmpfs": false
     }
 }

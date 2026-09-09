@@ -1049,6 +1049,11 @@ Singleton {
                 property bool autoStart: false
                 property bool syncSpotify: false
             }
+            property JsonObject clipboard: JsonObject {
+                // Unpinned history lives in tmpfs (wiped on reboot); pinned
+                // items always stay in the local share.
+                property bool tmpfs: false
+            }
         }
     }
 

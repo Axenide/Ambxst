@@ -1,51 +1,84 @@
 package clipboard
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"ambxst/backend/pkg/ipc"
 	"ambxst/backend/pkg/paths"
 )
 
-// Service owns the clipboard history DB (sqlite3 CLI, byte-compatible with
-// the previous QML/script flow) and watches the Wayland clipboard.
+// Service owns the clipboard history (two encrypted SQLite stores: pinned
+// + unpinned, capped history, images as blobs) and watches the Wayland
+// clipboard. All state lives behind the store; this type only adapts IPC.
 type Service struct {
-	paths  *paths.Paths
-	watch  *watchProc
-	dbLock chan struct{}
+	paths      *paths.Paths
+	watch      *watchProc
+	initMu     sync.Mutex
+	store      *store
+	initErr    error
+	cacheMu    sync.Mutex
 	imageCache map[string]string
 }
 
+// NewService keeps daemon boot cheap: the encrypted stores (and the
+// legacy migration) open lazily on first clipboard use.
 func NewService(p *paths.Paths) *Service {
+	// Stale materialized images from a previous session are junk.
+	os.RemoveAll(p.ClipboardImageCacheDir())
 	return &Service{
 		paths:      p,
-		dbLock:     make(chan struct{}, 1),
 		imageCache: map[string]string{},
 	}
+}
+
+// getStore lazily creates the store on first use.
+func (s *Service) getStore() (*store, error) {
+	s.initMu.Lock()
+	defer s.initMu.Unlock()
+	if s.store != nil {
+		return s.store, nil
+	}
+	if s.initErr != nil {
+		return nil, s.initErr
+	}
+	st, err := newStore(s.paths)
+	if err != nil {
+		s.initErr = err
+		log.Printf("[clipboard] store init: %v", err)
+		return nil, err
+	}
+	s.store = st
+	return st, nil
 }
 
 func (s *Service) Register(srv *ipc.Server) {
 	srv.Register(&ipc.Service{
 		Name: "clipboard",
 		Methods: map[string]ipc.HandlerFunc{
-			"list":         s.list,
-			"getContent":   s.getContent,
-			"delete":       s.delete,
-			"clear":        s.clear,
-			"togglePin":    s.togglePin,
-			"setAlias":     s.setAlias,
-			"reorder":      s.reorder,
-			"swap":         s.swap,
-			"copy":         s.copy,
-			"emojiType":    s.emojiType,
-			"dataUrl":      s.dataURL,
+			"list":           s.list,
+			"getContent":     s.getContent,
+			"delete":         s.delete,
+			"clear":          s.clear,
+			"togglePin":      s.togglePin,
+			"setAlias":       s.setAlias,
+			"reorder":        s.reorder,
+			"swap":           s.swap,
+			"copy":           s.copy,
+			"emojiType":      s.emojiType,
+			"dataUrl":        s.dataURL,
+			"imagePath":      s.imagePath,
 			"clearClipboard": s.clearClipboard,
+			"setTmpMode":     s.setTmpMode,
+			"check":          s.check,
 		},
 		Subscribe: s.subscribe,
 	})
@@ -55,6 +88,11 @@ func (s *Service) Close() {
 	if s.watch != nil {
 		s.watch.stop()
 	}
+	s.initMu.Lock()
+	defer s.initMu.Unlock()
+	if s.store != nil {
+		s.store.close()
+	}
 }
 
 func (s *Service) subscribe(sub *ipc.Subscriber) {
@@ -63,133 +101,82 @@ func (s *Service) subscribe(sub *ipc.Subscriber) {
 	s.ensureWatcher(sub)
 }
 
-// sqlite runs the sqlite3 CLI with the given SQL, returning its stdout.
-func (s *Service) sqlite(sql string) (string, error) {
-	args := []string{"-cmd", ".timeout 5000", "-cmd", ".mode json"}
-	cmd := exec.Command("sqlite3", append(args, s.paths.ClipboardDB(), sql)...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("sqlite: %v: %s", err, out)
-	}
-	return string(out), nil
-}
+// --- IPC handlers ---
 
-func (s *Service) lock() {
-	s.dbLock <- struct{}{}
-}
-
-func (s *Service) unlock() {
-	<-s.dbLock
-}
-
-// --- methods ---
-
-// list returns the last 100 items (newest first), preserving the SQL shape.
-func (s *Service) list(params json.RawMessage) (any, error) {
-	out, err := s.sqlite("SELECT id, mime_type, preview, is_image, binary_path, content_hash, size, created_at, pinned, alias, display_index FROM clipboard_items ORDER BY pinned DESC, display_index ASC, updated_at DESC, id DESC LIMIT 100;")
+func (s *Service) list(_ json.RawMessage) (any, error) {
+	st, err := s.getStore()
 	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	out = strings.TrimSpace(out)
-	if out == "" {
-		return []any{}, nil
-	}
-	var rows []map[string]any
-	if err := json.Unmarshal([]byte(out), &rows); err != nil {
-		rows = nil
-	}
-	items := make([]any, 0, len(rows))
-	for _, r := range rows {
-		items = append(items, map[string]any{
-			"id":            r["id"],
-			"mime_type":     r["mime_type"],
-			"preview":       r["preview"],
-			"is_image":      r["is_image"],
-			"binary_path":   r["binary_path"],
-			"content_hash":  r["content_hash"],
-			"size":          r["size"],
-			"created_at":    r["created_at"],
-			"pinned":        r["pinned"],
-			"alias":         r["alias"],
-			"display_index": r["display_index"],
-		})
-	}
-	return items, nil
+	return st.listItems(), nil
 }
 
 func (s *Service) getContent(params json.RawMessage) (any, error) {
 	var p struct {
-		ID int64 `json:"id"`
+		ID string `json:"id"`
 	}
 	json.Unmarshal(params, &p)
-	out, err := s.sqlite(fmt.Sprintf("SELECT full_content FROM clipboard_items WHERE id = %d;", p.ID))
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
 	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	return map[string]any{"id": p.ID, "content": strings.TrimSpace(strings.Trim(out, "\n"))}, nil
+	content, err := st.getContent(id)
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	return map[string]any{"id": p.ID, "content": content}, nil
 }
 
 func (s *Service) delete(params json.RawMessage) (any, error) {
 	var p struct {
-		ID int64 `json:"id"`
+		ID string `json:"id"`
 	}
 	json.Unmarshal(params, &p)
-	s.lock()
-	defer s.unlock()
-
-	out, err := s.sqlite(fmt.Sprintf("SELECT content_hash FROM clipboard_items WHERE id = %d;", p.ID))
-	hash := strings.TrimSpace(out)
-	if _, err := s.sqlite(fmt.Sprintf("DELETE FROM clipboard_items WHERE id = %d;", p.ID)); err != nil {
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
+	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	if hash == "" && err != nil {
+	hash, err := st.deleteItem(id)
+	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	_ = hash
 	return map[string]any{"hash": hash}, nil
 }
 
-func (s *Service) clear(params json.RawMessage) (any, error) {
-	s.lock()
-	defer s.unlock()
-	if out, err := s.sqlite("DELETE FROM clipboard_items WHERE pinned = 0;"); err != nil {
+func (s *Service) clear(_ json.RawMessage) (any, error) {
+	st, err := s.getStore()
+	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
-	} else {
-		_ = out
 	}
-	// clear the live clipboard
+	if err := st.clearUnpinned(); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
 	exec.Command("wl-copy", "--clear").Run()
-	// remove orphaned binary files
-	dataDir := s.paths.ClipboardDataDir()
-	entries, err := os.ReadDir(dataDir)
-	if err == nil {
-		for _, e := range entries {
-			p := filepath.Join(dataDir, e.Name())
-			cnt, _ := s.sqlite(fmt.Sprintf("SELECT COUNT(*) FROM clipboard_items WHERE binary_path = '%s';", p))
-			if strings.TrimSpace(cnt) == "0" {
-				os.Remove(p)
-			}
-		}
-	}
 	return map[string]any{"ok": true}, nil
 }
 
 func (s *Service) togglePin(params json.RawMessage) (any, error) {
 	var p struct {
-		ID int64 `json:"id"`
+		ID string `json:"id"`
 	}
 	json.Unmarshal(params, &p)
-	sql := fmt.Sprintf(`
-BEGIN;
-UPDATE clipboard_items SET pinned = 1 - pinned WHERE id = %d;
-UPDATE clipboard_items SET display_index = CASE WHEN id = %d THEN 0 ELSE display_index + 1 END WHERE pinned = (SELECT pinned FROM clipboard_items WHERE id = %d);
-WITH reindexed_pinned AS (SELECT id, ROW_NUMBER() OVER (ORDER BY display_index ASC, updated_at DESC, id DESC) - 1 AS new_idx FROM clipboard_items WHERE pinned = 1)
-UPDATE clipboard_items SET display_index = (SELECT new_idx FROM reindexed_pinned WHERE reindexed_pinned.id = clipboard_items.id) WHERE pinned = 1;
-WITH reindexed_unpinned AS (SELECT id, ROW_NUMBER() OVER (ORDER BY display_index ASC, updated_at DESC, id DESC) - 1 AS new_idx FROM clipboard_items WHERE pinned = 0)
-UPDATE clipboard_items SET display_index = (SELECT new_idx FROM reindexed_unpinned WHERE reindexed_unpinned.id = clipboard_items.id) WHERE pinned = 0;
-COMMIT;`, p.ID, p.ID, p.ID)
-	_, err := s.sqlite(sql)
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
 	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	if err := st.togglePin(id); err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
 	return map[string]any{"ok": true}, nil
@@ -197,17 +184,19 @@ COMMIT;`, p.ID, p.ID, p.ID)
 
 func (s *Service) setAlias(params json.RawMessage) (any, error) {
 	var p struct {
-		ID    int64  `json:"id"`
+		ID    string `json:"id"`
 		Alias string `json:"alias"`
 	}
 	json.Unmarshal(params, &p)
-	p.Alias = strings.ReplaceAll(p.Alias, "'", "''")
-	val := "NULL"
-	if p.Alias != "" {
-		val = "'" + p.Alias + "'"
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
 	}
-	_, err := s.sqlite(fmt.Sprintf("UPDATE clipboard_items SET alias = %s WHERE id = %d;", val, p.ID))
+	st, err := s.getStore()
 	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	if err := st.setAlias(id, p.Alias); err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
 	return map[string]any{"ok": true}, nil
@@ -215,25 +204,19 @@ func (s *Service) setAlias(params json.RawMessage) (any, error) {
 
 func (s *Service) reorder(params json.RawMessage) (any, error) {
 	var p struct {
-		ID       int64 `json:"id"`
-		NewIndex int   `json:"new_index"`
+		ID       string `json:"id"`
+		NewIndex int    `json:"new_index"`
 	}
 	json.Unmarshal(params, &p)
-	// determine pin group of item
-	out, err := s.sqlite(fmt.Sprintf("SELECT pinned FROM clipboard_items WHERE id = %d;", p.ID))
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
 	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	pinned := strings.TrimSpace(out)
-	sql := fmt.Sprintf(`
-BEGIN;
-UPDATE clipboard_items SET display_index = display_index + 1 WHERE pinned = %s AND display_index >= %d AND id != %d;
-UPDATE clipboard_items SET display_index = %d WHERE id = %d;
-WITH reindexed AS (SELECT id, ROW_NUMBER() OVER (ORDER BY display_index ASC, updated_at DESC, id DESC) - 1 AS new_idx FROM clipboard_items WHERE pinned = %s)
-UPDATE clipboard_items SET display_index = (SELECT new_idx FROM reindexed WHERE reindexed.id = clipboard_items.id) WHERE pinned = %s;
-COMMIT;`, pinned, p.NewIndex, p.ID, p.NewIndex, p.ID, pinned, pinned)
-	_, err = s.sqlite(sql)
-	if err != nil {
+	if err := st.reorder(id, p.NewIndex); err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
 	return map[string]any{"ok": true}, nil
@@ -241,52 +224,51 @@ COMMIT;`, pinned, p.NewIndex, p.ID, p.NewIndex, p.ID, pinned, pinned)
 
 func (s *Service) swap(params json.RawMessage) (any, error) {
 	var p struct {
-		ID1 int64 `json:"id1"`
-		ID2 int64 `json:"id2"`
+		ID1 string `json:"id1"`
+		ID2 string `json:"id2"`
 	}
 	json.Unmarshal(params, &p)
-	sql := fmt.Sprintf(`
-BEGIN;
-WITH reindexed AS (SELECT id, ROW_NUMBER() OVER (ORDER BY display_index ASC, updated_at DESC, id DESC) - 1 AS new_idx FROM clipboard_items WHERE pinned = (SELECT pinned FROM clipboard_items WHERE id = %d))
-UPDATE clipboard_items SET display_index = (SELECT new_idx FROM reindexed WHERE reindexed.id = clipboard_items.id) WHERE pinned = (SELECT pinned FROM clipboard_items WHERE id = %d);
-CREATE TEMP TABLE tmp_swap (idx INTEGER);
-INSERT INTO tmp_swap SELECT display_index FROM clipboard_items WHERE id = %d;
-UPDATE clipboard_items SET display_index = (SELECT display_index FROM clipboard_items WHERE id = %d) WHERE id = %d;
-UPDATE clipboard_items SET display_index = (SELECT idx FROM tmp_swap) WHERE id = %d;
-DROP TABLE tmp_swap;
-COMMIT;`, p.ID1, p.ID1, p.ID1, p.ID2, p.ID1, p.ID2)
-	_, err := s.sqlite(sql)
+	id1, ok1 := parseID(p.ID1)
+	id2, ok2 := parseID(p.ID2)
+	if !ok1 || !ok2 {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
 	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	if err := st.swap(id1, id2); err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
 	return map[string]any{"ok": true}, nil
 }
 
-// copy copies item content (text or image) back to the clipboard.
+// copy puts an item's content back on the clipboard (text or image blob).
 func (s *Service) copy(params json.RawMessage) (any, error) {
 	var p struct {
-		ID   int64  `json:"id"`
+		ID   string `json:"id"`
 		Mime string `json:"mime"`
 	}
 	json.Unmarshal(params, &p)
-	out, err := s.sqlite(fmt.Sprintf("SELECT mime_type, binary_path, full_content FROM clipboard_items WHERE id = %d;", p.ID))
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
 	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	rows := parseRows(out)
-	if len(rows) == 0 {
-		return map[string]any{"error": "item not found"}, nil
+	mime, content, err := st.copyRow(id)
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
 	}
-	mime := rows[0].MimeType
-	binPath := rows[0].BinaryPath
-	fullContent := rows[0].FullContent
 	if p.Mime != "" {
 		mime = p.Mime
 	}
-	if binPath != "" {
-		exec.Command("sh", "-c", "cat '"+binPath+"' | wl-copy --type '"+mime+"'").Run()
-	} else {
-		exec.Command("wl-copy", "--type", mime, fullContent).Run()
+	cmd := exec.Command("wl-copy", "--type", mime)
+	cmd.Stdin = bytes.NewReader(content)
+	if err := cmd.Run(); err != nil {
+		return map[string]any{"error": err.Error()}, nil
 	}
 	return map[string]any{"ok": true}, nil
 }
@@ -301,8 +283,11 @@ func (s *Service) emojiType(params json.RawMessage) (any, error) {
 	if emoji == "" {
 		return map[string]any{"error": "empty emoji"}, nil
 	}
-	// wl-copy with echo -n; then wtype ctrl+v
-	exec.Command("sh", "-c", `printf '%s' `+shellQuote(emoji)+` | wl-copy`).Run()
+	cmd := exec.Command("wl-copy", "--type", "text/plain;charset=utf-8")
+	cmd.Stdin = strings.NewReader(emoji)
+	if err := cmd.Run(); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
 	go func() {
 		exec.Command("bash", "-c", "sleep 0.25; wtype -M ctrl -P v -p v -m ctrl").Run()
 	}()
@@ -312,67 +297,109 @@ func (s *Service) emojiType(params json.RawMessage) (any, error) {
 // dataURL returns a base64 data URL for an image item (cached).
 func (s *Service) dataURL(params json.RawMessage) (any, error) {
 	var p struct {
-		ID   int64  `json:"id"`
+		ID   string `json:"id"`
 		Mime string `json:"mime"`
 	}
 	json.Unmarshal(params, &p)
-	if v, ok := s.imageCache[fmt.Sprint(p.ID)]; ok {
+	s.cacheMu.Lock()
+	defer s.cacheMu.Unlock()
+	if v, ok := s.imageCache[p.ID]; ok {
 		return map[string]any{"id": p.ID, "data_url": v}, nil
 	}
-	out, err := s.sqlite(fmt.Sprintf("SELECT binary_path FROM clipboard_items WHERE id = %d;", p.ID))
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
 	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	path := strings.TrimSpace(out)
-	if path == "" {
-		return map[string]any{"error": "no binary for item"}, nil
-	}
-	data, err := os.ReadFile(path)
+	blob, mime, err := st.imageBlob(id)
 	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
-	if p.Mime == "" {
-		p.Mime = "image/png"
+	if p.Mime != "" {
+		mime = p.Mime
 	}
-	url := "data:" + p.Mime + ";base64," + base64.StdEncoding.EncodeToString(data)
-	s.imageCache[fmt.Sprint(p.ID)] = url
+	if mime == "" {
+		mime = "image/png"
+	}
+	url := "data:" + mime + ";base64," + base64.StdEncoding.EncodeToString(blob)
+	s.imageCache[p.ID] = url
 	return map[string]any{"id": p.ID, "data_url": url}, nil
 }
 
-// clearClipboard empties the live clipboard (used after delete matching).
-func (s *Service) clearClipboard(params json.RawMessage) (any, error) {
+// imagePath materializes an image blob to a tmpfs file so QML can use it
+// as a file URI (drag-and-drop, external open).
+func (s *Service) imagePath(params json.RawMessage) (any, error) {
+	var p struct {
+		ID string `json:"id"`
+	}
+	json.Unmarshal(params, &p)
+	id, ok := parseID(p.ID)
+	if !ok {
+		return map[string]any{"error": "invalid id"}, nil
+	}
+	st, err := s.getStore()
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	blob, mime, err := st.imageBlob(id)
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	ext := "img"
+	switch mime {
+	case "image/png":
+		ext = "png"
+	case "image/jpeg":
+		ext = "jpg"
+	case "image/gif":
+		ext = "gif"
+	case "image/webp":
+		ext = "webp"
+	case "image/bmp":
+		ext = "bmp"
+	case "image/svg+xml":
+		ext = "svg"
+	}
+	dir := s.paths.ClipboardImageCacheDir()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	path := filepath.Join(dir, fmt.Sprintf("%s.%s", strings.ReplaceAll(p.ID, ":", ""), ext))
+	if err := os.WriteFile(path, blob, 0o600); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	return map[string]any{"id": p.ID, "path": path}, nil
+}
+
+func (s *Service) clearClipboard(_ json.RawMessage) (any, error) {
 	exec.Command("wl-copy", "--clear").Run()
 	return map[string]any{"ok": true}, nil
 }
 
-// rowFull is used only internally by copy.
-type rowFull struct {
-	MimeType    string
-	BinaryPath  string
-	FullContent string
+// check runs a manual clipboard capture pass (the watcher normally does
+// this on every change; QML calls it after programmatic copies).
+func (s *Service) check(_ json.RawMessage) (any, error) {
+	s.checkAndInsert()
+	return map[string]any{"ok": true}, nil
 }
 
-func parseRows(out string) []rowFull {
-	// sqlite JSON mode with unknown columns yields objects; parse generically.
-	trimmed := strings.TrimSpace(out)
-	if trimmed == "" || !strings.HasPrefix(trimmed, "[") {
-		return nil
+// setTmpMode switches where the unpinned history lives (local share vs
+// tmpfs). QML owns the persisted flag; the daemon re-reads it on boot.
+func (s *Service) setTmpMode(params json.RawMessage) (any, error) {
+	var p struct {
+		Enabled bool `json:"enabled"`
 	}
-	var raw []map[string]any
-	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil {
-		return nil
+	json.Unmarshal(params, &p)
+	st, err := s.getStore()
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
 	}
-	rows := make([]rowFull, 0, len(raw))
-	for _, r := range raw {
-		rows = append(rows, rowFull{
-			MimeType:    fmt.Sprint(r["mime_type"]),
-			BinaryPath:  fmt.Sprint(r["binary_path"]),
-			FullContent: fmt.Sprint(r["full_content"]),
-		})
+	if err := st.setTmpMode(p.Enabled); err != nil {
+		return map[string]any{"error": err.Error()}, nil
 	}
-	return rows
-}
-
-func shellQuote(s string) string {
-	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
+	log.Printf("[clipboard] tmpfs mode: %v", p.Enabled)
+	return map[string]any{"ok": true}, nil
 }
