@@ -58,7 +58,11 @@ Item {
         }
     }
 
-    onIsRunningChanged: updateSpotify()
+    onIsRunningChanged: {
+        updateSpotify();
+        // Re-sync the timer inputs when the countdown restarts
+        if (isRunning) resyncTimerInputs();
+    }
     onIsWorkSessionChanged: updateSpotify()
     
     Connections {
@@ -88,6 +92,7 @@ Item {
         } else {
             isRunning = false;
         }
+        resyncTimerInputs();
     }
 
     // Smooth progress animation
@@ -108,6 +113,12 @@ Item {
         }
     }
 
+
+    function resyncTimerInputs() {
+        minIn.resync();
+        secIn.resync();
+    }
+
     function resetTimer() {
         stopAlarm();
         isRunning = false;
@@ -115,6 +126,7 @@ Item {
         timeLeft = Config.system.pomodoro.workTime;
         totalTime = timeLeft;
         visualProgress = 1.0;
+        resyncTimerInputs();
     }
 
     function startAlarm() {
@@ -122,6 +134,7 @@ Item {
         isRunning = false;
         alarmActive = true;
         visualProgress = 0; // Ensure it's exactly 0
+        resyncTimerInputs();
         
         if (alarmSoundLoader.item) {
             alarmSoundLoader.item.loops = Config.system.pomodoro.autoStart ? 2 : 255; // Infinite approx
@@ -181,6 +194,7 @@ Item {
         timeLeft = isWorkSession ? Config.system.pomodoro.workTime : Config.system.pomodoro.restTime;
         totalTime = timeLeft;
         visualProgress = 1.0;
+        resyncTimerInputs();
         if (Config.system.pomodoro.autoStart) {
             isRunning = true;
         }
@@ -256,6 +270,7 @@ Item {
                         let configTime = root.isWorkSession ? Config.system.pomodoro.workTime : Config.system.pomodoro.restTime;
                         root.timeLeft = configTime;
                         root.totalTime = configTime;
+                        root.resyncTimerInputs();
                     }
                 }
             }
@@ -368,6 +383,7 @@ Item {
                             if (root.isWorkSession) Config.system.pomodoro.workTime = root.timeLeft;
                             else Config.system.pomodoro.restTime = root.timeLeft;
                         }
+                        root.resyncTimerInputs();
                     }
                 }
             }
@@ -404,6 +420,7 @@ Item {
                         if (root.isWorkSession) Config.system.pomodoro.workTime = root.timeLeft;
                         else Config.system.pomodoro.restTime = root.timeLeft;
                     }
+                    root.resyncTimerInputs();
                 }
             }
         }
@@ -480,15 +497,16 @@ Item {
     component TimerInput: TextField {
         id: tIn
         property int value: 0
+        property bool blinkPhase: false
         signal valueUpdated(int newValue)
         
+
         text: value.toString().padStart(2, '0')
-        onActiveFocusChanged: if (!activeFocus) text = value.toString().padStart(2, '0')
         
         font.family: Config.theme.monoFont
         font.pixelSize: Styling.fontSize(8)
         font.weight: Font.Bold
-        color: root.alarmActive ? (Math.floor(Date.now() / 500) % 2 === 0 ? Styling.srItem("overprimary") : Colors.overBackground) : Colors.overBackground
+        color: root.alarmActive ? (tIn.blinkPhase ? Styling.srItem("overprimary") : Colors.overBackground) : Colors.overBackground
         
         background: Item {}
         padding: 0; leftPadding: 0; rightPadding: 0
@@ -504,10 +522,12 @@ Item {
             }
         }
         
-        onEditingFinished: {
-            let v = parseInt(text) || 0;
-            tIn.valueUpdated(v);
-            text = v.toString().padStart(2, '0');
+        onEditingFinished: resync()
+        onActiveFocusChanged: if (!activeFocus) resync()
+
+
+        function resync() {
+            text = Qt.binding(() => tIn.value.toString().padStart(2, '0'));
         }
         
         Layout.preferredWidth: 60
@@ -516,7 +536,7 @@ Item {
             interval: 500
             running: root.alarmActive
             repeat: true
-            onTriggered: tIn.update()
+            onTriggered: tIn.blinkPhase = !tIn.blinkPhase
         }
     }
 
