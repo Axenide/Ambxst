@@ -3,7 +3,6 @@ package network
 import (
 	"bufio"
 	"encoding/json"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -195,9 +194,7 @@ func (s *Service) connect(params json.RawMessage) (any, error) {
 		return map[string]any{"error": "missing ssid"}, nil
 	}
 	if p.Password != "" {
-		cmd := exec.Command("bash", "-c", `nmcli connection modify "`+p.SSID+`" wifi-sec.psk "$PASSWORD"`)
-		cmd.Env = append(os.Environ(), "PASSWORD="+p.Password)
-		cmd.Run()
+		_ = exec.Command("nmcli", "connection", "modify", p.SSID, "wifi-sec.psk", p.Password).Run()
 	}
 	if err := exec.Command("nmcli", "dev", "wifi", "connect", p.SSID).Run(); err != nil {
 		out, _ := exec.Command("nmcli", "dev", "wifi", "connect", p.SSID).CombinedOutput()
