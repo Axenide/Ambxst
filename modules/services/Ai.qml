@@ -33,7 +33,7 @@ Singleton {
     }
 
     function restoreModel() {
-        const lastModelId = StateService.get("lastAiModel", "gemini-2.0-flash");
+        const lastModelId = StateService.get("lastAiModel", "gemini-2.5-flash-lite");
         savedModelId = lastModelId;
         tryRestore();
         persistenceReady = true;
