@@ -244,6 +244,9 @@ func runShell() {
 	}
 	os.Setenv("QT_QPA_PLATFORMTHEME", "qt6ct")
 	os.Unsetenv("HL_INITIAL_WORKSPACE_TOKEN")
+	if tmpdir := defaultTMUXTmpDir(os.Getenv("TMUX_TMPDIR"), os.Getenv("XDG_RUNTIME_DIR")); tmpdir != "" {
+		os.Setenv("TMUX_TMPDIR", tmpdir)
+	}
 
 	d, err := daemon.New()
 	if err != nil {
@@ -362,6 +365,17 @@ func ipcPipePath() string {
 		return filepath.Join(runtime, "ambxst_ipc.pipe")
 	}
 	return fmt.Sprintf("/run/user/%d/ambxst_ipc.pipe", os.Getuid())
+}
+
+// defaultTMUXTmpDir resolves the tmux socket directory for the daemon's
+// process tree: tmux picks its server socket from TMUX_TMPDIR, so aligning
+// it with XDG_RUNTIME_DIR keeps Ambxst-spawned tmux on the same server as
+// the user's shells. An existing value always wins.
+func defaultTMUXTmpDir(current, xdgRuntime string) string {
+	if current != "" {
+		return current
+	}
+	return xdgRuntime
 }
 
 func showHelp() {
