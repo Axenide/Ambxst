@@ -183,6 +183,20 @@ func New() (*Daemon, error) {
 // (e.g. tests) that need to issue calls directly.
 func (d *Daemon) Server() *ipc.Server { return d.srv }
 
+// EnsureModsCurrent recomposes a stale mod generation before Quickshell is
+// spawned. Failures are logged and ignored: the shell still starts, either
+// from the previous generation or the base source, and the mods panel keeps
+// offering a manual rebuild. Must run before the caller resolves the shell
+// path, so FindShellSource picks the fresh generation.
+func (d *Daemon) EnsureModsCurrent() {
+	if d.mods == nil {
+		return
+	}
+	if err := d.mods.EnsureCurrentGeneration(); err != nil {
+		log.Printf("[ambxst] mods auto-rebuild: %v", err)
+	}
+}
+
 // TriggerShutdown requests a graceful shutdown. Safe to call multiple
 // times; only the first call has any effect.
 func (d *Daemon) TriggerShutdown() {

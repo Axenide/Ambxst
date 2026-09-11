@@ -258,6 +258,8 @@ func runShell() {
 	if qsBin == "" {
 		qsBin = "qs"
 	}
+
+	d.EnsureModsCurrent()
 	shellQML := filepath.Join(shellDir(), "shell.qml")
 
 	if err := d.Run(qsBin, shellQML); err != nil {

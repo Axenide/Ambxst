@@ -4,6 +4,8 @@ import (
 	"archive/tar"
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -339,6 +341,138 @@ func TestManagerComposesNonOverlappingPatchesToSameFile(t *testing.T) {
 	}
 	if string(data) != "one\ntwo\nmiddle\nfour\nfive\n" {
 		t.Fatalf("patches were not composed in order: %q", data)
+	}
+}
+
+func TestManagerComposesFromReadOnlyBase(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("permission checks do not apply to root")
+	}
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "first\ntwo\nmiddle\nfour\nlast\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	writeTestFile(t, filepath.Join(base, "modules", "sub", "Widget.qml"), "Item {}\n")
+	t.Cleanup(func() { chmodTree(base, 0o755, 0o644) })
+	// Mimic a Nix store checkout: directories 0555, files 0444.
+	chmodTree(base, 0o555, 0o444)
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	packageRoot := filepath.Join(root, "package")
+	writeTestFile(t, filepath.Join(packageRoot, "payload", "Widget.qml"), "Rectangle {}\n")
+	sum := sha256.Sum256([]byte("Item {}\n"))
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              "example.readonly",
+		Name:            "Read-only base fixture",
+		Version:         "1.0.0",
+		Operations: []Operation{
+			{Type: "patch", Source: "patches/change.patch"},
+			{
+				Type: "overlay", Source: "payload/Widget.qml",
+				Target: "modules/sub/Widget.qml", Replace: true,
+				ExpectedSHA256: hex.EncodeToString(sum[:]),
+			},
+		},
+	}
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, filepath.Join(packageRoot, ManifestFile), string(data))
+	patch := "diff --git a/shell.qml b/shell.qml\n--- a/shell.qml\n+++ b/shell.qml\n@@ -1,2 +1,2 @@\n-first\n+one\n two\n"
+	writeTestFile(t, filepath.Join(packageRoot, "patches", "change.patch"), patch)
+
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(packageRoot); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.SetEnabled("example.readonly", true)
+	if err != nil {
+		t.Fatalf("compose from a read-only base failed: %v", err)
+	}
+	active := filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration)
+	got, err := os.ReadFile(filepath.Join(active, "shell.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "one\ntwo\nmiddle\nfour\nlast\n" {
+		t.Fatalf("patch was not applied: %q", got)
+	}
+	replaced, err := os.Stat(filepath.Join(active, "modules", "sub", "Widget.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replaced.Mode().Perm()&0o200 == 0 {
+		t.Fatalf("generation file is not owner-writable: %v", replaced.Mode())
+	}
+	data, err = os.ReadFile(filepath.Join(active, "modules", "sub", "Widget.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "Rectangle {}\n" {
+		t.Fatalf("overlay replace did not apply: %q", data)
+	}
+}
+
+func TestManagerEnsureCurrentGenerationRebuildsStale(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+
+	packageRoot := writeOverlayPackage(t, root, "package", "example.stale", "Feature.qml")
+	manager := NewManager(testPaths(root))
+	if _, err := manager.Install(packageRoot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.SetEnabled("example.stale", true); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale := status.ActiveGeneration
+
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.6\n")
+	status, err = manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.GenerationCurrent {
+		t.Fatalf("stale generation was not detected: %#v", status)
+	}
+
+	if err := manager.EnsureCurrentGeneration(); err != nil {
+		t.Fatal(err)
+	}
+	status, err = manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rebuilt := status.ActiveGeneration
+	if rebuilt == "" || rebuilt == stale {
+		t.Fatalf("stale generation was not recomposed: %#v", status)
+	}
+	if !status.GenerationCurrent {
+		t.Fatalf("recomposed generation still stale: %#v", status)
+	}
+	if _, err := os.Stat(manager.paths.ModPendingActivationFile()); err != nil {
+		t.Fatalf("activation was not marked pending: %v", err)
+	}
+
+	if err := manager.EnsureCurrentGeneration(); err != nil {
+		t.Fatal(err)
+	}
+	status, err = manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.ActiveGeneration != rebuilt {
+		t.Fatalf("current generation was rebuilt anyway: %#v", status)
 	}
 }
 
@@ -1059,6 +1193,18 @@ func writePatchPackage(t *testing.T, root, id, hunk string) {
 		t.Fatal(err)
 	}
 	writeTestFile(t, filepath.Join(root, ManifestFile), string(data))
+}
+
+func chmodTree(root string, dirMode, fileMode os.FileMode) {
+	_ = filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return os.Chmod(path, dirMode)
+		}
+		return os.Chmod(path, fileMode)
+	})
 }
 
 func TestGitHubDirectoryInstallRecordsRevision(t *testing.T) {

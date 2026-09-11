@@ -423,6 +423,39 @@ func (m *Manager) Rebuild() (Status, error) {
 	return m.statusForRestart(next, restart)
 }
 
+// EnsureCurrentGeneration recomposes the active generation when it no longer
+// validates against the current base source. A base that moved (a Nix store
+// path after a system rebuild, or an installer update) would otherwise leave
+// the shell running without mods until someone pressed Rebuild in the panel.
+// Best effort: callers log the error and start normally without a generation.
+func (m *Manager) EnsureCurrentGeneration() error {
+	if os.Getenv("AMBXST_MODS_DISABLED") == "1" {
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, err := m.loadState()
+	if err != nil {
+		return err
+	}
+	hasEnabled := false
+	for _, installed := range state.Mods {
+		hasEnabled = hasEnabled || installed.Enabled
+	}
+	if !hasEnabled {
+		return nil
+	}
+	base := paths.FindBaseShellSource()
+	if state.ActiveGeneration != "" {
+		generation := filepath.Join(m.paths.ModGenerationsDir(), state.ActiveGeneration)
+		if paths.ValidateModGeneration(generation, base) == nil {
+			return nil
+		}
+	}
+	next := cloneState(state)
+	return m.composeAndActivate(state, &next)
+}
+
 func (m *Manager) Remove(id string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -1587,14 +1620,14 @@ func extractTar(reader io.Reader, destination string, allowSymlinks bool, maxFil
 			// a global header for commit metadata in its default tar output.
 			continue
 		case tar.TypeDir:
-			if err := os.MkdirAll(target, os.FileMode(header.Mode)&0o755); err != nil {
+			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
-			file, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode)&0o755)
+			file, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(header.Mode)&0o755|0o200)
 			if err != nil {
 				return err
 			}
@@ -1688,7 +1721,7 @@ func extractZipPackage(path, destination string) error {
 			reader.Close()
 			return err
 		}
-		output, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, entry.Mode().Perm()&0o755)
+		output, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, entry.Mode().Perm()&0o755|0o200)
 		if err != nil {
 			reader.Close()
 			return err
@@ -1759,7 +1792,7 @@ func copyTree(source, destination string, skip func(string, fs.DirEntry) bool) e
 			return fmt.Errorf("symlinks are not allowed: %s", path)
 		}
 		if entry.IsDir() {
-			return os.MkdirAll(target, info.Mode().Perm())
+			return os.MkdirAll(target, 0o755)
 		}
 		if !info.Mode().IsRegular() {
 			return fmt.Errorf("unsupported file type: %s", path)
@@ -1781,7 +1814,7 @@ func copyFile(source, destination string) error {
 	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
 		return err
 	}
-	output, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode().Perm())
+	output, err := os.OpenFile(destination, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode().Perm()|0o200)
 	if err != nil {
 		return err
 	}
