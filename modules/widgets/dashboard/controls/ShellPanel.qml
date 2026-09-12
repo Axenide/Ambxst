@@ -7,6 +7,7 @@ import Quickshell
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -807,6 +808,108 @@ Item {
                                 if (value !== Config.bar.enableFirefoxPlayer) {
                                     GlobalStates.markShellChanged();
                                     Config.bar.enableFirefoxPlayer = value;
+                                }
+                            }
+                        }
+
+                        ToggleRow {
+                            label: "Show Audio Device Switcher"
+                            checked: Config.bar.showAudioDeviceSwitcher ?? true
+                            onToggled: value => {
+                                if (value !== Config.bar.showAudioDeviceSwitcher) {
+                                    GlobalStates.markShellChanged();
+                                    Config.bar.showAudioDeviceSwitcher = value;
+                                }
+                            }
+                        }
+
+                        ColumnLayout {
+                            visible: Config.bar.showAudioDeviceSwitcher ?? true
+                            Layout.fillWidth: true
+                            spacing: 4
+
+                            Text {
+                                text: "Hidden Audio Devices"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.Medium
+                                color: Colors.overSurfaceVariant
+                            }
+
+                            Text {
+                                text: "Click to hide from the switcher popup"
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                color: Colors.outline
+                                Layout.bottomMargin: 4
+                            }
+
+                            Flow {
+                                Layout.fillWidth: true
+                                spacing: 4
+
+                                Repeater {
+                                    model: Audio.outputDevices.concat(Audio.inputDevices)
+
+                                    delegate: StyledRect {
+                                        id: sinkChip
+                                        required property var modelData
+                                        required property int index
+
+                                        readonly property string sinkName: modelData?.name ?? ""
+                                        readonly property string displayName: Audio.friendlyDeviceName(modelData)
+                                        readonly property bool isExcluded: {
+                                            const list = Config.bar.excludedAudioSinks ?? [];
+                                            for (let i = 0; i < list.length; i++) {
+                                                if (sinkName.toLowerCase().includes(list[i].toLowerCase()))
+                                                    return true;
+                                            }
+                                            return false;
+                                        }
+                                        property bool isHovered: false
+
+                                        variant: isExcluded ? "primary" : (isHovered ? "focus" : "common")
+                                        width: chipLabel.implicitWidth + 24
+                                        height: 32
+                                        radius: Styling.radius(-2)
+
+                                        Text {
+                                            id: chipLabel
+                                            anchors.centerIn: parent
+                                            text: sinkChip.displayName
+                                            font.family: Config.theme.font
+                                            font.pixelSize: Styling.fontSize(-1)
+                                            font.bold: sinkChip.isExcluded
+                                            color: sinkChip.item
+                                            elide: Text.ElideRight
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+
+                                            onEntered: sinkChip.isHovered = true
+                                            onExited: sinkChip.isHovered = false
+
+                                            onClicked: {
+                                                let currentList = Config.bar.excludedAudioSinks ? [...Config.bar.excludedAudioSinks] : [];
+                                                if (sinkChip.isExcluded) {
+                                                    // Remove: find and remove the matching pattern
+                                                    for (let i = currentList.length - 1; i >= 0; i--) {
+                                                        if (sinkChip.sinkName.toLowerCase().includes(currentList[i].toLowerCase())) {
+                                                            currentList.splice(i, 1);
+                                                            break;
+                                                        }
+                                                    }
+                                                } else {
+                                                    currentList.push(sinkChip.sinkName);
+                                                }
+                                                GlobalStates.markShellChanged();
+                                                Config.bar.excludedAudioSinks = currentList;
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

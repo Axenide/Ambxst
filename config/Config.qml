@@ -546,6 +546,8 @@ Singleton {
             property bool showPinButton: true
             property bool availableOnFullscreen: false
             property bool use12hFormat: false
+            property bool showAudioDeviceSwitcher: true
+            property list<string> excludedAudioSinks: []
             property bool containBar: false
             property bool keepBarShadow: false
             property bool keepBarBorder: false
