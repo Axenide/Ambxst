@@ -84,6 +84,12 @@ Item {
                     controlsPopup.toggle();
                 }
             }
+            onWheel: wheel => {
+                if (wheel.angleDelta.y > 0)
+                    Audio.incrementVolume();
+                else if (wheel.angleDelta.y < 0)
+                    Audio.decrementVolume();
+            }
         }
     }
 

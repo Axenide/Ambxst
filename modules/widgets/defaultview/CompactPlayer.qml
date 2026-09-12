@@ -124,6 +124,19 @@ Item {
         }
     }
 
+    // A pointer handler does not compete with child controls for stacking.
+    WheelHandler {
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: event => {
+            if (!compactPlayer.player)
+                return;
+            if (event.angleDelta.y > 0)
+                Audio.incrementVolume();
+            else if (event.angleDelta.y < 0)
+                Audio.decrementVolume();
+        }
+    }
+
     StyledRect {
         variant: "common"
         anchors.fill: parent
@@ -667,5 +680,6 @@ Item {
                 }
             }
         }
+
     }
 }
