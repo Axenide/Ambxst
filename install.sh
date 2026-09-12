@@ -106,7 +106,7 @@ install_dependencies() {
     log_info "Enabling COPR repositories..."
     sudo dnf install -y --best --allowerasing --setopt=install_weak_deps=False dnf-plugins-core
     yes | sudo dnf copr enable errornointernet/quickshell
-    yes | sudo dnf copr enable solopasha/hyprland
+    yes | sudo dnf copr enable lionheartp/Hyprland
     yes | sudo dnf copr enable zirconium/packages
     yes | sudo dnf copr enable iucar/cran
 
