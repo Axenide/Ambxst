@@ -25,7 +25,7 @@ Item {
 
     required property ShellScreen screen
 
-    property string barPosition: (Config.bar && Config.bar.position !== undefined && ["top", "bottom", "left", "right"].includes(Config.bar.position) ? Config.bar.position : "top")
+    property string barPosition: Config.barPositionForScreen(screen.name)
     property string orientation: barPosition === "left" || barPosition === "right" ? "vertical" : "horizontal"
 
     // Auto-hide properties
@@ -69,7 +69,7 @@ Item {
     // Check if notch hover is active (for synchronized reveal when bar is at same side)
     // NOTE: We access Visibilities.notchPanels directly because UnifiedShellPanel registers itself as the panel ref
     readonly property var notchPanelRef: Visibilities.notchPanels[screen.name]
-    readonly property string notchPosition: (Config.notchPosition !== undefined ? Config.notchPosition : "top")
+    readonly property string notchPosition: Config.notchPositionForScreen(screen.name)
     readonly property bool notchHoverActive: {
         if (barPosition !== notchPosition)
             return false;
@@ -145,7 +145,7 @@ Item {
     readonly property bool integratedDockEnabled: (Config.dock && Config.dock.enabled !== undefined ? Config.dock.enabled : false) && (Config.dock && Config.dock.theme !== undefined ? Config.dock.theme : "default") === "integrated"
     // Map dock position for integrated based on orientation
     readonly property string integratedDockPosition: {
-        const pos = (Config.dock && Config.dock.position !== undefined ? Config.dock.position : "center");
+        const pos = Config.dockPositionForScreen(screen.name);
 
         if (root.orientation === "horizontal") {
             if (pos === "left" || pos === "start")

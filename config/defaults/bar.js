@@ -2,6 +2,7 @@
 
 var data = {
     "position": "top",
+    "screenPositions": {},
     "launcherIcon": "",
     "launcherIconTint": true,
     "launcherIconFullTint": true,

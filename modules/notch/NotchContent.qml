@@ -34,8 +34,8 @@ Item {
     readonly property bool hasWindows: toplevels.length > 0
 
     // Get the bar position for this screen
-    readonly property string barPosition: (Config.bar && Config.bar.position !== undefined) ? Config.bar.position : "top"
-    readonly property string notchPosition: Config.notchPosition !== undefined ? Config.notchPosition : "top"
+    readonly property string barPosition: Config.barPositionForScreen(screen.name)
+    readonly property string notchPosition: Config.notchPositionForScreen(screen.name)
 
     // Get the bar panel for this screen to check its state
     readonly property var barPanelRef: Visibilities.barPanels[screen.name]
@@ -153,7 +153,9 @@ Item {
     // Default view component - user@host text
     Component {
         id: defaultViewComponent
-        DefaultView {}
+        DefaultView {
+            screenName: root.screen.name
+        }
     }
 
     // Persistent views to avoid creation lag when opening the notch
@@ -273,6 +275,7 @@ Item {
                 id: notchContainer
                 unifiedEffectActive: root.unifiedEffectActive
                 parentHovered: root.isMouseOverNotch
+                position: root.notchPosition
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: root.notchPosition === "top" ? parent.top : undefined
                 anchors.bottom: root.notchPosition === "bottom" ? parent.bottom : undefined

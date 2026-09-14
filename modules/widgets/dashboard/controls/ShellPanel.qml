@@ -48,6 +48,60 @@ Item {
 
     property string currentSection: ""
 
+    readonly property var shellEdgeOptions: [
+        {
+            label: "Top",
+            value: "top",
+            icon: Icons.arrowUp
+        },
+        {
+            label: "Bottom",
+            value: "bottom",
+            icon: Icons.arrowDown
+        },
+        {
+            label: "Left",
+            value: "left",
+            icon: Icons.arrowLeft
+        },
+        {
+            label: "Right",
+            value: "right",
+            icon: Icons.arrowRight
+        }
+    ]
+    readonly property var notchEdgeOptions: [
+        {
+            label: "Top",
+            value: "top",
+            icon: Icons.arrowUp
+        },
+        {
+            label: "Bottom",
+            value: "bottom",
+            icon: Icons.arrowDown
+        }
+    ]
+
+    function setScreenPositionOverride(configObject, screenName, newValue) {
+        if (!configObject || !screenName)
+            return;
+
+        let nextPositions = configObject.screenPositions ? JSON.parse(JSON.stringify(configObject.screenPositions)) : {};
+        const currentValue = nextPositions[screenName] ?? "__default";
+        if (newValue === "__default") {
+            delete nextPositions[screenName];
+        } else {
+            nextPositions[screenName] = newValue;
+        }
+
+        const resolvedValue = nextPositions[screenName] ?? "__default";
+        if (resolvedValue !== currentValue) {
+            GlobalStates.markShellChanged();
+            configObject.screenPositions = nextPositions;
+        }
+    }
+
     component SectionButton: StyledRect {
         id: sectionBtn
         required property string text
@@ -439,6 +493,77 @@ Item {
         }
     }
 
+    component ScreenPositionOverrideEditor: ColumnLayout {
+        id: screenPositionRoot
+
+        property string label: "Per-Monitor Position"
+        property var screenPositions: ({})
+        property var options: []
+        property string selectedScreenName: Quickshell.screens.length > 0 ? Quickshell.screens[0].name : ""
+        signal overrideSelected(string screenName, string newValue)
+
+        readonly property var screenOptions: {
+            let result = [];
+            for (let i = 0; i < Quickshell.screens.length; i++) {
+                result.push({
+                    label: Quickshell.screens[i].name,
+                    value: Quickshell.screens[i].name
+                });
+            }
+            return result;
+        }
+
+        readonly property var overrideOptions: {
+            let result = [
+                {
+                    label: "Default",
+                    value: "__default"
+                }
+            ];
+            for (let i = 0; i < options.length; i++) {
+                result.push(options[i]);
+            }
+            return result;
+        }
+
+        function currentOverrideValue() {
+            if (selectedScreenName === "")
+                return "__default";
+            const positions = screenPositions || {};
+            const value = positions[selectedScreenName];
+            return value !== undefined ? value : "__default";
+        }
+
+        Layout.fillWidth: true
+        spacing: 8
+
+        Text {
+            text: screenPositionRoot.label
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(-1)
+            font.weight: Font.Medium
+            color: Colors.overSurfaceVariant
+        }
+
+        SelectorRow {
+            label: "Monitor"
+            options: screenPositionRoot.screenOptions
+            value: screenPositionRoot.selectedScreenName
+            onValueSelected: newValue => {
+                screenPositionRoot.selectedScreenName = newValue;
+            }
+        }
+
+        SelectorRow {
+            label: "Override"
+            options: screenPositionRoot.overrideOptions
+            value: screenPositionRoot.currentOverrideValue()
+            onValueSelected: newValue => {
+                screenPositionRoot.overrideSelected(screenPositionRoot.selectedScreenName, newValue);
+            }
+        }
+    }
+
     // Inline component for screen list selection
     component ScreenListRow: ColumnLayout {
         id: screenListRowRoot
@@ -688,35 +813,23 @@ Item {
                         }
 
                         SelectorRow {
-                            label: ""
-                            options: [
-                                {
-                                    label: "Top",
-                                    value: "top",
-                                    icon: Icons.arrowUp
-                                },
-                                {
-                                    label: "Bottom",
-                                    value: "bottom",
-                                    icon: Icons.arrowDown
-                                },
-                                {
-                                    label: "Left",
-                                    value: "left",
-                                    icon: Icons.arrowLeft
-                                },
-                                {
-                                    label: "Right",
-                                    value: "right",
-                                    icon: Icons.arrowRight
-                                }
-                            ]
+                            label: "Global Position"
+                            options: root.shellEdgeOptions
                             value: Config.bar.position ?? "top"
                             onValueSelected: newValue => {
                                 if (newValue !== Config.bar.position) {
                                     GlobalStates.markShellChanged();
                                     Config.bar.position = newValue;
                                 }
+                            }
+                        }
+
+                        ScreenPositionOverrideEditor {
+                            label: "Per-Monitor Position"
+                            screenPositions: Config.bar.screenPositions ?? ({})
+                            options: root.shellEdgeOptions
+                            onOverrideSelected: (screenName, newValue) => {
+                                root.setScreenPositionOverride(Config.bar, screenName, newValue);
                             }
                         }
 
@@ -993,25 +1106,23 @@ Item {
                         }
 
                         SelectorRow {
-                            label: ""
-                            options: [
-                                {
-                                    label: "Top",
-                                    value: "top",
-                                    icon: Icons.arrowUp
-                                },
-                                {
-                                    label: "Bottom",
-                                    value: "bottom",
-                                    icon: Icons.arrowDown
-                                }
-                            ]
+                            label: "Global Position"
+                            options: root.notchEdgeOptions
                             value: Config.notch.position ?? "top"
                             onValueSelected: newValue => {
                                 if (newValue !== Config.notch.position) {
                                     GlobalStates.markShellChanged();
                                     Config.notch.position = newValue;
                                 }
+                            }
+                        }
+
+                        ScreenPositionOverrideEditor {
+                            label: "Per-Monitor Position"
+                            screenPositions: Config.notch.screenPositions ?? ({})
+                            options: root.notchEdgeOptions
+                            onOverrideSelected: (screenName, newValue) => {
+                                root.setScreenPositionOverride(Config.notch, screenName, newValue);
                             }
                         }
 
@@ -1355,35 +1466,23 @@ Item {
                         }
 
                         SelectorRow {
-                            label: "Position"
-                            options: [
-                                {
-                                    label: "Top",
-                                    value: "top",
-                                    icon: Icons.arrowUp
-                                },
-                                {
-                                    label: "Bottom",
-                                    value: "bottom",
-                                    icon: Icons.arrowDown
-                                },
-                                {
-                                    label: "Left",
-                                    value: "left",
-                                    icon: Icons.arrowLeft
-                                },
-                                {
-                                    label: "Right",
-                                    value: "right",
-                                    icon: Icons.arrowRight
-                                }
-                            ]
+                            label: "Global Position"
+                            options: root.shellEdgeOptions
                             value: Config.dock.position ?? "bottom"
                             onValueSelected: newValue => {
                                 if (newValue !== Config.dock.position) {
                                     GlobalStates.markShellChanged();
                                     Config.dock.position = newValue;
                                 }
+                            }
+                        }
+
+                        ScreenPositionOverrideEditor {
+                            label: "Per-Monitor Position"
+                            screenPositions: Config.dock.screenPositions ?? ({})
+                            options: root.shellEdgeOptions
+                            onOverrideSelected: (screenName, newValue) => {
+                                root.setScreenPositionOverride(Config.dock, screenName, newValue);
                             }
                         }
 

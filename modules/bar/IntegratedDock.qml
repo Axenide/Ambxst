@@ -19,7 +19,7 @@ StyledRect {
 
     readonly property bool isVertical: orientation === "vertical"
     readonly property bool isIntegrated: (Config.dock?.theme ?? "default") === "integrated"
-    readonly property string dockPosition: Config.dock?.position ?? "center"
+    readonly property string dockPosition: Config.dockPositionForScreen(bar.screen.name)
 
     // Compact sizing for integrated dock
     readonly property int iconSize: 18

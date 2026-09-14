@@ -3,6 +3,7 @@
 var data = {
     "theme": "default",
     "position": "top",
+    "screenPositions": {},
     "hoverRegionHeight": 8,
     "keepHidden": false,
     "noMediaDisplay": "userHost",
