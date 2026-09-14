@@ -41,10 +41,17 @@ ApiStrategy {
         return formatted;
     }
     function getBody(messages, model, tools) {
+        // Thinking / reasoning models reject temperature != 1 (Kimi K2.5/K2.6,
+        // kimi-*-thinking, GPT o1 family, etc.). Send temperature=1 for those;
+        // keep 0.7 for everything else.
+        let temp = 0.7;
+        if (model.model && /k2\.(5|6)|thinking|^o1(-|$)/.test(model.model)) {
+            temp = 1;
+        }
         let body = {
             model: model.model,
             messages: _formatMessages(messages),
-            temperature: 0.7
+            temperature: temp
         };
         if (tools && tools.length > 0) {
             body.tools = tools.map(t => ({
@@ -80,7 +87,12 @@ ApiStrategy {
                         }
                     };
                 }
-                return { content: msg.content };
+                // Thinking models include reasoning_content alongside (or instead of) content
+                let outContent = msg.content || "";
+                if (msg.reasoning_content && !outContent) {
+                    outContent = msg.reasoning_content;
+                }
+                return { content: outContent };
             }
             if (json.error)
                 return { content: "API Error: " + json.error.message };
@@ -107,6 +119,12 @@ ApiStrategy {
                 let delta = json.choices[0].delta;
                 if (delta && delta.content)
                     return { content: delta.content, done: false, error: null };
+
+                // Thinking models (Kimi K2.5/K2.6, kimi-*-thinking, GPT o1, etc.)
+                // emit reasoning_content BEFORE the final content. Surface it so the
+                // response buffer fills and the user sees the model's chain-of-thought.
+                if (delta && delta.reasoning_content)
+                    return { content: delta.reasoning_content, done: false, error: null };
 
                 // Check for tool calls in stream
                 if (delta && delta.tool_calls) {
