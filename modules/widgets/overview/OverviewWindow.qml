@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.services
+import qs.modules.bar.workspaces // For CompositorData
 import qs.modules.components
 import qs.config
 
@@ -299,6 +300,11 @@ Item {
 
                 // Check if moving to different workspace
                 if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
+                    // The monitor whose overview received the drop — pin the target workspace there
+                    // so windows land on the monitor the user dragged within, not on whatever
+                    // monitor the workspace happened to be bound to previously.
+                    const dropMonitorName = overviewRoot.monitor ? overviewRoot.monitor.name : "";
+
                     // Moving to different workspace
                     if (windowData?.floating && (root.x !== root.initX || root.y !== root.initY)) {
                         // Calculate position in the target workspace
@@ -307,29 +313,35 @@ Item {
                         const targetRowIndex = Math.floor((targetWorkspace - 1) % overviewRoot.workspacesShown / overviewRoot.columns);
                         const targetXOffset = Math.round((overviewRoot.workspaceImplicitWidth + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing) * targetColIndex + overviewRoot.workspacePadding / 2);
                         const targetYOffset = Math.round((overviewRoot.workspaceImplicitHeight + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing) * targetRowIndex + overviewRoot.workspacePadding / 2);
-                        
+
                         // Calculate relative position in target workspace
                         const relativeX = root.x - targetXOffset;
                         const relativeY = root.y - targetYOffset;
-                        
+
                         // Convert to percentage
                         const percentageX = Math.round((relativeX / root.availableWorkspaceWidth) * 100);
                         const percentageY = Math.round((relativeY / root.availableWorkspaceHeight) * 100);
-                        
+
                         // Move to workspace and set position
                         AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
+                        if (dropMonitorName) {
+                            AxctlService.dispatch(`moveworkspacetomonitor ${targetWorkspace} ${dropMonitorName}`);
+                        }
                         AxctlService.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${windowData?.address}`);
-                        
+
                         // Force immediate window data update
                         CompositorData.updateWindowList();
                     } else {
                         // Just move workspace without repositioning
                         AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
-                        
+                        if (dropMonitorName) {
+                            AxctlService.dispatch(`moveworkspacetomonitor ${targetWorkspace} ${dropMonitorName}`);
+                        }
+
                         // Force immediate window data update
                         CompositorData.updateWindowList();
                     }
-                    
+
                     // Reset position in overview
                     root.x = root.initX;
                     root.y = root.initY;
