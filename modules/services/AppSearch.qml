@@ -55,6 +55,12 @@ Singleton {
 
         for (let i = 0; i < list.length; i++) {
             const app = list[i];
+            // Match StartupWMClass — the .desktop field designed exactly for this
+            // (e.g. brave-browser.desktop has StartupWMClass=brave-browser but
+            // Exec=brave and Name=Brave, so the other matches below miss it).
+            if (app.startupClass && app.startupClass.toLowerCase() === normalizedClassName) {
+                return app.icon || "application-x-executable";
+            }
             if (app.command && app.command.length > 0) {
                 const executableLower = app.command[0].toLowerCase();
                 if (executableLower === normalizedClassName) {
