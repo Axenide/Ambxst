@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.services
+import qs.modules.bar.workspaces // For CompositorData
 import qs.modules.components
 import qs.config
 
@@ -94,29 +95,36 @@ Item {
         }
     }
 
+    // Gate animations until after the delegate's initial bindings settle.
+    // Without this, every rebuild animates from x/y/width/height=0 over the
+    // full animDuration, making chips appear to "grow into place" — which
+    // looks like stale/half-sized chips when state churns from window events.
+    property bool ready: false
+    Component.onCompleted: ready = true
+
     Behavior on x {
-        enabled: Config.animDuration > 0 && !root.useOverridePosition
+        enabled: ready && Config.animDuration > 0 && !root.useOverridePosition
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
         }
     }
     Behavior on y {
-        enabled: Config.animDuration > 0 && !root.useOverridePosition
+        enabled: ready && Config.animDuration > 0 && !root.useOverridePosition
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
         }
     }
     Behavior on width {
-        enabled: Config.animDuration > 0
+        enabled: ready && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
         }
     }
     Behavior on height {
-        enabled: Config.animDuration > 0
+        enabled: ready && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
             easing.type: Easing.OutQuart
@@ -299,6 +307,11 @@ Item {
 
                 // Check if moving to different workspace
                 if (targetWorkspace !== -1 && targetWorkspace !== windowData?.workspace.id) {
+                    // The monitor whose overview received the drop — pin the target workspace there
+                    // so windows land on the monitor the user dragged within, not on whatever
+                    // monitor the workspace happened to be bound to previously.
+                    const dropMonitorName = overviewRoot.monitor ? overviewRoot.monitor.name : "";
+
                     // Moving to different workspace
                     if (windowData?.floating && (root.x !== root.initX || root.y !== root.initY)) {
                         // Calculate position in the target workspace
@@ -307,32 +320,40 @@ Item {
                         const targetRowIndex = Math.floor((targetWorkspace - 1) % overviewRoot.workspacesShown / overviewRoot.columns);
                         const targetXOffset = Math.round((overviewRoot.workspaceImplicitWidth + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing) * targetColIndex + overviewRoot.workspacePadding / 2);
                         const targetYOffset = Math.round((overviewRoot.workspaceImplicitHeight + overviewRoot.workspacePadding + overviewRoot.workspaceSpacing) * targetRowIndex + overviewRoot.workspacePadding / 2);
-                        
+
                         // Calculate relative position in target workspace
                         const relativeX = root.x - targetXOffset;
                         const relativeY = root.y - targetYOffset;
-                        
+
                         // Convert to percentage
                         const percentageX = Math.round((relativeX / root.availableWorkspaceWidth) * 100);
                         const percentageY = Math.round((relativeY / root.availableWorkspaceHeight) * 100);
-                        
+
                         // Move to workspace and set position
                         AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
+                        if (dropMonitorName) {
+                            AxctlService.dispatch(`moveworkspacetomonitor ${targetWorkspace} ${dropMonitorName}`);
+                        }
                         AxctlService.dispatch(`movewindowpixel exact ${percentageX}% ${percentageY}%, address:${windowData?.address}`);
-                        
+
                         // Force immediate window data update
                         CompositorData.updateWindowList();
                     } else {
                         // Just move workspace without repositioning
                         AxctlService.dispatch(`movetoworkspacesilent ${targetWorkspace}, address:${windowData?.address}`);
-                        
+                        if (dropMonitorName) {
+                            AxctlService.dispatch(`moveworkspacetomonitor ${targetWorkspace} ${dropMonitorName}`);
+                        }
+
                         // Force immediate window data update
                         CompositorData.updateWindowList();
                     }
-                    
-                    // Reset position in overview
-                    root.x = root.initX;
-                    root.y = root.initY;
+
+                    // Reset position in overview — use Qt.binding so x/y stay
+                    // reactive to initX/initY (drag.target overrides break the
+                    // original binding; we must restore it).
+                    root.x = Qt.binding(() => root.initX);
+                    root.y = Qt.binding(() => root.initY);
                 } else if (windowData?.floating && (root.x !== root.initX || root.y !== root.initY)) {
                     // Dropped on same workspace and floating - reposition
                     const relativeX = root.x - root.xOffset;
@@ -349,19 +370,23 @@ Item {
                     // Force immediate window data update
                     CompositorData.updateWindowList();
                     
-                    // Set override position for immediate visual update
+                    // Set override position for immediate visual update.
+                    // initX returns overrideX while useOverridePosition is true,
+                    // so binding x to initX keeps it at draggedX until the
+                    // override is cleared, then reactively snaps to the new
+                    // initX once axctl reports the updated window position.
                     root.overrideX = draggedX;
                     root.overrideY = draggedY;
                     root.useOverridePosition = true;
-                    
-                    root.x = draggedX;
-                    root.y = draggedY;
-                    
+
+                    root.x = Qt.binding(() => root.initX);
+                    root.y = Qt.binding(() => root.initY);
+
                     resetOverrideTimer.restart();
                 } else {
                     // Reset position for non-floating or non-moved windows
-                    root.x = root.initX;
-                    root.y = root.initY;
+                    root.x = Qt.binding(() => root.initX);
+                    root.y = Qt.binding(() => root.initY);
                 }
             }
         }

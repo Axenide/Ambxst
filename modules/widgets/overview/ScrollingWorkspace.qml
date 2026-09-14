@@ -592,14 +592,17 @@ Item {
                                             CompositorData.updateWindowList();
                                         }
                                         
-                                        // Restore original parent and reset position
+                                        // Restore original parent and re-bind position to baseX/baseY.
+                                        // initX is a press-time snapshot, so assigning it would freeze
+                                        // x at a stale value; Qt.binding keeps the chip reactive to
+                                        // subsequent windowData updates.
                                         if (windowDelegate.originalParent) {
                                             windowDelegate.parent = windowDelegate.originalParent;
                                             windowDelegate.originalParent = null;
                                         }
-                                        windowDelegate.x = windowDelegate.initX;
-                                        windowDelegate.y = windowDelegate.initY;
-                                        
+                                        windowDelegate.x = Qt.binding(() => windowDelegate.baseX);
+                                        windowDelegate.y = Qt.binding(() => windowDelegate.baseY);
+
                                     } else if ((windowDelegate.windowData && windowDelegate.windowData.floating !== undefined ? windowDelegate.windowData.floating : false) && (windowDelegate.x !== windowDelegate.initX || windowDelegate.y !== windowDelegate.initY)) {
                                         // Dropped on same workspace and window is floating - reposition it
                                         // The window is currently in the drag overlay with global coordinates
@@ -653,26 +656,29 @@ Item {
                                             windowDelegate.originalParent = null;
                                         }
                                         
-                                        // Set override position for immediate visual update
-                                        // Calculate what baseX/baseY should be at the dropped position
+                                        // Set override position for immediate visual update.
+                                        // baseX returns overrideBaseX while useOverridePosition is
+                                        // true, so binding x to baseX keeps it at the dropped
+                                        // location until axctl reports the updated position, then
+                                        // reactively snaps to the new baseX.
                                         windowDelegate.overrideBaseX = relativeX;
                                         windowDelegate.overrideBaseY = relativeY;
                                         windowDelegate.useOverridePosition = true;
-                                        
-                                        // Force position to dropped location
-                                        windowDelegate.x = relativeX;
-                                        windowDelegate.y = relativeY;
-                                        
+
+                                        windowDelegate.x = Qt.binding(() => windowDelegate.baseX);
+                                        windowDelegate.y = Qt.binding(() => windowDelegate.baseY);
+
                                         // Start timer to clear override
                                         resetOverrideTimer.restart();
                                     } else {
-                                        // Not a floating window or didn't move - restore original parent and position
+                                        // Not a floating window or didn't move - restore original parent
+                                        // and re-bind position to baseX/baseY (see comment above).
                                         if (windowDelegate.originalParent) {
                                             windowDelegate.parent = windowDelegate.originalParent;
                                             windowDelegate.originalParent = null;
                                         }
-                                        windowDelegate.x = windowDelegate.initX;
-                                        windowDelegate.y = windowDelegate.initY;
+                                        windowDelegate.x = Qt.binding(() => windowDelegate.baseX);
+                                        windowDelegate.y = Qt.binding(() => windowDelegate.baseY);
                                     }
 
                                     root.draggingFromWorkspace = -1;
