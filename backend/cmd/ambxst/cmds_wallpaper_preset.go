@@ -39,7 +39,7 @@ func runWallpaper(args []string) int {
 		return 1
 	}
 
-	abs, err := filepath.Abs(fs.path)
+	abs, err := filepath.Abs(expandTilde(fs.path))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: invalid path: %v\n", err)
 		return 1

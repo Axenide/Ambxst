@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 )
 
 var mediaVideoExts = map[string]bool{
@@ -26,6 +27,20 @@ func lookPathOr(name string) string {
 	return name
 }
 
+func expandTilde(path string) string {
+	if path != "~" && !strings.HasPrefix(path, "~/") {
+		return path
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	if path == "~" {
+		return home
+	}
+	return filepath.Join(home, path[2:])
+}
+
 func runInput(cmd *exec.Cmd, input []byte) ([]byte, error) {
 	if len(input) > 0 {
 		cmd.Stdin = bytes.NewReader(input)
@@ -40,7 +55,7 @@ func runLockWall(args []string) int {
 		fmt.Fprintln(os.Stderr, "Usage: ambxst lockwall <wallpaper_path> <data_path>")
 		return 1
 	}
-	wallpaperPath, dataPath := args[0], args[1]
+	wallpaperPath, dataPath := expandTilde(args[0]), args[1]
 	wallpaper, err := filepath.Abs(wallpaperPath)
 	if err != nil {
 		return 1
@@ -109,6 +124,38 @@ func generateThumb(filePath, thumbPath string, size int) error {
 	return generateThumbImage(filePath, thumbPath, size)
 }
 
+type devIno struct {
+	dev uint64
+	ino uint64
+}
+
+// walkFollowSymlinks descends into symlinked directories like `find -L`.
+// The visited set (device + inode) prevents loops on symlink cycles.
+func walkFollowSymlinks(path string, visited map[devIno]bool, fn func(path string, fi os.FileInfo)) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return
+	}
+	if !fi.IsDir() {
+		fn(path, fi)
+		return
+	}
+	if st, ok := fi.Sys().(*syscall.Stat_t); ok {
+		key := devIno{dev: uint64(st.Dev), ino: uint64(st.Ino)}
+		if visited[key] {
+			return
+		}
+		visited[key] = true
+	}
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		walkFollowSymlinks(filepath.Join(path, e.Name()), visited, fn)
+	}
+}
+
 func runThumbs(args []string, size int, recursive bool) int {
 	// args: <config_path> <cache_base_path> [fallback_wall_path]
 	if len(args) < 2 {
@@ -116,10 +163,10 @@ func runThumbs(args []string, size int, recursive bool) int {
 		fmt.Fprintln(os.Stderr, "       ambxst dthumbs <desktop_path> <cache_dir>")
 		return 1
 	}
-	configPath, cacheBase := args[0], args[1]
+	configPath, cacheBase := expandTilde(args[0]), args[1]
 	var fallback string
 	if len(args) > 2 {
-		fallback = args[2]
+		fallback = expandTilde(args[2])
 	}
 
 	var wallPath string
@@ -134,7 +181,7 @@ func runThumbs(args []string, size int, recursive bool) int {
 			WallPath string `json:"wallPath"`
 		}
 		json.Unmarshal(data, &cfg)
-		wallPath = cfg.WallPath
+		wallPath = expandTilde(cfg.WallPath)
 		if wallPath == "" {
 			wallPath = fallback
 		}
@@ -148,21 +195,18 @@ func runThumbs(args []string, size int, recursive bool) int {
 			fmt.Fprintf(os.Stderr, "ERROR: Wallpaper directory not found: %s\n", wallPath)
 			return 1
 		}
-		filepath.Walk(wallPath, func(path string, info os.FileInfo, err error) error {
-			if err != nil || info.IsDir() {
-				return nil
-			}
+		visited := map[devIno]bool{}
+		walkFollowSymlinks(wallPath, visited, func(path string, fi os.FileInfo) {
 			rel, _ := filepath.Rel(wallPath, path)
 			for _, part := range strings.Split(rel, string(filepath.Separator))[:max(0, len(strings.Split(rel, string(filepath.Separator)))-1)] {
 				if strings.HasPrefix(part, ".") {
-					return nil
+					return
 				}
 			}
 			ext := strings.ToLower(filepath.Ext(path))
 			if mediaVideoExts[ext] || mediaImageExts[ext] {
 				mediaFiles = append(mediaFiles, path)
 			}
-			return nil
 		})
 	} else {
 		wallPath = configPath

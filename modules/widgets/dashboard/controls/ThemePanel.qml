@@ -91,6 +91,17 @@ Item {
         colorPickerCurrentColor = color;
     }
 
+    function expandTilde(path) {
+        if (!path || !path.startsWith("~"))
+            return path;
+        var home = Quickshell.env("HOME");
+        if (path === "~")
+            return home;
+        if (path.startsWith("~/"))
+            return home + path.substring(1);
+        return path;
+    }
+
     FileView {
         id: wallpaperConfig
         // QUICKSHELL-GIT: path: Quickshell.cachePath("wallpapers.json")
@@ -324,8 +335,9 @@ Item {
                                         text: wallpaperConfig.adapter.wallPath
 
                                         onEditingFinished: {
-                                            if (wallpaperConfig.adapter.wallPath !== text) {
-                                                wallpaperConfig.adapter.wallPath = text;
+                                            var expanded = root.expandTilde(text.trim());
+                                            if (wallpaperConfig.adapter.wallPath !== expanded) {
+                                                wallpaperConfig.adapter.wallPath = expanded;
                                                 wallpaperConfig.writeAdapter();
                                             }
                                         }
