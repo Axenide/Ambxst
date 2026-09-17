@@ -31,6 +31,7 @@ func (s *Service) Register(srv *ipc.Server) {
 		Methods: map[string]ipc.HandlerFunc{
 			"frame":   s.frame,
 			"capture": s.capture,
+			"release": s.release,
 			"list":    s.list,
 			"dir":     s.dir,
 		},
@@ -42,7 +43,9 @@ type frameParams struct {
 	Cursor bool   `json:"cursor"`
 }
 
-// frame captures a full output to /tmp for the QML freeze overlay.
+// frame captures a full output, writes it to /tmp for the QML freeze
+// overlay and retains the buffer in the freeze session so later captures
+// crop from it instead of the live screen.
 func (s *Service) frame(params json.RawMessage) (any, error) {
 	var p frameParams
 	if err := json.Unmarshal(params, &p); err != nil {
@@ -52,21 +55,29 @@ func (s *Service) frame(params json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("output is required")
 	}
 
-	result, closer, err := capture.Frame(p.Output, p.Cursor)
+	result, closer, err := capture.FrameRetained(p.Output, p.Cursor)
 	if err != nil {
 		return nil, err
 	}
-	defer closer()
 
 	outPath := filepath.Join(os.TempDir(), fmt.Sprintf("ambxst_frame_%s.png", p.Output))
 	if err := writePNG(result, outPath); err != nil {
+		closer()
 		return nil, err
 	}
+
+	capture.StoreSessionFrame(p.Output, result, closer)
+
 	return map[string]any{
 		"path":   outPath,
 		"width":  result.Buffer.Width,
 		"height": result.Buffer.Height,
 	}, nil
+}
+
+func (s *Service) release(_ json.RawMessage) (any, error) {
+	capture.ReleaseSession()
+	return map[string]any{"released": true}, nil
 }
 
 type captureParams struct {
@@ -82,7 +93,9 @@ type captureParams struct {
 }
 
 // capture saves a screenshot. Region coordinates are logical global pixels;
-// mode "output"/"screen"/"fullscreen" capture whole outputs.
+// mode "output"/"screen"/"fullscreen" capture whole outputs. Both prefer
+// the frozen session buffers captured by frame, so the saved image matches
+// the freeze preview the user confirmed on.
 func (s *Service) capture(params json.RawMessage) (any, error) {
 	var p captureParams
 	if err := json.Unmarshal(params, &p); err != nil {
@@ -110,7 +123,7 @@ func (s *Service) capture(params json.RawMessage) (any, error) {
 		if name == "" {
 			return nil, fmt.Errorf("no output available")
 		}
-		result, closer, err = capture.Frame(name, false)
+		result, closer, err = capture.OutputFrame(name, false)
 	default:
 		return nil, fmt.Errorf("unknown mode %q", p.Mode)
 	}

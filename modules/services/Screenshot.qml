@@ -186,6 +186,15 @@ QtObject {
         }
     }
 
+    // Drops the backend freeze session (retained frozen buffers). Called
+    // when the tool closes so the daemon stops holding the memory.
+    function releaseFrozenFrames() {
+        BackendService.call("screenshot.release", {}, (result, error) => {
+            if (error)
+                console.warn("Screenshot: failed to release frozen frames: " + error);
+        });
+    }
+
     function fetchWindows() {
         monitorsProcess.running = true
     }

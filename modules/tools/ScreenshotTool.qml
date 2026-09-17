@@ -110,6 +110,7 @@ PanelWindow {
     function close() {
         screenshotPopup.state = "idle";
         GlobalStates.screenshotToolVisible = false;
+        Screenshot.releaseFrozenFrames();
         if (Screenshot.captureMode === "ocr" || Screenshot.captureMode === "qr") {
             Screenshot.captureMode = "normal";
         }
