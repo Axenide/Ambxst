@@ -453,7 +453,7 @@ Item {
 
                         StyledToolTip {
                             show: pinButton.hovered
-                            tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
+                            tooltipText: root.pinned ? I18n.t("dock.tooltip.unpin_dock") : I18n.t("dock.tooltip.pin_dock")
                         }
                     }
                 }
@@ -531,7 +531,7 @@ Item {
 
                         StyledToolTip {
                             show: overviewButton.hovered
-                            tooltipText: "Overview"
+                            tooltipText: I18n.t("bar.tooltip.overview")
                         }
                     }
                 }
@@ -591,7 +591,7 @@ Item {
 
                         StyledToolTip {
                             show: pinButtonV.hovered
-                            tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
+                            tooltipText: root.pinned ? I18n.t("dock.tooltip.unpin_dock") : I18n.t("dock.tooltip.pin_dock")
                         }
                     }
                 }
@@ -669,7 +669,7 @@ Item {
 
                         StyledToolTip {
                             show: overviewButtonV.hovered
-                            tooltipText: "Overview"
+                            tooltipText: I18n.t("bar.tooltip.overview")
                         }
                     }
                 }

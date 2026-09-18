@@ -1058,7 +1058,7 @@ Item {
                 height: 48
                 anchors.top: parent.top
                 text: root.searchText
-                placeholderText: "Search notes..."
+                placeholderText: I18n.t("notes.search")
                 prefixIcon: root.prefixIcon
                 handleTabNavigation: true
 
@@ -1769,7 +1769,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: modelData.modified ? NotesUtils.formatTimestamp(modelData.modified) : ""
+                                text: modelData.modified ? NotesUtils.formatTimestamp(modelData.modified, I18n.t) : ""
                                 font.family: Config.theme.font
                                 font.pixelSize: Config.theme.fontSize - 2
                                 color: Qt.rgba(textColor.r, textColor.g, textColor.b, 0.6)
@@ -1954,7 +1954,7 @@ Item {
 
                         property var noteOptions: [
                             {
-                                text: "Edit",
+                                text: I18n.t("common.edit"),
                                 icon: Icons.edit,
                                 highlightColor: Styling.srItem("overprimary"),
                                 textColor: Styling.srItem("primary"),
@@ -1963,7 +1963,7 @@ Item {
                                 }
                             },
                             {
-                                text: "Rename",
+                                text: I18n.t("common.rename"),
                                 icon: Icons.edit,
                                 highlightColor: Colors.secondary,
                                 textColor: Styling.srItem("secondary"),
@@ -1973,7 +1973,7 @@ Item {
                                 }
                             },
                             {
-                                text: "Delete",
+                                text: I18n.t("common.delete"),
                                 icon: Icons.trash,
                                 highlightColor: Colors.error,
                                 textColor: Styling.srItem("error"),
@@ -1986,7 +1986,7 @@ Item {
 
                         property var createOptions: [
                             {
-                                text: "Rich Text",
+                                text: I18n.t("notes.rich_text"),
                                 icon: Icons.file,
                                 highlightColor: Styling.srItem("overprimary"),
                                 textColor: Styling.srItem("primary"),
@@ -1996,7 +1996,7 @@ Item {
                                 }
                             },
                             {
-                                text: "Markdown",
+                                text: I18n.t("notes.markdown"),
                                 icon: Icons.markdown,
                                 highlightColor: Colors.secondary,
                                 textColor: Styling.srItem("secondary"),
@@ -2696,7 +2696,7 @@ Item {
                         wrapMode: TextEdit.Wrap
                         selectByMouse: true
                         persistentSelection: true
-                        placeholderText: "Start typing..."
+                        placeholderText: I18n.t("notes.start_typing")
                         leftPadding: 8
                         rightPadding: 8
                         topPadding: 8
@@ -3277,7 +3277,7 @@ Item {
                             color: Colors.overSurface
                             wrapMode: TextEdit.Wrap
                             selectByMouse: true
-                            placeholderText: "Write markdown here..."
+                            placeholderText: I18n.t("notes.write_markdown")
                             leftPadding: 8
                             rightPadding: 8
                             topPadding: 8
@@ -3437,7 +3437,7 @@ Item {
 
             Text {
                 anchors.centerIn: parent
-                text: "Select or create a note"
+                text: I18n.t("notes.select_or_create")
                 font.family: Config.theme.font
                 font.pixelSize: Config.theme.fontSize
                 color: Colors.outline

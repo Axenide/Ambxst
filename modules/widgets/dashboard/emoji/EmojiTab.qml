@@ -394,7 +394,7 @@ Rectangle {
                 width: parent.width - (clearButton.visible ? clearButton.width + parent.spacing : 0)
                 height: 48
                 text: root.searchText
-                placeholderText: "Search emojis..."
+                placeholderText: I18n.t("emoji.search")
                 prefixIcon: root.prefixIcon
 
                 onSearchTextChanged: text => root.searchText = text
@@ -522,7 +522,7 @@ Rectangle {
                         textFormat: Text.RichText
                     }
                     Text {
-                        text: "Clear recent?"
+                        text: I18n.t("emoji.clear_recent")
                         height: parent.height
                         font.family: Config.theme.font
                         font.weight: Font.Bold

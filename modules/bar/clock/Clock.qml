@@ -214,10 +214,16 @@ Item {
                     anchors.topMargin: 16
                     spacing: 4
 
-                    // Helper function to capitalize first letter
-                    function capitalizeMonth(date) {
-                        var month = date.toLocaleDateString(Qt.locale(), "MMMM");
-                        return month.charAt(0).toUpperCase() + month.slice(1);
+                    function getMonthName(date) {
+                        var keys = [
+                            "calendar.month.january", "calendar.month.february",
+                            "calendar.month.march", "calendar.month.april",
+                            "calendar.month.may", "calendar.month.june",
+                            "calendar.month.july", "calendar.month.august",
+                            "calendar.month.september", "calendar.month.october",
+                            "calendar.month.november", "calendar.month.december"
+                        ];
+                        return I18n.t(keys[date.getMonth()]);
                     }
 
                     // Header row: Month and events count
@@ -229,7 +235,7 @@ Item {
                             id: monthText
                             anchors.left: parent.left
                             anchors.leftMargin: 4
-                            text: calendarContent.capitalizeMonth(calendarWrapper.currentDate)
+                            text: calendarContent.getMonthName(calendarWrapper.currentDate)
                             color: Colors.outline
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(0)
@@ -270,13 +276,16 @@ Item {
                                 }
                                 property bool isToday: index === calendarWrapper.currentDayOfWeek
 
-                                // Day abbreviation from locale
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: {
-                                        var dayName = dayColumn.dayDate.toLocaleDateString(Qt.locale(), "ddd");
-                                        // Capitalize first letter and limit to 2 chars
-                                        return (dayName.charAt(0).toUpperCase() + dayName.slice(1, 2)).replace(".", "");
+                                        var keys = [
+                                            "calendar.day.mon", "calendar.day.tue",
+                                            "calendar.day.wed", "calendar.day.thu",
+                                            "calendar.day.fri", "calendar.day.sat",
+                                            "calendar.day.sun"
+                                        ];
+                                        return I18n.t(keys[dayColumn.index]);
                                     }
                                     color: Colors.overBackground
                                     font.family: Config.theme.font
@@ -631,9 +640,28 @@ Item {
 
     function updateDay() {
         var now = new Date();
-        var day = Qt.formatDateTime(now, Qt.locale(), "ddd");
-        root.currentDayAbbrev = day.slice(0, 3).charAt(0).toUpperCase() + day.slice(1, 3);
-        root.currentFullDate = Qt.formatDateTime(now, Qt.locale(), "dddd, MMMM d, yyyy");
+        var dayKeys = [
+            "calendar.day.sun", "calendar.day.mon", "calendar.day.tue",
+            "calendar.day.wed", "calendar.day.thu", "calendar.day.fri",
+            "calendar.day.sat"
+        ];
+        var dayFullKeys = [
+            "calendar.day_full.sunday", "calendar.day_full.monday",
+            "calendar.day_full.tuesday", "calendar.day_full.wednesday",
+            "calendar.day_full.thursday", "calendar.day_full.friday",
+            "calendar.day_full.saturday"
+        ];
+        var monthKeys = [
+            "calendar.month.january", "calendar.month.february",
+            "calendar.month.march", "calendar.month.april",
+            "calendar.month.may", "calendar.month.june",
+            "calendar.month.july", "calendar.month.august",
+            "calendar.month.september", "calendar.month.october",
+            "calendar.month.november", "calendar.month.december"
+        ];
+        root.currentDayAbbrev = I18n.t(dayKeys[now.getDay()]);
+        root.currentFullDate = I18n.t(dayFullKeys[now.getDay()]) + ", "
+            + I18n.t(monthKeys[now.getMonth()]) + " " + now.getDate() + ", " + now.getFullYear();
         scheduleNextDayUpdate();
     }
 

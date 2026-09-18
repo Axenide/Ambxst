@@ -40,14 +40,14 @@ PanelWindow {
             {
                 name: "audio",
                 icon: recordAudioOutput ? Icons.speakerHigh : Icons.speakerSlash,
-                tooltip: "Toggle Audio Output",
+                tooltip: I18n.t("tools.toggle_audio"),
                 type: "toggle",
                 variant: recordAudioOutput ? "primary" : "focus"
             },
             {
                 name: "mic",
                 icon: recordAudioInput ? Icons.mic : Icons.micSlash,
-                tooltip: "Toggle Microphone",
+                tooltip: I18n.t("tools.toggle_mic"),
                 type: "toggle",
                 variant: recordAudioInput ? "primary" : "focus"
             },
@@ -57,25 +57,25 @@ PanelWindow {
             {
                 name: "region",
                 icon: Icons.regionScreenshot,
-                tooltip: ScreenRecorder.canRecordDirectly ? "Region" : "Region (Unavailable on NixOS without config)",
+                tooltip: ScreenRecorder.canRecordDirectly ? I18n.t("tools.screenrecord_region") : I18n.t("tools.screenrecord_region_unavailable"),
                 enabled: ScreenRecorder.canRecordDirectly
             },
             {
                 name: "window",
                 icon: Icons.windowScreenshot,
-                tooltip: ScreenRecorder.canRecordDirectly ? "Window" : "Window (Unavailable on NixOS without config)",
+                tooltip: ScreenRecorder.canRecordDirectly ? I18n.t("tools.screenrecord_window") : I18n.t("tools.screenrecord_window_unavailable"),
                 enabled: ScreenRecorder.canRecordDirectly
             },
             {
                 name: "screen",
                 icon: Icons.fullScreenshot,
-                tooltip: ScreenRecorder.canRecordDirectly ? "Screen" : "Screen (Unavailable on NixOS without config)",
+                tooltip: ScreenRecorder.canRecordDirectly ? I18n.t("tools.screenrecord_screen") : I18n.t("tools.screenrecord_screen_unavailable"),
                 enabled: ScreenRecorder.canRecordDirectly
             },
             {
                 name: "portal",
                 icon: Icons.aperture,
-                tooltip: "Portal"
+                tooltip: I18n.t("tools.screenrecord_portal")
             }
         ];
     }

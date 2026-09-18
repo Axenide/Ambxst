@@ -398,7 +398,7 @@ Rectangle {
                 width: parent.width
                 anchors.top: parent.top
                 text: GlobalStates.launcherSearchText
-                placeholderText: "Search applications..."
+                placeholderText: I18n.t("launcher.search")
                 iconText: ""
 
                 onSearchTextChanged: text => {
@@ -846,7 +846,7 @@ Rectangle {
                                 boundsBehavior: Flickable.StopAtBounds
                                 model: [
                                     {
-                                        text: "Launch",
+                                        text: I18n.t("launcher.launch"),
                                         icon: Icons.launch,
                                         highlightColor: Styling.srItem("overprimary"),
                                         textColor: Styling.srItem("primary"),
@@ -856,7 +856,7 @@ Rectangle {
                                         }
                                     },
                                     {
-                                        text: TaskbarApps.isPinned(appId) ? "Unpin from Dock" : "Pin to Dock",
+                                        text: TaskbarApps.isPinned(appId) ? I18n.t("launcher.unpin_from_dock") : I18n.t("launcher.pin_to_dock"),
                                         icon: TaskbarApps.isPinned(appId) ? Icons.unpin : Icons.pin,
                                         highlightColor: TaskbarApps.isPinned(appId) ? Colors.error : Colors.tertiary,
                                         textColor: TaskbarApps.isPinned(appId) ? Styling.srItem("error") : Styling.srItem("tertiary"),
@@ -866,7 +866,7 @@ Rectangle {
                                         }
                                     },
                                     {
-                                        text: "Create Shortcut",
+                                        text: I18n.t("launcher.create_shortcut"),
                                         icon: Icons.shortcut,
                                         highlightColor: Colors.secondary,
                                         textColor: Styling.srItem("secondary"),

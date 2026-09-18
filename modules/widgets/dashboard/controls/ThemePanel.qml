@@ -6,6 +6,7 @@ import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import Quickshell
 import Quickshell.Io
 import qs.config
@@ -196,15 +197,15 @@ Item {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "Theme" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
-                    statusText: GlobalStates.themeHasChanges ? "Unsaved changes" : ""
+                    title: root.currentSection === "" ? I18n.t("settings.theme") : I18n.t("settings.theme." + root.currentSection)
+                    statusText: GlobalStates.themeHasChanges ? I18n.t("common.unsaved_changes") : ""
                     statusColor: Colors.error
 
                     actions: {
                         let baseActions = [
                             {
                                 icon: Icons.arrowCounterClockwise,
-                                tooltip: "Discard changes",
+                                tooltip: I18n.t("common.discard_changes"),
                                 enabled: GlobalStates.themeHasChanges,
                                 onClicked: function () {
                                     GlobalStates.discardThemeChanges();
@@ -212,7 +213,7 @@ Item {
                             },
                             {
                                 icon: Icons.disk,
-                                tooltip: "Apply changes",
+                                tooltip: I18n.t("common.apply_changes"),
                                 enabled: GlobalStates.themeHasChanges,
                                 onClicked: function () {
                                     GlobalStates.applyThemeChanges();
@@ -224,7 +225,7 @@ Item {
                             return [
                                 {
                                     icon: Icons.arrowLeft,
-                                    tooltip: "Back",
+                                    tooltip: I18n.t("common.back"),
                                     onClicked: function () {
                                         root.currentSection = "";
                                     }
@@ -257,15 +258,15 @@ Item {
                         spacing: 8
 
                         SectionButton {
-                            text: "General"
+                            text: I18n.t("settings.theme.general")
                             sectionId: "general"
                         }
                         SectionButton {
-                            text: "Shadow"
+                            text: I18n.t("settings.theme.shadow")
                             sectionId: "shadow"
                         }
                         SectionButton {
-                            text: "Colors"
+                            text: I18n.t("settings.theme.colors")
                             sectionId: "colors"
                         }
                     }
@@ -284,7 +285,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "General"
+                                text: I18n.t("settings.theme.general")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -298,7 +299,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Wallpapers"
+                                    text: I18n.t("settings.theme.wallpapers")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -326,7 +327,7 @@ Item {
                                         Text {
                                             anchors.fill: parent
                                             verticalAlignment: Text.AlignVCenter
-                                            text: "Default"
+                                            text: I18n.t("common.default")
                                             font: parent.font
                                             color: Colors.overSurfaceVariant
                                             visible: !parent.text && !parent.activeFocus
@@ -351,7 +352,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Tint Icons"
+                                    text: I18n.t("settings.theme.tint_icons")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -420,7 +421,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Enable Corners"
+                                    text: I18n.t("settings.theme.enable_corners")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -489,7 +490,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Animation"
+                                    text: I18n.t("settings.theme.animation")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -540,7 +541,7 @@ Item {
                             }
 
                             Text {
-                                text: "Fonts"
+                                text: I18n.t("settings.theme.fonts")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -554,7 +555,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "UI Font"
+                                    text: I18n.t("settings.theme.ui_font")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -653,7 +654,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Mono Font"
+                                    text: I18n.t("settings.theme.mono_font")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -751,7 +752,7 @@ Item {
                             }
 
                             Text {
-                                text: "Roundness"
+                                text: I18n.t("settings.theme.roundness")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -820,7 +821,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Shadow"
+                                text: I18n.t("settings.theme.shadow")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -834,7 +835,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Opacity"
+                                    text: I18n.t("theme.shadow.opacity")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -885,7 +886,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Blur"
+                                    text: I18n.t("theme.shadow.blur")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -937,7 +938,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Offset X"
+                                    text: I18n.t("theme.shadow.offset_x")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -988,7 +989,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Offset Y"
+                                    text: I18n.t("theme.shadow.offset_y")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -1040,7 +1041,7 @@ Item {
                                 spacing: 8
 
                                 Text {
-                                    text: "Color"
+                                    text: I18n.t("theme.shadow.color")
                                     font.family: Config.theme.font
                                     font.pixelSize: Styling.fontSize(0)
                                     color: Colors.overBackground
@@ -1141,7 +1142,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Variant"
+                                text: I18n.t("settings.theme.variant")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium
@@ -1493,7 +1494,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Editor - " + root.getVariantLabel(root.selectedVariant)
+                                text: I18n.t("theme.editor_label").replace("%1", root.getVariantLabel(root.selectedVariant))
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(-1)
                                 font.weight: Font.Medium

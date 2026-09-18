@@ -30,8 +30,9 @@ Item {
     property string confirmSource: ""
     property var confirmMod: null
 
-    readonly property bool i18nActive: (ModsService.mods ?? []).some(mod =>
-        mod.id === "community.i18n" && mod.enabled)
+    // I18n is a native service now; the gate only survives as a safety
+    // net in case the singleton fails to load.
+    readonly property bool i18nActive: typeof I18n !== "undefined"
     readonly property var fallbackText: ({
         "common.cancel": "Cancel",
         "common.off": "Off",

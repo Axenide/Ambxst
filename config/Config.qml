@@ -1042,6 +1042,7 @@ Singleton {
                 property bool chi_sim: false
                 property bool chi_tra: false
                 property bool kor: false
+                property bool rus: false
             }
             property JsonObject pomodoro: JsonObject {
                 property int workTime: 1500
@@ -1054,6 +1055,7 @@ Singleton {
                 // items always stay in the local share.
                 property bool tmpfs: false
             }
+            property string language: "auto"
         }
     }
 

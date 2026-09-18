@@ -2,6 +2,7 @@
 
 var data = {
     "disks": ["/"],
+    "language": "auto",
     "updateServiceEnabled": true,
     "idle": {
         "general": {

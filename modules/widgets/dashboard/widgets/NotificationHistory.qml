@@ -104,7 +104,7 @@ Item {
 
                         Text {
                             anchors.centerIn: parent
-                            text: "Notifications"
+                            text: I18n.t("notifications.panel_title")
                             font.family: Config.defaultFont
                             font.pixelSize: Config.theme.fontSize
                             font.weight: Font.Bold

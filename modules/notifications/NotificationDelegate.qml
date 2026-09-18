@@ -207,7 +207,7 @@ Item {
                                 // Timestamp a la derecha
                                 Text {
                                     id: timestampText
-                                    text: latestNotification ? NotificationUtils.getFriendlyNotifTimeString(latestNotification.time) : ""
+                                    text: latestNotification ? NotificationUtils.getFriendlyNotifTimeString(latestNotification.time, I18n.t) : ""
                                     font.family: Config.theme.font
                                     font.pixelSize: Config.theme.fontSize
                                     font.weight: Font.Bold
@@ -303,7 +303,7 @@ Item {
                                         }
 
                                         Text {
-                                            text: latestNotification ? NotificationUtils.getFriendlyNotifTimeString(latestNotification.time) : ""
+                                            text: latestNotification ? NotificationUtils.getFriendlyNotifTimeString(latestNotification.time, I18n.t) : ""
                                             font.family: Config.theme.font
                                             font.pixelSize: Config.theme.fontSize
                                             font.weight: Font.Bold

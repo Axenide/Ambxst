@@ -4,6 +4,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
 import qs.modules.theme
+import qs.modules.services
 import qs.config
 
 Item {
@@ -307,14 +308,14 @@ Item {
             onClicked: colorDialog.open()
 
             ToolTip.visible: hovered
-            ToolTip.text: "Open color picker"
+            ToolTip.text: I18n.t("theme.open_color_picker")
             ToolTip.delay: 500
         }
     }
 
     ColorDialog {
         id: colorDialog
-        title: "Select Color"
+        title: I18n.t("theme.select_color")
         selectedColor: Config.resolveColor(root.currentValueStr)
 
         onAccepted: {

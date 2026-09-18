@@ -28,7 +28,7 @@ Item {
             spacing: 24
 
             Text {
-                text: "AI & API Keys"
+                text: I18n.t("ai.panel_title")
                 font.family: Config.theme.font
                 font.pixelSize: 24
                 font.weight: Font.Bold
@@ -66,7 +66,7 @@ Item {
                                 Layout.fillWidth: true
                             }
                             Text {
-                                text: KeyStore.hasKey(modelData) ? "Key Configured" : "Not Configured"
+                                text: KeyStore.hasKey(modelData) ? I18n.t("binds.key_configured") : I18n.t("binds.not_configured")
                                 font.family: Config.theme.font
                                 font.pixelSize: 12
                                 color: KeyStore.hasKey(modelData) ? Colors.success : Colors.outline
@@ -81,7 +81,7 @@ Item {
                                 visible: modelData !== "ollama"
                                 id: keyInput
                                 Layout.fillWidth: true
-                                placeholderText: "Enter API Key..."
+                                placeholderText: I18n.t("ai.enter_api_key")
                                 echoMode: TextInput.Password
                                 font.family: Config.theme.font
                                 color: Colors.overSurface
@@ -101,7 +101,7 @@ Item {
                             }
                             Button {
                                 id: saveButton
-                                text: modelData === "ollama" ? (KeyStore.hasKey("ollama") ? "Configured" : "Enable") : "Save"
+                                text: modelData === "ollama" ? (KeyStore.hasKey("ollama") ? "Configured" : "Enable") : I18n.t("common.save")
                                 visible: modelData === "ollama" ? !KeyStore.hasKey("ollama") : true
                                 hoverEnabled: true
                                 leftPadding: 6
@@ -142,7 +142,7 @@ Item {
                             Button {
                                 id: clearButton
                                 visible: KeyStore.hasKey(modelData)
-                                text: modelData === "ollama" ? "Disable" : "Clear"
+                                text: modelData === "ollama" ? "Disable" : I18n.t("common.clear")
                                 leftPadding: 6
                                 rightPadding: 6
                                 topPadding: 4
@@ -178,7 +178,7 @@ Item {
             
             // Custom Provider
             Text {
-                text: "Custom Provider"
+                text: I18n.t("ai.custom_provider")
                 font.family: Config.theme.font
                 font.pixelSize: 20
                 font.weight: Font.Bold
@@ -203,7 +203,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         Text {
-                            text: "Custom Provider API Key"
+                            text: I18n.t("ai.custom_provider_key")
                             font.family: Config.theme.font
                             font.pixelSize: 14
                             font.weight: Font.Bold
@@ -211,7 +211,7 @@ Item {
                             Layout.fillWidth: true
                         }
                         Text {
-                            text: KeyStore.hasKey("custom") ? "Key Configured" : "Not Configured"
+                            text: KeyStore.hasKey("custom") ? I18n.t("binds.key_configured") : I18n.t("binds.not_configured")
                             font.family: Config.theme.font
                             font.pixelSize: 12
                             color: KeyStore.hasKey("custom") ? Colors.success : Colors.outline
@@ -225,7 +225,7 @@ Item {
                         TextField {
                             id: customKeyInput
                             Layout.fillWidth: true
-                            placeholderText: "Enter API Key..."
+                            placeholderText: I18n.t("ai.enter_api_key")
                             echoMode: TextInput.Password
                             font.family: Config.theme.font
                             color: Colors.overSurface
@@ -245,7 +245,7 @@ Item {
                         }
                         Button {
                             id: customSaveButton
-                            text: "Save"
+                            text: I18n.t("common.save")
                             hoverEnabled: true
                             leftPadding: 6
                             rightPadding: 6
@@ -283,7 +283,7 @@ Item {
                         Button {
                             id: customClearButton
                             visible: KeyStore.hasKey("custom")
-                            text: "Clear"
+                            text: I18n.t("common.clear")
                             leftPadding: 6
                             rightPadding: 6
                             topPadding: 4
@@ -324,7 +324,7 @@ Item {
                     }
 
                     Text {
-                        text: "Custom Endpoint"
+                        text: I18n.t("ai.custom_endpoint")
                         font.family: Config.theme.font
                         font.pixelSize: 14
                         color: Colors.overSurface
@@ -334,7 +334,7 @@ Item {
                         id: endpointInput
                         Layout.fillWidth: true
                         text: Config.ai.customEndpoint !== undefined ? Config.ai.customEndpoint : ""
-                        placeholderText: "e.g. https://api.example.com/v1/chat/completions"
+                        placeholderText: I18n.t("ai.endpoint_placeholder")
                         font.family: Config.theme.font
                         color: Colors.overSurface
                         padding: 6
@@ -359,7 +359,7 @@ Item {
                     }
 
                     Text {
-                        text: "Custom cURL Template"
+                        text: I18n.t("ai.custom_curl")
                         font.family: Config.theme.font
                         font.pixelSize: 14
                         color: Colors.overSurface
@@ -367,7 +367,7 @@ Item {
                     }
                     
                     Text {
-                        text: "Placeholders: {{ENDPOINT}}, {{API_KEY}}, {{BODY_PATH}}"
+                        text: I18n.t("ai.curl_placeholders")
                         font.family: Config.theme.font
                         font.pixelSize: 12
                         color: Colors.outline
@@ -377,7 +377,7 @@ Item {
                         id: curlInput
                         Layout.fillWidth: true
                         text: Config.ai.customCurlTemplate !== undefined ? Config.ai.customCurlTemplate : ""
-                        placeholderText: "curl -X POST {{ENDPOINT}} -H 'Authorization: Bearer {{API_KEY}}' -d @{{BODY_PATH}}"
+                        placeholderText: I18n.t("ai.curl_placeholder")
                         font.family: "Monospace"
                         color: Colors.overSurface
                         padding: 6

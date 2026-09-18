@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.modules.theme
 import qs.config
 import qs.modules.components
+import qs.modules.services
 import org.kde.syntaxhighlighting
 
 ColumnLayout {
@@ -77,7 +78,7 @@ ColumnLayout {
 
                 Text {
                     id: copyFeedback
-                    text: "Copied!"
+                    text: I18n.t("common.copied")
                     font.family: Config.theme.font
                     font.pixelSize: 10
                     color: Colors.success

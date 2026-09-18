@@ -563,7 +563,7 @@ Item {
                 height: 48
                 anchors.top: parent.top
                 text: root.searchText
-                placeholderText: "Search or create tmux session..."
+                placeholderText: I18n.t("tmux.search")
                 iconText: ""
                 prefixIcon: root.prefixIcon
 
@@ -1011,7 +1011,7 @@ Item {
                                 boundsBehavior: Flickable.StopAtBounds
                                 model: [
                                     {
-                                        text: "Open",
+                                        text: I18n.t("common.open"),
                                         icon: Icons.popOpen,
                                         highlightColor: Styling.srItem("overprimary"),
                                         textColor: Styling.srItem("primary"),
@@ -1020,7 +1020,7 @@ Item {
                                         }
                                     },
                                     {
-                                        text: "Rename",
+                                        text: I18n.t("common.rename"),
                                         icon: Icons.edit,
                                         highlightColor: Colors.secondary,
                                         textColor: Styling.srItem("secondary"),
@@ -1030,7 +1030,7 @@ Item {
                                         }
                                     },
                                     {
-                                        text: "Quit",
+                                        text: I18n.t("tmux.quit"),
                                         icon: Icons.alert,
                                         highlightColor: Colors.error,
                                         textColor: Styling.srItem("error"),
@@ -1975,7 +1975,7 @@ Item {
                             }
 
                             Text {
-                                text: "No panes to display"
+                                text: I18n.t("tmux.no_panes")
                                 font.family: Config.theme.font
                                 font.pixelSize: Config.theme.fontSize
                                 color: Colors.outline
@@ -2010,7 +2010,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "Loading panes..."
+                                    text: I18n.t("tmux.loading_panes")
                                     font.family: Config.theme.font
                                     font.pixelSize: Config.theme.fontSize
                                     color: Colors.outline
@@ -2149,7 +2149,7 @@ Item {
                 }
 
                 Text {
-                    text: "No session selected"
+                    text: I18n.t("tmux.no_session")
                     font.family: Config.theme.font
                     font.pixelSize: Config.theme.fontSize
                     font.weight: Font.Bold
@@ -2158,7 +2158,7 @@ Item {
                 }
 
                 Text {
-                    text: "Select a session to preview"
+                    text: I18n.t("tmux.select_session_hint")
                     font.family: Config.theme.font
                     font.pixelSize: Config.theme.fontSize
                     color: Colors.outline

@@ -694,7 +694,7 @@ Item {
                     width: parent.width - clearButton.width - parent.spacing
                     height: parent.height
                     text: root.searchText
-                    placeholderText: "Search in clipboard..."
+                    placeholderText: I18n.t("clipboard.search")
                     prefixIcon: root.prefixIcon
 
                     onSearchTextChanged: text => {
@@ -921,7 +921,7 @@ Item {
                         Text {
                             width: parent.width - 32 - parent.spacing
                             height: parent.height
-                            text: "Clear all?"
+                            text: I18n.t("clipboard.clear_all_confirm")
                             font.family: Config.theme.font
                             font.weight: Font.Bold
                             font.pixelSize: Config.theme.fontSize
@@ -1734,7 +1734,7 @@ Item {
                                     model: {
                                         var options = [
                                             {
-                                                text: "Copy",
+                                                text: I18n.t("common.copy"),
                                                 icon: Icons.copy,
                                                 highlightColor: Styling.srItem("overprimary"),
                                                 textColor: Styling.srItem("primary"),
@@ -1748,7 +1748,7 @@ Item {
                                         // Add Open option for files, images, and URLs
                                         if (modelData.isFile || modelData.isImage || ClipboardUtils.isUrl(modelData.preview)) {
                                             options.push({
-                                                text: "Open",
+                                                text: I18n.t("common.open"),
                                                 icon: Icons.popOpen,
                                                 highlightColor: Styling.srItem("overprimary"),
                                                 textColor: Styling.srItem("primary"),
@@ -1759,7 +1759,7 @@ Item {
                                         }
 
                                         options.push({
-                                            text: modelData.pinned ? "Unpin" : "Pin",
+                                            text: modelData.pinned ? I18n.t("clipboard.unpin") : I18n.t("clipboard.pin"),
                                             icon: modelData.pinned ? Icons.unpin : Icons.pin,
                                             highlightColor: Styling.srItem("overprimary"),
                                             textColor: Styling.srItem("primary"),
@@ -1769,7 +1769,7 @@ Item {
                                                 root.expandedItemIndex = -1;
                                             }
                                         }, {
-                                            text: "Alias",
+                                            text: I18n.t("clipboard.alias"),
                                             icon: Icons.edit,
                                             highlightColor: Colors.secondary,
                                             textColor: Styling.srItem("secondary"),
@@ -1778,7 +1778,7 @@ Item {
                                                 root.expandedItemIndex = -1;
                                             }
                                         }, {
-                                            text: "Delete",
+                                            text: I18n.t("common.delete"),
                                             icon: Icons.trash,
                                             highlightColor: Colors.error,
                                             textColor: Styling.srItem("error"),
@@ -2250,15 +2250,23 @@ Item {
                                         var diffDays = Math.floor(diffHours / 24);
 
                                         if (diffMins < 1)
-                                            return "Just now";
+                                            return I18n.t("clipboard.just_now");
                                         if (diffMins < 60)
-                                            return diffMins + " min ago";
+                                            return I18n.t("clipboard.min_ago", diffMins);
                                         if (diffHours < 24)
-                                            return diffHours + " hour" + (diffHours > 1 ? "s" : "") + " ago";
+                                            return I18n.t("clipboard.hours_ago", diffHours);
                                         if (diffDays < 7)
-                                            return diffDays + " day" + (diffDays > 1 ? "s" : "") + " ago";
+                                            return I18n.t("clipboard.days_ago", diffDays);
 
-                                        return Qt.formatDateTime(date, "MMM dd, yyyy");
+                                        var monthKeys = [
+                                            "calendar.month.january", "calendar.month.february",
+                                            "calendar.month.march", "calendar.month.april",
+                                            "calendar.month.may", "calendar.month.june",
+                                            "calendar.month.july", "calendar.month.august",
+                                            "calendar.month.september", "calendar.month.october",
+                                            "calendar.month.november", "calendar.month.december"
+                                        ];
+                                        return I18n.t(monthKeys[date.getMonth()]) + " " + date.getDate() + ", " + date.getFullYear();
                                     }
                                     color: {
                                         if (isInDeleteMode) {
@@ -2379,7 +2387,7 @@ Item {
                     }
 
                     Text {
-                        text: "No clipboard history"
+                        text: I18n.t("clipboard.no_history")
                         font.family: Config.theme.font
                         font.pixelSize: Config.theme.fontSize
                         font.weight: Font.Bold
@@ -2388,7 +2396,7 @@ Item {
                     }
 
                     Text {
-                        text: "Copy something to get started"
+                        text: I18n.t("clipboard.copy_to_start")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(-2)
                         color: Colors.outline
@@ -2965,7 +2973,7 @@ Item {
                                     }
 
                                     Text {
-                                        text: "Loading preview..."
+                                        text: I18n.t("clipboard.loading_preview")
                                         font.family: Config.theme.font
                                         font.pixelSize: Config.theme.fontSize
                                         color: Colors.outline
@@ -3075,7 +3083,7 @@ Item {
                                             spacing: 4
 
                                             Text {
-                                                text: "Link"
+                                                text: I18n.t("clipboard.link")
                                                 font.family: Config.theme.font
                                                 font.pixelSize: Config.theme.fontSize - 1
                                                 font.weight: Font.Medium
@@ -3267,7 +3275,7 @@ Item {
                                     spacing: 2
 
                                     Text {
-                                        text: "MIME Type"
+                                        text: I18n.t("clipboard.mime_type")
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-2)
                                         font.weight: Font.Medium
@@ -3290,7 +3298,7 @@ Item {
                                     spacing: 2
 
                                     Text {
-                                        text: "Size"
+                                        text: I18n.t("clipboard.size")
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-2)
                                         font.weight: Font.Medium
@@ -3326,7 +3334,7 @@ Item {
                                     spacing: 2
 
                                     Text {
-                                        text: "Date"
+                                        text: I18n.t("clipboard.date")
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-2)
                                         font.weight: Font.Medium
@@ -3336,9 +3344,22 @@ Item {
                                     Text {
                                         text: {
                                             if (!previewPanel.currentItem || !previewPanel.currentItem.createdAt)
-                                                return "Unknown";
+                                                return I18n.t("player.unknown");
                                             var date = new Date(previewPanel.currentItem.createdAt);
-                                            return Qt.formatDateTime(date, "MMM dd, yyyy hh:mm:ss AP");
+                                            var monthKeys = [
+                                                "calendar.month.january", "calendar.month.february",
+                                                "calendar.month.march", "calendar.month.april",
+                                                "calendar.month.may", "calendar.month.june",
+                                                "calendar.month.july", "calendar.month.august",
+                                                "calendar.month.september", "calendar.month.october",
+                                                "calendar.month.november", "calendar.month.december"
+                                            ];
+                                            var h = date.getHours();
+                                            var m = String(date.getMinutes()).padStart(2, "0");
+                                            var s = String(date.getSeconds()).padStart(2, "0");
+                                            var ap = h >= 12 ? "PM" : "AM";
+                                            var h12 = h % 12 || 12;
+                                            return I18n.t(monthKeys[date.getMonth()]) + " " + date.getDate() + ", " + date.getFullYear() + " " + h12 + ":" + m + ":" + s + " " + ap;
                                         }
                                         font.family: Config.theme.font
                                         font.pixelSize: Config.theme.fontSize
@@ -3352,7 +3373,7 @@ Item {
                                     spacing: 2
 
                                     Text {
-                                        text: "Checksum"
+                                        text: I18n.t("clipboard.checksum")
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-2)
                                         font.weight: Font.Medium

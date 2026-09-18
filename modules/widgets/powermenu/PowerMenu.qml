@@ -26,32 +26,32 @@ ActionGrid {
     actions: [
         {
             icon: Icons.lock,
-            tooltip: "Lock Session",
+            tooltip: I18n.t("powermenu.lock_session"),
             command: "loginctl lock-session"
         },
         {
             icon: Icons.suspend,
-            tooltip: "Suspend",
+            tooltip: I18n.t("powermenu.suspend"),
             command: "systemctl suspend"
         },
         {
             icon: Icons.hibernate,
-            tooltip: "Hibernate",
+            tooltip: I18n.t("powermenu.hibernate"),
             command: "systemctl hibernate"
         },
         {
             icon: Icons.logout,
-            tooltip: "Exit AxctlService",
+            tooltip: I18n.t("powermenu.exit_axctl"),
             command: "axctl system exit"
         },
         {
             icon: Icons.reboot,
-            tooltip: "Reboot",
+            tooltip: I18n.t("powermenu.reboot"),
             command: "systemctl reboot"
         },
         {
             icon: Icons.shutdown,
-            tooltip: "Power Off",
+            tooltip: I18n.t("powermenu.power_off"),
             command: "systemctl poweroff"
         }
     ]

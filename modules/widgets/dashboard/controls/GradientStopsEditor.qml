@@ -3,6 +3,7 @@ import QtQuick
 import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 import qs.config
 import "../../../../config/defaults/theme.js" as ThemeDefaults
 
@@ -101,7 +102,7 @@ Item {
             spacing: 8
 
             Text {
-                text: "Gradient Stops (" + root.stops.length + ")"
+                text: I18n.t("theme.gradient_stops") + " (" + root.stops.length + ")"
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.weight: Font.Medium
@@ -113,7 +114,7 @@ Item {
             }
 
             Text {
-                text: "Stop " + (root.selectedStopIndex + 1)
+                text: I18n.t("theme.stop_n", root.selectedStopIndex + 1)
                 font.family: Config.theme.font
                 font.pixelSize: Styling.fontSize(-1)
                 font.weight: Font.Medium
@@ -167,7 +168,7 @@ Item {
 
                 StyledToolTip {
                     visible: addMouseArea.containsMouse
-                    tooltipText: "Add Stop"
+                    tooltipText: I18n.t("theme.add_stop")
                 }
             }
 
@@ -405,7 +406,7 @@ Item {
 
                 StyledToolTip {
                     visible: resetMouseArea.containsMouse
-                    tooltipText: "Reset Gradient"
+                    tooltipText: I18n.t("theme.reset_gradient")
                 }
             }
         }
@@ -424,7 +425,7 @@ Item {
                 Layout.fillWidth: true
                 colorNames: root.colorNames
                 currentColor: (stopEditor.currentStop && stopEditor.currentStop[0]) ? stopEditor.currentStop[0].toString() : "surface"
-                label: "Color"
+                label: I18n.t("theme.color")
                 dialogTitle: "Select Stop Color"
                 onColorSelected: color => {
                     if (root.selectedStopIndex >= 0 && root.selectedStopIndex < root.stops.length) {
@@ -460,7 +461,7 @@ Item {
 
                     // Position label
                     Text {
-                        text: "Position"
+                        text: I18n.t("theme.position")
                         font.family: Styling.defaultFont
                         font.pixelSize: Styling.fontSize(-2)
                         font.bold: true
@@ -553,7 +554,7 @@ Item {
 
                             StyledToolTip {
                                 visible: deleteMouseArea.containsMouse
-                                text: "Delete stop"
+                                text: I18n.t("theme.delete_stop")
                             }
                         }
                     }
