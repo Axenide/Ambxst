@@ -158,7 +158,7 @@ Singleton {
 
     Timer {
         id: compositorNameProbe
-        interval: 2000
+        interval: 1000
         repeat: true
         property int attempts: 0
 
@@ -168,16 +168,26 @@ Singleton {
                 running = false;
                 return;
             }
-            BackendService.call("compositor.dispatch", {args: ["system", "get-compositor"]}, (result, error) => {
-                if (error || !result || result.error || result.exit_code !== 0) return;
-                const name = (result.stdout || "").trim().toLowerCase();
-                if (!name) return;
-                Qt.callLater(() => {
-                    root.compositorName = name;
-                    compositorNameProbe.running = false;
-                });
-            });
+            root.probeCompositorName();
         }
+    }
+
+    onCompositorNameChanged: {
+        if (compositorName !== "") {
+            compositorNameProbe.running = false;
+        }
+    }
+
+    function probeCompositorName() {
+        BackendService.call("compositor.dispatch", {args: ["system", "get-compositor"]}, (result, error) => {
+            if (error || !result || result.error || result.exit_code !== 0) return;
+            const name = (result.stdout || "").trim().toLowerCase();
+            if (!name) return;
+            Qt.callLater(() => {
+                root.compositorName = name;
+                compositorNameProbe.running = false;
+            });
+        });
     }
 
     Component.onCompleted: {
@@ -186,6 +196,8 @@ Singleton {
                 if (result && !error) applyState(result);
             });
         }
+        // Fire the first probe immediately; the timer only handles retries.
+        probeCompositorName();
         compositorNameProbe.running = true;
         compositorSub = BackendService.addSubscription(["compositor"], (service, data) => {
             if (service !== "compositor.state" || !data) return;

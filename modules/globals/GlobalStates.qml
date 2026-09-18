@@ -60,13 +60,13 @@ Singleton {
 
     Timer {
         id: layoutFetchRetry
-        interval: 3000
+        interval: 1000
         repeat: true
         property int attempts: 0
 
         onTriggered: {
             attempts++;
-            if (attempts > 10) {
+            if (attempts > 30) {
                 running = false;
                 return;
             }
@@ -86,6 +86,12 @@ Singleton {
         } else {
             root.compositorLayout = StateService.get("compositorLayout", names[0] || "dwindle");
         }
+        // The payload carries the compositor name too; sync it so the
+        // overview/overview-button detection doesn't wait for the
+        // separate get-compositor probe.
+        if (payload.compositor) {
+            AxctlService.compositorName = payload.compositor;
+        }
         root.compositorLayoutReady = true;
         layoutFetchRetry.running = false;
     }
@@ -93,7 +99,7 @@ Singleton {
     function fetchLayoutList() {
         BackendService.call("compositor.dispatch", {args: ["layout", "list"]}, (result, error) => {
             if (error || !result || result.error || result.exit_code !== 0) {
-                if (layoutFetchRetry.attempts >= 10) {
+                if (layoutFetchRetry.attempts >= 30) {
                     console.warn("GlobalStates: axctl layout list failed:", error || (result && result.error));
                     if (!root.compositorLayout) {
                         root.compositorLayout = StateService.get("compositorLayout", "dwindle");

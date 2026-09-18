@@ -92,6 +92,10 @@ Singleton {
         if (!socketAvailable) probeTimer.running = true;
     }
 
+    // Connect on the spot instead of waiting for probeTimer's first tick;
+    // early requests are queued until the socket is up either way.
+    Component.onCompleted: tryConnect()
+
     // Adds a subscription. Returns an integer handle.
     function addSubscription(services, callback) {
         const key = root.nextSubId++;
