@@ -51,7 +51,7 @@ var catalog = []ActionSpec{
 	{ID: "ambxst.wallpapers", Label: "Open Wallpapers", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst run wallpapers"},
 	{ID: "ambxst.config", Label: "Open Settings", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst run config"},
 	{ID: "ambxst.overview", Label: "Open Overview", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst run overview"},
-	{ID: "ambxst.bar", Label: "Toggle Bar", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst run bar"},
+	{ID: "ambxst.bar", Label: "Toggle Bar", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst toggle bar"},
 	{ID: "ambxst.powermenu", Label: "Open Power Menu", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst run powermenu"},
 	{ID: "ambxst.tools", Label: "Open Tools", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst run tools"},
 	{ID: "ambxst.screenshot", Label: "Take Screenshot", Category: "Ambxst", Dispatcher: "exec", Argument: "ambxst run screenshot"},

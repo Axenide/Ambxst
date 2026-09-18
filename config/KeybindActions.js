@@ -39,7 +39,7 @@ var ACTION_CATALOG = [
     { id: "ambxst.wallpapers", label: "Open Wallpapers", category: "Ambxst", dispatcher: "exec", argument: "ambxst run wallpapers" },
     { id: "ambxst.config", label: "Open Settings", category: "Ambxst", dispatcher: "exec", argument: "ambxst run config" },
     { id: "ambxst.overview", label: "Open Overview", category: "Ambxst", dispatcher: "exec", argument: "ambxst run overview" },
-    { id: "ambxst.bar", label: "Toggle Bar", category: "Ambxst", dispatcher: "exec", argument: "ambxst run bar" },
+    { id: "ambxst.bar", label: "Toggle Bar", category: "Ambxst", dispatcher: "exec", argument: "ambxst toggle bar" },
     { id: "ambxst.powermenu", label: "Open Power Menu", category: "Ambxst", dispatcher: "exec", argument: "ambxst run powermenu" },
     { id: "ambxst.tools", label: "Open Tools", category: "Ambxst", dispatcher: "exec", argument: "ambxst run tools" },
     { id: "ambxst.screenshot", label: "Take Screenshot", category: "Ambxst", dispatcher: "exec", argument: "ambxst run screenshot" },

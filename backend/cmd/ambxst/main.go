@@ -69,6 +69,16 @@ func main() {
 			os.Exit(1)
 		}
 		mustCall("ui.run", map[string]any{"command": cmd})
+	case "toggle":
+		cmd := ""
+		if len(args) > 1 {
+			cmd = args[1]
+		}
+		if cmd == "" {
+			fmt.Println("Error: No command specified for toggle")
+			os.Exit(1)
+		}
+		mustCall("ui.run", map[string]any{"command": cmd})
 	case "lock":
 		mustCall("ui.run", map[string]any{"command": "lockscreen"})
 	case "reload":
@@ -391,6 +401,7 @@ Commands:
     refresh                          Refresh local/dev profile (for developers)
     lock                             Activate lockscreen
     run <command>                    Send a UI command to the shell
+    toggle <command>                 Toggle a shell feature (e.g. bar)
     reload                           Restart Ambxst
     quit                             Stop Ambxst
     screen [on|off]                  Control DPMS
