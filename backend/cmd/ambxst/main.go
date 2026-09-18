@@ -78,7 +78,7 @@ func main() {
 			fmt.Println("Error: No command specified for toggle")
 			os.Exit(1)
 		}
-		mustCall("ui.run", map[string]any{"command": cmd})
+		mustCall("ui.toggle", map[string]any{"command": cmd})
 	case "lock":
 		mustCall("ui.run", map[string]any{"command": "lockscreen"})
 	case "reload":
