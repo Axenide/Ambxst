@@ -253,6 +253,8 @@ func TestRenderLayerRules(t *testing.T) {
 		`namespace = "fabric"`,
 		`ignore_alpha_value = 0.4`,
 		`ignore_alpha_value = 0.20`,
+		`namespace = "^ambxst:wallpaper$"`,
+		`place_within_backdrop = true`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("missing %q in layer rules:\n%s", want, out)
