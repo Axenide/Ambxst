@@ -26,7 +26,7 @@ Item {
     readonly property int workspaceGroup: Math.floor(((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) / Config.workspaces.shown)
     property var workspaceOccupied: []
     property var dynamicWorkspaceIds: []
-    property int effectiveWorkspaceCount: dynamicMode ? dynamicWorkspaceIds.length : Config.workspaces.shown
+    property int effectiveWorkspaceCount: dynamicMode ? Math.max(dynamicWorkspaceIds.length, workspaceIndexInGroup + 1) : Config.workspaces.shown
     property int widgetPadding: 4
     property real radius: Styling.radius(0)
     property real startRadius: radius
@@ -39,7 +39,30 @@ Item {
     property real workspaceIconSizeShrinked: Math.round(workspaceButtonWidth * 0.5)
     property real workspaceIconOpacityShrinked: 1
     property real workspaceIconMarginShrinked: -4
-    property int workspaceIndexInGroup: dynamicMode ? dynamicWorkspaceIds.indexOf((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1) : ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) % Config.workspaces.shown
+    readonly property int activeWorkspaceId: (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1
+
+    // Sorted position the active workspace will occupy once the dynamic
+    // list catches up. A workspace niri just created isn't in the list
+    // yet (100ms refresh debounce); indexOf would return -1 there and
+    // drag the stretchy highlight to an out-of-bounds slot first.
+    property int workspaceIndexInGroup: {
+        if (!dynamicMode) {
+            return ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) % Config.workspaces.shown;
+        }
+        const idx = dynamicWorkspaceIds.indexOf(activeWorkspaceId);
+        if (idx >= 0) {
+            return idx;
+        }
+        let insert = 0;
+        for (let i = 0; i < dynamicWorkspaceIds.length; i++) {
+            if (dynamicWorkspaceIds[i] < activeWorkspaceId) {
+                insert = i + 1;
+            } else {
+                break;
+            }
+        }
+        return insert;
+    }
     property var occupiedRanges: []
 
     function updateWorkspaceOccupied() {
@@ -112,6 +135,11 @@ Item {
 
     function getWorkspaceId(index) {
         if (dynamicMode) {
+            // Pending slot: the active workspace niri just created, not
+            // yet in the refreshed dynamic list.
+            if (index >= dynamicWorkspaceIds.length) {
+                return activeWorkspaceId;
+            }
             return dynamicWorkspaceIds[index] || 1;
         }
         return workspaceGroup * Config.workspaces.shown + index + 1;
