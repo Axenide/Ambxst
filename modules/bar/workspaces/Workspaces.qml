@@ -18,10 +18,15 @@ Item {
     readonly property var monitor: AxctlService.monitorFor(bar.screen)
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
 
+    // Niri's workspaces are created and destroyed on demand, so the
+    // dynamic (occupied-only) model is the only one that makes sense
+    // there. Forced on regardless of the persisted config value.
+    readonly property bool dynamicMode: Config.workspaces.dynamic || AxctlService.compositorName === "niri"
+
     readonly property int workspaceGroup: Math.floor(((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) / Config.workspaces.shown)
     property var workspaceOccupied: []
     property var dynamicWorkspaceIds: []
-    property int effectiveWorkspaceCount: Config.workspaces.dynamic ? dynamicWorkspaceIds.length : Config.workspaces.shown
+    property int effectiveWorkspaceCount: dynamicMode ? dynamicWorkspaceIds.length : Config.workspaces.shown
     property int widgetPadding: 4
     property real radius: Styling.radius(0)
     property real startRadius: radius
@@ -34,11 +39,11 @@ Item {
     property real workspaceIconSizeShrinked: Math.round(workspaceButtonWidth * 0.5)
     property real workspaceIconOpacityShrinked: 1
     property real workspaceIconMarginShrinked: -4
-    property int workspaceIndexInGroup: Config.workspaces.dynamic ? dynamicWorkspaceIds.indexOf((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1) : ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) % Config.workspaces.shown
+    property int workspaceIndexInGroup: dynamicMode ? dynamicWorkspaceIds.indexOf((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1) : ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) % Config.workspaces.shown
     property var occupiedRanges: []
 
     function updateWorkspaceOccupied() {
-        if (Config.workspaces.dynamic) {
+        if (dynamicMode) {
             // Get occupied workspace IDs using the precomputed occupation map, sorted and limited by 'shown'
             const occupiedIds = AxctlService.workspaces.values.filter(ws => CompositorData.workspaceOccupationMap[ws.id]).map(ws => ws.id).sort((a, b) => a - b).slice(0, Config.workspaces.shown);
 
@@ -106,7 +111,7 @@ Item {
     }
 
     function getWorkspaceId(index) {
-        if (Config.workspaces.dynamic) {
+        if (dynamicMode) {
             return dynamicWorkspaceIds[index] || 1;
         }
         return workspaceGroup * Config.workspaces.shown + index + 1;
@@ -144,6 +149,10 @@ Item {
     }
 
     onWorkspaceGroupChanged: {
+        updateTimer.restart();
+    }
+
+    onDynamicModeChanged: {
         updateTimer.restart();
     }
 

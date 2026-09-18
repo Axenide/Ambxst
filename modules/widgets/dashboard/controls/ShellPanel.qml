@@ -4,6 +4,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import qs.modules.services
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
@@ -171,12 +172,15 @@ Item {
             font.family: Config.theme.font
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
+            opacity: toggleRowRoot.enabled ? 1 : 0.45
             Layout.fillWidth: true
         }
 
         Switch {
             id: toggleSwitch
             checked: toggleRowRoot.checked
+            enabled: toggleRowRoot.enabled
+            opacity: toggleRowRoot.enabled ? 1 : 0.45
 
             onCheckedChanged: {
                 if (!toggleRowRoot._updating && checked !== toggleRowRoot.checked) {
@@ -1195,9 +1199,12 @@ Item {
                             }
                         }
 
+                        // Niri only has dynamic workspaces: the effective
+                        // state is forced on and the switch is inert.
                         ToggleRow {
                             label: "Dynamic"
-                            checked: Config.workspaces.dynamic ?? false
+                            checked: Config.workspaces.dynamic || AxctlService.compositorName === "niri"
+                            enabled: AxctlService.compositorName !== "niri"
                             onToggled: value => {
                                 if (value !== Config.workspaces.dynamic) {
                                     GlobalStates.markShellChanged();
