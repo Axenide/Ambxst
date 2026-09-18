@@ -519,6 +519,10 @@ Item {
                         }
 
                         onClicked: {
+                            if (AxctlService.compositorName === "niri") {
+                                AxctlService.dispatch("overview toggle");
+                                return;
+                            }
                             let visibilities = Visibilities.getForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;
@@ -653,6 +657,10 @@ Item {
                         }
 
                         onClicked: {
+                            if (AxctlService.compositorName === "niri") {
+                                AxctlService.dispatch("overview toggle");
+                                return;
+                            }
                             let visibilities = Visibilities.getForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;

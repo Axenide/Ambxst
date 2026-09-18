@@ -10,6 +10,11 @@ Singleton {
     property var focusedWorkspace: null
     property var focusedClient: null
 
+    // Compositor backend name ("hyprland"/"niri"/"mango"), from
+    // `axctl system get-compositor`. Empty until the daemon + axctl
+    // daemon are up; probed with retries below.
+    property string compositorName: ""
+
     property int focusHistoryCounter: 0
 
     property QtObject clients: QtObject {
@@ -57,6 +62,8 @@ Singleton {
         } else if (action === "togglespecialworkspace") {
             cmdArgs = ["workspace", "toggle-special"];
             if (rawArgs) cmdArgs.push(rawArgs);
+        } else if (action === "overview") {
+            cmdArgs = ["overview", "toggle"];
         } else {
             cmdArgs = ["system", "execute", command];
         }
@@ -149,12 +156,37 @@ Singleton {
     // emitted events before the subscription was wired up.
     property var compositorSub: null
 
+    Timer {
+        id: compositorNameProbe
+        interval: 2000
+        repeat: true
+        property int attempts: 0
+
+        onTriggered: {
+            attempts++;
+            if (attempts > 30) {
+                running = false;
+                return;
+            }
+            BackendService.call("compositor.dispatch", {args: ["system", "get-compositor"]}, (result, error) => {
+                if (error || !result || result.error || result.exit_code !== 0) return;
+                const name = (result.stdout || "").trim().toLowerCase();
+                if (!name) return;
+                Qt.callLater(() => {
+                    root.compositorName = name;
+                    compositorNameProbe.running = false;
+                });
+            });
+        }
+    }
+
     Component.onCompleted: {
         if (typeof BackendService.call === "function") {
             BackendService.call("compositor.state", {}, (result, error) => {
                 if (result && !error) applyState(result);
             });
         }
+        compositorNameProbe.running = true;
         compositorSub = BackendService.addSubscription(["compositor"], (service, data) => {
             if (service !== "compositor.state" || !data) return;
             applyState(data);

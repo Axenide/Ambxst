@@ -55,7 +55,13 @@ QtObject {
             case "dashboard-controls": toggleSettings(); break;
 
             // System
-            case "overview": toggleSimpleModule("overview"); break;
+            case "overview":
+                if (AxctlService.compositorName === "niri") {
+                    AxctlService.dispatch("overview toggle");
+                } else {
+                    toggleSimpleModule("overview");
+                }
+                break;
             case "powermenu": toggleSimpleModule("powermenu"); break;
             case "tools": toggleSimpleModule("tools"); break;
             case "config": toggleSettings(); break;
