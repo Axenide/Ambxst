@@ -49,6 +49,7 @@ type affectedFiles struct {
 type State struct {
 	Version            int            `json:"version"`
 	BypassVersionCheck bool           `json:"bypassVersionCheck,omitempty"`
+	Disabled           bool           `json:"disabled,omitempty"`
 	Mods               []InstalledMod `json:"mods"`
 	ActiveGeneration   string         `json:"activeGeneration,omitempty"`
 	PreviousGeneration string         `json:"previousGeneration,omitempty"`
@@ -118,6 +119,7 @@ type Status struct {
 	GenerationError    string    `json:"generationError,omitempty"`
 	RestartRequired    bool      `json:"restartRequired"`
 	BypassVersionCheck bool      `json:"bypassVersionCheck"`
+	ModsDisabled       bool      `json:"modsDisabled"`
 	Mods               []ModInfo `json:"mods"`
 }
 
@@ -401,6 +403,28 @@ func (m *Manager) SetBypassVersionCheck(enabled bool) (Status, error) {
 	return m.statusFor(next)
 }
 
+// SetModsEnabled toggles the whole mods system. With it off, FindShellSource
+// skips the active generation and the shell runs straight from the base
+// source — the installed mods and their enabled flags stay untouched.
+// Nothing is rebuilt: the change applies from the next Ambxst start.
+func (m *Manager) SetModsEnabled(enabled bool) (Status, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, err := m.loadState()
+	if err != nil {
+		return Status{}, err
+	}
+	if state.Disabled != enabled {
+		return m.statusFor(state)
+	}
+	next := cloneState(state)
+	next.Disabled = !enabled
+	if err := m.saveState(next); err != nil {
+		return Status{}, err
+	}
+	return m.statusFor(next)
+}
+
 func (m *Manager) Rebuild() (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -437,6 +461,9 @@ func (m *Manager) EnsureCurrentGeneration() error {
 	state, err := m.loadState()
 	if err != nil {
 		return err
+	}
+	if state.Disabled {
+		return nil
 	}
 	hasEnabled := false
 	for _, installed := range state.Mods {
@@ -1083,6 +1110,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 		PreviousGeneration: state.PreviousGeneration,
 		GenerationCurrent:  true,
 		BypassVersionCheck: state.BypassVersionCheck,
+		ModsDisabled:       state.Disabled,
 		Mods:               make([]ModInfo, 0, len(state.Mods)),
 	}
 	if pending, ok := m.readPendingActivation(); ok && pending.Generation == state.ActiveGeneration {

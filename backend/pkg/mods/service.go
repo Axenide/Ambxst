@@ -31,6 +31,7 @@ func (s *Service) Register(server *ipc.Server) {
 			"settings":            s.settings,
 			"setSetting":          s.setSetting,
 			"setBypassVersionCheck": s.setBypassVersionCheck,
+			"setModsEnabled":      s.setModsEnabled,
 		},
 	})
 }
@@ -166,4 +167,12 @@ func (s *Service) setBypassVersionCheck(raw json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("invalid bypass request: %w", err)
 	}
 	return s.manager.SetBypassVersionCheck(params.Enabled)
+}
+
+func (s *Service) setModsEnabled(raw json.RawMessage) (any, error) {
+	var params bypassParams
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid setModsEnabled request: %w", err)
+	}
+	return s.manager.SetModsEnabled(params.Enabled)
 }

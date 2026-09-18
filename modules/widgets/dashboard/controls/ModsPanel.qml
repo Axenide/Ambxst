@@ -44,6 +44,10 @@ Item {
         "mods.bypass_title": "Bypass Ambxst version check",
         "mods.bypass_description": "Let mods enable even when their declared Ambxst range does not include this release. They keep showing as incompatible. Applies from the next build.",
         "mods.status_bypass_saved": "Version check bypass updated.",
+        "mods.toggle_title": "Enable mods",
+        "mods.toggle_description": "Run the base shell directly, ignoring every mod and generation. Mods keep their install and enabled state. Applies after a restart.",
+        "mods.status_mods_toggled": "Mods preference updated.",
+        "mods.restart_base_required": "Restart Ambxst to run the base shell.",
         "mods.confirm_enable_body": "Enabling rebuilds the shell with this package's source changes. Its code then runs with your user permissions, like the rest of Ambxst. Read the patch and check who wrote it first.",
         "mods.confirm_enable_title": "Do you trust this mod?",
         "mods.confirm_install_body": "Installing downloads the package and leaves it disabled. Nothing from it runs until you enable it, which is the moment to have read the code.",
@@ -396,7 +400,7 @@ Item {
                         Layout.alignment: Qt.AlignVCenter
                         text: ModsService.errorMessage !== "" ? ModsService.errorMessage
                             : !ModsService.generationCurrent ? root.tr("mods.rebuild_required", ModsService.generationError)
-                            : ModsService.restartRequired ? root.tr("mods.restart_required")
+                            : ModsService.restartRequired ? (ModsService.modsEnabled ? root.tr("mods.restart_required") : root.tr("mods.restart_base_required"))
                             : ModsService.statusMessageKey !== "" ? root.tr(ModsService.statusMessageKey)
                             : ModsService.statusMessage
                         font.family: Config.theme.font
@@ -417,6 +421,51 @@ Item {
                         text: root.tr("mods.restart_now")
                         primary: true
                         onClicked: ModsService.restart()
+                    }
+                }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: modsToggleRow.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                RowLayout {
+                    id: modsToggleRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            text: root.tr("mods.toggle_title")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.DemiBold
+                            color: Colors.overBackground
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.toggle_description")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    ActionButton {
+                        text: ModsService.modsEnabled ? root.tr("common.on") : root.tr("common.off")
+                        primary: ModsService.modsEnabled
+                        enabled: !ModsService.busy
+                        onClicked: ModsService.setModsEnabled(!ModsService.modsEnabled)
                     }
                 }
             }

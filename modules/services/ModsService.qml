@@ -21,6 +21,7 @@ Singleton {
     property bool loaded: false
     property bool restartRequired: false
     property bool bypassVersionCheck: false
+    property bool modsEnabled: true
     property string errorMessage: ""
     property string statusMessage: ""
     property string statusMessageKey: ""
@@ -39,6 +40,7 @@ Singleton {
         root.generationCurrent = result?.generationCurrent ?? true;
         root.generationError = result?.generationError ?? "";
         root.bypassVersionCheck = result?.bypassVersionCheck ?? false;
+        root.modsEnabled = !(result?.modsDisabled ?? false);
         // The backend owns this flag. Latching it to true locally kept the
         // restart banner on screen after the daemon had already cleared it.
         root.restartRequired = result?.restartRequired ?? false;
@@ -106,6 +108,14 @@ Singleton {
 
     function setBypassVersionCheck(enabled) {
         root.request("mods.setBypassVersionCheck", { enabled }, "mods.status_bypass_saved", false);
+    }
+
+    function setModsEnabled(enabled) {
+        // Go always serializes restartRequired (false here — no pending
+        // activation), so request()'s undefined-check would never fire
+        // the banner. A restart is what makes the toggle take effect.
+        root.request("mods.setModsEnabled", { enabled }, "mods.status_mods_toggled", false,
+            () => { root.restartRequired = true; });
     }
 
     function rollback() {

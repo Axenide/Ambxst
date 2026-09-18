@@ -18,11 +18,12 @@ type modGenerationMetadata struct {
 
 type modStateSource struct {
 	ActiveGeneration string `json:"activeGeneration"`
+	Disabled         bool   `json:"disabled"`
 }
 
 // FindShellSource returns the active Ambxst shell tree. A valid mod generation
-// takes precedence unless AMBXST_MODS_DISABLED=1. Without one, the base source
-// lookup below is used.
+// takes precedence unless the persisted mods state marks mods disabled or
+// AMBXST_MODS_DISABLED=1. Without one, the base source lookup below is used.
 //
 // Base source lookup order — first hit wins:
 //  1. $AMBXST_SHELL — explicit override for development.
@@ -38,12 +39,26 @@ type modStateSource struct {
 func FindShellSource() string {
 	base := FindBaseShellSource()
 	p := New()
-	if os.Getenv("AMBXST_MODS_DISABLED") != "1" {
+	if os.Getenv("AMBXST_MODS_DISABLED") != "1" && !p.modsDisabled() {
 		if dir := p.activeModGeneration(); ValidateModGeneration(dir, base) == nil {
 			return dir
 		}
 	}
 	return base
+}
+
+// modsDisabled reads the persisted "mods disabled" preference from the mods
+// state file. A missing or unreadable file keeps mods enabled.
+func (p *Paths) modsDisabled() bool {
+	data, err := os.ReadFile(p.ModStateFile())
+	if err != nil {
+		return false
+	}
+	var state modStateSource
+	if json.Unmarshal(data, &state) != nil {
+		return false
+	}
+	return state.Disabled
 }
 
 func (p *Paths) activeModGeneration() string {
