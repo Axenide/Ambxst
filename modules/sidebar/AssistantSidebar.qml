@@ -144,17 +144,25 @@ Item {
         width: GlobalStates.assistantWidth + root.sidebarMargin
         height: parent.height
 
-        x: {
-            if (GlobalStates.assistantPosition === "left")
-                return root.active ? 0 : -(width);
-            return root.active ? parent.width - width : parent.width;
+        anchors.right: GlobalStates.assistantPosition !== "left" ? parent.right : undefined
+        anchors.left: GlobalStates.assistantPosition === "left" ? parent.left : undefined
+
+        anchors.rightMargin: GlobalStates.assistantPosition !== "left" ? (root.active ? 0 : -width) : 0
+        anchors.leftMargin: GlobalStates.assistantPosition === "left" ? (root.active ? 0 : -width) : 0
+
+        visible: root.active || slideAnimR.running || slideAnimL.running
+
+        Behavior on anchors.rightMargin {
+            NumberAnimation {
+                id: slideAnimR
+                duration: Config.animDuration
+                easing.type: Easing.OutCubic
+            }
         }
 
-        visible: root.active || slideAnimation.running
-
-        Behavior on x {
+        Behavior on anchors.leftMargin {
             NumberAnimation {
-                id: slideAnimation
+                id: slideAnimL
                 duration: Config.animDuration
                 easing.type: Easing.OutCubic
             }
