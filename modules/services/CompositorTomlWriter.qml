@@ -224,7 +224,7 @@ Singleton {
 
         const sys = ambxstMap.system || {};
         const system = {};
-        for (const k of ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit"]) {
+        for (const k of ["overview", "powermenu", "config", "lockscreen", "tools", "screenshot", "screenrecord", "lens", "reload", "quit", "bar"]) {
             if (sys[k])
                 system[k] = {
                     modifiers: sys[k].modifiers || [],

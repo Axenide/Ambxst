@@ -12,6 +12,9 @@ Singleton {
     property var wallpaperManager: null
     property string avatarCacheBuster: ""
 
+    // Broadcast to every BarContent instance: flip the pinned state.
+    signal barPinToggled()
+
     function pickUserAvatar() {
         filePickerProcess.running = true;
     }

@@ -80,6 +80,9 @@ QtObject {
                 GlobalStates.screenshotToolVisible = true;
                 break;
             case "lockscreen": GlobalStates.lockscreenVisible = true; break;
+
+            // Bar
+            case "bar": GlobalStates.barPinToggled(); break;
             
             // Media
             case "media-seek-backward": seekActivePlayer(-mediaSeekStepMs); break;

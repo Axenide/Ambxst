@@ -37,6 +37,20 @@ Item {
 
     property bool pinned: (Config.bar && Config.bar.pinnedOnStartup !== undefined ? Config.bar.pinnedOnStartup : true)
 
+    // Keybind toggle (SUPER+SHIFT+B by default). Unpinning also drops any
+    // pending hover reveal so the bar hides immediately instead of after
+    // the mouse-leave delay.
+    Connections {
+        target: GlobalStates
+        function onBarPinToggled() {
+            root.pinned = !root.pinned;
+            if (!root.pinned) {
+                root.hoverActive = false;
+                root.hideDelayTimer.stop();
+            }
+        }
+    }
+
     // Monitor reference and reference to toplevels on monitor
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
     readonly property var toplevels: (!compositorMonitor || !compositorMonitor.activeWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.activeWorkspace.id)
