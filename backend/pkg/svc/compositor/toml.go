@@ -187,7 +187,7 @@ func writeKeybinds(b *strings.Builder, in Input) {
 	// system binds (nested under ambxst.system in binds.json)
 	for _, name := range []string{
 		"overview", "powermenu", "config", "lockscreen", "tools",
-		"screenshot", "screenrecord", "lens", "reload", "quit",
+		"screenshot", "screenrecord", "lens", "reload", "quit", "bar",
 	} {
 		if bind, ok := kb.System[name]; ok {
 			writeCoreBind(b, bind, in.Layout)
