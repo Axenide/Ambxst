@@ -885,7 +885,7 @@ Singleton {
             property int iconSize: 40
             property int spacingVertical: 16
             property string textColor: "overBackground"
-            property bool blurWallpaperOnOverview: false
+            property bool blurWallpaperOnOverview: true
         }
     }
 
