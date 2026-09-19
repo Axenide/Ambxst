@@ -179,6 +179,6 @@ If you are having trouble or have any questions:
 - [Brys](https://github.com/brys0) for his continuous support and for being a great friend!
 - [Zen](https://github.com/wer-zen) for being a great friend and helping me when I started with Quickshell too!
 - [kh](https://www.youtube.com/watch?v=dQw4w9WgXcQ) for being an awesome human being and listening to my delusions about Ambxst. :D
-- And you, the user, for trying out Ambxst! You're awesome! 💖
+- And [you](https://axeni.de/you), the user, for trying out Ambxst! You're awesome! 💖
 
 (If I forgot someone, please let me know. 🙏)
