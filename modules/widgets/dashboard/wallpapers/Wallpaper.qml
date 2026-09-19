@@ -1115,7 +1115,7 @@ PanelWindow {
                     return null;
 
                 var fileType = getFileType(parent.source);
-                if (fileType === 'video') {
+                if (fileType === 'video' || fileType === 'gif') {
                     return videoWallpaperComponent;
                 }
                 return staticImageComponent;

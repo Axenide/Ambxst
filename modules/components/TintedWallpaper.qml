@@ -12,7 +12,7 @@ Item {
 
     readonly property bool isVideo: {
         var ext = source.toString().toLowerCase().split('?')[0].split('.').pop();
-        return ["mp4", "webm", "mov", "avi", "mkv"].includes(ext);
+        return ["mp4", "webm", "mov", "avi", "mkv", "gif"].includes(ext);
     }
 
     property real pendingSeekMs: -1
