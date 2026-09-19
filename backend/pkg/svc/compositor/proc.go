@@ -17,9 +17,10 @@ import (
 // State is the snapshot pushed to subscribers on every axctl subscribe event.
 // Mirrors the shape AxctlService.qml consumed before the refactor.
 type State struct {
-	Windows    []json.RawMessage `json:"windows,omitempty"`
-	Workspaces []json.RawMessage `json:"workspaces,omitempty"`
-	Monitors   []json.RawMessage `json:"monitors,omitempty"`
+	Windows      []json.RawMessage `json:"windows,omitempty"`
+	Workspaces   []json.RawMessage `json:"workspaces,omitempty"`
+	Monitors     []json.RawMessage `json:"monitors,omitempty"`
+	OverviewOpen *bool             `json:"overview_open,omitempty"`
 }
 
 const subscribeRetryDelay = 500 * time.Millisecond

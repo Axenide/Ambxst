@@ -114,9 +114,10 @@ func (s *Service) state(_ json.RawMessage) (any, error) {
 	}
 	st := s.mgr.State()
 	return map[string]any{
-		"windows":    st.Windows,
-		"workspaces": st.Workspaces,
-		"monitors":   st.Monitors,
+		"windows":       st.Windows,
+		"workspaces":    st.Workspaces,
+		"monitors":      st.Monitors,
+		"overview_open": st.OverviewOpen,
 	}, nil
 }
 
@@ -174,9 +175,10 @@ func (s *Service) subscribe(sub *ipc.Subscriber) {
 					return
 				}
 				sub.Send("compositor.state", map[string]any{
-					"windows":    st.Windows,
-					"workspaces": st.Workspaces,
-					"monitors":   st.Monitors,
+					"windows":       st.Windows,
+					"workspaces":    st.Workspaces,
+					"monitors":      st.Monitors,
+					"overview_open": st.OverviewOpen,
 				})
 			case <-sub.StopCh():
 				return

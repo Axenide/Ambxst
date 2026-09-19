@@ -1,8 +1,10 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import Quickshell.Io
 import qs.modules.globals
+import qs.modules.services
 import qs.modules.theme
 import qs.config
 
@@ -38,6 +40,13 @@ PanelWindow {
     property string currentScreenName: wallpaper.screen ? wallpaper.screen.name : ""
     property alias tintEnabled: wallpaperAdapter.tintEnabled
     property int thumbnailsVersion: 0
+
+    // Blurs the wallpaper while niri's native overview is open. The overview
+    // backdrop shows this surface (place-within-backdrop), so blurring it here
+    // is what the user sees behind scaled workspace previews.
+    readonly property bool overviewBlurActive: Config.desktop.blurWallpaperOnOverview
+        && AxctlService.compositorName === "niri"
+        && AxctlService.overviewOpen
 
     // Sync state from the primary wallpaper manager to secondary instances
     Binding {
@@ -1089,6 +1098,7 @@ PanelWindow {
         }
 
         Loader {
+            id: wallpaperLoader
             anchors.fill: parent
             sourceComponent: {
                 if (!parent.source)
@@ -1102,6 +1112,25 @@ PanelWindow {
             }
 
             property string sourceFile: parent.source
+        }
+
+        MultiEffect {
+            anchors.fill: parent
+            source: wallpaperLoader
+            autoPaddingEnabled: false
+            // Keep the effect alive while the fade-out animation runs.
+            blurEnabled: wallpaper.overviewBlurActive || blur > 0
+            blurMax: 64
+            blur: wallpaper.overviewBlurActive ? 1.0 : 0.0
+            visible: wallpaperLoader.status === Loader.Ready
+
+            Behavior on blur {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration
+                    easing.type: Easing.OutCubic
+                }
+            }
         }
 
         Component {

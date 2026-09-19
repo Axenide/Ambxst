@@ -10,6 +10,11 @@ Singleton {
     property var focusedWorkspace: null
     property var focusedClient: null
 
+    // Compositor-level overview state (niri's native overview). Sourced
+    // from `overview_open` in the compositor state dump; stays false on
+    // compositors that don't emit overview events.
+    property bool overviewOpen: false
+
     // Compositor backend name ("hyprland"/"niri"/"mango"), from
     // `axctl system get-compositor`. Empty until the daemon + axctl
     // daemon are up; probed with retries below.
@@ -83,6 +88,10 @@ Singleton {
 
     function applyState(state) {
         if (!state) return;
+
+        if (state.overview_open !== undefined && state.overview_open !== null) {
+            root.overviewOpen = state.overview_open;
+        }
 
         if (state.windows) {
             const existingClients = root.clients.values || [];
