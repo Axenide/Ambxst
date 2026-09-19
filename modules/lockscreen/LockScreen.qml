@@ -34,13 +34,17 @@ WlSessionLockSurface {
         radius: 0
         tintEnabled: GlobalStates.wallpaperManager ? GlobalStates.wallpaperManager.tintEnabled : false
 
-        property string lockscreenFramePath: {
-            if (!GlobalStates.wallpaperManager)
-                return "";
-            return GlobalStates.wallpaperManager.getLockscreenFramePath(GlobalStates.wallpaperManager.currentWallpaper);
+        property string wallpaperPath: {
+            var wp = root.screen ? GlobalStates.wallpaperForScreen(root.screen.name) : GlobalStates.wallpaperManager;
+            return wp ? wp.effectiveWallpaper : "";
         }
 
-        source: lockscreenFramePath ? "file://" + lockscreenFramePath : ""
+        source: wallpaperPath ? "file://" + wallpaperPath : ""
+
+        onSourceChanged: {
+            if (startAnim)
+                root.syncLockscreenVideo();
+        }
 
         // Animación de opacidad (visibilidad)
         opacity: startAnim ? 1 : 0
@@ -77,6 +81,50 @@ WlSessionLockSurface {
                 duration: Config.animDuration * 2
                 easing.type: Easing.OutExpo
             }
+        }
+    }
+
+    function backgroundWallpaper() {
+        return root.screen ? GlobalStates.wallpaperForScreen(root.screen.name) : GlobalStates.wallpaperManager;
+    }
+
+    function syncLockscreenVideo() {
+        if (!wallpaperBackground.isVideo)
+            return;
+        var wp = backgroundWallpaper();
+        var targetPos = (wp && wp.activeVideo) ? wp.activeVideo.positionMs : 0;
+        wallpaperBackground.videoPlayAt(targetPos);
+    }
+
+    onStartAnimChanged: {
+        if (startAnim)
+            syncLockscreenVideo();
+    }
+
+    // Follow the background video while locked (seek to 0 on wallpaper sync)
+    Connections {
+        target: GlobalStates
+        function onVideoSyncTickChanged() {
+            if (!wallpaperBackground.isVideo)
+                return;
+            wallpaperBackground.videoSeek(0);
+            wallpaperBackground.videoPlay();
+        }
+    }
+
+    // Soft drift correction against the background video
+    Timer {
+        id: videoDriftTimer
+        interval: 15000
+        running: startAnim && wallpaperBackground.isVideo
+        repeat: true
+        onTriggered: {
+            var wp = backgroundWallpaper();
+            if (!wp || !wp.activeVideo || !wallpaperBackground.isVideo)
+                return;
+            var diff = Math.abs(wallpaperBackground.videoPosition - wp.activeVideo.positionMs);
+            if (diff > 1500)
+                wallpaperBackground.videoSeek(wp.activeVideo.positionMs);
         }
     }
 

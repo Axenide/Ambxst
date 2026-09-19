@@ -41,6 +41,8 @@ PanelWindow {
     property alias tintEnabled: wallpaperAdapter.tintEnabled
     property int thumbnailsVersion: 0
 
+    property var activeVideo: null
+
     // Blurs the wallpaper while niri's native overview is open. The overview
     // backdrop shows this surface (place-within-backdrop), so blurring it here
     // is what the user sees behind scaled workspace previews.
@@ -460,6 +462,9 @@ PanelWindow {
     }
 
     Component.onCompleted: {
+        if (currentScreenName)
+            GlobalStates.screenWallpapers[currentScreenName] = wallpaper;
+
         // Only the first Wallpaper instance should manage scanning
         // Other instances (for other screens) share the same data via GlobalStates
         if (GlobalStates.wallpaperManager !== null) {
@@ -486,6 +491,11 @@ PanelWindow {
                 lockscreenFrameTimer.start();
             }
         });
+    }
+
+    Component.onDestruction: {
+        if (currentScreenName && GlobalStates.screenWallpapers[currentScreenName] === wallpaper)
+            delete GlobalStates.screenWallpapers[currentScreenName];
     }
 
     // Deferred lockscreen frame generation to avoid blocking boot
@@ -1208,6 +1218,12 @@ PanelWindow {
                 sourceFile: parent.sourceFile
                 tint: wallpaper.tintEnabled
                 onRequestVideoSync: wallpaper.requestVideoSync()
+
+                Component.onCompleted: wallpaper.activeVideo = videoWallpaperChild
+                Component.onDestruction: {
+                    if (wallpaper.activeVideo === videoWallpaperChild)
+                        wallpaper.activeVideo = null;
+                }
             }
         }
     }
