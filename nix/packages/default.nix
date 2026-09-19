@@ -66,6 +66,7 @@ let
     # QtMultimedia: force the GStreamer backend and its plugin dir
     export QT_MEDIA_BACKEND="''${QT_MEDIA_BACKEND:-gstreamer}"
     export GST_PLUGIN_SYSTEM_PATH="''${GST_PLUGIN_SYSTEM_PATH:-${envAmbxst}/lib/gstreamer-1.0}"
+    export QT_PLUGIN_PATH="''${QT_PLUGIN_PATH:-${envAmbxst}/lib/qt-6/plugins}"
 
     # Make bundled fonts available to fontconfig
     export FONTCONFIG_PATH="${fontconfigConf}/etc/fonts:''${FONTCONFIG_PATH:-}"

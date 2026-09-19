@@ -47,7 +47,6 @@ declare -A BINARY_CHECK=(
   ["jq"]="jq"
   ["playerctl"]="playerctl"
   ["wtype"]="wtype"
-  ["gstreamer"]="gst-inspect-1.0"
   ["gradia"]="gradia"
   ["zenity"]="zenity"
   ["gpu-screen-recorder"]="gpu-screen-recorder"
@@ -172,7 +171,7 @@ install_dependencies() {
       ttf-roboto ttf-roboto-mono ttf-dejavu ttf-liberation noto-fonts noto-fonts-cjk noto-fonts-emoji
       ttf-nerd-fonts-symbols
       matugen gpu-screen-recorder wl-clip-persist gradia
-      gstreamer gst-plugins-base gst-plugins-good gst-plugins-bad gst-libav
+      qt6-multimedia-gstreamer gst-plugins-bad
       quickshell ttf-phosphor-icons ttf-league-gothic adw-gtk-theme
     )
 
