@@ -176,6 +176,9 @@ Singleton {
     // Persistent wallpaper navigation state
     property int wallpaperSelectedIndex: -1
 
+    // Bumped to re-align video wallpapers across screens (seek to 0)
+    property int videoSyncTick: 0
+
     function clearWallpaperState() {
         wallpaperSelectedIndex = -1;
     }

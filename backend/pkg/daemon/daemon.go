@@ -327,6 +327,9 @@ func (d *Daemon) spawnQS(qsBin, shellQML string) error {
 	if os.Getenv("MALLOC_CONF") == "" {
 		env = append(env, "MALLOC_CONF=dirty_decay_ms:1000,muzzy_decay_ms:1000")
 	}
+	if os.Getenv("QT_MEDIA_BACKEND") == "" {
+		env = append(env, "QT_MEDIA_BACKEND=gstreamer")
+	}
 	cmd.Env = env
 	if err := cmd.Start(); err != nil {
 		return err
