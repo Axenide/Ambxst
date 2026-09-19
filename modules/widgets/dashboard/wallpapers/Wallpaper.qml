@@ -46,8 +46,9 @@ PanelWindow {
     // Blurs the wallpaper while niri's native overview is open. The overview
     // backdrop shows this surface (place-within-backdrop), so blurring it here
     // is what the user sees behind scaled workspace previews.
+    readonly property bool overviewBlurPossible: AxctlService.compositorName === "niri"
     readonly property bool overviewBlurActive: Config.desktop.blurWallpaperOnOverview
-        && AxctlService.compositorName === "niri"
+        && overviewBlurPossible
         && AxctlService.overviewOpen
 
     // Sync state from the primary wallpaper manager to secondary instances
@@ -1124,21 +1125,29 @@ PanelWindow {
             property string sourceFile: parent.source
         }
 
-        MultiEffect {
+        // The effect pass is only mounted where it can actually trigger;
+        // elsewhere the loader renders directly with zero overhead.
+        Loader {
             anchors.fill: parent
-            source: wallpaperLoader
-            autoPaddingEnabled: false
-            // Keep the effect alive while the fade-out animation runs.
-            blurEnabled: wallpaper.overviewBlurActive || blur > 0
-            blurMax: 64
-            blur: wallpaper.overviewBlurActive ? 1.0 : 0.0
-            visible: wallpaperLoader.status === Loader.Ready
+            active: wallpaper.overviewBlurPossible
+            sourceComponent: Component {
+                MultiEffect {
+                    anchors.fill: parent
+                    source: wallpaperLoader
+                    autoPaddingEnabled: false
+                    // Keep the effect alive while the fade-out animation runs.
+                    blurEnabled: wallpaper.overviewBlurActive || blur > 0
+                    blurMax: 64
+                    blur: wallpaper.overviewBlurActive ? 1.0 : 0.0
+                    visible: wallpaperLoader.status === Loader.Ready
 
-            Behavior on blur {
-                enabled: Config.animDuration > 0
-                NumberAnimation {
-                    duration: Config.animDuration
-                    easing.type: Easing.OutCubic
+                    Behavior on blur {
+                        enabled: Config.animDuration > 0
+                        NumberAnimation {
+                            duration: Config.animDuration
+                            easing.type: Easing.OutCubic
+                        }
+                    }
                 }
             }
         }

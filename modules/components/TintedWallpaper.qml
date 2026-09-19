@@ -17,14 +17,15 @@ Item {
 
     property real pendingSeekMs: -1
 
-    readonly property real videoPosition: videoPlayer.position
+    readonly property var player: videoPlayerLoader.status === Loader.Ready ? videoPlayerLoader.item.player : null
+    readonly property real videoPosition: player ? player.position : 0
 
     function applyPendingSeek() {
-        if (pendingSeekMs < 0)
+        if (pendingSeekMs < 0 || !player)
             return;
-        var status = videoPlayer.mediaStatus;
+        var status = player.mediaStatus;
         if (status >= MediaPlayer.LoadedMedia && status !== MediaPlayer.InvalidMedia) {
-            videoPlayer.seek(pendingSeekMs);
+            player.seek(pendingSeekMs);
             pendingSeekMs = -1;
         }
     }
@@ -33,41 +34,78 @@ Item {
         if (!root.isVideo)
             return;
         pendingSeekMs = ms;
-        videoPlayer.play();
-        applyPendingSeek();
+        if (player) {
+            player.play();
+            applyPendingSeek();
+        }
     }
 
     function videoSeek(ms) {
-        if (root.isVideo)
-            videoPlayer.seek(ms);
+        if (player)
+            player.seek(ms);
     }
 
     function videoPlay() {
-        if (root.isVideo)
-            videoPlayer.play();
+        if (player)
+            player.play();
     }
 
-    onIsVideoChanged: {
-        if (isVideo)
-            videoPlayer.play();
-        else
-            videoPlayer.stop();
+    // Idle media objects cost real time to build and tear down, so they
+    // only exist while the source is actually a video/gif.
+    Loader {
+        id: videoPlayerLoader
+        active: root.isVideo
+        sourceComponent: videoPlayerComponent
+        onLoaded: root.player.play()
     }
 
-    MediaPlayer {
-        id: videoPlayer
-        loops: MediaPlayer.Infinite
-        audioOutput: mutedAudio
-        videoOutput: videoOut
-        source: root.isVideo ? root.source : ""
+    Component {
+        id: videoPlayerComponent
 
-        onMediaStatusChanged: applyPendingSeek()
+        Item {
+            visible: false
+            width: 0
+            height: 0
+
+            property alias player: videoPlayer
+
+            MediaPlayer {
+                id: videoPlayer
+                loops: MediaPlayer.Infinite
+                audioOutput: mutedAudio
+                videoOutput: videoLoader.status === Loader.Ready ? videoLoader.item : null
+                source: root.source
+
+                onMediaStatusChanged: applyPendingSeek()
+            }
+
+            AudioOutput {
+                id: mutedAudio
+                muted: true
+                volume: 0
+            }
+        }
     }
 
-    AudioOutput {
-        id: mutedAudio
-        muted: true
-        volume: 0
+    Component {
+        id: videoOutputComponent
+
+        VideoOutput {
+            id: videoOut
+            anchors.fill: parent
+            fillMode: VideoOutput.PreserveAspectCrop
+
+            layer.enabled: root.tintEnabled
+            layer.effect: ShaderEffect {
+                property var paletteTexture: paletteTextureSource
+                property real paletteSize: root.optimizedPalette.length
+                property real texWidth: videoOut.width
+                property real texHeight: videoOut.height
+
+                vertexShader: "../widgets/dashboard/wallpapers/palette.vert.qsb"
+                fragmentShader: "../widgets/dashboard/wallpapers/palette.frag.qsb"
+            }
+        }
     }
 
     // Subset of colors for optimization (approx 25 colors vs 98)
@@ -155,22 +193,11 @@ Item {
             }
         }
 
-        VideoOutput {
-            id: videoOut
+        Loader {
+            id: videoLoader
             anchors.fill: parent
-            visible: root.isVideo
-            fillMode: VideoOutput.PreserveAspectCrop
-
-            layer.enabled: root.tintEnabled
-            layer.effect: ShaderEffect {
-                property var paletteTexture: paletteTextureSource
-                property real paletteSize: root.optimizedPalette.length
-                property real texWidth: videoOut.width
-                property real texHeight: videoOut.height
-
-                vertexShader: "../widgets/dashboard/wallpapers/palette.vert.qsb"
-                fragmentShader: "../widgets/dashboard/wallpapers/palette.frag.qsb"
-            }
+            active: root.isVideo
+            sourceComponent: videoOutputComponent
         }
     }
 }
