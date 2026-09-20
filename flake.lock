@@ -7,11 +7,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789922182,
-        "narHash": "sha256-aojLLf0ezxk9IeIzDmS8tPqaviiFLIxb8x+hYeE10j0=",
+        "lastModified": 1789930318,
+        "narHash": "sha256-pjWbz9E1BS6E1ha3jGgIXKPxzPcliv/69sRlgkbi4Rk=",
         "owner": "Axenide",
         "repo": "axctl",
-        "rev": "adf2f84ea89cdfd090c6c0ec981a69c85040e7cd",
+        "rev": "04bb2c61cda436148b1e982f91f627dc428ad9f9",
         "type": "github"
       },
       "original": {
