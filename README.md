@@ -137,7 +137,7 @@ home.packages = [ inputs.ambxst.packages.${pkgs.system}.default ];
 }
 ```
 
-The NixOS module installs the package, the required fonts, and enables recommended services (`programs.ambxst.enable` is on by default). On home-manager, just add the package and run `ambxst install hyprland` (or `niri`) as usual.
+The NixOS module installs the package, the required fonts, and enables recommended services (`programs.ambxst.enable` is on by default). On home-manager, just add the package and run `ambxst install hyprland` (or `niri`) as usual — this works as long as your compositor config isn't itself home-manager-managed (see above).
 
 ---
 
