@@ -8,6 +8,7 @@ Item {
     id: root
     property var sourceItem: null  // The icon item to tint
     property bool fullTint: false  // If true, apply solid primary color instead of shader
+    property color tintColor: Styling.srItem("overprimary")
 
     // Subset of colors for optimization (consistent with TintedWallpaper.qml)
     readonly property var optimizedPalette: [
@@ -26,11 +27,11 @@ Item {
     // Palette generation for the shader
     Item {
         id: paletteSourceItem
-        visible: true 
+        visible: true
         width: root.optimizedPalette.length
         height: 1
         opacity: 0
-        
+
         Row {
             anchors.fill: parent
             Repeater {
@@ -69,14 +70,14 @@ Item {
                 hideSource: true
                 live: false  // Static content - use scheduleUpdate() when source changes
             }
-            
+
             // Update texture when sourceItem changes
             Connections {
                 target: root.sourceItem
                 function onSourceChanged() { internalSource.scheduleUpdate(); }
                 function onStatusChanged() { internalSource.scheduleUpdate(); }
             }
-            
+
             // Also update when this component becomes visible or sourceItem changes
             Connections {
                 target: root
@@ -91,14 +92,14 @@ Item {
                 source: internalSource
                 brightness: 1.0
                 colorization: 1.0
-                colorizationColor: Styling.srItem("overprimary")
+                colorizationColor: root.tintColor
             }
 
             // Shader-based tint
             ShaderEffect {
                 visible: !root.fullTint
                 anchors.fill: parent
-                
+
                 property var source: internalSource
                 property var paletteTexture: paletteTextureSource
                 property real paletteSize: root.optimizedPalette.length
