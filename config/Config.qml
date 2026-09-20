@@ -1614,6 +1614,24 @@ Singleton {
                     "enabled": true
                 },
                 {
+                    "name": "Toggle Floating",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER"],
+                            "key": "SPACE"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "togglefloating",
+                            "argument": "",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
                     "name": "Workspace 1",
                     "keys": [
                         {

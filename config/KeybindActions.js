@@ -60,6 +60,7 @@ var ACTION_CATALOG = [
     { id: "window.resize", label: "Resize Window", category: "Window", dispatcher: "resizeactive", args: [{ key: "delta", label: "Delta", placeholder: "50 0", defaultValue: "50 0" }], argumentBuilder: function (args) {
         return String(args.delta || "").trim();
     } },
+    { id: "window.toggle-float", label: "Toggle Floating", category: "Window", dispatcher: "togglefloating", argument: "" },
 
     { id: "workspace.switch", label: "Switch Workspace", category: "Workspace", dispatcher: "workspace", args: [{ key: "index", label: "Workspace", placeholder: "1", defaultValue: "1" }], argumentBuilder: function (args) {
         return String(args.index || "").trim();
@@ -263,6 +264,7 @@ function actionFromLegacy(dispatcher, argument, flags) {
     if (dispatcher === "movewindow") return { id: "window.move", args: { direction: arg } };
     if (dispatcher === "movefocus") return { id: "window.focus", args: { direction: arg } };
     if (dispatcher === "resizeactive") return { id: "window.resize", args: { delta: arg } };
+    if (dispatcher === "togglefloating") return { id: "window.toggle-float", args: {} };
     if (dispatcher === "layoutmsg") {
         if (arg.startsWith("focus ")) return { id: "scrolling.focus", args: { direction: arg.split(" ")[1] } };
         if (arg.startsWith("movewindowto ")) return { id: "scrolling.move-window", args: { direction: arg.split(" ")[1] } };
