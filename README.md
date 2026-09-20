@@ -111,6 +111,34 @@ home-manager-managed configs are read-only symlinks into `/nix/store`, so `ambxs
 
 The generated files are rewritten by the `axctl` daemon on every theme/gaps/binds change, so cosmetic tweaks do **not** require a `home-manager switch`; only structural changes (new binds, layout switch) do.
 
+**home-manager:**
+
+```nix
+# flake.nix inputs
+inputs.ambxst.url = "github:Axenide/Ambxst";
+
+# home.nix
+home.packages = [ inputs.ambxst.packages.${pkgs.system}.default ];
+```
+
+**NixOS without home-manager:**
+
+```nix
+# flake.nix
+{
+  inputs.ambxst.url = "github:Axenide/Ambxst";
+
+  outputs = { self, nixpkgs, ambxst, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [ ambxst.nixosModules.default ];
+    };
+  };
+}
+```
+
+The NixOS module installs the package, the required fonts, and enables recommended services (`programs.ambxst.enable` is on by default). On home-manager, just add the package and run `ambxst install hyprland` (or `niri`) as usual.
+
 ---
 
 ## Will this change my config?
