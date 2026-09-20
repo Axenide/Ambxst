@@ -5,6 +5,7 @@ import qs.modules.globals
 import Quickshell.Io
 
 import qs.modules.services
+import qs.config
 
 ActionGrid {
     id: root
@@ -86,12 +87,27 @@ ActionGrid {
         command: ["bash", "-c", "nohup xdg-open \"$0\" > /dev/null 2>&1 &"]
     }
 
+    // Defer screenshot tool activation until the notch close animation finishes
+    Timer {
+        id: screenshotActivationTimer
+        property string pendingMode: ""
+        interval: Config.animDuration > 0 ? Config.animDuration + 150 : 150
+        onTriggered: {
+            if (pendingMode !== "") {
+                Screenshot.captureMode = pendingMode;
+                pendingMode = "";
+            }
+            GlobalStates.screenshotToolVisible = true;
+        }
+    }
+
     onActionTriggered: action => {
         console.log("Tools action triggered:", action.tooltip);
 
         if (action.tooltip === I18n.t("tools.screenshot")) {
             Screenshot.initialize();
-            GlobalStates.screenshotToolVisible = true;
+            screenshotActivationTimer.pendingMode = "";
+            screenshotActivationTimer.restart();
             root.itemSelected();
         } else if (action.tooltip === I18n.t("tools.screenrecord_start")) {
             ScreenRecorder.initialize();
@@ -121,17 +137,17 @@ ActionGrid {
             root.itemSelected();
         } else if (action.tooltip === I18n.t("tools.ocr")) {
             Screenshot.initialize();
-            Screenshot.captureMode = "ocr";
-            GlobalStates.screenshotToolVisible = true;
+            screenshotActivationTimer.pendingMode = "ocr";
+            screenshotActivationTimer.restart();
             root.itemSelected();
         } else if (action.tooltip === I18n.t("tools.qr")) {
             Screenshot.initialize();
-            Screenshot.captureMode = "qr";
-            GlobalStates.screenshotToolVisible = true;
+            screenshotActivationTimer.pendingMode = "qr";
+            screenshotActivationTimer.restart();
             root.itemSelected();
         } else if (action.tooltip === I18n.t("tools.google_lens")) {
-            Screenshot.captureMode = "lens";
-            GlobalStates.screenshotToolVisible = true;
+            screenshotActivationTimer.pendingMode = "lens";
+            screenshotActivationTimer.restart();
             root.itemSelected();
         } else if (action.tooltip === I18n.t("tools.mirror")) {
             GlobalStates.mirrorWindowVisible = !GlobalStates.mirrorWindowVisible;
