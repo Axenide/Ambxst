@@ -549,7 +549,6 @@ Singleton {
             property bool containBar: false
             property bool keepBarShadow: false
             property bool keepBarBorder: false
-            property list<string> systrayHidden: []
         }
     }
 

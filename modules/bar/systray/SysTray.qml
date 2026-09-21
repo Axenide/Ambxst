@@ -20,7 +20,7 @@ StyledRect {
     property bool vertical: bar.orientation === "vertical"
 
     readonly property var allItems: SystemTray.items?.values ?? []
-    readonly property var hiddenIds: Config.bar?.systrayHidden ?? []
+    readonly property var hiddenIds: StateService.systrayHidden
     readonly property var visibleItems: allItems.filter(item => !hiddenIds.includes(item.id))
     readonly property var overflowItems: allItems.filter(item => hiddenIds.includes(item.id))
 
@@ -69,20 +69,16 @@ StyledRect {
     // delegates while their drop/click handlers are still on the stack
     function hideItem(id) {
         Qt.callLater(() => {
-            if (!Config.bar)
-                return;
-            const current = Config.bar.systrayHidden ?? [];
+            const current = StateService.systrayHidden ?? [];
             if (current.includes(id))
                 return;
-            Config.bar.systrayHidden = [...current, id];
+            StateService.systrayHidden = [...current, id];
         });
     }
 
     function showItem(id) {
         Qt.callLater(() => {
-            if (!Config.bar)
-                return;
-            Config.bar.systrayHidden = (Config.bar.systrayHidden ?? []).filter(entry => entry !== id);
+            StateService.systrayHidden = (StateService.systrayHidden ?? []).filter(entry => entry !== id);
         });
     }
 

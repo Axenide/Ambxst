@@ -24,6 +24,23 @@ Singleton {
 
     signal stateLoaded()
 
+    // Reactive copy of the hidden systray icons. Lives here instead of the
+    // config so preset switches and config resets don't spill the icons
+    // back out of the overflow popup
+    property var systrayHidden: []
+
+    onInitializedChanged: {
+        if (!initialized)
+            return;
+        const stored = get("systrayHidden", null);
+        systrayHidden = Array.isArray(stored) ? stored : [];
+    }
+
+    onSystrayHiddenChanged: {
+        if (initialized)
+            set("systrayHidden", systrayHidden);
+    }
+
     /**
      * Get a value from state
      * @param key - The state key

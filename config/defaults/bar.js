@@ -20,6 +20,5 @@ var data = {
     "use12hFormat": false,
     "containBar": false,
     "keepBarShadow": false,
-    "keepBarBorder": false,
-    "systrayHidden": []
+    "keepBarBorder": false
 }
