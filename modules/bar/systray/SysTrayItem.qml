@@ -34,6 +34,11 @@ MouseArea {
     property real pressOffsetX: 0
     property real pressOffsetY: 0
 
+    // Last drag position in item-local coords, kept for release/cancel
+    // fallbacks when the pointer grab is broken by the compositor
+    property real lastDragX: 0
+    property real lastDragY: 0
+
     readonly property int dragThreshold: Qt.styleHints?.startDragDistance ?? 10
 
     readonly property string iconSource: {
@@ -60,12 +65,28 @@ MouseArea {
     onPositionChanged: mouse => updateDrag(mouse)
 
     onReleased: mouse => {
-        if (dragOccurred && !dragCommitted && !inOverflow)
-            finishBarDrag(mouse.x, mouse.y);
+        if (dragOccurred && !dragCommitted) {
+            if (inOverflow) {
+                if (isNearAnchorEdge(mouse.x, mouse.y))
+                    commitShow();
+            } else {
+                finishBarDrag(mouse.x, mouse.y);
+            }
+        }
         stopDrag();
     }
 
-    onCanceled: stopDrag()
+    onCanceled: {
+        if (dragOccurred && !dragCommitted) {
+            if (inOverflow) {
+                if (isNearAnchorEdge(lastDragX, lastDragY))
+                    commitShow();
+            } else if (isOverPopup(lastDragX, lastDragY, 10)) {
+                commitHide();
+            }
+        }
+        stopDrag();
+    }
 
     onClicked: event => {
         if (dragOccurred) {
@@ -104,6 +125,9 @@ MouseArea {
             dragOccurred = true;
         }
 
+        lastDragX = mouse.x;
+        lastDragY = mouse.y;
+
         positionPreview(mouse.x, mouse.y);
 
         if (!dragging) {
@@ -113,11 +137,10 @@ MouseArea {
 
         if (inOverflow) {
             // Commit while still inside the popup surface: crossing onto
-            // the bar window can break the pointer grab, so never wait
-            // for the release past the popup edge
+            // the bar window can break the pointer grab
             if (isNearAnchorEdge(mouse.x, mouse.y))
                 commitShow();
-        } else if (isOverPopup(mouse.x, mouse.y)) {
+        } else if (isOverPopup(mouse.x, mouse.y, 10)) {
             commitHide();
         }
     }
@@ -130,19 +153,22 @@ MouseArea {
         dragPreview.y = point.y - pressOffsetY;
     }
 
-    // Bar-side drop into the open overflow popup: both items live in the
-    // panel window, so the popup rect is mapped directly
-    function isOverPopup(mouseX, mouseY) {
+    // Bar-side drop into the open overflow popup. The zone is the popup's
+    // visible card (shadow margins excluded) expanded by `approach`, so
+    // the commit fires before the pointer crosses onto the popup surface
+    // and risks breaking the panel's grab
+    function isOverPopup(mouseX, mouseY, approach) {
         const popup = overflowPopupRef;
         if (!popup || !popup.isOpen)
             return false;
 
         const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
         const point = mapToItem(null, mouseX, mouseY);
-        return point.x >= origin.x
-            && point.x <= origin.x + popup.width
-            && point.y >= origin.y
-            && point.y <= origin.y + popup.height;
+        const inset = popup.shadowMargin - approach;
+        return point.x >= origin.x + inset
+            && point.x <= origin.x + popup.width - inset
+            && point.y >= origin.y + inset
+            && point.y <= origin.y + popup.height - inset;
     }
 
     // Overflow-side commit zone: crossing the popup's visible content
@@ -153,17 +179,18 @@ MouseArea {
             return false;
 
         const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
-        const point = mapToItem(null, mouseX, mouseY);
-        const content = popup.shadowMargin;
+        const local = mapToItem(null, mouseX, mouseY);
+        const point = Qt.point(local.x + origin.x, local.y + origin.y);
+        const inset = popup.shadowMargin;
         switch (bar.barPosition) {
         case "bottom":
-            return point.y >= origin.y + popup.height - content;
+            return point.y >= origin.y + popup.height - inset;
         case "left":
-            return point.x <= origin.x + content;
+            return point.x <= origin.x + inset;
         case "right":
-            return point.x >= origin.x + popup.width - content;
+            return point.x >= origin.x + popup.width - inset;
         default:
-            return point.y <= origin.y + content;
+            return point.y <= origin.y + inset;
         }
     }
 
@@ -192,7 +219,7 @@ MouseArea {
             if (dropped)
                 return;
         }
-        if (isOverPopup(mouseX, mouseY) && tray)
+        if (isOverPopup(mouseX, mouseY, 10) && tray)
             tray.hideItem(item.id);
     }
 

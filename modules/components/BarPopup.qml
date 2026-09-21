@@ -107,6 +107,18 @@ PopupWindow {
     color: "transparent"
     visible: false
 
+    // When true, the transparent shadow margins do not capture input;
+    // only the visible content area does. Lets pointer drags from the
+    // parent window travel over the margins without breaking its grab.
+    property bool clickThroughMargins: false
+
+    Region {
+        id: contentInputMask
+        item: background
+    }
+
+    mask: root.clickThroughMargins ? contentInputMask : null
+
     // Focus grab for click-outside-to-close behavior
     property bool focusActive: false
 
