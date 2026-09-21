@@ -37,19 +37,18 @@ StyledRect {
             overflowPopup.refreshFocusGrab();
     }
 
-    // The caret points to where the overflow popup opens, per bar side,
-    // and flips to its opposite while the popup is open
+    // The caret points to where the overflow popup opens, per bar side;
+    // the chevron rotates while the popup is open
     readonly property string chevronIcon: {
-        const open = overflowPopup.isOpen;
         switch (bar.barPosition) {
         case "bottom":
-            return open ? Icons.caretDown : Icons.caretUp;
+            return Icons.caretUp;
         case "left":
-            return open ? Icons.caretLeft : Icons.caretRight;
+            return Icons.caretRight;
         case "right":
-            return open ? Icons.caretRight : Icons.caretLeft;
+            return Icons.caretLeft;
         default:
-            return open ? Icons.caretUp : Icons.caretDown;
+            return Icons.caretDown;
         }
     }
 
@@ -198,6 +197,15 @@ StyledRect {
                 font.pixelSize: 14
                 color: Colors.primary
                 opacity: chevron.hot ? 1 : 0.8
+                rotation: overflowPopup.isOpen ? 180 : 0
+
+                Behavior on rotation {
+                    enabled: Config.animDuration > 0
+                    RotationAnimation {
+                        duration: Config.animDuration
+                        easing.type: Easing.OutCubic
+                    }
+                }
 
                 Behavior on opacity {
                     enabled: Config.animDuration > 0
