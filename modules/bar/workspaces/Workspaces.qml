@@ -35,7 +35,7 @@ Item {
     property int baseSize: 36
     property int workspaceButtonSize: baseSize - widgetPadding * 2
     property int workspaceButtonWidth: workspaceButtonSize
-    property real workspaceIconSize: Math.round(workspaceButtonWidth * 0.6)
+    property real workspaceIconSize: Math.floor(workspaceButtonWidth * 0.6)
     property real workspaceIconSizeShrinked: Math.round(workspaceButtonWidth * 0.5)
     property real workspaceIconOpacityShrinked: 1
     property real workspaceIconMarginShrinked: -4
