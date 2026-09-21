@@ -234,6 +234,10 @@ Singleton {
     // button, keyed by screen name (cross-window drop feedback)
     property var systrayChevronHotScreens: ({})
 
+    // True while a tray icon drag is in progress; expands the shell
+    // panel's input mask so motion keeps flowing beyond the bar hitbox
+    property bool systrayDragActive: false
+
     function setSystrayChevronHot(screenName, hot) {
         if (isSystrayChevronHot(screenName) === hot)
             return;

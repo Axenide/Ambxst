@@ -59,11 +59,10 @@ MouseArea {
 
     onReleased: mouse => {
         if (dragOccurred) {
-            if (inOverflow) {
+            if (inOverflow)
                 finishOverflowDrag(mouse.x, mouse.y);
-            } else if (dragPreview.Drag.active) {
-                dragPreview.Drag.drop();
-            }
+            else
+                finishBarDrag(mouse.x, mouse.y);
         }
         stopDrag();
     }
@@ -91,6 +90,7 @@ MouseArea {
     function stopDrag() {
         dragging = false;
         dragPreview.visible = false;
+        GlobalStates.systrayDragActive = false;
         GlobalStates.setSystrayChevronHot(root.bar?.screen?.name ?? "", false);
     }
 
@@ -111,6 +111,7 @@ MouseArea {
         if (!dragging) {
             dragging = true;
             dragPreview.visible = true;
+            GlobalStates.systrayDragActive = true;
         }
 
         if (inOverflow)
@@ -142,6 +143,31 @@ MouseArea {
             && point.x <= base.x + dropTarget.width + margin
             && point.y >= base.y - margin
             && point.y <= base.y + dropTarget.height + margin;
+    }
+
+    // Bar-side drop into the open overflow popup: both items live in the
+    // panel window, so the popup rect is mapped directly
+    function isOverPopup(mouseX, mouseY) {
+        const popup = overflowPopupRef;
+        if (!popup || !popup.isOpen)
+            return false;
+
+        const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
+        const point = mapToItem(null, mouseX, mouseY);
+        return point.x >= origin.x
+            && point.x <= origin.x + popup.width
+            && point.y >= origin.y
+            && point.y <= origin.y + popup.height;
+    }
+
+    function finishBarDrag(mouseX, mouseY) {
+        let dropped = false;
+        if (dragPreview.Drag.active) {
+            dropped = dragPreview.Drag.target !== null;
+            dragPreview.Drag.drop();
+        }
+        if (!dropped && isOverPopup(mouseX, mouseY) && tray)
+            tray.hideItem(item.id);
     }
 
     function updateOverflowFeedback(mouseX, mouseY) {

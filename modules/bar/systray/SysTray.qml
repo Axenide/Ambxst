@@ -107,6 +107,7 @@ StyledRect {
                 bar: root.bar
                 item: modelData
                 tray: root
+                overflowPopupRef: overflowPopup
                 dragLayer: root.bar
             }
         }
@@ -133,6 +134,7 @@ StyledRect {
                 bar: root.bar
                 item: modelData
                 tray: root
+                overflowPopupRef: overflowPopup
                 dragLayer: root.bar
             }
         }
@@ -167,13 +169,14 @@ StyledRect {
 
         StyledRect {
             anchors.fill: parent
-            variant: "bg"
+            variant: "pane"
+            radius: Styling.radius(-6)
 
             Rectangle {
                 anchors.fill: parent
-                color: Styling.srItem("overprimary")
+                color: parent.item || "transparent"
                 opacity: chevron.hot ? 0.45 : (chevronMouse.containsMouse ? 0.25 : 0)
-                radius: Styling.radius(-3)
+                radius: parent.radius
 
                 Behavior on opacity {
                     enabled: Config.animDuration > 0
@@ -188,8 +191,8 @@ StyledRect {
                 text: chevron.tray.chevronIcon
                 font.family: Icons.font
                 font.pixelSize: 14
-                color: Colors.foreground
-                opacity: chevron.hot ? 1 : 0.65
+                color: Colors.primary
+                opacity: chevron.hot ? 1 : 0.8
 
                 Behavior on opacity {
                     enabled: Config.animDuration > 0

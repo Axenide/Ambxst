@@ -148,8 +148,9 @@ PanelWindow {
     // When a module or popup is open, expand to full-screen to capture click-outside.
     // Otherwise, restrict input to Bar, Notch, and Dock hitboxes only.
     mask: Region {
-        // Full-screen capture when any module/popup is open
-        item: unifiedPanel.needsFullScreenInput ? fullScreenMask : null
+        // Full-screen capture when any module/popup is open, or while a
+        // tray icon drag needs motion outside the bar hitbox
+        item: (unifiedPanel.needsFullScreenInput || GlobalStates.systrayDragActive) ? fullScreenMask : null
         regions: [
             Region {
                 item: barContent.visible ? barContent.barHitbox : null
