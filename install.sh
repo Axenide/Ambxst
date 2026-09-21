@@ -419,13 +419,35 @@ install_axctl() {
 }
 
 # === Service Configuration ===
+# True when NetworkManager is configured to use iwd as its Wi-Fi backend
+# (wifi.backend=iwd). In that setup iwd is NOT a conflict: NetworkManager
+# drives it, and Ambxst only ever talks to NetworkManager through nmcli.
+nm_uses_iwd() {
+  local cfg
+  if has_cmd NetworkManager; then
+    cfg="$(NetworkManager --print-config 2>/dev/null)" || cfg=""
+    if [[ -n "$cfg" ]]; then
+      grep -Eq '^[[:space:]]*wifi\.backend[[:space:]]*=[[:space:]]*iwd[[:space:]]*$' <<<"$cfg"
+      return
+    fi
+  fi
+  # Fallback: scan the config files directly (last match wins is not
+  # modelled; any active wifi.backend=iwd line counts).
+  cat /etc/NetworkManager/NetworkManager.conf \
+      /etc/NetworkManager/conf.d/*.conf \
+      /usr/lib/NetworkManager/conf.d/*.conf 2>/dev/null \
+    | grep -Eq '^[[:space:]]*wifi\.backend[[:space:]]*=[[:space:]]*iwd[[:space:]]*$'
+}
+
 configure_services() {
   [[ "$DISTRO" == "nixos" ]] && return
 
   if has_cmd systemctl; then
     log_info "Configuring systemd services..."
 
-    if systemctl is-enabled --quiet iwd 2>/dev/null || systemctl is-active --quiet iwd 2>/dev/null; then
+    if nm_uses_iwd; then
+      log_info "NetworkManager uses the iwd backend; leaving iwd enabled"
+    elif systemctl is-enabled --quiet iwd 2>/dev/null || systemctl is-active --quiet iwd 2>/dev/null; then
       log_warn "Disabling iwd (conflicts with NetworkManager)..."
       sudo systemctl stop iwd
       sudo systemctl disable iwd
@@ -443,10 +465,14 @@ configure_services() {
 
   elif has_cmd rc-service; then
     log_info "Configuring OpenRC services..."
-    rc-update show | grep -q "iwd" && {
-      sudo rc-service iwd stop 2>/dev/null || true
-      sudo rc-update del iwd default 2>/dev/null || true
-    }
+    if nm_uses_iwd; then
+      log_info "NetworkManager uses the iwd backend; leaving iwd enabled"
+    else
+      rc-update show | grep -q "iwd" && {
+        sudo rc-service iwd stop 2>/dev/null || true
+        sudo rc-update del iwd default 2>/dev/null || true
+      }
+    fi
     sudo rc-update add NetworkManager default 2>/dev/null || true
     sudo rc-service NetworkManager start 2>/dev/null || true
     sudo rc-update add bluetooth default 2>/dev/null || true
@@ -455,7 +481,9 @@ configure_services() {
   elif has_cmd sv; then
     log_info "Configuring runit services..."
     local SV_DIR="/var/service"
-    [[ -L "$SV_DIR/iwd" ]] && sudo rm "$SV_DIR/iwd"
+    if ! nm_uses_iwd; then
+      [[ -L "$SV_DIR/iwd" ]] && sudo rm "$SV_DIR/iwd"
+    fi
     [[ -d "/etc/sv/NetworkManager" && ! -L "$SV_DIR/NetworkManager" ]] && sudo ln -s /etc/sv/NetworkManager "$SV_DIR/"
     [[ -d "/etc/sv/bluetooth" && ! -L "$SV_DIR/bluetooth" ]] && sudo ln -s /etc/sv/bluetooth "$SV_DIR/"
 
