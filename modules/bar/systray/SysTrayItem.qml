@@ -64,7 +64,7 @@ MouseArea {
 
     onPositionChanged: mouse => updateDrag(mouse)
 
-    onDragFinished: stopDrag()
+    Drag.onDragFinished: stopDrag()
 
     onClicked: event => {
         if (dragOccurred) {
