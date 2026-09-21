@@ -65,8 +65,8 @@ PopupWindow {
     property int contentWidth: 220
     property int contentHeight: 150
 
-    implicitWidth: totalWidth
-    implicitHeight: totalHeight
+    implicitWidth: totalWidth + (barVertical ? dragExtendDepth : 0)
+    implicitHeight: totalHeight + (barVertical ? 0 : dragExtendDepth)
 
     // Frame detection
     readonly property bool frameEnabled: Config.bar?.frameEnabled ?? false
@@ -75,15 +75,29 @@ PopupWindow {
     readonly property int frameOffset: (frameEnabled && containBar) ? frameThickness : 0
     readonly property int effectiveFrameOffset: (frameEnabled && containBar) ? frameOffset : 0
 
+    // While true, the popup window statically extends toward the bar far
+    // enough to cover the anchor item. The extension is transparent and
+    // click-through by default; combined with dragExtendInput it lets
+    // drags that started inside keep receiving motion and the release
+    // while crossing onto the bar
+    property bool extendTowardBar: false
+
+    readonly property int dragExtendDepth: {
+        if (!extendTowardBar)
+            return 0;
+        return effectiveFrameOffset + (barVertical ? anchorItem.width : anchorItem.height) + 12;
+    }
+
     // Anchor positioning
     // The anchor.rect defines where the popup window's top-left corner will be placed
     // relative to the anchorItem's top-left corner
     anchor.item: anchorItem
     anchor.rect.x: {
         if (barVertical) {
-            // Left bar: popup appears to the right of the button
+            // Left bar: popup appears to the right of the button; the
+            // extension grows leftward so the card stays in place
             if (barAtLeft)
-                return anchorItem.width + visualMargin + effectiveFrameOffset - shadowMargin;
+                return anchorItem.width + visualMargin + effectiveFrameOffset - shadowMargin - dragExtendDepth;
             // Right bar: popup appears to the left of the button
             return -totalWidth + shadowMargin - visualMargin - effectiveFrameOffset;
         }
@@ -95,9 +109,10 @@ PopupWindow {
             // Left/Right bar: center vertically relative to button
             return (anchorItem.height - totalHeight) / 2;
         }
-        // Top bar: popup appears below the button
+        // Top bar: popup appears below the button; the extension grows
+        // upward so the card stays in place
         if (barAtTop)
-            return anchorItem.height + visualMargin + effectiveFrameOffset - shadowMargin;
+            return anchorItem.height + visualMargin + effectiveFrameOffset - shadowMargin - dragExtendDepth;
         // Bottom bar: popup appears above the button
         return -totalHeight + shadowMargin - visualMargin - effectiveFrameOffset;
     }
@@ -185,6 +200,12 @@ PopupWindow {
         id: popupContainer
         anchors.fill: parent
         anchors.margins: root.shadowMargin
+        // Keep the card pinned in place while the window extends toward
+        // the bar
+        anchors.topMargin: root.shadowMargin + (root.barAtTop ? root.dragExtendDepth : 0)
+        anchors.bottomMargin: root.shadowMargin + (root.barAtBottom ? root.dragExtendDepth : 0)
+        anchors.leftMargin: root.shadowMargin + (root.barAtLeft ? root.dragExtendDepth : 0)
+        anchors.rightMargin: root.shadowMargin + (root.barAtRight ? root.dragExtendDepth : 0)
         opacity: root.popupOpacity
         scale: root.popupScale
         transformOrigin: {

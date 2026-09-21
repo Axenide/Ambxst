@@ -223,6 +223,7 @@ StyledRect {
         popupPadding: 10
         visualMargin: 16
         clickThroughMargins: true
+        extendTowardBar: true
 
         readonly property int columns: Math.max(1, Math.min(root.overflowItems.length, 5))
         readonly property int rows: Math.max(1, Math.ceil(root.overflowItems.length / columns))

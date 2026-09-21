@@ -204,15 +204,15 @@ MouseArea {
 
     // Overflow-side acceptance zone: a band just inside the popup's
     // visible content edge, on the side facing the bar (where the chevron
-    // button is). Positions beyond the edge also satisfy the test, so a
-    // release over the bar commits as well
+    // button is). The window's bar-facing extension counts too, so a
+    // release over the chevron commits as well
     function isNearAnchorEdge(mouseX, mouseY) {
         const popup = overflowPopupRef;
         if (!popup || !popup.isOpen)
             return false;
 
         const point = mapToItem(null, mouseX, mouseY);
-        const inset = popup.shadowMargin + 8;
+        const inset = popup.shadowMargin + popup.dragExtendDepth + 8;
         switch (bar.barPosition) {
         case "bottom":
             return point.y >= popup.height - inset;
