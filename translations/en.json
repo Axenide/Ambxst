@@ -40,6 +40,7 @@
   "ai.search_models": "Search models...",
   "ai.switched_to_model": "Switched to model: %1",
   "bar.resources.tooltip": "System Resources",
+  "bar.systray.overflow_empty": "Drag tray icons here",
   "bar.tooltip.audio_switcher": "Audio Device Switcher",
   "bar.tooltip.controls": "Audio & Brightness Controls",
   "bar.tooltip.keyboard_layout": "Keyboard Layout",

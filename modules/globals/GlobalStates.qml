@@ -230,6 +230,25 @@ Singleton {
     // Lockscreen state
     property bool lockscreenVisible: false
 
+    // Tray icons dragged from the overflow popup toward the chevron
+    // button, keyed by screen name (cross-window drop feedback)
+    property var systrayChevronHotScreens: ({})
+
+    function setSystrayChevronHot(screenName, hot) {
+        if (isSystrayChevronHot(screenName) === hot)
+            return;
+        const next = Object.assign({}, systrayChevronHotScreens);
+        if (hot)
+            next[screenName] = true;
+        else
+            delete next[screenName];
+        systrayChevronHotScreens = next;
+    }
+
+    function isSystrayChevronHot(screenName) {
+        return systrayChevronHotScreens[screenName] === true;
+    }
+
     // OSD state
     property bool osdVisible: false
     property string osdIndicator: "volume" // volume, mic, brightness

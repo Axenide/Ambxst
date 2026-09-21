@@ -40,6 +40,7 @@
   "ai.search_models": "Поиск моделей...",
   "ai.switched_to_model": "Модель переключена: %1",
   "bar.resources.tooltip": "Системные ресурсы",
+  "bar.systray.overflow_empty": "Перетащите значки сюда",
   "bar.tooltip.audio_switcher": "Переключатель аудиоустройств",
   "bar.tooltip.controls": "Управление звуком и яркостью",
   "bar.tooltip.keyboard_layout": "Раскладка клавиатуры",
