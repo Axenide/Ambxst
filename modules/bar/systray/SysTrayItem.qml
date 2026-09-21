@@ -6,6 +6,7 @@ import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.services
+import qs.modules.globals
 import qs.modules.components
 import qs.config
 
@@ -87,11 +88,20 @@ MouseArea {
     onCanceled: {
         if (dragOccurred && !dragCommitted) {
             if (inOverflow) {
+                // The grab broke while leaving the popup toward the bar:
+                // hand the tracking off to the hover proxies instead of
+                // committing, so the release point decides the drop
                 if (isNearAnchorEdge(lastDragX, lastDragY) || movedTowardAnchor(lastDragX, lastDragY))
-                    commitShow();
-            } else if (isOverPopup(lastDragX, lastDragY, 10)) {
-                commitHide();
+                    beginHandoff();
+                else
+                    stopDrag();
+                return;
             }
+            if (isOverPopup(lastDragX, lastDragY, 10))
+                commitHide();
+            else
+                stopDrag();
+            return;
         }
         stopDrag();
     }
@@ -121,6 +131,69 @@ MouseArea {
             overflowPopupRef.dragExtendInput = false;
             overflowPopupRef.suppressInput = false;
         }
+        if (GlobalStates.systrayDragItem === root) {
+            GlobalStates.systrayDragHandoff = false;
+            GlobalStates.systrayDragItem = null;
+        }
+        dragPreview.parent = root.dragLayer ?? root;
+    }
+
+    // Popup → bar handoff: the pointer grab broke while heading to the
+    // bar, so the panel and popup hover proxies take over tracking until
+    // the real release. The preview moves into the panel window, where it
+    // can render across the bar and the desktop
+    function beginHandoff() {
+        const popup = overflowPopupRef;
+        if (!popup || dragCommitted)
+            return;
+        GlobalStates.systrayDragHandoff = true;
+        GlobalStates.systrayDragScreen = root.bar?.screen?.name ?? "";
+        GlobalStates.systrayDragItem = root;
+        const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
+        const point = mapToItem(null, lastDragX, lastDragY);
+        if (dragPreview.parent !== root.bar)
+            dragPreview.parent = root.bar;
+        dragPreview.x = point.x + origin.x - pressOffsetX;
+        dragPreview.y = point.y + origin.y - pressOffsetY;
+    }
+
+    // Called by the hover proxies with panel-scene coordinates. Renders
+    // the preview above the popup window while crossing over it, and
+    // finishes the handoff once the button comes up
+    function proxyMove(globalX, globalY, pressed) {
+        if (GlobalStates.systrayDragItem !== root)
+            return;
+        const popup = overflowPopupRef;
+        if (popup) {
+            const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
+            const overPopup = globalX >= origin.x && globalX <= origin.x + popup.width
+                && globalY >= origin.y && globalY <= origin.y + popup.height;
+            if (overPopup && popupDragLayer) {
+                const layerOrigin = popupDragLayer.mapToItem(null, 0, 0);
+                dragPreview.parent = popupDragLayer;
+                dragPreview.x = globalX - origin.x - layerOrigin.x - pressOffsetX;
+                dragPreview.y = globalY - origin.y - layerOrigin.y - pressOffsetY;
+            } else {
+                if (dragPreview.parent !== root.bar)
+                    dragPreview.parent = root.bar;
+                dragPreview.x = globalX - pressOffsetX;
+                dragPreview.y = globalY - pressOffsetY;
+            }
+        }
+        if (!pressed)
+            finishHandoff(globalX, globalY);
+    }
+
+    function finishHandoff(globalX, globalY) {
+        const popup = overflowPopupRef;
+        if (popup) {
+            const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
+            if (isNearAnchorEdgeAt(Qt.point(globalX - origin.x, globalY - origin.y))) {
+                commitShow();
+                return;
+            }
+        }
+        stopDrag();
     }
 
     function updateDrag(mouse) {
@@ -206,12 +279,11 @@ MouseArea {
     // visible content edge, on the side facing the bar (where the chevron
     // button is). The window's bar-facing extension counts too, so a
     // release over the chevron commits as well
-    function isNearAnchorEdge(mouseX, mouseY) {
+    function isNearAnchorEdgeAt(point) {
         const popup = overflowPopupRef;
         if (!popup || !popup.isOpen)
             return false;
 
-        const point = mapToItem(null, mouseX, mouseY);
         const inset = popup.shadowMargin + popup.dragExtendDepth + 8;
         switch (bar.barPosition) {
         case "bottom":
@@ -225,11 +297,14 @@ MouseArea {
         }
     }
 
+    function isNearAnchorEdge(mouseX, mouseY) {
+        return isNearAnchorEdgeAt(mapToItem(null, mouseX, mouseY));
+    }
+
     // True when the drag traveled toward the bar side by at least the
     // drag threshold; catches fast flings whose last delivered event
     // never reached the anchor edge band
-    function movedTowardAnchor(mouseX, mouseY) {
-        const point = mapToItem(null, mouseX, mouseY);
+    function movedTowardAnchorAt(point) {
         switch (bar.barPosition) {
         case "bottom":
             return point.y - dragStartLocalY >= dragThreshold;
@@ -240,6 +315,10 @@ MouseArea {
         default:
             return dragStartLocalY - point.y >= dragThreshold;
         }
+    }
+
+    function movedTowardAnchor(mouseX, mouseY) {
+        return movedTowardAnchorAt(mapToItem(null, mouseX, mouseY));
     }
 
     function commitHide() {
@@ -455,6 +534,10 @@ MouseArea {
     }
 
     Component.onDestruction: {
+        if (GlobalStates.systrayDragItem === root) {
+            GlobalStates.systrayDragHandoff = false;
+            GlobalStates.systrayDragItem = null;
+        }
         if (systrayPopup.isOpen)
             systrayPopup.close();
     }

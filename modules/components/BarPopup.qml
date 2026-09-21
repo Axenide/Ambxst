@@ -5,6 +5,7 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.modules.services
+import qs.modules.globals
 import qs.modules.theme
 import qs.modules.components
 import qs.config
@@ -157,6 +158,31 @@ PopupWindow {
     }
 
     mask: root.suppressInput ? emptyInputMask : (root.clickThroughMargins ? contentInputMask : null)
+
+    // Full-window hover proxy used by systray drag handoffs: keeps
+    // tracking the pointer while it crosses back over the popup after
+    // the dragging item lost its grab
+    property bool dragHandoffProxy: false
+
+    MouseArea {
+        anchors.fill: parent
+        z: 10000
+        visible: enabled
+        enabled: root.dragHandoffProxy && root.visible && GlobalStates.systrayDragHandoff
+            && GlobalStates.systrayDragScreen === (root.bar?.screen?.name ?? "")
+        acceptedButtons: Qt.NoButton
+        hoverEnabled: true
+        cursorShape: Qt.ClosedHandCursor
+
+        onPositionChanged: mouse => {
+            const item = GlobalStates.systrayDragItem;
+            if (!item)
+                return;
+            const local = mapToItem(null, mouse.x, mouse.y);
+            const origin = root.anchorItem.mapToItem(null, root.anchor.rect.x, root.anchor.rect.y);
+            item.proxyMove(local.x + origin.x, local.y + origin.y, (mouse.buttons & Qt.LeftButton) !== 0);
+        }
+    }
 
     // Focus grab for click-outside-to-close behavior
     property bool focusActive: false

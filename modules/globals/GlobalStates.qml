@@ -230,6 +230,14 @@ Singleton {
     // Lockscreen state
     property bool lockscreenVisible: false
 
+    // Systray drag handoff: while true, hover proxies in the panel and
+    // the overflow popup keep tracking the pointer after the dragging
+    // surface lost its grab. systrayDragItem is the SysTrayItem that
+    // owns the drag and receives proxy updates
+    property bool systrayDragHandoff: false
+    property string systrayDragScreen: ""
+    property var systrayDragItem: null
+
     // OSD state
     property bool osdVisible: false
     property string osdIndicator: "volume" // volume, mic, brightness
