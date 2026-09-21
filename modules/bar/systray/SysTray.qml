@@ -37,17 +37,19 @@ StyledRect {
             overflowPopup.refreshFocusGrab();
     }
 
-    // The caret points to where the overflow popup opens, per bar side
+    // The caret points to where the overflow popup opens, per bar side,
+    // and flips to its opposite while the popup is open
     readonly property string chevronIcon: {
+        const open = overflowPopup.isOpen;
         switch (bar.barPosition) {
         case "bottom":
-            return Icons.caretUp;
+            return open ? Icons.caretDown : Icons.caretUp;
         case "left":
-            return Icons.caretRight;
+            return open ? Icons.caretLeft : Icons.caretRight;
         case "right":
-            return Icons.caretLeft;
+            return open ? Icons.caretRight : Icons.caretLeft;
         default:
-            return Icons.caretDown;
+            return open ? Icons.caretUp : Icons.caretDown;
         }
     }
 
