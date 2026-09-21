@@ -295,25 +295,4 @@ PanelWindow {
             }
         }
     }
-
-    // Hover proxy that keeps tracking a systray drag after the dragging
-    // surface lost its pointer grab (popup → bar handoff). The panel
-    // window spans the screen, so its scene coordinates are the
-    // output-relative coordinates the drag item expects
-    MouseArea {
-        anchors.fill: parent
-        z: 999
-        visible: enabled
-        enabled: GlobalStates.systrayDragHandoff
-            && GlobalStates.systrayDragScreen === (unifiedPanel.targetScreen?.name ?? "")
-        acceptedButtons: Qt.NoButton
-        hoverEnabled: true
-        cursorShape: Qt.ClosedHandCursor
-
-        onPositionChanged: mouse => {
-            const item = GlobalStates.systrayDragItem;
-            if (item)
-                item.proxyMove(mouse.x, mouse.y, (mouse.buttons & Qt.LeftButton) !== 0);
-        }
-    }
 }

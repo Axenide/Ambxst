@@ -90,6 +90,19 @@ StyledRect {
         overflowPopup.toggle();
     }
 
+    // Drop zone for showing overflow icons: dropping a hidden item
+    // anywhere over the tray pill puts it back in the bar
+    DropArea {
+        anchors.fill: parent
+        keys: ["text/x-ambxst-tray-item"]
+
+        onDropped: drop => {
+            const id = drop.getDataAsString("text/x-ambxst-tray-item");
+            if (id && root.hiddenIds.includes(id))
+                root.showItem(id);
+        }
+    }
+
     RowLayout {
         id: rowLayout
         visible: !root.vertical
@@ -105,10 +118,7 @@ StyledRect {
                 required property SystemTrayItem modelData
                 bar: root.bar
                 item: modelData
-                tray: root
                 overflowPopupRef: overflowPopup
-                dragLayer: root.bar
-                popupDragLayer: overflowDragLayer
             }
         }
 
@@ -133,10 +143,7 @@ StyledRect {
                 required property SystemTrayItem modelData
                 bar: root.bar
                 item: modelData
-                tray: root
                 overflowPopupRef: overflowPopup
-                dragLayer: root.bar
-                popupDragLayer: overflowDragLayer
             }
         }
 
@@ -206,12 +213,16 @@ StyledRect {
         DropArea {
             id: dropArea
             anchors.fill: parent
-            keys: ["ambxst.tray.item"]
+            keys: ["text/x-ambxst-tray-item"]
 
             onDropped: drop => {
-                if (drop.source !== undefined && drop.source !== null && drop.source !== "") {
-                    chevron.tray.hideItem(String(drop.source));
-                }
+                const id = drop.getDataAsString("text/x-ambxst-tray-item");
+                if (!id)
+                    return;
+                if (chevron.tray.hiddenIds.includes(id))
+                    chevron.tray.showItem(id);
+                else
+                    chevron.tray.hideItem(id);
             }
         }
     }
@@ -223,8 +234,6 @@ StyledRect {
         popupPadding: 10
         visualMargin: 16
         clickThroughMargins: true
-        extendTowardBar: true
-        dragHandoffProxy: true
 
         readonly property int columns: Math.max(1, Math.min(root.overflowItems.length, 5))
         readonly property int rows: Math.max(1, Math.ceil(root.overflowItems.length / columns))
@@ -263,10 +272,8 @@ StyledRect {
                         required property SystemTrayItem modelData
                         bar: root.bar
                         item: modelData
-                        tray: root
                         inOverflow: true
                         overflowPopupRef: overflowPopup
-                        dragLayer: overflowDragLayer
                     }
                 }
             }
@@ -279,13 +286,34 @@ StyledRect {
                 font.pixelSize: Styling.fontSize(-1)
                 color: Colors.outline
             }
-        }
 
-        // Floating layer for drag previews inside the popup
-        Item {
-            id: overflowDragLayer
-            anchors.fill: parent
-            z: 100
+            // Drop zone for hiding bar icons: dropping a visible item
+            // over the popup card moves it into the overflow grid
+            DropArea {
+                id: popupDropArea
+                anchors.fill: parent
+                keys: ["text/x-ambxst-tray-item"]
+
+                onDropped: drop => {
+                    const id = drop.getDataAsString("text/x-ambxst-tray-item");
+                    if (id && !root.hiddenIds.includes(id))
+                        root.hideItem(id);
+                }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                radius: Styling.radius(8)
+                color: Colors.primary
+                opacity: popupDropArea.containsDrag ? 0.15 : 0
+
+                Behavior on opacity {
+                    enabled: Config.animDuration > 0
+                    NumberAnimation {
+                        duration: Config.animDuration / 2
+                    }
+                }
+            }
         }
     }
 }

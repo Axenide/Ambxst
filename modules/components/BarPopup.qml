@@ -5,7 +5,6 @@ import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.modules.services
-import qs.modules.globals
 import qs.modules.theme
 import qs.modules.components
 import qs.config
@@ -66,8 +65,8 @@ PopupWindow {
     property int contentWidth: 220
     property int contentHeight: 150
 
-    implicitWidth: totalWidth + (barVertical ? dragExtendDepth : 0)
-    implicitHeight: totalHeight + (barVertical ? 0 : dragExtendDepth)
+    implicitWidth: totalWidth
+    implicitHeight: totalHeight
 
     // Frame detection
     readonly property bool frameEnabled: Config.bar?.frameEnabled ?? false
@@ -76,29 +75,15 @@ PopupWindow {
     readonly property int frameOffset: (frameEnabled && containBar) ? frameThickness : 0
     readonly property int effectiveFrameOffset: (frameEnabled && containBar) ? frameOffset : 0
 
-    // While true, the popup window statically extends toward the bar far
-    // enough to cover the anchor item. The extension is transparent and
-    // click-through by default; combined with dragExtendInput it lets
-    // drags that started inside keep receiving motion and the release
-    // while crossing onto the bar
-    property bool extendTowardBar: false
-
-    readonly property int dragExtendDepth: {
-        if (!extendTowardBar)
-            return 0;
-        return effectiveFrameOffset + (barVertical ? anchorItem.width : anchorItem.height) + 12;
-    }
-
     // Anchor positioning
     // The anchor.rect defines where the popup window's top-left corner will be placed
     // relative to the anchorItem's top-left corner
     anchor.item: anchorItem
     anchor.rect.x: {
         if (barVertical) {
-            // Left bar: popup appears to the right of the button; the
-            // extension grows leftward so the card stays in place
+            // Left bar: popup appears to the right of the button
             if (barAtLeft)
-                return anchorItem.width + visualMargin + effectiveFrameOffset - shadowMargin - dragExtendDepth;
+                return anchorItem.width + visualMargin + effectiveFrameOffset - shadowMargin;
             // Right bar: popup appears to the left of the button
             return -totalWidth + shadowMargin - visualMargin - effectiveFrameOffset;
         }
@@ -110,10 +95,9 @@ PopupWindow {
             // Left/Right bar: center vertically relative to button
             return (anchorItem.height - totalHeight) / 2;
         }
-        // Top bar: popup appears below the button; the extension grows
-        // upward so the card stays in place
+        // Top bar: popup appears below the button
         if (barAtTop)
-            return anchorItem.height + visualMargin + effectiveFrameOffset - shadowMargin - dragExtendDepth;
+            return anchorItem.height + visualMargin + effectiveFrameOffset - shadowMargin;
         // Bottom bar: popup appears above the button
         return -totalHeight + shadowMargin - visualMargin - effectiveFrameOffset;
     }
@@ -128,61 +112,12 @@ PopupWindow {
     // parent window travel over the margins without breaking its grab.
     property bool clickThroughMargins: false
 
-    // While true, the input mask expands to the whole popup window
-    // (shadow margins included) so drags that started inside keep
-    // receiving pointer events while crossing the margins
-    property bool dragExtendInput: false
-
-    // While true, the popup claims no pointer input at all. Drags that
-    // started in the parent window keep their grab while crossing over
-    // the popup instead of being canceled by the surface switch
-    property bool suppressInput: false
-
     Region {
         id: contentInputMask
         item: background
-        regions: [
-            Region {
-                item: root.dragExtendInput && root.visible ? fullWindowInput : null
-            }
-        ]
     }
 
-    Item {
-        id: fullWindowInput
-        anchors.fill: parent
-    }
-
-    Region {
-        id: emptyInputMask
-    }
-
-    mask: root.suppressInput ? emptyInputMask : (root.clickThroughMargins ? contentInputMask : null)
-
-    // Full-window hover proxy used by systray drag handoffs: keeps
-    // tracking the pointer while it crosses back over the popup after
-    // the dragging item lost its grab
-    property bool dragHandoffProxy: false
-
-    MouseArea {
-        anchors.fill: parent
-        z: 10000
-        visible: enabled
-        enabled: root.dragHandoffProxy && root.visible && GlobalStates.systrayDragHandoff
-            && GlobalStates.systrayDragScreen === (root.bar?.screen?.name ?? "")
-        acceptedButtons: Qt.NoButton
-        hoverEnabled: true
-        cursorShape: Qt.ClosedHandCursor
-
-        onPositionChanged: mouse => {
-            const item = GlobalStates.systrayDragItem;
-            if (!item)
-                return;
-            const local = mapToItem(null, mouse.x, mouse.y);
-            const origin = root.anchorItem.mapToItem(null, root.anchor.rect.x, root.anchor.rect.y);
-            item.proxyMove(local.x + origin.x, local.y + origin.y, (mouse.buttons & Qt.LeftButton) !== 0);
-        }
-    }
+    mask: root.clickThroughMargins ? contentInputMask : null
 
     // Focus grab for click-outside-to-close behavior
     property bool focusActive: false
@@ -226,12 +161,6 @@ PopupWindow {
         id: popupContainer
         anchors.fill: parent
         anchors.margins: root.shadowMargin
-        // Keep the card pinned in place while the window extends toward
-        // the bar
-        anchors.topMargin: root.shadowMargin + (root.barAtTop ? root.dragExtendDepth : 0)
-        anchors.bottomMargin: root.shadowMargin + (root.barAtBottom ? root.dragExtendDepth : 0)
-        anchors.leftMargin: root.shadowMargin + (root.barAtLeft ? root.dragExtendDepth : 0)
-        anchors.rightMargin: root.shadowMargin + (root.barAtRight ? root.dragExtendDepth : 0)
         opacity: root.popupOpacity
         scale: root.popupScale
         transformOrigin: {
