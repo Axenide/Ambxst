@@ -286,32 +286,32 @@ StyledRect {
                 font.pixelSize: Styling.fontSize(-1)
                 color: Colors.outline
             }
+        }
 
-            // Drop zone for hiding bar icons: dropping a visible item
-            // over the popup card moves it into the overflow grid
-            DropArea {
-                id: popupDropArea
-                anchors.fill: parent
-                keys: ["text/x-ambxst-tray-item"]
+        // Drop zone for hiding bar icons: dropping a visible item
+        // over the popup card moves it into the overflow grid
+        DropArea {
+            id: popupDropArea
+            anchors.fill: parent
+            keys: ["text/x-ambxst-tray-item"]
 
-                onDropped: drop => {
-                    const id = drop.getDataAsString("text/x-ambxst-tray-item");
-                    if (id && !root.hiddenIds.includes(id))
-                        root.hideItem(id);
-                }
+            onDropped: drop => {
+                const id = drop.getDataAsString("text/x-ambxst-tray-item");
+                if (id && !root.hiddenIds.includes(id))
+                    root.hideItem(id);
             }
+        }
 
-            Rectangle {
-                anchors.fill: parent
-                radius: Styling.radius(8)
-                color: Colors.primary
-                opacity: popupDropArea.containsDrag ? 0.15 : 0
+        Rectangle {
+            anchors.fill: parent
+            radius: Styling.radius(8)
+            color: Colors.primary
+            opacity: popupDropArea.containsDrag ? 0.15 : 0
 
-                Behavior on opacity {
-                    enabled: Config.animDuration > 0
-                    NumberAnimation {
-                        duration: Config.animDuration / 2
-                    }
+            Behavior on opacity {
+                enabled: Config.animDuration > 0
+                NumberAnimation {
+                    duration: Config.animDuration / 2
                 }
             }
         }
