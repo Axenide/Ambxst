@@ -114,6 +114,8 @@ MouseArea {
     function stopDrag() {
         dragging = false;
         dragPreview.visible = false;
+        if (inOverflow && overflowPopupRef)
+            overflowPopupRef.dragExtendInput = false;
     }
 
     function updateDrag(mouse) {
@@ -141,13 +143,9 @@ MouseArea {
         if (!dragging) {
             dragging = true;
             dragPreview.visible = true;
+            if (inOverflow && overflowPopupRef)
+                overflowPopupRef.dragExtendInput = true;
         }
-
-        // Commit while still inside the popup surface: crossing onto the
-        // bar window can break the pointer grab. The bar side instead
-        // waits for the release inside the popup's drop zone.
-        if (inOverflow && isNearAnchorEdge(mouse.x, mouse.y))
-            commitShow();
     }
 
     function positionPreview(mouseX, mouseY) {
@@ -176,10 +174,10 @@ MouseArea {
             && point.y <= origin.y + popup.height - inset;
     }
 
-    // Overflow-side commit zone: a band just inside the popup's visible
-    // content edge, on the side facing the bar (where the chevron button
-    // is). Pointer events stop once the pointer leaves the popup's input
-    // region, so the zone must be reached before the edge
+    // Overflow-side acceptance zone: a band just inside the popup's
+    // visible content edge, on the side facing the bar (where the chevron
+    // button is). Positions beyond the edge also satisfy the test, so a
+    // release over the bar commits as well
     function isNearAnchorEdge(mouseX, mouseY) {
         const popup = overflowPopupRef;
         if (!popup || !popup.isOpen)

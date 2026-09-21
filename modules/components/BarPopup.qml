@@ -112,9 +112,24 @@ PopupWindow {
     // parent window travel over the margins without breaking its grab.
     property bool clickThroughMargins: false
 
+    // While true, the input mask expands to the whole popup window
+    // (shadow margins included) so drags that started inside keep
+    // receiving pointer events while crossing the margins
+    property bool dragExtendInput: false
+
     Region {
         id: contentInputMask
         item: background
+        regions: [
+            Region {
+                item: root.dragExtendInput && root.visible ? fullWindowInput : null
+            }
+        ]
+    }
+
+    Item {
+        id: fullWindowInput
+        anchors.fill: parent
     }
 
     mask: root.clickThroughMargins ? contentInputMask : null
