@@ -230,29 +230,6 @@ Singleton {
     // Lockscreen state
     property bool lockscreenVisible: false
 
-    // Tray icons dragged from the overflow popup toward the chevron
-    // button, keyed by screen name (cross-window drop feedback)
-    property var systrayChevronHotScreens: ({})
-
-    // True while a tray icon drag is in progress; expands the shell
-    // panel's input mask so motion keeps flowing beyond the bar hitbox
-    property bool systrayDragActive: false
-
-    function setSystrayChevronHot(screenName, hot) {
-        if (isSystrayChevronHot(screenName) === hot)
-            return;
-        const next = Object.assign({}, systrayChevronHotScreens);
-        if (hot)
-            next[screenName] = true;
-        else
-            delete next[screenName];
-        systrayChevronHotScreens = next;
-    }
-
-    function isSystrayChevronHot(screenName) {
-        return systrayChevronHotScreens[screenName] === true;
-    }
-
     // OSD state
     property bool osdVisible: false
     property string osdIndicator: "volume" // volume, mic, brightness

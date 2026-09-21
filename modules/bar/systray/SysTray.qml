@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell.Services.SystemTray
-import qs.modules.globals
 import qs.modules.services
 import qs.modules.theme
 import qs.modules.components
@@ -151,7 +150,6 @@ StyledRect {
         required property var tray
 
         property bool hot: dropArea.containsDrag
-            || GlobalStates.isSystrayChevronHot(chevron.tray.bar?.screen?.name ?? "")
 
         Layout.preferredWidth: 20
         Layout.preferredHeight: 20
@@ -263,7 +261,6 @@ StyledRect {
                         tray: root
                         inOverflow: true
                         overflowPopupRef: overflowPopup
-                        dropTarget: root.vertical ? chevronColumn : chevronRow
                         dragLayer: overflowDragLayer
                     }
                 }

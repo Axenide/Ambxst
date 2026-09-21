@@ -4,7 +4,6 @@ import QtQuick.Controls
 import Quickshell
 import Quickshell.Services.SystemTray
 import Quickshell.Widgets
-import qs.modules.globals
 import qs.modules.theme
 import qs.modules.services
 import qs.modules.components
@@ -20,7 +19,6 @@ MouseArea {
     property bool inOverflow: false
     property var tray: null
     property var overflowPopupRef: null
-    property Item dropTarget: null
     property Item dragLayer: null
 
     property int trayItemSize: 20
@@ -29,6 +27,9 @@ MouseArea {
     // True from the moment a press turns into a drag; blocks the
     // click activation until the next press
     property bool dragOccurred: false
+    // True once the drag committed (hide/show); stops further drag
+    // processing while the pointer is still held
+    property bool dragCommitted: false
 
     property real pressOffsetX: 0
     property real pressOffsetY: 0
@@ -51,6 +52,7 @@ MouseArea {
 
     onPressed: mouse => {
         dragOccurred = false;
+        dragCommitted = false;
         pressOffsetX = mouse.x;
         pressOffsetY = mouse.y;
     }
@@ -58,12 +60,8 @@ MouseArea {
     onPositionChanged: mouse => updateDrag(mouse)
 
     onReleased: mouse => {
-        if (dragOccurred) {
-            if (inOverflow)
-                finishOverflowDrag(mouse.x, mouse.y);
-            else
-                finishBarDrag(mouse.x, mouse.y);
-        }
+        if (dragOccurred && !dragCommitted && !inOverflow)
+            finishBarDrag(mouse.x, mouse.y);
         stopDrag();
     }
 
@@ -90,11 +88,11 @@ MouseArea {
     function stopDrag() {
         dragging = false;
         dragPreview.visible = false;
-        GlobalStates.systrayDragActive = false;
-        GlobalStates.setSystrayChevronHot(root.bar?.screen?.name ?? "", false);
     }
 
     function updateDrag(mouse) {
+        if (dragCommitted)
+            return;
         if (!(mouse.buttons & Qt.LeftButton))
             return;
 
@@ -111,11 +109,17 @@ MouseArea {
         if (!dragging) {
             dragging = true;
             dragPreview.visible = true;
-            GlobalStates.systrayDragActive = true;
         }
 
-        if (inOverflow)
-            updateOverflowFeedback(mouse.x, mouse.y);
+        if (inOverflow) {
+            // Commit while still inside the popup surface: crossing onto
+            // the bar window can break the pointer grab, so never wait
+            // for the release past the popup edge
+            if (isNearAnchorEdge(mouse.x, mouse.y))
+                commitShow();
+        } else if (isOverPopup(mouse.x, mouse.y)) {
+            commitHide();
+        }
     }
 
     function positionPreview(mouseX, mouseY) {
@@ -124,25 +128,6 @@ MouseArea {
         const point = mapToItem(dragLayer, mouseX, mouseY);
         dragPreview.x = point.x - pressOffsetX;
         dragPreview.y = point.y - pressOffsetY;
-    }
-
-    // Cross-window drop: the popup is a separate surface, so the release
-    // point is mapped into the bar window and tested against the chevron
-    function isOverDropTarget(mouseX, mouseY) {
-        if (!dropTarget || !overflowPopupRef)
-            return false;
-
-        const popup = overflowPopupRef;
-        const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
-        const local = mapToItem(null, mouseX, mouseY);
-        const point = Qt.point(local.x + origin.x, local.y + origin.y);
-
-        const base = dropTarget.mapToItem(null, 0, 0);
-        const margin = 12;
-        return point.x >= base.x - margin
-            && point.x <= base.x + dropTarget.width + margin
-            && point.y >= base.y - margin
-            && point.y <= base.y + dropTarget.height + margin;
     }
 
     // Bar-side drop into the open overflow popup: both items live in the
@@ -160,34 +145,55 @@ MouseArea {
             && point.y <= origin.y + popup.height;
     }
 
-    function finishBarDrag(mouseX, mouseY) {
-        let dropped = false;
-        if (dragPreview.Drag.active) {
-            dropped = dragPreview.Drag.target !== null;
-            dragPreview.Drag.drop();
+    // Overflow-side commit zone: crossing the popup's visible content
+    // edge on the side facing the bar (where the chevron button is)
+    function isNearAnchorEdge(mouseX, mouseY) {
+        const popup = overflowPopupRef;
+        if (!popup || !popup.isOpen)
+            return false;
+
+        const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
+        const point = mapToItem(null, mouseX, mouseY);
+        const content = popup.shadowMargin;
+        switch (bar.barPosition) {
+        case "bottom":
+            return point.y >= origin.y + popup.height - content;
+        case "left":
+            return point.x <= origin.x + content;
+        case "right":
+            return point.x >= origin.x + popup.width - content;
+        default:
+            return point.y <= origin.y + content;
         }
-        if (!dropped && isOverPopup(mouseX, mouseY) && tray)
+    }
+
+    function commitHide() {
+        if (dragCommitted)
+            return;
+        dragCommitted = true;
+        if (tray)
             tray.hideItem(item.id);
+        stopDrag();
     }
 
-    function updateOverflowFeedback(mouseX, mouseY) {
-        const overTarget = isOverDropTarget(mouseX, mouseY);
-        GlobalStates.setSystrayChevronHot(root.bar?.screen?.name ?? "", overTarget);
-
-        // The preview clips at the popup edge; hide it once outside
-        if (dragLayer) {
-            const local = mapToItem(dragLayer, mouseX, mouseY);
-            const slack = 24;
-            dragPreview.visible = local.x >= -slack && local.y >= -slack
-                && local.x <= dragLayer.width + slack
-                && local.y <= dragLayer.height + slack;
-        }
-    }
-
-    function finishOverflowDrag(mouseX, mouseY) {
-        GlobalStates.setSystrayChevronHot(root.bar?.screen?.name ?? "", false);
-        if (isOverDropTarget(mouseX, mouseY) && tray)
+    function commitShow() {
+        if (dragCommitted)
+            return;
+        dragCommitted = true;
+        if (tray)
             tray.showItem(item.id);
+        stopDrag();
+    }
+
+    function finishBarDrag(mouseX, mouseY) {
+        if (dragPreview.Drag.active) {
+            const dropped = dragPreview.Drag.target !== null;
+            dragPreview.Drag.drop();
+            if (dropped)
+                return;
+        }
+        if (isOverPopup(mouseX, mouseY) && tray)
+            tray.hideItem(item.id);
     }
 
     BarPopup {
@@ -374,7 +380,6 @@ MouseArea {
     }
 
     Component.onDestruction: {
-        GlobalStates.setSystrayChevronHot(root.bar?.screen?.name ?? "", false);
         if (systrayPopup.isOpen)
             systrayPopup.close();
     }
