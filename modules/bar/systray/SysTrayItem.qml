@@ -39,6 +39,11 @@ MouseArea {
     property real lastDragX: 0
     property real lastDragY: 0
 
+    // Drag start position in window-scene coords, used to check whether
+    // an overflow drag moved toward the bar side
+    property real dragStartLocalX: 0
+    property real dragStartLocalY: 0
+
     readonly property int dragThreshold: Qt.styleHints?.startDragDistance ?? 10
 
     readonly property string iconSource: {
@@ -67,7 +72,7 @@ MouseArea {
     onReleased: mouse => {
         if (dragOccurred && !dragCommitted) {
             if (inOverflow) {
-                if (isNearAnchorEdge(mouse.x, mouse.y))
+                if (isNearAnchorEdge(mouse.x, mouse.y) || movedTowardAnchor(mouse.x, mouse.y))
                     commitShow();
             } else {
                 finishBarDrag(mouse.x, mouse.y);
@@ -79,7 +84,7 @@ MouseArea {
     onCanceled: {
         if (dragOccurred && !dragCommitted) {
             if (inOverflow) {
-                if (isNearAnchorEdge(lastDragX, lastDragY))
+                if (isNearAnchorEdge(lastDragX, lastDragY) || movedTowardAnchor(lastDragX, lastDragY))
                     commitShow();
             } else if (isOverPopup(lastDragX, lastDragY, 10)) {
                 commitHide();
@@ -123,6 +128,9 @@ MouseArea {
             if (Math.abs(dx) < dragThreshold && Math.abs(dy) < dragThreshold)
                 return;
             dragOccurred = true;
+            const startPoint = mapToItem(null, mouse.x, mouse.y);
+            dragStartLocalX = startPoint.x;
+            dragStartLocalY = startPoint.y;
         }
 
         lastDragX = mouse.x;
@@ -135,14 +143,11 @@ MouseArea {
             dragPreview.visible = true;
         }
 
-        if (inOverflow) {
-            // Commit while still inside the popup surface: crossing onto
-            // the bar window can break the pointer grab
-            if (isNearAnchorEdge(mouse.x, mouse.y))
-                commitShow();
-        } else if (isOverPopup(mouse.x, mouse.y, 10)) {
-            commitHide();
-        }
+        // Commit while still inside the popup surface: crossing onto the
+        // bar window can break the pointer grab. The bar side instead
+        // waits for the release inside the popup's drop zone.
+        if (inOverflow && isNearAnchorEdge(mouse.x, mouse.y))
+            commitShow();
     }
 
     function positionPreview(mouseX, mouseY) {
@@ -171,26 +176,43 @@ MouseArea {
             && point.y <= origin.y + popup.height - inset;
     }
 
-    // Overflow-side commit zone: crossing the popup's visible content
-    // edge on the side facing the bar (where the chevron button is)
+    // Overflow-side commit zone: a band just inside the popup's visible
+    // content edge, on the side facing the bar (where the chevron button
+    // is). Pointer events stop once the pointer leaves the popup's input
+    // region, so the zone must be reached before the edge
     function isNearAnchorEdge(mouseX, mouseY) {
         const popup = overflowPopupRef;
         if (!popup || !popup.isOpen)
             return false;
 
-        const origin = popup.anchorItem.mapToItem(null, popup.anchor.rect.x, popup.anchor.rect.y);
-        const local = mapToItem(null, mouseX, mouseY);
-        const point = Qt.point(local.x + origin.x, local.y + origin.y);
-        const inset = popup.shadowMargin;
+        const point = mapToItem(null, mouseX, mouseY);
+        const inset = popup.shadowMargin + 8;
         switch (bar.barPosition) {
         case "bottom":
-            return point.y >= origin.y + popup.height - inset;
+            return point.y >= popup.height - inset;
         case "left":
-            return point.x <= origin.x + inset;
+            return point.x <= inset;
         case "right":
-            return point.x >= origin.x + popup.width - inset;
+            return point.x >= popup.width - inset;
         default:
-            return point.y <= origin.y + inset;
+            return point.y <= inset;
+        }
+    }
+
+    // True when the drag traveled toward the bar side by at least the
+    // drag threshold; catches fast flings whose last delivered event
+    // never reached the anchor edge band
+    function movedTowardAnchor(mouseX, mouseY) {
+        const point = mapToItem(null, mouseX, mouseY);
+        switch (bar.barPosition) {
+        case "bottom":
+            return point.y - dragStartLocalY >= dragThreshold;
+        case "left":
+            return dragStartLocalX - point.x >= dragThreshold;
+        case "right":
+            return point.x - dragStartLocalX >= dragThreshold;
+        default:
+            return dragStartLocalY - point.y >= dragThreshold;
         }
     }
 
