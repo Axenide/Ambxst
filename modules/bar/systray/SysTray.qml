@@ -108,6 +108,7 @@ StyledRect {
                 tray: root
                 overflowPopupRef: overflowPopup
                 dragLayer: root.bar
+                popupDragLayer: overflowDragLayer
             }
         }
 
@@ -135,6 +136,7 @@ StyledRect {
                 tray: root
                 overflowPopupRef: overflowPopup
                 dragLayer: root.bar
+                popupDragLayer: overflowDragLayer
             }
         }
 

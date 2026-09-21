@@ -20,6 +20,9 @@ MouseArea {
     property var tray: null
     property var overflowPopupRef: null
     property Item dragLayer: null
+    // Drag layer inside the overflow popup; lets bar-side previews float
+    // above the popup window while crossing over it
+    property Item popupDragLayer: null
 
     property int trayItemSize: 20
     property bool isHovered: false
@@ -114,8 +117,10 @@ MouseArea {
     function stopDrag() {
         dragging = false;
         dragPreview.visible = false;
-        if (inOverflow && overflowPopupRef)
+        if (overflowPopupRef) {
             overflowPopupRef.dragExtendInput = false;
+            overflowPopupRef.suppressInput = false;
+        }
     }
 
     function updateDrag(mouse) {
@@ -143,14 +148,37 @@ MouseArea {
         if (!dragging) {
             dragging = true;
             dragPreview.visible = true;
-            if (inOverflow && overflowPopupRef)
-                overflowPopupRef.dragExtendInput = true;
+            if (overflowPopupRef) {
+                if (inOverflow)
+                    overflowPopupRef.dragExtendInput = true;
+                else
+                    overflowPopupRef.suppressInput = true;
+            }
         }
     }
 
     function positionPreview(mouseX, mouseY) {
         if (!dragLayer)
             return;
+
+        // While over the overflow popup, render the preview from the
+        // popup's own layer so it floats above the popup window instead
+        // of sliding under it. The popup window's top-left corner sits at
+        // the anchor rect origin, so the panel-scene point maps into the
+        // popup layer by subtracting both origins
+        if (!inOverflow && popupDragLayer && isOverPopup(mouseX, mouseY, overflowPopupRef?.shadowMargin ?? 0)) {
+            const popupOrigin = overflowPopupRef.anchorItem.mapToItem(null, overflowPopupRef.anchor.rect.x, overflowPopupRef.anchor.rect.y);
+            const layerOrigin = popupDragLayer.mapToItem(null, 0, 0);
+            const scenePoint = mapToItem(null, mouseX, mouseY);
+            dragPreview.parent = popupDragLayer;
+            dragPreview.x = scenePoint.x - popupOrigin.x - layerOrigin.x - pressOffsetX;
+            dragPreview.y = scenePoint.y - popupOrigin.y - layerOrigin.y - pressOffsetY;
+            return;
+        }
+
+        if (dragPreview.parent !== dragLayer)
+            dragPreview.parent = dragLayer;
+
         const point = mapToItem(dragLayer, mouseX, mouseY);
         dragPreview.x = point.x - pressOffsetX;
         dragPreview.y = point.y - pressOffsetY;

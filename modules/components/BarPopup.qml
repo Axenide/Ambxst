@@ -117,6 +117,11 @@ PopupWindow {
     // receiving pointer events while crossing the margins
     property bool dragExtendInput: false
 
+    // While true, the popup claims no pointer input at all. Drags that
+    // started in the parent window keep their grab while crossing over
+    // the popup instead of being canceled by the surface switch
+    property bool suppressInput: false
+
     Region {
         id: contentInputMask
         item: background
@@ -132,7 +137,11 @@ PopupWindow {
         anchors.fill: parent
     }
 
-    mask: root.clickThroughMargins ? contentInputMask : null
+    Region {
+        id: emptyInputMask
+    }
+
+    mask: root.suppressInput ? emptyInputMask : (root.clickThroughMargins ? contentInputMask : null)
 
     // Focus grab for click-outside-to-close behavior
     property bool focusActive: false
