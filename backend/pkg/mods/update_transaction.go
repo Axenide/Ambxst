@@ -258,6 +258,13 @@ func (m *Manager) ApplyUpdates(planID string, reviewed bool, ids ...string) (Sta
 		}
 	}
 	m.updates.RestartRequired = plan.generation != ""
+	known := make([]UpdateItem, 0, len(m.updates.Known))
+	for _, item := range m.updates.Known {
+		if !available[item.ID] {
+			known = append(known, item)
+		}
+	}
+	m.updates.Known = known
 	if countAvailable(m.updates.Items) > 0 {
 		m.updates.Phase = "partial"
 	}

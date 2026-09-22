@@ -57,8 +57,8 @@ func TestPeriodicCheckMigrationAndDue(t *testing.T) {
 		t.Fatal("check-only schedule stopped at an available update")
 	}
 	updates.Scheduled = false
-	if automaticDue(state, updates, false, now) {
-		t.Fatal("manual preview was replaced")
+	if !automaticDue(state, updates, false, now) {
+		t.Fatal("manual preview blocked scheduled discovery")
 	}
 	state.Mods[0].SourceType = "local"
 	if automaticDue(state, UpdateState{}, false, now) {

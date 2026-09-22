@@ -19,8 +19,11 @@ StyledRect {
     property bool toolsVisible: false
     signal updateRequested(string id, var trigger)
     readonly property var updates: ModsService.updates
-    readonly property var changedItems: (updates?.items ?? []).filter(item => item.state !== "current")
-    readonly property int currentCount: (updates?.items ?? []).filter(item => item.state === "current").length
+    readonly property var knownItems: updates?.known ?? updates?.items ?? []
+    readonly property var changedItems: knownItems.filter(item => item.state !== "current")
+    readonly property int currentCount: knownItems.filter(item => item.state === "current").length
+    readonly property bool allKnownPrepared: changedItems.filter(item => item.state === "available").every(
+        item => (updates?.items ?? []).some(candidate => candidate.id === item.id && candidate.state === "available"))
     readonly property bool working: ModsService.busy || (updates?.busy ?? false)
 
     component Label: Text {
@@ -112,13 +115,8 @@ StyledRect {
         }
         Label {
             visible: ModsService.periodicChecks && (root.updates?.nextCheck ?? "") !== ""
-                && !(root.updates?.canApply && !root.updates?.scheduled) && !ModsService.restartRequired
+                && !ModsService.restartRequired
             text: I18n.t("mods.next_check", Qt.formatDateTime(new Date(root.updates?.nextCheck ?? ""), "dd.MM.yyyy HH:mm"))
-            color: Colors.outline
-        }
-        Label {
-            visible: ModsService.periodicChecks && !!root.updates?.canApply && !root.updates?.scheduled
-            text: I18n.t("mods.schedule_review_pending")
             color: Colors.outline
         }
         Separator { Layout.fillWidth: true; Layout.topMargin: 4; Layout.bottomMargin: 4 }
@@ -154,7 +152,7 @@ StyledRect {
                 onClicked: ModsService.checkUpdates()
             }
             Action {
-                visible: (root.updates?.items ?? []).length > 0
+                visible: root.knownItems.length > 0
                 text: I18n.t(root.expanded ? "mods.hide_preview" : "mods.review_updates")
                 enabled: true
                 onClicked: root.expanded = !root.expanded
@@ -218,6 +216,16 @@ StyledRect {
                             + (modelData.toVersion && modelData.toVersion !== modelData.fromVersion ? " → " + modelData.toVersion : "")
                             + " · " + I18n.t("mods.update_item_" + modelData.state)
                         font.weight: Font.DemiBold
+                    }
+                    Label {
+                        visible: (modelData.checkedAt ?? "") !== ""
+                        text: I18n.t("mods.last_check", Qt.formatDateTime(new Date(modelData.checkedAt ?? ""), "dd.MM.yyyy HH:mm"))
+                        color: Colors.outline
+                    }
+                    Label {
+                        visible: (modelData.checkError ?? "") !== ""
+                        text: I18n.t("mods.cached_check_failed")
+                        color: Colors.error
                     }
                     Label {
                         visible: modelData.state === "available" && modelData.toVersion === modelData.fromVersion
@@ -337,7 +345,7 @@ StyledRect {
                 Layout.fillWidth: true
                 spacing: 8
                 Action {
-                    visible: root.updates?.canApply ?? false
+                    visible: !!root.updates?.canApply && root.allKnownPrepared
                     text: I18n.t("mods.apply_updates")
                     primary: true
                     enabled: !root.working && !ModsService.restartRequired

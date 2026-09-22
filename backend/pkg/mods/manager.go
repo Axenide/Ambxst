@@ -1078,6 +1078,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 		Updates:             m.updateState(),
 		Mods:                make([]ModInfo, 0, len(state.Mods)),
 	}
+	status.Updates.Known = m.knownUpdatesFor(state)
 	if pending, ok := m.readPendingActivation(); ok && pending.Generation == state.ActiveGeneration {
 		status.RestartRequired = true
 	}

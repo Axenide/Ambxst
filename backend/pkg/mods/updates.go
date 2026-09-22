@@ -18,6 +18,10 @@ import (
 )
 
 type UpdateItem struct {
+	CheckedAt         string            `json:"checkedAt,omitempty"`
+	Source            string            `json:"source,omitempty"`
+	SourceType        string            `json:"sourceType,omitempty"`
+	CheckError        string            `json:"checkError,omitempty"`
 	ID                string            `json:"id"`
 	FromVersion       string            `json:"fromVersion"`
 	ToVersion         string            `json:"toVersion"`
@@ -53,6 +57,7 @@ type UpdateState struct {
 	ErrorCode       string            `json:"errorCode,omitempty"`
 	Details         string            `json:"details,omitempty"`
 	Items           []UpdateItem      `json:"items"`
+	Known           []UpdateItem      `json:"known"`
 	Blocked         map[string]string `json:"blocked,omitempty"`
 }
 
@@ -234,6 +239,11 @@ func (m *Manager) updateState() UpdateState {
 	if !m.updatesLoaded {
 		data, _ := os.ReadFile(filepath.Join(m.paths.ModsDir(), "updates.json"))
 		_ = json.Unmarshal(data, &m.updates)
+		if m.updates.Known == nil {
+			if state, err := m.loadState(); err == nil {
+				m.mergeKnownUpdates(state, m.updates.Items)
+			}
+		}
 		if strings.HasPrefix(m.updates.PlanID, ".candidates-") && filepath.Base(m.updates.PlanID) == m.updates.PlanID {
 			_ = os.RemoveAll(filepath.Join(m.paths.ModsDir(), m.updates.PlanID))
 		}
@@ -375,7 +385,7 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 		return Status{}, err
 	}
 	last := m.updates
-	m.updates = UpdateState{Scheduled: automatic, Busy: true, Phase: "checking", PlanID: filepath.Base(dir), LastAttempt: time.Now().UTC().Format(time.RFC3339), LastSuccess: last.LastSuccess, Failures: last.Failures, Blocked: last.Blocked, Items: []UpdateItem{}}
+	m.updates = UpdateState{Scheduled: automatic, Busy: true, Phase: "checking", PlanID: filepath.Base(dir), LastAttempt: time.Now().UTC().Format(time.RFC3339), LastSuccess: last.LastSuccess, NextCheck: last.NextCheck, Failures: last.Failures, Blocked: last.Blocked, Items: []UpdateItem{}, Known: last.Known}
 	_ = m.saveUpdates()
 	m.mu.Unlock()
 	keep := false
@@ -513,6 +523,7 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.updates.Items, m.updates.RequiresReview, m.updates.RestartRequired = items, review, restart
+	m.mergeKnownUpdates(state, items)
 	m.updates.Busy = false
 	m.updates.Phase = "current"
 	if failed || compositionErr != nil {
@@ -528,7 +539,9 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 			delay = 24 * time.Hour
 		}
 	}
-	m.updates.NextCheck = time.Now().Add(delay).UTC().Format(time.RFC3339)
+	if automatic || len(ids) == 0 {
+		m.updates.NextCheck = time.Now().Add(delay).UTC().Format(time.RFC3339)
+	}
 	if compositionErr != nil {
 		m.updates.Phase, m.updates.ErrorCode, m.updates.Details = "failed", "composition_failed", compositionErr.Error()
 		if m.updates.Blocked == nil {
@@ -644,12 +657,12 @@ func (m *Manager) RunAutoUpdates(stop <-chan struct{}) {
 				_, _ = m.ApplyUpdates(status.Updates.PlanID, false, ids...)
 			}
 		}
-		timer.Reset(15 * time.Minute)
+		timer.Reset(time.Minute)
 	}
 }
 
 func automaticDue(state State, updates UpdateState, pending bool, now time.Time) bool {
-	if state.Disabled || !periodicChecksEnabled(state) || updates.Busy || (updates.CanApply && !updates.Scheduled) || pending {
+	if state.Disabled || !periodicChecksEnabled(state) || updates.Busy || pending {
 		return false
 	}
 	due, _ := time.Parse(time.RFC3339, updates.NextCheck)

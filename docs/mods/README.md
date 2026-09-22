@@ -42,7 +42,11 @@ resolving requirements, check again. A failed download can be retried with
 **Check for updates**; successful independent candidates can still be reviewed.
 
 Changing the installed set, update preferences, base source, or package contents
-invalidates a prepared preview. A daemon restart also requires a fresh check.
+invalidates a prepared preview. Found updates and changelogs are saved separately
+from that preview and survive daemon restarts. Checking one mod keeps the results
+for other mods. A failed download keeps the last known update. Selecting an update
+prepares a fresh preview when needed; saved discovery data cannot authorize an
+installation.
 
 ## Scheduled checks and automatic installation
 
@@ -68,15 +72,15 @@ updates. Detached Git revisions cannot be pulled; change their source explicitly
 when moving to a different revision.
 
 Checks begin no earlier than one minute after daemon startup. The scheduler
-stores its next check time and wakes at most every fifteen minutes to see
+stores its next check time and wakes every minute to see
 whether a check is due. Failed checks back off from one hour to one day.
 Automatic work pauses while mods are globally disabled or a generation awaits
 its startup trial. The scheduler never restarts the shell.
 
 Existing automatic-update users keep scheduled checks enabled until they change
 the new setting. Changing an installation policy does not enable scheduled
-checks. A manual preview is preserved until applied or dismissed. Background
-previews can refresh at the next scheduled check. In a mixed preview, only
+checks. Available updates do not block scheduled checks. A new check can replace
+a prepared preview; an open confirmation cannot apply a replaced plan. In a mixed preview, only
 opted-in candidates without review warnings are installed automatically; the
 others remain visible for manual review.
 
@@ -413,9 +417,10 @@ ambxst mods disable org.example.feature
 ambxst mods remove org.example.feature
 ```
 
-The same operations are available in **Settings → Mods**. Switch the list to
-**Sort: Load order**, then drag the handle beside a package to place it at an
-exact position. The manager rebuilds enabled packages in that order; the new
+The same operations are available in **Settings → Mods**. Select a mod and use
+**Move up** or **Move down** in its details to change the load order. List rows
+show status icons; management controls stay in the selected mod's details.
+The manager rebuilds enabled packages in that order; the new
 generation takes effect after Ambxst restarts.
 
 ## Example

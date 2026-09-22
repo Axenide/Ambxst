@@ -307,8 +307,8 @@ func TestAutomaticUpdateSchedule(t *testing.T) {
 		t.Fatal("checked during startup trial")
 	}
 	updates.CanApply = true
-	if automaticDue(state, updates, false, now) {
-		t.Fatal("replaced a pending review")
+	if !automaticDue(state, updates, false, now) {
+		t.Fatal("pending review blocked discovery")
 	}
 	updates.CanApply = false
 	state.Disabled = true

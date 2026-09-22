@@ -20,12 +20,6 @@ Item {
     property bool filesExpanded: false
     property bool changelogExpanded: false
 
-    // Reordering state. dropIndex is derived from where the floating card sits,
-    // not from a drop target, because Drag.target is already cleared by the
-    // time the handler reports the release.
-    property string draggingId: ""
-    property int dropIndex: -1
-
     // Pending action awaiting the trust confirmation. "" means no prompt.
     property string confirmKind: ""
     property string confirmSource: ""
@@ -227,7 +221,7 @@ Item {
     // Derived from selectedMod instead of written back into selectedId; that
     // write-back is what made the selection bind to itself in a loop.
     readonly property string effectiveId: root.selectedMod?.id ?? ""
-    readonly property var selectedUpdate: (ModsService.updates?.items ?? []).find(item => item.id === root.effectiveId) ?? null
+    readonly property var selectedUpdate: (ModsService.updates?.known ?? ModsService.updates?.items ?? []).find(item => item.id === root.effectiveId) ?? null
     readonly property string selectedChangelog: root.selectedUpdate?.changelog ?? ""
     onSelectedChangelogChanged: root.changelogExpanded = false
 
@@ -695,9 +689,6 @@ Item {
                             required property var modelData
                             required property int index
                             readonly property bool current: root.effectiveId === modelData.id
-                            readonly property bool dropTarget: root.draggingId !== ""
-                                && root.draggingId !== modelData.id
-                                && root.dropIndex === index
 
                             Layout.fillWidth: true
                             Layout.preferredHeight: Math.max(60, rowContent.implicitHeight + 16)
@@ -714,14 +705,6 @@ Item {
                             Keys.onReturnPressed: root.selectedId = modelData.id
                             Keys.onEnterPressed: root.selectedId = modelData.id
                             Keys.onSpacePressed: root.selectedId = modelData.id
-
-                            StyledRect {
-                                anchors.fill: parent
-                                visible: modRow.dropTarget
-                                variant: "focus"
-                                radius: Styling.radius(-2)
-                                enableShadow: false
-                            }
 
                             MouseArea {
                                 id: rowMouse
@@ -740,50 +723,6 @@ Item {
                                 anchors.leftMargin: 10
                                 anchors.rightMargin: 8
                                 spacing: 10
-
-                                Text {
-                                    visible: root.sortMode === "loadOrder" && root.searchQuery === ""
-                                    text: Icons.dotsNine
-                                    font.family: Icons.font
-                                    font.pixelSize: 17
-                                    color: modRow.item
-                                    opacity: reorderDrag.active ? 1 : 0.6
-                                    Accessible.role: Accessible.Button
-                                    Accessible.name: root.tr("mods.drag_order")
-
-                                    DragHandler {
-                                        id: reorderDrag
-                                        target: dragPreview
-                                        xAxis.enabled: false
-                                        enabled: !ModsService.busy
-                                        onActiveChanged: {
-                                            if (active) {
-                                                const point = modRow.mapToItem(dragPreview.parent, 0, 0);
-                                                dragPreview.x = point.x;
-                                                dragPreview.y = point.y;
-                                                root.draggingId = modRow.modelData.id;
-                                                root.dropIndex = modRow.index;
-                                                return;
-                                            }
-                                            const landing = root.dropIndex;
-                                            root.draggingId = "";
-                                            root.dropIndex = -1;
-                                            if (landing >= 0 && landing !== modRow.index)
-                                                ModsService.moveTo(modRow.modelData.id, landing);
-                                        }
-                                    }
-                                }
-
-                                // Status rail: the state is readable before any text is.
-                                Rectangle {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    implicitWidth: 6
-                                    implicitHeight: 6
-                                    radius: 3
-                                    // Green for running, red for off, on the
-                                    // selected row too: the state is the point.
-                                    color: root.stateColor(modRow.modelData)
-                                }
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
@@ -820,25 +759,15 @@ Item {
                                     }
                                     RowLayout {
                                         Layout.fillWidth: true
-                                        readonly property var update: (ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
+                                        readonly property var update: (ModsService.updates?.known ?? ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
                                         id: updateStatus
                                         spacing: 4
-                                        visible: ModsService.updates?.phase !== "check_again"
-                                            && (update?.state === "available" || update?.state === "failed")
+                                        visible: update?.state === "available" || update?.state === "failed"
                                         readonly property string text: update?.state === "available"
                                             ? (update?.toVersion === update?.fromVersion
                                                 ? root.tr("mods.revision_update_short")
                                                 : root.tr("mods.update_item_available") + " · " + (update?.toVersion ?? ""))
                                             : root.tr("mods.update_item_failed")
-                                        Text {
-                                            visible: updateStatus.update?.state === "available"
-                                            Layout.alignment: Qt.AlignVCenter
-                                            text: Icons.sync
-                                            font.family: Icons.font
-                                            font.pixelSize: Styling.fontSize(-2)
-                                            color: modRow.item
-                                            Accessible.ignored: true
-                                        }
                                         Text {
                                             Layout.fillWidth: true
                                             Layout.alignment: Qt.AlignVCenter
@@ -851,52 +780,38 @@ Item {
                                     }
                                 }
 
-                                ModActions {
-                                    compact: true
-                                    mod: modRow.modelData
-                                    canEnable: !!(mod.valid && (mod.compatible || ModsService.bypassVersionCheck)
-                                        && root.dependenciesReady(mod))
-                                    onEnableRequested: trigger => root.askConfirm("enable", mod, mod.source ?? "", trigger)
-                                    onRemoveRequested: trigger => root.askConfirm("remove", mod, "", trigger)
-                                }
-                            }
-
-                            Item {
-                                id: dragPreview
-                                parent: modList.parent
-                                width: modRow.width
-                                height: modRow.height
-                                visible: reorderDrag.active
-                                z: 100
-
-                                onYChanged: {
-                                    if (!reorderDrag.active)
-                                        return;
-                                    const pitch = modRow.height + modList.spacing;
-                                    const slot = Math.round((dragPreview.y - modList.y) / pitch);
-                                    root.dropIndex = Math.max(0, Math.min(root.filteredMods.length - 1, slot));
-                                }
-
-                                StyledRect {
-                                    id: dragPreviewSurface
-                                    anchors.fill: parent
-                                    variant: "primary"
-                                    radius: Styling.radius(-2)
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 10
 
                                     Text {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-                                        text: modRow.modelData.name
-                                        font.family: Config.theme.font
-                                        font.pixelSize: Styling.fontSize(-1)
-                                        font.weight: Font.DemiBold
-                                        color: dragPreviewSurface.item
-                                        verticalAlignment: Text.AlignVCenter
-                                        elide: Text.ElideRight
+                                        visible: updateStatus.update?.state === "available"
+                                        text: Icons.sync
+                                        font.family: Icons.font
+                                        font.pixelSize: Styling.fontSize(1)
+                                        color: modRow.item
+                                        Accessible.ignored: true
+                                    }
+                                    Text {
+                                        visible: !modRow.modelData.valid || !modRow.modelData.compatible
+                                            || (modRow.modelData.deprecated ?? false) || updateStatus.update?.state === "failed"
+                                        text: Icons.alert
+                                        font.family: Icons.font
+                                        font.pixelSize: Styling.fontSize(1)
+                                        color: modRow.item
+                                        Accessible.ignored: true
+                                    }
+                                    Text {
+                                        text: modRow.modelData.enabled ? Icons.accept : Icons.pause
+                                        font.family: Icons.font
+                                        font.pixelSize: Styling.fontSize(1)
+                                        color: modRow.item
+                                        opacity: modRow.modelData.enabled ? 1 : 0.6
+                                        Accessible.ignored: true
                                     }
                                 }
-
                             }
+
                         }
                     }
                 }
@@ -1025,6 +940,26 @@ Item {
                             Accessible.name: root.tr("mods.whats_new")
                             background: StyledRect { variant: "internalbg"; radius: Styling.radius(-2); enableShadow: false }
                         }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: (root.selectedUpdate?.checkedAt ?? "") !== ""
+                        text: root.tr("mods.last_check", Qt.formatDateTime(new Date(root.selectedUpdate?.checkedAt ?? ""), "dd.MM.yyyy HH:mm"))
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.outline
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: (root.selectedUpdate?.checkError ?? "") !== ""
+                        text: root.tr("mods.cached_check_failed")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.error
+                        wrapMode: Text.Wrap
                     }
 
                     Text {
