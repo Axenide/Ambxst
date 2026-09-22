@@ -1,4 +1,5 @@
 {
+  "mods.revision_update_short": "Revision update available",
   "mods.interface_languages": "Interface languages",
   "mods.language_missing_description": "The author has not declared the interface language or translation support in the manifest.",
   "mods.confirm_remove_title": "Remove %1?",

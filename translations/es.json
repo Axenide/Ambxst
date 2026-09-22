@@ -1,4 +1,5 @@
 {
+  "mods.revision_update_short": "Nueva revisión disponible",
   "mods.interface_languages": "Idiomas de la interfaz",
   "mods.language_missing_description": "El autor no ha indicado el idioma de la interfaz ni la disponibilidad de traducciones en el manifiesto.",
   "mods.confirm_remove_title": "¿Eliminar %1?",

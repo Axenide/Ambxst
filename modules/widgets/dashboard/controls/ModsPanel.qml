@@ -843,9 +843,12 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         readonly property var update: (ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
-                                        visible: update?.state === "available" || update?.state === "failed"
+                                        visible: ModsService.updates?.phase !== "check_again"
+                                            && (update?.state === "available" || update?.state === "failed")
                                         text: update?.state === "available"
-                                            ? root.tr("mods.update_item_available") + " · " + (update?.toVersion ?? "")
+                                            ? (update?.toVersion === update?.fromVersion
+                                                ? root.tr("mods.revision_update_short")
+                                                : root.tr("mods.update_item_available") + " · " + (update?.toVersion ?? ""))
                                             : root.tr("mods.update_item_failed")
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-2)

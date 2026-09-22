@@ -1,4 +1,5 @@
 {
+  "mods.revision_update_short": "Доступно обновление ревизии",
   "mods.interface_languages": "Языки интерфейса",
   "mods.language_missing_description": "Автор не указал язык интерфейса и поддержку переводов в манифесте мода.",
   "mods.confirm_remove_title": "Удалить %1?",
