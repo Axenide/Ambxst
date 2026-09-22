@@ -57,6 +57,7 @@ type State struct {
 	BypassVersionCheck  bool           `json:"bypassVersionCheck,omitempty"`
 	Disabled            bool           `json:"disabled,omitempty"`
 	AutoUpdate          bool           `json:"autoUpdate,omitempty"`
+	PeriodicChecks      *bool          `json:"periodicChecks,omitempty"`
 	UpdateIntervalHours int            `json:"updateIntervalHours,omitempty"`
 	Mods                []InstalledMod `json:"mods"`
 	ActiveGeneration    string         `json:"activeGeneration,omitempty"`
@@ -137,6 +138,7 @@ type Status struct {
 	BypassVersionCheck  bool        `json:"bypassVersionCheck"`
 	ModsDisabled        bool        `json:"modsDisabled"`
 	AutoUpdate          bool        `json:"autoUpdate"`
+	PeriodicChecks      bool        `json:"periodicChecks"`
 	UpdateIntervalHours int         `json:"updateIntervalHours"`
 	Updates             UpdateState `json:"updates"`
 	Mods                []ModInfo   `json:"mods"`
@@ -1071,6 +1073,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 		BypassVersionCheck:  state.BypassVersionCheck,
 		ModsDisabled:        state.Disabled,
 		AutoUpdate:          state.AutoUpdate,
+		PeriodicChecks:      periodicChecksEnabled(state),
 		UpdateIntervalHours: updateIntervalHours(state),
 		Updates:             m.updateState(),
 		Mods:                make([]ModInfo, 0, len(state.Mods)),
@@ -1172,7 +1175,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			Deprecated:           manifest.isDeprecated(),
 			DeprecatedReason:     manifest.deprecationReason(),
 			AutoUpdateAvailable:  automaticSource(installed),
-			AutoUpdateEffective:  automaticEnabled(state, installed),
+			AutoUpdateEffective:  periodicChecksEnabled(state) && automaticEnabled(state, installed),
 		})
 	}
 	sort.SliceStable(status.Mods, func(i, j int) bool { return status.Mods[i].Order < status.Mods[j].Order })

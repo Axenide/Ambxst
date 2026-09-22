@@ -39,6 +39,7 @@ type UpdateItem struct {
 }
 
 type UpdateState struct {
+	Scheduled       bool              `json:"scheduled"`
 	Busy            bool              `json:"busy"`
 	Phase           string            `json:"phase"`
 	LastAttempt     string            `json:"lastAttempt,omitempty"`
@@ -79,6 +80,30 @@ func (m *Manager) SetUpdateInterval(hours int) (Status, error) {
 	if hours != 1 && hours != 6 && hours != 24 && hours != 168 {
 		return Status{}, fmt.Errorf("update interval must be 1, 6, 24, or 168 hours")
 	}
+	return m.setUpdateSchedule(&hours, nil)
+}
+
+func periodicChecksEnabled(state State) bool {
+	if state.PeriodicChecks != nil {
+		return *state.PeriodicChecks
+	}
+	// Preserve scheduled updates for users who enabled them before this setting existed.
+	if state.AutoUpdate {
+		return true
+	}
+	for _, mod := range state.Mods {
+		if automaticEnabled(state, mod) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m *Manager) SetPeriodicChecks(enabled bool) (Status, error) {
+	return m.setUpdateSchedule(nil, &enabled)
+}
+
+func (m *Manager) setUpdateSchedule(hours *int, enabled *bool) (Status, error) {
 	if !m.updateMu.TryLock() {
 		return Status{}, fmt.Errorf("an update operation is already running")
 	}
@@ -97,7 +122,12 @@ func (m *Manager) SetUpdateInterval(hours int) (Status, error) {
 		}
 		previewCurrent = fingerprint == m.updatePlan.fingerprint
 	}
-	state.UpdateIntervalHours = hours
+	if hours != nil {
+		state.UpdateIntervalHours = *hours
+	}
+	if enabled != nil {
+		state.PeriodicChecks = enabled
+	}
 	if err := m.saveState(state); err != nil {
 		return Status{}, err
 	}
@@ -108,10 +138,15 @@ func (m *Manager) SetUpdateInterval(hours int) (Status, error) {
 		if err != nil {
 			return Status{}, err
 		}
-		m.updatePlan.next.UpdateIntervalHours = hours
+		m.updatePlan.next.UpdateIntervalHours = state.UpdateIntervalHours
+		m.updatePlan.next.PeriodicChecks = state.PeriodicChecks
 		m.updatePlan.fingerprint = fingerprint
 	}
-	m.updates.NextCheck = time.Now().Add(time.Duration(hours) * time.Hour).UTC().Format(time.RFC3339)
+	if enabled != nil && *enabled {
+		m.updates.NextCheck = time.Now().UTC().Format(time.RFC3339)
+	} else if hours != nil {
+		m.updates.NextCheck = time.Now().Add(time.Duration(*hours) * time.Hour).UTC().Format(time.RFC3339)
+	}
 	if err := m.saveUpdates(); err != nil {
 		return Status{}, err
 	}
@@ -142,6 +177,10 @@ func (m *Manager) SetUpdatePolicy(id, policy string) (Status, error) {
 	}
 	if policy != "on" && policy != "off" && policy != "inherit" {
 		return Status{}, fmt.Errorf("invalid update policy")
+	}
+	if state.PeriodicChecks == nil {
+		enabled := periodicChecksEnabled(state)
+		state.PeriodicChecks = &enabled
 	}
 	if id == "" {
 		if policy == "inherit" {
@@ -283,6 +322,10 @@ func (m *Manager) updateFingerprint(state State, base string) (string, error) {
 
 // CheckUpdates stages exact candidates. The running packages are never fetched into.
 func (m *Manager) CheckUpdates(ids []string, automatic bool) (Status, error) {
+	return m.checkUpdates(ids, automatic, false)
+}
+
+func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Status, error) {
 	if !m.updateMu.TryLock() {
 		return Status{}, fmt.Errorf("an update operation is already running")
 	}
@@ -332,7 +375,7 @@ func (m *Manager) CheckUpdates(ids []string, automatic bool) (Status, error) {
 		return Status{}, err
 	}
 	last := m.updates
-	m.updates = UpdateState{Busy: true, Phase: "checking", PlanID: filepath.Base(dir), LastAttempt: time.Now().UTC().Format(time.RFC3339), LastSuccess: last.LastSuccess, Failures: last.Failures, Blocked: last.Blocked, Items: []UpdateItem{}}
+	m.updates = UpdateState{Scheduled: automatic, Busy: true, Phase: "checking", PlanID: filepath.Base(dir), LastAttempt: time.Now().UTC().Format(time.RFC3339), LastSuccess: last.LastSuccess, Failures: last.Failures, Blocked: last.Blocked, Items: []UpdateItem{}}
 	_ = m.saveUpdates()
 	m.mu.Unlock()
 	keep := false
@@ -355,7 +398,7 @@ func (m *Manager) CheckUpdates(ids []string, automatic bool) (Status, error) {
 		if len(ids) > 0 && !selected[mod.ID] {
 			continue
 		}
-		if automatic && !automaticEnabled(state, mod) {
+		if automatic && (!automaticSource(mod) || (!discoverAll && !automaticEnabled(state, mod))) {
 			continue
 		}
 		oldRoot := filepath.Join(packages, mod.ID)
@@ -590,14 +633,15 @@ func (m *Manager) RunAutoUpdates(stop <-chan struct{}) {
 		ready := err == nil && automaticDue(state, u, pending, time.Now())
 		m.mu.Unlock()
 		if ready {
-			status, err := m.CheckUpdates(nil, true)
-			if err == nil && status.Updates.CanApply && !status.Updates.RequiresReview {
+			status, err := m.checkUpdates(nil, true, true)
+			ids := automaticCandidates(state, status.Updates.Items)
+			if err == nil && status.Updates.CanApply && len(ids) > 0 {
 				select {
 				case <-stop:
 					return
 				default:
 				}
-				_, _ = m.ApplyUpdates(status.Updates.PlanID, false)
+				_, _ = m.ApplyUpdates(status.Updates.PlanID, false, ids...)
 			}
 		}
 		timer.Reset(15 * time.Minute)
@@ -605,7 +649,7 @@ func (m *Manager) RunAutoUpdates(stop <-chan struct{}) {
 }
 
 func automaticDue(state State, updates UpdateState, pending bool, now time.Time) bool {
-	if state.Disabled || updates.Busy || updates.CanApply || pending {
+	if state.Disabled || !periodicChecksEnabled(state) || updates.Busy || (updates.CanApply && !updates.Scheduled) || pending {
 		return false
 	}
 	due, _ := time.Parse(time.RFC3339, updates.NextCheck)
@@ -613,11 +657,22 @@ func automaticDue(state State, updates UpdateState, pending bool, now time.Time)
 		return false
 	}
 	for _, mod := range state.Mods {
-		if automaticEnabled(state, mod) {
+		if automaticSource(mod) {
 			return true
 		}
 	}
 	return false
+}
+
+func automaticCandidates(state State, items []UpdateItem) []string {
+	var ids []string
+	for _, item := range items {
+		index, ok := findInstalled(state, item.ID)
+		if ok && item.State == "available" && len(item.ReviewReasons) == 0 && automaticEnabled(state, state.Mods[index]) {
+			ids = append(ids, item.ID)
+		}
+	}
+	return ids
 }
 
 func sortedStrings(values []string) []string {

@@ -165,6 +165,7 @@ func modsUsage(message string) {
 		"    apply-updates <plan-id>          Apply the reviewed preview\n" +
 		"    auto-update <on|off|inherit> [id] Set automatic update policy\n" +
 		"    check-interval <1|6|24|168>       Set automatic check interval in hours\n" +
+		"    periodic-checks <on|off>          Enable or pause scheduled mod checks\n" +
 		"    check-compatibility [directory]  Test composition against a candidate base\n" +
 		"    diagnostics                      Print a report without settings or sources\n" +
 		"    base                             Use the base shell on the next start\n" +

@@ -39,6 +39,11 @@ func runModUpdateCommand(command string, args []string) bool {
 		if len(args) == 2 {
 			params["id"] = args[1]
 		}
+	case "periodic-checks":
+		if len(args) != 1 || (args[0] != "on" && args[0] != "off") {
+			modsUsage("Usage: ambxst mods periodic-checks <on|off>")
+		}
+		method, params["enabled"] = "setPeriodicChecks", args[0] == "on"
 	case "diagnostics":
 		if len(args) != 0 {
 			modsUsage("Usage: ambxst mods diagnostics")
@@ -79,6 +84,8 @@ func runModUpdateCommand(command string, args []string) bool {
 			result, err = manager.SetUpdatePolicy(params["id"].(string), params["policy"].(string))
 		case "setUpdateInterval":
 			result, err = manager.SetUpdateInterval(params["hours"].(int))
+		case "setPeriodicChecks":
+			result, err = manager.SetPeriodicChecks(params["enabled"].(bool))
 		case "diagnostics":
 			result, err = manager.Diagnostics()
 		case "checkCompatibility":

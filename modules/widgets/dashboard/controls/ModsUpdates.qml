@@ -73,6 +73,58 @@ StyledRect {
         RowLayout {
             Layout.fillWidth: true
             Label {
+                text: I18n.t("mods.periodic_checks")
+                font.weight: Font.DemiBold
+                font.pixelSize: Styling.fontSize(-1)
+            }
+            Action {
+                text: I18n.t(ModsService.periodicChecks ? "common.on" : "common.off")
+                primary: ModsService.periodicChecks
+                Accessible.description: I18n.t("mods.periodic_checks_description")
+                onClicked: ModsService.setPeriodicChecks(!ModsService.periodicChecks)
+            }
+        }
+        Label {
+            text: I18n.t("mods.periodic_checks_description")
+            color: Colors.outline
+        }
+        Label {
+            text: I18n.t("mods.check_frequency")
+            font.weight: Font.Medium
+        }
+        Flow {
+            Layout.fillWidth: true
+            spacing: 6
+            Repeater {
+                model: [1, 6, 24, 168]
+                delegate: Action {
+                    required property int modelData
+                    text: I18n.t("mods.interval_" + modelData)
+                    primary: ModsService.updateIntervalHours === modelData
+                    enabled: !root.working && ModsService.periodicChecks
+                    onClicked: ModsService.setUpdateInterval(modelData)
+                }
+            }
+        }
+        Label {
+            text: I18n.t("mods.check_frequency_description")
+            color: Colors.outline
+        }
+        Label {
+            visible: ModsService.periodicChecks && (root.updates?.nextCheck ?? "") !== ""
+                && !(root.updates?.canApply && !root.updates?.scheduled) && !ModsService.restartRequired
+            text: I18n.t("mods.next_check", Qt.formatDateTime(new Date(root.updates?.nextCheck ?? ""), "dd.MM.yyyy HH:mm"))
+            color: Colors.outline
+        }
+        Label {
+            visible: ModsService.periodicChecks && !!root.updates?.canApply && !root.updates?.scheduled
+            text: I18n.t("mods.schedule_review_pending")
+            color: Colors.outline
+        }
+        Separator { Layout.fillWidth: true; Layout.topMargin: 4; Layout.bottomMargin: 4 }
+        RowLayout {
+            Layout.fillWidth: true
+            Label {
                 text: I18n.t("mods.auto_updates")
                 font.weight: Font.DemiBold
                 font.pixelSize: Styling.fontSize(-1)
@@ -89,24 +141,8 @@ StyledRect {
             color: Colors.outline
         }
         Label {
-            text: I18n.t("mods.check_frequency")
-            font.weight: Font.Medium
-        }
-        Flow {
-            Layout.fillWidth: true
-            spacing: 6
-            Repeater {
-                model: [1, 6, 24, 168]
-                delegate: Action {
-                    required property int modelData
-                    text: I18n.t("mods.interval_" + modelData)
-                    primary: ModsService.updateIntervalHours === modelData
-                    onClicked: ModsService.setUpdateInterval(modelData)
-                }
-            }
-        }
-        Label {
-            text: I18n.t("mods.check_frequency_description")
+            visible: !ModsService.periodicChecks
+            text: I18n.t("mods.schedule_paused")
             color: Colors.outline
         }
         Separator { Layout.fillWidth: true; Layout.topMargin: 4; Layout.bottomMargin: 4 }

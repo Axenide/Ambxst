@@ -38,6 +38,7 @@ func (s *Service) Register(server *ipc.Server) {
 			"applyUpdates":          s.applyUpdates,
 			"setUpdatePolicy":       s.setUpdatePolicy,
 			"setUpdateInterval":     s.setUpdateInterval,
+			"setPeriodicChecks":     s.setPeriodicChecks,
 			"diagnostics":           s.diagnostics,
 			"checkCompatibility":    s.checkCompatibility,
 		},
@@ -105,6 +106,19 @@ func (s *Service) setUpdateInterval(raw json.RawMessage) (any, error) {
 		return nil, err
 	}
 	return s.manager.SetUpdateInterval(params.Hours)
+}
+
+func (s *Service) setPeriodicChecks(raw json.RawMessage) (any, error) {
+	var params struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	if params.Enabled == nil {
+		return nil, fmt.Errorf("enabled is required")
+	}
+	return s.manager.SetPeriodicChecks(*params.Enabled)
 }
 
 func (s *Service) diagnostics(_ json.RawMessage) (any, error) { return s.manager.Diagnostics() }

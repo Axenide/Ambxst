@@ -789,32 +789,14 @@ Item {
                                     Layout.fillWidth: true
                                     spacing: 1
 
-                                    RowLayout {
+                                    Text {
                                         Layout.fillWidth: true
-                                        spacing: 6
-                                        Text {
-                                            Layout.fillWidth: true
-                                            text: modRow.modelData.name
-                                            font.family: Config.theme.font
-                                            font.pixelSize: Styling.fontSize(-1)
-                                            font.weight: Font.DemiBold
-                                            color: modRow.item
-                                            elide: Text.ElideRight
-                                        }
-                                        Text {
-                                            visible: updateStatus.visible && updateStatus.update?.state === "available"
-                                            text: Icons.sync
-                                            font.family: Icons.font
-                                            font.pixelSize: Styling.fontSize(1)
-                                            color: modRow.item
-                                            Accessible.name: updateStatus.text
-                                            HoverHandler { id: updateIndicatorHover }
-                                            StyledToolTip {
-                                                show: updateIndicatorHover.hovered || (parent.visible && modRow.activeFocus)
-                                                tooltipText: updateStatus.text
-                                                delay: 500
-                                            }
-                                        }
+                                        text: modRow.modelData.name
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-1)
+                                        font.weight: Font.DemiBold
+                                        color: modRow.item
+                                        elide: Text.ElideRight
                                     }
 
                                     Text {
@@ -836,21 +818,36 @@ Item {
                                         color: modRow.item
                                         elide: Text.ElideRight
                                     }
-                                    Text {
+                                    RowLayout {
                                         Layout.fillWidth: true
                                         readonly property var update: (ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
                                         id: updateStatus
+                                        spacing: 4
                                         visible: ModsService.updates?.phase !== "check_again"
                                             && (update?.state === "available" || update?.state === "failed")
-                                        text: update?.state === "available"
+                                        readonly property string text: update?.state === "available"
                                             ? (update?.toVersion === update?.fromVersion
                                                 ? root.tr("mods.revision_update_short")
                                                 : root.tr("mods.update_item_available") + " · " + (update?.toVersion ?? ""))
                                             : root.tr("mods.update_item_failed")
-                                        font.family: Config.theme.font
-                                        font.pixelSize: Styling.fontSize(-2)
-                                        color: modRow.item
-                                        elide: Text.ElideRight
+                                        Text {
+                                            visible: updateStatus.update?.state === "available"
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: Icons.sync
+                                            font.family: Icons.font
+                                            font.pixelSize: Styling.fontSize(-2)
+                                            color: modRow.item
+                                            Accessible.ignored: true
+                                        }
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: updateStatus.text
+                                            font.family: Config.theme.font
+                                            font.pixelSize: Styling.fontSize(-2)
+                                            color: modRow.item
+                                            elide: Text.ElideRight
+                                        }
                                     }
                                 }
 
@@ -1183,6 +1180,15 @@ Item {
                             Layout.fillWidth: true
                             visible: !(root.selectedMod?.autoUpdateAvailable ?? false)
                             text: root.tr("mods.manual_source")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            visible: !ModsService.periodicChecks && !!root.selectedMod?.autoUpdateAvailable
+                            text: root.tr("mods.schedule_paused_short")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.outline

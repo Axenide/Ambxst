@@ -6,9 +6,10 @@ manager composes enabled packages onto a clean Ambxst source tree and commits
 the active generation in one atomic state-file update after every operation
 succeeds.
 
-Repository checks run on request. Automatic updates are optional and disabled
-by default. When enabled, the existing daemon checks on a schedule without keeping a
-separate process running. Opening Settings does not trigger a network check.
+Repository checks run on request or on an optional schedule. Scheduled checks
+and automatic installation are separate settings, both off for new users.
+The existing daemon handles background work without a separate process.
+Opening Settings does not trigger a network check.
 
 ## Using the manager
 
@@ -17,7 +18,7 @@ Install a package, inspect its author and declared permissions, then enable it.
 New packages stay disabled until you choose to enable them.
 
 Use **Check for updates** to prepare candidates for all installed mods, or
-**Update** in a mod's details to check that package. Expand **Review updates**
+**Check for updates** in a mod's details to check that package. Expand **Review updates**
 to inspect versions, exact revisions, affected files, dependencies, and declared
 permissions. **Apply reviewed updates** applies the prepared candidates.
 The current shell keeps running until you restart it.
@@ -43,13 +44,19 @@ resolving requirements, check again. A failed download can be retried with
 Changing the installed set, update preferences, base source, or package contents
 invalidates a prepared preview. A daemon restart also requires a fresh check.
 
-## Automatic updates
+## Scheduled checks and automatic installation
 
-The global switch sets the default for installed and future mods. Each mod can
+**Scheduled checks** looks for updates to all supported Git sources, including
+mods with automatic installation turned off. Leave automatic installation off
+to review and apply updates yourself. Turning scheduled checks off pauses all
+background mod checks and installations without changing saved policies.
+Manual checks and updates remain available.
+
+The automatic installation switch sets the default for installed and future mods. Each mod can
 use that default, opt in, or opt out. Changing the global switch preserves
 individual choices. Disabled mods stay disabled after an update.
 
-**Check frequency** sets one schedule for all opted-in mods: hourly, every six
+**Check frequency** sets one schedule for supported Git sources: hourly, every six
 hours, daily (the default), or weekly. Changing it schedules the next check from
 now without enabling automatic updates or discarding a valid preview.
 **Remind me tomorrow** postpones the next check by 24 hours without changing
@@ -65,6 +72,13 @@ stores its next check time and wakes at most every fifteen minutes to see
 whether a check is due. Failed checks back off from one hour to one day.
 Automatic work pauses while mods are globally disabled or a generation awaits
 its startup trial. The scheduler never restarts the shell.
+
+Existing automatic-update users keep scheduled checks enabled until they change
+the new setting. Changing an installation policy does not enable scheduled
+checks. A manual preview is preserved until applied or dismissed. Background
+previews can refresh at the next scheduled check. In a mixed preview, only
+opted-in candidates without review warnings are installed automatically; the
+others remain visible for manual review.
 
 Changes to dependencies, dependency sources, permissions, required commands,
 or a bypassed version requirement need review. A revision recovered after a
@@ -375,6 +389,7 @@ ambxst mods check-updates
 ambxst mods check-updates org.example.feature
 ambxst mods apply-updates <plan-id-from-preview>
 ambxst mods auto-update on
+ambxst mods periodic-checks on
 ambxst mods check-interval 6
 ambxst mods auto-update off org.example.feature
 ambxst mods auto-update inherit org.example.feature

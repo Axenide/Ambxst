@@ -32,6 +32,7 @@ Singleton {
     property bool settingsBusy: false
 
     property bool autoUpdate: false
+    property bool periodicChecks: false
     property int updateIntervalHours: 24
     property var updates: ({})
     property string diagnosticText: ""
@@ -64,6 +65,7 @@ Singleton {
         root.restartRequired = result?.restartRequired ?? false;
         root.loaded = true;
         root.autoUpdate = result?.autoUpdate ?? false;
+        root.periodicChecks = result?.periodicChecks ?? false;
         root.updateIntervalHours = result?.updateIntervalHours ?? 24;
         root.updates = result?.updates ?? ({});
     }
@@ -135,6 +137,10 @@ Singleton {
 
     function setUpdateInterval(hours) {
         root.request("mods.setUpdateInterval", { hours }, "mods.update_interval_saved", false);
+    }
+
+    function setPeriodicChecks(enabled) {
+        root.request("mods.setPeriodicChecks", { enabled }, "mods.check_schedule_saved", false);
     }
 
     function loadDiagnostics() {

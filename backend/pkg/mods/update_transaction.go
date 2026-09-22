@@ -137,7 +137,7 @@ func (m *Manager) restoreUpdate(state State) (bool, error) {
 	return true, m.restoreJournal(j)
 }
 
-func (m *Manager) ApplyUpdates(planID string, reviewed bool) (Status, error) {
+func (m *Manager) ApplyUpdates(planID string, reviewed bool, ids ...string) (Status, error) {
 	if !m.updateMu.TryLock() {
 		return Status{}, fmt.Errorf("an update operation is already running")
 	}
@@ -152,7 +152,29 @@ func (m *Manager) ApplyUpdates(planID string, reviewed bool) (Status, error) {
 	if plan == nil || plan.id != planID || !m.updates.CanApply {
 		return Status{}, fmt.Errorf("update plan expired; check for updates again")
 	}
-	if m.updates.RequiresReview && !reviewed {
+	selected := map[string]bool{}
+	for _, id := range ids {
+		selected[id] = true
+	}
+	available := map[string]bool{}
+	for _, item := range m.updates.Items {
+		if item.State != "available" || (len(selected) > 0 && !selected[item.ID]) {
+			continue
+		}
+		available[item.ID] = true
+		if !reviewed && len(selected) > 0 {
+			index, ok := findInstalled(state, item.ID)
+			if !ok || !periodicChecksEnabled(state) || !automaticEnabled(state, state.Mods[index]) || len(item.ReviewReasons) > 0 {
+				return Status{}, fmt.Errorf("this update requires manual confirmation")
+			}
+		}
+	}
+	for id := range selected {
+		if !available[id] {
+			return Status{}, fmt.Errorf("mod %s has no prepared update", id)
+		}
+	}
+	if len(selected) == 0 && m.updates.RequiresReview && !reviewed {
 		return Status{}, fmt.Errorf("review the update changes before applying")
 	}
 	if _, pending := m.readPendingActivation(); pending {
@@ -176,6 +198,20 @@ func (m *Manager) ApplyUpdates(planID string, reviewed bool) (Status, error) {
 		if err != nil || digest != plan.generationDigest {
 			return Status{}, fmt.Errorf("prepared generation changed; check for updates again")
 		}
+	}
+	original := plan
+	if len(selected) > 0 && len(selected) < countAvailable(m.updates.Items) {
+		plan, err = m.selectPreparedUpdates(state, original, selected)
+		if err != nil {
+			return Status{}, err
+		}
+		defer os.RemoveAll(plan.directory)
+		// Remove the unused generation if the transaction fails.
+		defer func() {
+			if m.updatePlan != nil && plan.generation != "" {
+				_ = os.RemoveAll(plan.generation)
+			}
+		}()
 	}
 	next := cloneState(plan.next)
 	if plan.generation != "" {
@@ -217,13 +253,78 @@ func (m *Manager) ApplyUpdates(planID string, reviewed bool) (Status, error) {
 	m.updatePlan = nil
 	m.updates.CanApply, m.updates.PlanID, m.updates.Phase = false, "", "applied"
 	for i := range m.updates.Items {
-		if m.updates.Items[i].State == "available" {
+		if m.updates.Items[i].State == "available" && available[m.updates.Items[i].ID] {
 			m.updates.Items[i].State = "updated"
 		}
 	}
+	m.updates.RestartRequired = plan.generation != ""
+	if countAvailable(m.updates.Items) > 0 {
+		m.updates.Phase = "partial"
+	}
 	_ = m.saveUpdates()
 	_ = os.RemoveAll(plan.directory)
+	if original != plan {
+		_ = os.RemoveAll(original.directory)
+		if original.generation != "" {
+			_ = os.RemoveAll(original.generation)
+		}
+	}
 	return m.statusForRestart(next, plan.generation != "")
+}
+
+func countAvailable(items []UpdateItem) int {
+	count := 0
+	for _, item := range items {
+		if item.State == "available" {
+			count++
+		}
+	}
+	return count
+}
+
+// Compose exact staged candidates with the installed versions of all unselected mods.
+func (m *Manager) selectPreparedUpdates(state State, original *preparedUpdate, selected map[string]bool) (*preparedUpdate, error) {
+	dir, err := os.MkdirTemp(m.paths.ModsDir(), ".selected-")
+	if err != nil {
+		return nil, err
+	}
+	plan := &preparedUpdate{directory: dir, base: original.base, next: cloneState(state)}
+	keep := false
+	defer func() {
+		if !keep {
+			_ = os.RemoveAll(dir)
+			if plan.generation != "" {
+				_ = os.RemoveAll(plan.generation)
+			}
+		}
+	}()
+	packages := filepath.Join(dir, "packages")
+	if err := copyTree(m.paths.ModPackagesDir(), packages, nil); err != nil {
+		return nil, err
+	}
+	restart := false
+	for i, mod := range state.Mods {
+		if !selected[mod.ID] {
+			continue
+		}
+		target := filepath.Join(packages, mod.ID)
+		if err := os.RemoveAll(target); err != nil {
+			return nil, err
+		}
+		if err := copyTree(filepath.Join(original.directory, "packages", mod.ID), target, nil); err != nil {
+			return nil, err
+		}
+		plan.next.Mods[i].Revision = original.next.Mods[i].Revision
+		restart = restart || mod.Enabled
+	}
+	if restart {
+		plan.generation, err = m.buildGenerationAt(plan.next, original.base, packages)
+		if err != nil {
+			return nil, err
+		}
+	}
+	keep = true
+	return plan, nil
 }
 
 // Package mutations wait for the startup trial so recovery cannot discard a
