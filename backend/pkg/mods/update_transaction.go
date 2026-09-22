@@ -114,6 +114,7 @@ func (m *Manager) restoreUpdate(state State) (bool, error) {
 	}
 	j.Previous.AutoUpdate = state.AutoUpdate
 	j.Previous.UpdateIntervalHours = state.UpdateIntervalHours
+	j.Previous.PeriodicChecks = state.PeriodicChecks
 	j.Previous.Disabled = state.Disabled
 	j.Previous.BypassVersionCheck = state.BypassVersionCheck
 	for i := range j.Previous.Mods {
@@ -149,7 +150,7 @@ func (m *Manager) ApplyUpdates(planID string, reviewed bool, ids ...string) (Sta
 		return Status{}, err
 	}
 	plan := m.updatePlan
-	if plan == nil || plan.id != planID || !m.updates.CanApply {
+	if plan == nil || plan.id != planID || (!m.updates.CanApply && !(plan.discoveryOnly && !reviewed && len(ids) > 0)) {
 		return Status{}, fmt.Errorf("update plan expired; check for updates again")
 	}
 	selected := map[string]bool{}
@@ -200,9 +201,21 @@ func (m *Manager) ApplyUpdates(planID string, reviewed bool, ids ...string) (Sta
 		}
 	}
 	original := plan
-	if len(selected) > 0 && len(selected) < countAvailable(m.updates.Items) {
+	if plan.discoveryOnly || (len(selected) > 0 && len(selected) < countAvailable(m.updates.Items)) {
 		plan, err = m.selectPreparedUpdates(state, original, selected)
 		if err != nil {
+			if original.discoveryOnly {
+				m.updates.Phase, m.updates.ErrorCode, m.updates.Details = "failed", "composition_failed", err.Error()
+				if m.updates.Blocked == nil {
+					m.updates.Blocked = map[string]string{}
+				}
+				for _, item := range m.updates.Items {
+					if selected[item.ID] && item.Revision != "" {
+						m.updates.Blocked[item.ID] = item.Revision
+					}
+				}
+				_ = m.saveUpdates()
+			}
 			return Status{}, err
 		}
 		defer os.RemoveAll(plan.directory)

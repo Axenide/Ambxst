@@ -69,12 +69,18 @@ func TestPeriodicCheckMigrationAndDue(t *testing.T) {
 func TestScheduledDiscoveryAndSelectiveInstallation(t *testing.T) {
 	for _, enabled := range []bool{false, true} {
 		t.Run(map[bool]string{false: "disabled", true: "enabled"}[enabled], func(t *testing.T) {
-			testScheduledSelection(t, enabled)
+			testScheduledSelection(t, enabled, "")
 		})
 	}
 }
 
-func testScheduledSelection(t *testing.T, enabled bool) {
+func TestScheduledCompositionUsesOnlyAutomaticCandidates(t *testing.T) {
+	for _, id := range []string{"example.manual", "example.review", "example.auto"} {
+		t.Run(id, func(t *testing.T) { testScheduledSelection(t, true, id) })
+	}
+}
+
+func testScheduledSelection(t *testing.T, enabled bool, brokenID string) {
 	t.Helper()
 	m, _, _ := updateFixture(t, false)
 	if _, err := m.Remove("example.update"); err != nil {
@@ -142,14 +148,21 @@ func testScheduledSelection(t *testing.T, enabled bool) {
 		if id == "example.review" {
 			manifest.Permissions = []string{"Reads files"}
 		}
+		if id == brokenID {
+			manifest.Operations = []Operation{{Type: "patch", Source: "broken.patch"}}
+			writeTestFile(t, filepath.Join(source, "broken.patch"), "--- a/shell.qml\n+++ b/shell.qml\n@@ -1 +1 @@\n-Missing context\n+ShellRoot {}\n")
+		}
 		data, _ := json.Marshal(manifest)
 		writeTestFile(t, filepath.Join(source, ManifestFile), string(data))
 		git(source, "add", ".")
 		git(source, "commit", "-m", "Update package")
 	}
 	preview, err := m.checkUpdates(nil, true, true)
-	if err != nil || !preview.Updates.CanApply || len(preview.Updates.Items) != 3 {
+	if err != nil || preview.Updates.CanApply || len(preview.Updates.Items) != 3 {
 		t.Fatalf("discovery: %#v, %v", preview.Updates, err)
+	}
+	if _, err := m.ApplyUpdates(preview.Updates.PlanID, true); err == nil {
+		t.Fatal("discovery bypassed manual preparation")
 	}
 	for _, mod := range preview.Mods {
 		if mod.Version != "1.0.0" {
@@ -168,6 +181,24 @@ func testScheduledSelection(t *testing.T, enabled bool) {
 		t.Fatal("permission change installed automatically")
 	}
 	applied, err := m.ApplyUpdates(preview.Updates.PlanID, false, ids...)
+	if brokenID == "example.auto" {
+		if err == nil {
+			t.Fatal("invalid automatic candidate was installed")
+		}
+		status, statusErr := m.Status()
+		if statusErr != nil || status.Updates.ErrorCode != "composition_failed" {
+			t.Fatalf("missing composition failure: %+v, %v", status.Updates, statusErr)
+		}
+		if len(status.Updates.Blocked) != 1 || status.Updates.Blocked[brokenID] == "" {
+			t.Fatalf("blocked unrelated candidates: %v", status.Updates.Blocked)
+		}
+		for _, mod := range status.Mods {
+			if mod.Version != "1.0.0" {
+				t.Fatal("failed composition changed installed packages")
+			}
+		}
+		return
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,6 +224,9 @@ func testScheduledSelection(t *testing.T, enabled bool) {
 		if !applied.RestartRequired {
 			t.Fatal("enabled update did not require restart")
 		}
+		if _, err := m.SetPeriodicChecks(false); err != nil {
+			t.Fatal(err)
+		}
 		recovered, err := m.RecoverFailedActivation()
 		if err != nil || !recovered {
 			t.Fatalf("recovery: %v, %v", recovered, err)
@@ -200,6 +234,9 @@ func testScheduledSelection(t *testing.T, enabled bool) {
 		status, err := m.Status()
 		if err != nil {
 			t.Fatal(err)
+		}
+		if status.PeriodicChecks {
+			t.Fatal("recovery lost the paused schedule")
 		}
 		for _, mod := range status.Mods {
 			if mod.Version != "1.0.0" {

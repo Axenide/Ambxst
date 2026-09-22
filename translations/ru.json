@@ -1,4 +1,5 @@
 {
+  "mods.available_update_count": "Доступно обновлений: %1",
   "mods.cached_check_failed": "Последняя проверка не удалась. Показано ранее найденное обновление.",
   "mods.update_phase_partial": "Часть обновлений установлена. Остальные ждут вашего подтверждения.",
   "mods.periodic_checks": "Проверка по расписанию",
@@ -81,7 +82,7 @@
   "mods.compatibility_failed": "Проверка совместимости или сборки не пройдена.",
   "mods.recovery_base": "Запустить базовую оболочку",
   "mods.search_keywords": "моды модификации расширения плагины пакеты обновления языки восстановление",
-  "mods.update_phase_current": "Изменений не найдено.",
+  "mods.update_phase_current": "Последняя проверка: в проверенных модах изменений не найдено.",
   "mods.update_phase_checking": "Проверка обновлений и пакетов…",
   "mods.update_phase_applying": "Применение обновлений…",
   "mods.update_phase_ready": "Обновления готовы к рассмотрению.",

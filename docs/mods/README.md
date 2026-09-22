@@ -84,6 +84,17 @@ a prepared preview; an open confirmation cannot apply a replaced plan. In a mixe
 opted-in candidates without review warnings are installed automatically; the
 others remain visible for manual review.
 
+Scheduled discovery does not prepare a combined installation of every update it
+finds. Automatic installation composes only opted-in candidates without review
+warnings, together with the currently installed versions of all other mods.
+A broken manual-only candidate cannot block this build. If the automatic build
+fails, no packages change and only its selected revisions are held for review.
+Manual installation always prepares and validates its own plan.
+
+The Updates section shows the total number of saved available updates separately
+from the last check result. Checking an up-to-date mod does not hide updates
+already found for other mods.
+
 Changes to dependencies, dependency sources, permissions, required commands,
 or a bypassed version requirement need review. A revision recovered after a
 failed startup also needs review before another attempt. Permission declarations

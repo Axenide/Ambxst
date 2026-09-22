@@ -22,6 +22,7 @@ StyledRect {
     readonly property var knownItems: updates?.known ?? updates?.items ?? []
     readonly property var changedItems: knownItems.filter(item => item.state !== "current")
     readonly property int currentCount: knownItems.filter(item => item.state === "current").length
+    readonly property int availableCount: knownItems.filter(item => item.state === "available").length
     readonly property bool allKnownPrepared: changedItems.filter(item => item.state === "available").every(
         item => (updates?.items ?? []).some(candidate => candidate.id === item.id && candidate.state === "available"))
     readonly property bool working: ModsService.busy || (updates?.busy ?? false)
@@ -170,6 +171,11 @@ StyledRect {
                 enabled: true
                 onClicked: root.toolsVisible = !root.toolsVisible
             }
+        }
+        Label {
+            visible: root.availableCount > 0
+            text: I18n.t("mods.available_update_count", root.availableCount)
+            font.weight: Font.DemiBold
         }
         Label {
             visible: (root.updates?.phase ?? "") !== ""
@@ -352,7 +358,7 @@ StyledRect {
                     onClicked: ModsService.applyUpdates()
                 }
                 Action {
-                    visible: root.updates?.canApply ?? false
+                    visible: root.availableCount > 0 || !!root.updates?.canApply
                     text: I18n.t("mods.dismiss_updates")
                     onClicked: ModsService.discardUpdates()
                 }

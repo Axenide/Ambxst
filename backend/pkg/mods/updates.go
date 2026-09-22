@@ -62,6 +62,7 @@ type UpdateState struct {
 }
 
 type preparedUpdate struct {
+	discoveryOnly    bool
 	id               string
 	directory        string
 	fingerprint      string
@@ -517,7 +518,8 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 	}
 	var generation string
 	var compositionErr error
-	if changed && restart {
+	discoveryOnly := automatic && discoverAll
+	if changed && restart && !discoveryOnly {
 		generation, compositionErr = m.buildGenerationAt(next, base, packages)
 	}
 	m.mu.Lock()
@@ -559,7 +561,7 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 		if err != nil {
 			return Status{}, err
 		}
-		m.updatePlan = &preparedUpdate{id: id, directory: dir, fingerprint: fingerprint, base: base, next: next, generation: generation, contentDigest: digest}
+		m.updatePlan = &preparedUpdate{id: id, directory: dir, fingerprint: fingerprint, base: base, next: next, generation: generation, contentDigest: digest, discoveryOnly: discoveryOnly}
 		if generation != "" {
 			m.updatePlan.generationDigest, err = treeDigest(generation)
 			if err != nil {
@@ -567,7 +569,7 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 				return Status{}, err
 			}
 		}
-		m.updates.PlanID, m.updates.CanApply, m.updates.Phase = id, true, "ready"
+		m.updates.PlanID, m.updates.CanApply, m.updates.Phase = id, !discoveryOnly, "ready"
 		keep = true
 	} else if failed {
 		m.updates.Phase = "failed"
@@ -648,7 +650,7 @@ func (m *Manager) RunAutoUpdates(stop <-chan struct{}) {
 		if ready {
 			status, err := m.checkUpdates(nil, true, true)
 			ids := automaticCandidates(state, status.Updates.Items)
-			if err == nil && status.Updates.CanApply && len(ids) > 0 {
+			if err == nil && len(ids) > 0 {
 				select {
 				case <-stop:
 					return

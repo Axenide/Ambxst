@@ -1,4 +1,5 @@
 {
+  "mods.available_update_count": "Actualizaciones disponibles: %1",
   "mods.cached_check_failed": "La última comprobación falló. Se muestra la última actualización conocida.",
   "mods.update_phase_partial": "Se instalaron algunas actualizaciones. Las demás están pendientes de tu revisión.",
   "mods.periodic_checks": "Comprobaciones programadas",
@@ -77,7 +78,7 @@
   "mods.compatibility_failed": "Falló la comprobación de compatibilidad o composición.",
   "mods.recovery_base": "Usar shell base",
   "mods.search_keywords": "mods modificaciones extensiones complementos paquetes actualizaciones idiomas recuperación",
-  "mods.update_phase_current": "No se encontraron cambios.",
+  "mods.update_phase_current": "Última comprobación: no se encontraron cambios en los mods comprobados.",
   "mods.update_phase_checking": "Buscando y validando actualizaciones…",
   "mods.update_phase_applying": "Aplicando actualizaciones…",
   "mods.update_phase_ready": "Actualizaciones listas para revisar.",
