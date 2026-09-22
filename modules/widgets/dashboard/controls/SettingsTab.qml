@@ -257,7 +257,7 @@ Rectangle {
         },
         {
             icon: Icons.puzzlePiece,
-            label: "Mods",
+            label: I18n.t("mods.title"),
             section: 10,
             isIcon: true
         },

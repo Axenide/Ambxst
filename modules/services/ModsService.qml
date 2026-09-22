@@ -23,12 +23,29 @@ Singleton {
     property bool bypassVersionCheck: false
     property bool modsEnabled: true
     property string errorMessage: ""
+    property string errorDetails: ""
     property string statusMessage: ""
     property string statusMessageKey: ""
     property string settingsModId: ""
     property var settingsFields: []
     property var settingsValues: ({})
     property bool settingsBusy: false
+
+    property bool autoUpdate: false
+    property var updates: ({})
+    property string diagnosticText: ""
+    property var compatibilityReport: null
+    property int subscription: -1
+
+    Component.onCompleted: {
+        root.subscription = BackendService.addSubscription(["mods"], (service, data) => {
+            Qt.callLater(() => root.applyStatus(data));
+        });
+    }
+    Component.onDestruction: {
+        if (root.subscription >= 0)
+            BackendService.removeSubscription(root.subscription);
+    }
 
     function applyStatus(result) {
         root.mods = result?.mods ?? [];
@@ -45,6 +62,13 @@ Singleton {
         // restart banner on screen after the daemon had already cleared it.
         root.restartRequired = result?.restartRequired ?? false;
         root.loaded = true;
+        root.autoUpdate = result?.autoUpdate ?? false;
+        root.updates = result?.updates ?? ({});
+    }
+
+    function showError(error) {
+        root.errorMessage = I18n.t("mods.operation_failed");
+        root.errorDetails = String(error);
     }
 
     function request(method, params, successMessage, requiresRestart, onSuccess) {
@@ -52,12 +76,13 @@ Singleton {
             return;
         root.busy = true;
         root.errorMessage = "";
+        root.errorDetails = "";
         root.statusMessage = "";
         root.statusMessageKey = "";
         BackendService.call(method, params ?? {}, (result, error) => {
             root.busy = false;
             if (error) {
-                root.errorMessage = String(error);
+                root.showError(error);
                 return;
             }
             root.applyStatus(result);
@@ -87,7 +112,40 @@ Singleton {
     }
 
     function update(id, enabled) {
-        root.request("mods.update", { id }, "mods.status_updated", enabled);
+        root.checkUpdates([id]);
+    }
+
+    function checkUpdates(ids) {
+        root.request("mods.checkUpdates", { ids: ids ?? [] }, "", false);
+    }
+
+    function applyUpdates() {
+        root.request("mods.applyUpdates", { planId: root.updates.planId, reviewed: true }, "mods.status_updated", false);
+    }
+
+    function discardUpdates() {
+        root.request("mods.discardUpdates", {}, "", false);
+    }
+
+    function setUpdatePolicy(id, policy) {
+        root.request("mods.setUpdatePolicy", { id, policy }, "mods.update_policy_saved", false);
+    }
+
+    function loadDiagnostics() {
+        BackendService.call("mods.diagnostics", {}, (result, error) => {
+            if (error) { root.showError(error); return; }
+            root.diagnosticText = result?.text ?? "";
+        });
+    }
+
+    function checkCompatibility(base) {
+        root.busy = true;
+        root.compatibilityReport = null;
+        BackendService.call("mods.checkCompatibility", { base: base ?? "" }, (result, error) => {
+            root.busy = false;
+            if (error) { root.showError(error); return; }
+            root.compatibilityReport = result;
+        });
     }
 
     function remove(id, enabled) {
@@ -134,7 +192,7 @@ Singleton {
             if (root.settingsModId !== id)
                 return;
             if (error) {
-                root.errorMessage = String(error);
+                root.showError(error);
                 return;
             }
             root.settingsFields = result?.fields ?? [];
@@ -153,10 +211,11 @@ Singleton {
             return;
         root.settingsBusy = true;
         root.errorMessage = "";
+        root.errorDetails = "";
         BackendService.call("mods.setSetting", { id, key, value }, (result, error) => {
             root.settingsBusy = false;
             if (error) {
-                root.errorMessage = String(error);
+                root.showError(error);
                 return;
             }
             root.settingsFields = result?.fields ?? [];

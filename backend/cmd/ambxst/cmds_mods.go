@@ -13,6 +13,9 @@ func runMods(args []string) {
 	command := "list"
 	if len(args) > 0 {
 		command = args[0]
+		if runModUpdateCommand(command, args[1:]) {
+			return
+		}
 	}
 
 	var (
@@ -158,6 +161,12 @@ func modsUsage(message string) {
 	fmt.Print("Ambxst Mods\n\n" +
 		"Usage: ambxst mods <command>\n\n" +
 		"Commands:\n" +
+		"    check-updates [id ...]           Prepare an update preview\n" +
+		"    apply-updates <plan-id>          Apply the reviewed preview\n" +
+		"    auto-update <on|off|inherit> [id] Set automatic update policy\n" +
+		"    check-compatibility [directory]  Test composition against a candidate base\n" +
+		"    diagnostics                      Print a report without settings or sources\n" +
+		"    base                             Use the base shell on the next start\n" +
 		"    list                             Show installed mods and generation state\n" +
 		"    install <source>                 Install from a directory, archive, or Git URL\n" +
 		"    install-dependencies <id>        Install and enable a mod's requirements\n" +

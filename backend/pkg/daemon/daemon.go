@@ -220,6 +220,7 @@ func (d *Daemon) Run(qsBin, shellQML string) error {
 	_ = os.WriteFile(pidPath, []byte(fmt.Sprintf("%d\n", os.Getpid())), 0o644)
 	defer os.Remove(pidPath)
 	defer d.srv.Close()
+	go d.mods.RunAutoUpdates(d.shutdownCh)
 
 	if err := d.compositor.Manager().Start(); err != nil {
 		log.Printf("[ambxst] compositor manager: %v (continuing)", err)

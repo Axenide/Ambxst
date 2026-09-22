@@ -125,6 +125,7 @@ Item {
     })
 
     function tr(key, argument) {
+        const translationRevision = I18n.revision;
         const fallback = root.fallbackText[key] ?? key;
         if (root.i18nActive) {
             try {
@@ -369,6 +370,54 @@ Item {
                     text: root.tr("mods.rebuild")
                     onClicked: ModsService.rebuild()
                 }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: docsRow.implicitHeight + 16
+                variant: "common"
+                radius: Styling.radius(-2)
+                enableShadow: false
+
+                RowLayout {
+                    id: docsRow
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 8
+                    Text {
+                        text: Icons.info
+                        font.family: Icons.font
+                        font.pixelSize: Styling.fontSize(3)
+                        color: Colors.primary
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.tr("mods.docs_hint")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.overBackground
+                        wrapMode: Text.Wrap
+                    }
+                    ActionButton {
+                        text: root.tr("mods.documentation")
+                        onClicked: Qt.openUrlExternally("https://github.com/Axenide/Ambxst/blob/main/docs/mods/README.md")
+                    }
+                }
+            }
+
+            ModsUpdates {
+                Layout.fillWidth: true
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: ModsService.errorDetails !== ""
+                text: root.tr("mods.technical_details", ModsService.errorDetails)
+                font.family: Config.theme.monoFont
+                font.pixelSize: Styling.fontSize(-2)
+                color: Colors.error
+                textFormat: Text.PlainText
+                wrapMode: Text.WrapAnywhere
             }
 
             StyledRect {
@@ -786,6 +835,18 @@ Item {
                                         opacity: 0.7
                                         elide: Text.ElideRight
                                     }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        readonly property var update: (ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
+                                        visible: update?.state === "available" || update?.state === "failed"
+                                        text: update?.state === "available"
+                                            ? root.tr("mods.update_item_available") + " · " + (update?.toVersion ?? "")
+                                            : root.tr("mods.update_item_failed")
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        color: modRow.item
+                                        elide: Text.ElideRight
+                                    }
                                 }
 
                                 ActionButton {
@@ -952,6 +1013,63 @@ Item {
                     }
 
                     Separator { Layout.fillWidth: true }
+
+                    MetaRow {
+                        label: root.tr("mods.languages")
+                        value: {
+                            const revision = I18n.revision;
+                            const info = root.selectedMod?.localization;
+                            if (!info) return root.tr("mods.language_unknown");
+                            if ((root.selectedMod?.localizationWarnings ?? []).length)
+                                return root.tr("mods.language_invalid");
+                            if (info.mode === "none") return root.tr("mods.language_none");
+                            const name = code => I18n.availableLanguages[code] ?? code;
+                            if (info.mode === "single")
+                                return root.tr("mods.language_single", name(info.defaultLanguage));
+                            return (info.languages ?? []).map(name).join(", ")
+                                + (!(info.languages ?? []).includes(I18n.resolvedLanguage)
+                                    ? " · " + root.tr("mods.language_fallback", name(info.defaultLanguage)) : "")
+                                + " · " + root.tr("mods.language_declared");
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.auto_updates") + " · "
+                                + root.tr(root.selectedMod?.autoUpdateEffective ? "common.on" : "common.off")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overBackground
+                            wrapMode: Text.Wrap
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Repeater {
+                                model: ["inherit", "on", "off"]
+                                delegate: ActionButton {
+                                    required property string modelData
+                                    text: root.tr("mods.policy_" + modelData)
+                                    primary: (root.selectedMod?.autoUpdate ?? "inherit") === modelData
+                                    enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false)
+                                        && (root.selectedMod?.autoUpdateAvailable ?? false)
+                                    onClicked: ModsService.setUpdatePolicy(root.selectedMod.id, modelData)
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            visible: !(root.selectedMod?.autoUpdateAvailable ?? false)
+                            text: root.tr("mods.manual_source")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
 
                     MetaRow {
                         visible: (root.selectedMod?.author ?? "") !== ""
@@ -1276,7 +1394,7 @@ Item {
                         ActionButton {
                             text: root.selectedMod?.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
                             primary: !root.selectedMod?.enabled
-                            enabled: !ModsService.busy && (root.selectedMod?.enabled
+                            enabled: !ModsService.busy && !!(root.selectedMod?.enabled
                                 || ((root.selectedMod?.valid && (root.selectedMod?.compatible || ModsService.bypassVersionCheck))
                                     && root.dependenciesReady(root.selectedMod)))
                             onClicked: {

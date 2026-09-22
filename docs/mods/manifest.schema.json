@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/Axenide/Ambxst/dev/docs/mods/manifest.schema.json",
+  "$id": "https://raw.githubusercontent.com/Axenide/Ambxst/main/docs/mods/manifest.schema.json",
   "title": "Ambxst mod manifest",
   "type": "object",
   "additionalProperties": false,
@@ -20,6 +20,35 @@
     "description": { "type": "string" },
     "license": { "type": "string" },
     "author": { "type": "string" },
+    "localization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["translated", "single", "none"] },
+        "defaultLanguage": { "type": "string", "pattern": "^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$" },
+        "languages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$" }
+        },
+        "resources": {
+          "type": "object",
+          "description": "Optional language-to-JSON-file mapping, relative to the package root. Files contain string keys and string values.",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "enum": ["translated", "single"] } } },
+          "then": { "required": ["defaultLanguage"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "translated" } } },
+          "then": { "required": ["languages"] }
+        }
+      ]
+    },
     "compatibility": {
       "type": "object",
       "additionalProperties": false,

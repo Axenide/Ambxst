@@ -6,9 +6,84 @@ manager composes enabled packages onto a clean Ambxst source tree and commits
 the active generation in one atomic state-file update after every operation
 succeeds.
 
-The manager does not poll repositories or run a resident worker. It reads local
-state when requested, accesses the network only for an explicit install or
-update, and builds a generation only when the enabled set or load order changes.
+Repository checks run on request. Automatic updates are optional and disabled
+by default. When enabled, the existing daemon checks daily without keeping a
+separate process running. Opening Settings does not trigger a network check.
+
+## Using the manager
+
+Open **Settings > Mods**. The **Mod guide** link opens this document.
+Install a package, inspect its author and declared permissions, then enable it.
+New packages stay disabled until you choose to enable them.
+
+Use **Check for updates** to prepare candidates for all installed mods, or
+**Update** in a mod's details to check that package. Expand **Review updates**
+to inspect versions, exact revisions, affected files, dependencies, and declared
+permissions. **Apply reviewed updates** applies the prepared candidates.
+The current shell keeps running until you restart it.
+
+The preview checks the complete enabled set against the current base. A changed
+package is not installed if its manifest or composition fails. Newly required
+mods need an explicit installation through **Install required mods**. After
+resolving requirements, check again. A failed download can be retried with
+**Check for updates**; successful independent candidates can still be reviewed.
+
+Changing the installed set, update preferences, base source, or package contents
+invalidates a prepared preview. A daemon restart also requires a fresh check.
+
+## Automatic updates
+
+The global switch sets the default for installed and future mods. Each mod can
+use that default, opt in, or opt out. Changing the global switch preserves
+individual choices. Disabled mods stay disabled after an update.
+
+Automatic updates support Git repositories with a tracked branch and GitHub
+package-directory sources. Local directories and archives require manual
+updates. Detached Git revisions cannot be pulled; change their source explicitly
+when moving to a different revision.
+
+Checks begin no earlier than one minute after daemon startup. The scheduler
+stores its next check time and wakes at most every fifteen minutes to see
+whether a check is due. Failed checks back off from one hour to one day.
+Automatic work pauses while mods are globally disabled or a generation awaits
+its startup trial. The scheduler never restarts the shell.
+
+Changes to dependencies, dependency sources, permissions, required commands,
+or a bypassed version requirement need review. A revision recovered after a
+failed startup also needs review before another attempt. Permission declarations
+describe package behavior; they do not restrict what its code can do.
+
+## Compatibility and recovery
+
+**Check compatibility** tests declared requirements and composition against the
+current base. Enter a local candidate Ambxst checkout to check a different
+version before installing it. This does not execute candidate QML and does not
+prove runtime behavior. The candidate must be obtained separately; the manager
+does not assume that a distribution's package updater exposes its next sources.
+
+Updates are staged separately from installed packages. Applying them retains
+the previous packages and state in a recovery journal. Interrupted application
+is restored before the next state read. If the new generation fails the startup
+health window, recovery restores its packages as well as the previous generation.
+Further package changes wait until the pending update has been tested or recovered.
+
+If the modded shell cannot open Settings, run:
+
+```sh
+ambxst mods rollback
+# Or select the base shell for the next start:
+ambxst mods base
+ambxst
+```
+
+For a temporary bypass, use `AMBXST_MODS_DISABLED=1 ambxst`. Stop an already
+running instance before starting a replacement. The backend commands work
+without loading mod-provided QML.
+
+**Diagnostic report** opens a preview with shell and mod versions, load order,
+generation state, and the last update error code. Copy it when reporting a
+problem. Settings values, environment variables, source URLs, and raw process
+output are excluded. Nothing is uploaded automatically.
 
 ## Package layout
 
@@ -27,15 +102,15 @@ or `.tgz` archive, or a Git URL. New packages are always disabled. Archive
 extraction rejects links, path traversal, more than 10,000 entries, and expanded
 content over 128 MiB.
 
-Update pulls a Git source with fast-forward only. Local-directory and archive
-packages are reloaded from their original path. The old package is restored if
-the replacement fails validation or generation composition.
+Update prepares a separate Git checkout and pulls with fast-forward only.
+Local-directory and archive packages are reloaded from their original path.
+The installed package remains unchanged during validation and composition.
 
 ## Manifest
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/Axenide/Ambxst/dev/docs/mods/manifest.schema.json",
+  "$schema": "https://raw.githubusercontent.com/Axenide/Ambxst/main/docs/mods/manifest.schema.json",
   "manifestVersion": 1,
   "id": "org.example.feature",
   "name": "Example feature",
@@ -122,9 +197,9 @@ Required mods are listed by ID in `dependencies`. A distributable package can
 also map a dependency ID to its package repository in `dependencySources`:
 
 ```json
-"dependencies": ["community.i18n"],
+"dependencies": ["org.example.core"],
 "dependencySources": {
-  "community.i18n": "https://github.com/example/ambxst-mod-i18n.git"
+  "org.example.core": "https://github.com/example/ambxst-mod-core.git"
 }
 ```
 
@@ -137,6 +212,39 @@ or a GitHub directory URL such as
 `https://github.com/owner/repository/tree/main/packages/example`. GitHub directory
 installs use a shallow sparse checkout and retain the original URL for updates.
 
+## Language metadata
+
+Declare the interface languages in the package manifest:
+
+```json
+"localization": {
+  "mode": "translated",
+  "defaultLanguage": "en",
+  "languages": ["en", "ru", "es"],
+  "resources": {
+    "en": "translations/en.json",
+    "ru": "translations/ru.json",
+    "es": "translations/es.json"
+  }
+}
+```
+
+Use `"mode": "single"` with `defaultLanguage` for an interface without
+translations. Use `"mode": "none"` when the package introduces no interface
+text. Omit `localization` only when language information is unknown.
+
+Resources are optional JSON dictionaries with string keys and values. Paths
+are relative to the package root. The manager checks supplied resources and
+reports invalid declarations. These checks do not measure translation quality
+or prove coverage of every visible string. The language list is identified as
+author-provided information in Settings.
+
+Metadata does not register translations or translate arbitrary mod strings.
+Ambxst now includes native `I18n`; packages should use it and supply their own
+translations as needed. A dependency on the former `community.i18n` mod is not
+required for current Ambxst. Older packages without metadata continue to load
+and show an unknown language state.
+
 ## Settings schema
 
 Mod settings use data, not package-provided settings UI. This keeps the Settings
@@ -145,7 +253,7 @@ enabled.
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/Axenide/Ambxst/dev/docs/mods/settings.schema.json",
+  "$schema": "https://raw.githubusercontent.com/Axenide/Ambxst/main/docs/mods/settings.schema.json",
   "version": 1,
   "fields": [
     {
@@ -202,7 +310,8 @@ running until the user restarts Ambxst.
 On the next start, the daemon gives the new generation an eight-second health
 window. If Quickshell exits during that window, Ambxst restores the last
 known-good generation and starts it immediately. After the window closes, no mod
-health timer or worker remains active. `AMBXST_MODS_DISABLED=1 ambxst` bypasses
+health timer remains active. The optional update scheduler runs independently.
+`AMBXST_MODS_DISABLED=1 ambxst` bypasses
 the active generation for manual recovery.
 
 Ambxst also compares the generation metadata with the current base version and
@@ -216,6 +325,23 @@ the new source stops its own build, and Ambxst starts on the clean base rather
 than on a half-applied tree.
 
 ## Commands
+
+The running daemon retains prepared candidates between these commands:
+
+```sh
+ambxst mods check-updates
+ambxst mods check-updates org.example.feature
+ambxst mods apply-updates <plan-id-from-preview>
+ambxst mods auto-update on
+ambxst mods auto-update off org.example.feature
+ambxst mods auto-update inherit org.example.feature
+ambxst mods check-compatibility /path/to/candidate-ambxst
+ambxst mods diagnostics
+```
+
+`apply-updates` confirms the exact plan shown by `check-updates`. Review the
+JSON before applying. Without a daemon, checks are read-only previews; start
+the base shell and check again to retain a plan for application.
 
 ```bash
 ambxst mods list

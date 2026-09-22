@@ -17,23 +17,95 @@ func NewService(manager *Manager) *Service {
 
 func (s *Service) Register(server *ipc.Server) {
 	server.Register(&ipc.Service{
-		Name: "mods",
+		Name:      "mods",
+		Subscribe: s.subscribe,
 		Methods: map[string]ipc.HandlerFunc{
-			"status":              s.status,
-			"install":             s.install,
-			"installDependencies": s.installDependencies,
-			"setEnabled":          s.setEnabled,
-			"remove":              s.remove,
-			"move":                s.move,
-			"update":              s.update,
-			"rebuild":             s.rebuild,
-			"rollback":            s.rollback,
-			"settings":            s.settings,
-			"setSetting":          s.setSetting,
+			"status":                s.status,
+			"install":               s.install,
+			"installDependencies":   s.installDependencies,
+			"setEnabled":            s.setEnabled,
+			"remove":                s.remove,
+			"move":                  s.move,
+			"update":                s.update,
+			"rebuild":               s.rebuild,
+			"rollback":              s.rollback,
+			"settings":              s.settings,
+			"setSetting":            s.setSetting,
 			"setBypassVersionCheck": s.setBypassVersionCheck,
-			"setModsEnabled":      s.setModsEnabled,
+			"setModsEnabled":        s.setModsEnabled,
+			"checkUpdates":          s.checkUpdates,
+			"discardUpdates":        func(_ json.RawMessage) (any, error) { return s.manager.DiscardUpdates() },
+			"applyUpdates":          s.applyUpdates,
+			"setUpdatePolicy":       s.setUpdatePolicy,
+			"diagnostics":           s.diagnostics,
+			"checkCompatibility":    s.checkCompatibility,
 		},
 	})
+}
+
+func (s *Service) subscribe(sub *ipc.Subscriber) {
+	ch := make(chan struct{}, 1)
+	s.manager.eventsMu.Lock()
+	if s.manager.listeners == nil {
+		s.manager.listeners = map[chan struct{}]bool{}
+	}
+	s.manager.listeners[ch] = true
+	s.manager.eventsMu.Unlock()
+	defer func() { s.manager.eventsMu.Lock(); delete(s.manager.listeners, ch); s.manager.eventsMu.Unlock() }()
+	for {
+		if status, err := s.manager.Status(); err == nil {
+			sub.Send("mods", status)
+		}
+		select {
+		case <-sub.StopCh():
+			return
+		case <-ch:
+		}
+	}
+}
+
+func (s *Service) checkUpdates(raw json.RawMessage) (any, error) {
+	var params struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.CheckUpdates(params.IDs, false)
+}
+
+func (s *Service) applyUpdates(raw json.RawMessage) (any, error) {
+	var params struct {
+		PlanID   string `json:"planId"`
+		Reviewed bool   `json:"reviewed"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.ApplyUpdates(params.PlanID, params.Reviewed)
+}
+
+func (s *Service) setUpdatePolicy(raw json.RawMessage) (any, error) {
+	var params struct {
+		ID     string `json:"id"`
+		Policy string `json:"policy"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.SetUpdatePolicy(params.ID, params.Policy)
+}
+
+func (s *Service) diagnostics(_ json.RawMessage) (any, error) { return s.manager.Diagnostics() }
+
+func (s *Service) checkCompatibility(raw json.RawMessage) (any, error) {
+	var params struct {
+		Base string `json:"base"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.CheckBaseCompatibility(params.Base)
 }
 
 func (s *Service) status(_ json.RawMessage) (any, error) {

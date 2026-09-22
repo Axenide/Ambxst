@@ -1,7 +1,6 @@
 // Package mods installs and composes Ambxst modifications.
 //
-// The package has no background worker. Repository access and generation
-// builds only happen in response to an explicit method call.
+// Automatic updates are opt-in and use the same staged checks as manual updates.
 package mods
 
 import (
@@ -45,6 +44,7 @@ type Manifest struct {
 	Commands          []string          `json:"commands,omitempty"`
 	Permissions       []string          `json:"permissions,omitempty"`
 	Settings          *SettingsRef      `json:"settings,omitempty"`
+	Localization      *Localization     `json:"localization,omitempty"`
 	Operations        []Operation       `json:"operations"`
 
 	// Keys this build does not recognise, kept for the package status only.

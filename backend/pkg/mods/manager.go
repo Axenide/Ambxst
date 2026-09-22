@@ -39,6 +39,12 @@ type Manager struct {
 	// for status after each action and while a banner is up. Keyed by the
 	// package's patch stats, so an updated package rescans on its own.
 	affectedCache map[string]affectedFiles
+	updateMu      sync.Mutex
+	updatePlan    *preparedUpdate
+	updates       UpdateState
+	updatesLoaded bool
+	eventsMu      sync.Mutex
+	listeners     map[chan struct{}]bool
 }
 
 type affectedFiles struct {
@@ -50,6 +56,7 @@ type State struct {
 	Version            int            `json:"version"`
 	BypassVersionCheck bool           `json:"bypassVersionCheck,omitempty"`
 	Disabled           bool           `json:"disabled,omitempty"`
+	AutoUpdate         bool           `json:"autoUpdate,omitempty"`
 	Mods               []InstalledMod `json:"mods"`
 	ActiveGeneration   string         `json:"activeGeneration,omitempty"`
 	PreviousGeneration string         `json:"previousGeneration,omitempty"`
@@ -63,36 +70,42 @@ type InstalledMod struct {
 	SourceType  string `json:"sourceType"`
 	Revision    string `json:"revision,omitempty"`
 	InstalledAt string `json:"installedAt"`
+	AutoUpdate  string `json:"autoUpdate,omitempty"`
 }
 
 type ModInfo struct {
-	ID                 string           `json:"id"`
-	Name               string           `json:"name"`
-	Version            string           `json:"version"`
-	Description        string           `json:"description"`
-	License            string           `json:"license,omitempty"`
-	Author             string           `json:"author,omitempty"`
-	AuthorURL          string           `json:"authorUrl,omitempty"`
-	Homepage           string           `json:"homepage,omitempty"`
-	Enabled            bool             `json:"enabled"`
-	Order              int              `json:"order"`
-	Source             string           `json:"source"`
-	SourceType         string           `json:"sourceType"`
-	Revision           string           `json:"revision,omitempty"`
-	Dependencies       []string         `json:"dependencies,omitempty"`
-	DependencyState    []DependencyInfo `json:"dependencyState,omitempty"`
-	Conflicts          []string         `json:"conflicts,omitempty"`
-	Commands           []string         `json:"commands,omitempty"`
-	Permissions        []string         `json:"permissions,omitempty"`
-	AffectedFiles      []string         `json:"affectedFiles"`
-	HasSettings        bool             `json:"hasSettings"`
-	Valid              bool             `json:"valid"`
-	Error              string           `json:"error,omitempty"`
-	Compatible         bool             `json:"compatible"`
-	CompatibilityError string           `json:"compatibilityError,omitempty"`
-	Untested           bool             `json:"untested,omitempty"`
-	UntestedMessage    string           `json:"untestedMessage,omitempty"`
-	UnknownFields      []string         `json:"unknownFields,omitempty"`
+	ID                   string           `json:"id"`
+	Name                 string           `json:"name"`
+	Version              string           `json:"version"`
+	Description          string           `json:"description"`
+	License              string           `json:"license,omitempty"`
+	Author               string           `json:"author,omitempty"`
+	AuthorURL            string           `json:"authorUrl,omitempty"`
+	Homepage             string           `json:"homepage,omitempty"`
+	Enabled              bool             `json:"enabled"`
+	Order                int              `json:"order"`
+	Source               string           `json:"source"`
+	SourceType           string           `json:"sourceType"`
+	Revision             string           `json:"revision,omitempty"`
+	Dependencies         []string         `json:"dependencies,omitempty"`
+	DependencyState      []DependencyInfo `json:"dependencyState,omitempty"`
+	Conflicts            []string         `json:"conflicts,omitempty"`
+	Commands             []string         `json:"commands,omitempty"`
+	Permissions          []string         `json:"permissions,omitempty"`
+	AffectedFiles        []string         `json:"affectedFiles"`
+	HasSettings          bool             `json:"hasSettings"`
+	Valid                bool             `json:"valid"`
+	Error                string           `json:"error,omitempty"`
+	Compatible           bool             `json:"compatible"`
+	CompatibilityError   string           `json:"compatibilityError,omitempty"`
+	Untested             bool             `json:"untested,omitempty"`
+	UntestedMessage      string           `json:"untestedMessage,omitempty"`
+	UnknownFields        []string         `json:"unknownFields,omitempty"`
+	Localization         *Localization    `json:"localization,omitempty"`
+	LocalizationWarnings []string         `json:"localizationWarnings,omitempty"`
+	AutoUpdate           string           `json:"autoUpdate"`
+	AutoUpdateEffective  bool             `json:"autoUpdateEffective"`
+	AutoUpdateAvailable  bool             `json:"autoUpdateAvailable"`
 }
 
 type DependencyInfo struct {
@@ -110,17 +123,19 @@ type ModSettings struct {
 }
 
 type Status struct {
-	BasePath           string    `json:"basePath"`
-	BaseVersion        string    `json:"baseVersion"`
-	BaseRevision       string    `json:"baseRevision,omitempty"`
-	ActiveGeneration   string    `json:"activeGeneration,omitempty"`
-	PreviousGeneration string    `json:"previousGeneration,omitempty"`
-	GenerationCurrent  bool      `json:"generationCurrent"`
-	GenerationError    string    `json:"generationError,omitempty"`
-	RestartRequired    bool      `json:"restartRequired"`
-	BypassVersionCheck bool      `json:"bypassVersionCheck"`
-	ModsDisabled       bool      `json:"modsDisabled"`
-	Mods               []ModInfo `json:"mods"`
+	BasePath           string      `json:"basePath"`
+	BaseVersion        string      `json:"baseVersion"`
+	BaseRevision       string      `json:"baseRevision,omitempty"`
+	ActiveGeneration   string      `json:"activeGeneration,omitempty"`
+	PreviousGeneration string      `json:"previousGeneration,omitempty"`
+	GenerationCurrent  bool        `json:"generationCurrent"`
+	GenerationError    string      `json:"generationError,omitempty"`
+	RestartRequired    bool        `json:"restartRequired"`
+	BypassVersionCheck bool        `json:"bypassVersionCheck"`
+	ModsDisabled       bool        `json:"modsDisabled"`
+	AutoUpdate         bool        `json:"autoUpdate"`
+	Updates            UpdateState `json:"updates"`
+	Mods               []ModInfo   `json:"mods"`
 }
 
 type generationMetadata struct {
@@ -154,6 +169,9 @@ func (m *Manager) Status() (Status, error) {
 func (m *Manager) Install(source string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 
 	source = strings.TrimSpace(source)
 	if source == "" {
@@ -214,6 +232,9 @@ func (m *Manager) Install(source string) (Status, error) {
 func (m *Manager) InstallDependencies(id string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 
 	state, err := m.loadState()
 	if err != nil {
@@ -362,6 +383,9 @@ func (m *Manager) InstallDependencies(id string) (Status, error) {
 func (m *Manager) SetEnabled(id string, enabled bool) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -428,6 +452,9 @@ func (m *Manager) SetModsEnabled(enabled bool) (Status, error) {
 func (m *Manager) Rebuild() (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -486,6 +513,9 @@ func (m *Manager) EnsureCurrentGeneration() error {
 func (m *Manager) Remove(id string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -518,6 +548,9 @@ func (m *Manager) Remove(id string) (Status, error) {
 func (m *Manager) Move(id string, direction int) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	if direction != -1 && direction != 1 {
 		return Status{}, fmt.Errorf("direction must be -1 or 1")
 	}
@@ -535,6 +568,9 @@ func (m *Manager) Move(id string, direction int) (Status, error) {
 func (m *Manager) MoveTo(id string, position int) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -591,123 +627,22 @@ func enabledOrderChanged(before, after []InstalledMod) bool {
 }
 
 func (m *Manager) Update(id string) (Status, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	state, err := m.loadState()
+	status, err := m.CheckUpdates([]string{id}, false)
 	if err != nil {
 		return Status{}, err
 	}
-	index, ok := findInstalled(state, id)
-	if !ok {
-		return Status{}, fmt.Errorf("mod %q is not installed", id)
-	}
-	installed := state.Mods[index]
-	packageRoot := filepath.Join(m.paths.ModPackagesDir(), id)
-	if installed.SourceType != "git" {
-		return m.updateLocalSource(state, index, installed, packageRoot)
-	}
-	oldRevision := gitRevision(packageRoot)
-	if err := runCommandTimeout(5*time.Minute, packageRoot, "git", "pull", "--ff-only"); err != nil {
-		return Status{}, fmt.Errorf("update mod: %w", err)
-	}
-	manifest, err := LoadManifest(packageRoot)
-	if err != nil || manifest.ID != id {
-		_ = runCommand(packageRoot, "git", "reset", "--hard", oldRevision)
-		if err != nil {
-			return Status{}, err
+	if !status.Updates.CanApply {
+		for _, item := range status.Updates.Items {
+			if item.State == "failed" {
+				return Status{}, fmt.Errorf("update %s: %s", item.ID, item.Details)
+			}
 		}
-		return Status{}, fmt.Errorf("updated package changed its id")
+		return status, nil
 	}
-	next := cloneState(state)
-	next.Mods[index].Revision = gitRevision(packageRoot)
-	if installed.Enabled {
-		if err := m.composeAndActivate(state, &next); err != nil {
-			_ = runCommand(packageRoot, "git", "reset", "--hard", oldRevision)
-			return Status{}, err
-		}
-	} else if err := m.saveState(next); err != nil {
-		_ = runCommand(packageRoot, "git", "reset", "--hard", oldRevision)
-		return Status{}, err
+	if status.Updates.RequiresReview {
+		return Status{}, fmt.Errorf("review changes with check-updates, then use apply-updates %s", status.Updates.PlanID)
 	}
-	return m.statusForRestart(next, installed.Enabled)
-}
-
-func (m *Manager) updateLocalSource(state State, index int, installed InstalledMod, packageRoot string) (Status, error) {
-	refreshedRevision := ""
-	tmp, err := os.MkdirTemp(m.paths.ModPackagesDir(), ".update-")
-	if err != nil {
-		return Status{}, err
-	}
-	defer os.RemoveAll(tmp)
-
-	updatedRoot := filepath.Join(tmp, "package")
-	switch installed.SourceType {
-	case "local":
-		info, err := os.Stat(installed.Source)
-		if err != nil {
-			return Status{}, fmt.Errorf("inspect source: %w", err)
-		}
-		if !info.IsDir() {
-			return Status{}, fmt.Errorf("local source is not a directory")
-		}
-		if err := copyTree(installed.Source, updatedRoot, func(path string, entry fs.DirEntry) bool {
-			return path != installed.Source && entry.IsDir() && entry.Name() == ".git"
-		}); err != nil {
-			return Status{}, fmt.Errorf("copy source: %w", err)
-		}
-	case "archive":
-		if err := extractPackageArchive(installed.Source, updatedRoot); err != nil {
-			return Status{}, err
-		}
-	case "git-subdir":
-		fetched, acquireErr := acquirePackage(installed.Source, updatedRoot)
-		if acquireErr != nil {
-			return Status{}, acquireErr
-		}
-		updatedRoot = fetched.root
-		refreshedRevision = fetched.revision
-	default:
-		return Status{}, fmt.Errorf("mod %q has unsupported source type %q", installed.ID, installed.SourceType)
-	}
-	if installed.SourceType != "git-subdir" {
-		updatedRoot, err = locatePackageRoot(updatedRoot)
-		if err != nil {
-			return Status{}, err
-		}
-	}
-	manifest, err := LoadManifest(updatedRoot)
-	if err != nil {
-		return Status{}, err
-	}
-	if manifest.ID != installed.ID {
-		return Status{}, fmt.Errorf("updated package changed its id")
-	}
-
-	backup := filepath.Join(tmp, "previous")
-	if err := os.Rename(packageRoot, backup); err != nil {
-		return Status{}, fmt.Errorf("prepare package update: %w", err)
-	}
-	restore := func() {
-		_ = os.RemoveAll(packageRoot)
-		_ = os.Rename(backup, packageRoot)
-	}
-	if err := os.Rename(updatedRoot, packageRoot); err != nil {
-		restore()
-		return Status{}, fmt.Errorf("store package update: %w", err)
-	}
-
-	next := cloneState(state)
-	next.Mods[index].Revision = refreshedRevision
-	if installed.Enabled {
-		if err := m.composeAndActivate(state, &next); err != nil {
-			restore()
-			return Status{}, err
-		}
-	} else if err := m.saveState(next); err != nil {
-		restore()
-		return Status{}, err
-	}
-	return m.statusForRestart(next, installed.Enabled)
+	return m.ApplyUpdates(status.Updates.PlanID, false)
 }
 
 func (m *Manager) Settings(id string) (ModSettings, error) {
@@ -755,6 +690,16 @@ func (m *Manager) Rollback() (Status, error) {
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
+	}
+	if restored, err := m.restoreUpdate(state); restored || err != nil {
+		if err != nil {
+			return Status{}, err
+		}
+		state, err = m.loadState()
+		if err != nil {
+			return Status{}, err
+		}
+		return m.statusForRestart(state, true)
 	}
 	if state.PreviousGeneration == "" {
 		return Status{}, fmt.Errorf("no previous generation is available")
@@ -848,6 +793,9 @@ func (m *Manager) RecoverFailedActivation() (bool, error) {
 	if state.ActiveGeneration != pending.Generation {
 		_ = os.Remove(m.paths.ModPendingActivationFile())
 		return false, nil
+	}
+	if restored, err := m.restoreUpdate(state); restored || err != nil {
+		return restored, err
 	}
 
 	state.ActiveGeneration = pending.PreviousGeneration
@@ -950,11 +898,14 @@ func (m *Manager) writePendingActivation(generation, previous string) error {
 }
 
 func (m *Manager) buildGeneration(state State) (string, error) {
-	base := paths.FindBaseShellSource()
+	return m.buildGenerationAt(state, paths.FindBaseShellSource(), m.paths.ModPackagesDir())
+}
+
+func (m *Manager) buildGenerationAt(state State, base, packages string) (string, error) {
 	if base == "" {
 		return "", fmt.Errorf("Ambxst base source was not found")
 	}
-	manifests, ordered, err := m.resolve(state, base)
+	manifests, ordered, err := m.resolveAt(state, base, packages)
 	if err != nil {
 		return "", err
 	}
@@ -980,7 +931,7 @@ func (m *Manager) buildGeneration(state State) (string, error) {
 	}
 	for _, id := range ordered {
 		manifest := manifests[id]
-		packageRoot := filepath.Join(m.paths.ModPackagesDir(), id)
+		packageRoot := filepath.Join(packages, id)
 		for _, operation := range manifest.Operations {
 			if err := applyOperation(tmp, packageRoot, operation); err != nil {
 				return "", fmt.Errorf("mod %s: %w", id, err)
@@ -1021,6 +972,10 @@ func (m *Manager) buildGeneration(state State) (string, error) {
 }
 
 func (m *Manager) resolve(state State, base string) (map[string]Manifest, []string, error) {
+	return m.resolveAt(state, base, m.paths.ModPackagesDir())
+}
+
+func (m *Manager) resolveAt(state State, base, packages string) (map[string]Manifest, []string, error) {
 	manifests := make(map[string]Manifest)
 	installed := make(map[string]InstalledMod)
 	for _, mod := range state.Mods {
@@ -1028,7 +983,7 @@ func (m *Manager) resolve(state State, base string) (map[string]Manifest, []stri
 		if !mod.Enabled {
 			continue
 		}
-		manifest, err := LoadManifest(filepath.Join(m.paths.ModPackagesDir(), mod.ID))
+		manifest, err := LoadManifest(filepath.Join(packages, mod.ID))
 		if err != nil {
 			return nil, nil, fmt.Errorf("mod %s: %w", mod.ID, err)
 		}
@@ -1111,6 +1066,8 @@ func (m *Manager) statusFor(state State) (Status, error) {
 		GenerationCurrent:  true,
 		BypassVersionCheck: state.BypassVersionCheck,
 		ModsDisabled:       state.Disabled,
+		AutoUpdate:         state.AutoUpdate,
+		Updates:            m.updateState(),
 		Mods:               make([]ModInfo, 0, len(state.Mods)),
 	}
 	if pending, ok := m.readPendingActivation(); ok && pending.Generation == state.ActiveGeneration {
@@ -1178,30 +1135,37 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			})
 		}
 		status.Mods = append(status.Mods, ModInfo{
-			ID:                 manifest.ID,
-			Name:               manifest.Name,
-			Version:            manifest.Version,
-			Description:        manifest.Description,
-			License:            manifest.License,
-			Author:             manifest.Author,
-			Enabled:            installed.Enabled,
-			Order:              installed.Order,
-			Source:             installed.Source,
-			SourceType:         installed.SourceType,
-			Revision:           installed.Revision,
-			Dependencies:       manifest.Dependencies,
-			DependencyState:    dependencyState,
-			Conflicts:          manifest.Conflicts,
-			Commands:           manifest.Commands,
-			Permissions:        manifest.Permissions,
-			AffectedFiles:      files,
-			HasSettings:        manifest.Settings != nil,
-			Valid:              true,
-			Compatible:         compatibilityErr == nil,
-			CompatibilityError: compatibilityMessage,
-			Untested:           untestedMessage != "",
-			UntestedMessage:    untestedMessage,
-			UnknownFields:      manifest.UnknownFields,
+			ID:                   manifest.ID,
+			Name:                 manifest.Name,
+			Version:              manifest.Version,
+			Description:          manifest.Description,
+			License:              manifest.License,
+			Author:               manifest.Author,
+			AuthorURL:            manifest.AuthorURL,
+			Homepage:             manifest.Homepage,
+			Enabled:              installed.Enabled,
+			Order:                installed.Order,
+			Source:               installed.Source,
+			SourceType:           installed.SourceType,
+			Revision:             installed.Revision,
+			Dependencies:         manifest.Dependencies,
+			DependencyState:      dependencyState,
+			Conflicts:            manifest.Conflicts,
+			Commands:             manifest.Commands,
+			Permissions:          manifest.Permissions,
+			AffectedFiles:        files,
+			HasSettings:          manifest.Settings != nil,
+			Valid:                true,
+			Compatible:           compatibilityErr == nil,
+			CompatibilityError:   compatibilityMessage,
+			Untested:             untestedMessage != "",
+			UntestedMessage:      untestedMessage,
+			UnknownFields:        manifest.UnknownFields,
+			Localization:         manifest.Localization,
+			LocalizationWarnings: localizationWarnings(manifest.Localization, root),
+			AutoUpdate:           updatePolicy(installed),
+			AutoUpdateAvailable:  automaticSource(installed),
+			AutoUpdateEffective:  automaticEnabled(state, installed),
 		})
 	}
 	sort.SliceStable(status.Mods, func(i, j int) bool { return status.Mods[i].Order < status.Mods[j].Order })
@@ -1260,6 +1224,9 @@ func (m *Manager) loadSettings(id string) (ModSettings, error) {
 }
 
 func (m *Manager) loadState() (State, error) {
+	if err := m.recoverInterruptedUpdate(); err != nil {
+		return State{}, err
+	}
 	data, err := os.ReadFile(m.paths.ModStateFile())
 	if os.IsNotExist(err) {
 		return State{Version: stateVersion, Mods: []InstalledMod{}}, nil
