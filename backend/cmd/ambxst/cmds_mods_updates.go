@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 
 	"ambxst/backend/pkg/mods"
 	"ambxst/backend/pkg/paths"
@@ -21,6 +22,15 @@ func runModUpdateCommand(command string, args []string) bool {
 			modsUsage("Usage: ambxst mods apply-updates <reviewed-plan-id>")
 		}
 		method, params["planId"], params["reviewed"] = "applyUpdates", args[0], true
+	case "check-interval":
+		if len(args) != 1 {
+			modsUsage("Usage: ambxst mods check-interval <1|6|24|168>")
+		}
+		hours, err := strconv.Atoi(args[0])
+		if err != nil {
+			modsUsage("The interval must be a number of hours: 1, 6, 24, or 168")
+		}
+		method, params["hours"] = "setUpdateInterval", hours
 	case "auto-update":
 		if len(args) < 1 || len(args) > 2 {
 			modsUsage("Usage: ambxst mods auto-update <on|off|inherit> [mod-id]")
@@ -67,6 +77,8 @@ func runModUpdateCommand(command string, args []string) bool {
 			err = fmt.Errorf("the daemon must remain running between preview and apply; start the base shell with AMBXST_MODS_DISABLED=1 ambxst")
 		case "setUpdatePolicy":
 			result, err = manager.SetUpdatePolicy(params["id"].(string), params["policy"].(string))
+		case "setUpdateInterval":
+			result, err = manager.SetUpdateInterval(params["hours"].(int))
 		case "diagnostics":
 			result, err = manager.Diagnostics()
 		case "checkCompatibility":

@@ -11,6 +11,7 @@ RowLayout {
     id: root
     required property var mod
     property bool canEnable: false
+    property bool compact: false
     readonly property bool working: ModsService.busy || (ModsService.updates?.busy ?? false)
     signal enableRequested(var trigger)
     signal removeRequested(var trigger)
@@ -24,13 +25,15 @@ RowLayout {
             ? (destructive ? "error" : "secondary") : "focus"
         implicitWidth: Math.max(44, Styling.fontSize(28))
         implicitHeight: implicitWidth
-        padding: 4
+        padding: root.compact ? 8 : 4
         enabled: !root.working
         opacity: enabled ? 1 : 0.45
         Accessible.name: text + ": " + (root.mod?.name ?? "")
-        ToolTip.visible: hovered || activeFocus
-        ToolTip.text: text
-        ToolTip.delay: 400
+        StyledToolTip {
+            show: action.hovered || action.activeFocus
+            tooltipText: action.text
+            delay: 500
+        }
         background: Item {
             StyledRect {
                 anchors.fill: parent
@@ -43,7 +46,7 @@ RowLayout {
         contentItem: Text {
             text: action.glyph
             font.family: Icons.font
-            font.pixelSize: Styling.fontSize(4)
+            font.pixelSize: Styling.fontSize(root.compact ? 1 : 4)
             color: action.destructive && !action.hovered && !action.activeFocus
                 ? Colors.error : Styling.srItem(action.surface)
             horizontalAlignment: Text.AlignHCenter

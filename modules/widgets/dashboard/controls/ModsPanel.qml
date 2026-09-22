@@ -371,8 +371,8 @@ Item {
                 ]
 
                 ActionButton {
-                    text: root.tr("mods.rebuild")
-                    onClicked: ModsService.rebuild()
+                    text: root.tr("mods.updates_title")
+                    onClicked: mainFlickable.contentY = Math.min(updatePanel.y, Math.max(0, mainFlickable.contentHeight - mainFlickable.height))
                 }
             }
 
@@ -407,10 +407,6 @@ Item {
                         onClicked: Qt.openUrlExternally("https://github.com/Axenide/Ambxst/blob/main/docs/mods/README.md")
                     }
                 }
-            }
-
-            ModsUpdates {
-                Layout.fillWidth: true
             }
 
             Text {
@@ -475,168 +471,6 @@ Item {
                         text: root.tr("mods.restart_now")
                         primary: true
                         onClicked: ModsService.restart()
-                    }
-                }
-            }
-
-            StyledRect {
-                Layout.fillWidth: true
-                Layout.preferredHeight: modsToggleRow.implicitHeight + 28
-                variant: "pane"
-                radius: Styling.radius(0)
-
-                RowLayout {
-                    id: modsToggleRow
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.margins: 14
-                    spacing: 8
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Text {
-                            text: root.tr("mods.toggle_title")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.DemiBold
-                            color: Colors.overBackground
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: root.tr("mods.toggle_description")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.outline
-                            wrapMode: Text.Wrap
-                        }
-                    }
-
-                    ActionButton {
-                        text: ModsService.modsEnabled ? root.tr("common.on") : root.tr("common.off")
-                        primary: ModsService.modsEnabled
-                        enabled: !ModsService.busy
-                        onClicked: ModsService.setModsEnabled(!ModsService.modsEnabled)
-                    }
-                }
-            }
-
-            StyledRect {
-                Layout.fillWidth: true
-                Layout.preferredHeight: installColumn.implicitHeight + 28
-                variant: "pane"
-                radius: Styling.radius(0)
-
-                ColumnLayout {
-                    id: installColumn
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.margins: 14
-                    spacing: 8
-
-                    Text {
-                        text: root.tr("mods.package_source")
-                        font.family: Config.theme.font
-                        font.pixelSize: Styling.fontSize(-1)
-                        font.weight: Font.DemiBold
-                        color: Colors.overBackground
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        TextField {
-                            id: sourceInput
-                            Layout.fillWidth: true
-                            implicitHeight: 38
-                            placeholderText: root.tr("mods.source_placeholder")
-                            color: Colors.overBackground
-                            placeholderTextColor: Colors.outline
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            selectByMouse: true
-                            enabled: !ModsService.busy
-                            Accessible.name: root.tr("mods.package_source")
-                            Accessible.description: root.tr("mods.source_placeholder")
-
-                            background: StyledRect {
-                                variant: sourceInput.activeFocus ? "focus" : "common"
-                                radius: Styling.radius(-2)
-                                enableShadow: false
-                            }
-
-                            onAccepted: {
-                                const source = text.trim();
-                                if (source !== "")
-                                    root.askConfirm("install", null, source);
-                            }
-                        }
-
-                        ActionButton {
-                            text: root.tr("mods.install")
-                            primary: true
-                            enabled: !ModsService.busy && sourceInput.text.trim() !== ""
-                            onClicked: root.askConfirm("install", null, sourceInput.text.trim())
-                        }
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.tr("mods.trust_warning")
-                        font.family: Config.theme.font
-                        font.pixelSize: Styling.fontSize(-2)
-                        color: Colors.outline
-                        wrapMode: Text.Wrap
-                    }
-                }
-            }
-
-            StyledRect {
-                Layout.fillWidth: true
-                Layout.preferredHeight: bypassRow.implicitHeight + 28
-                variant: "pane"
-                radius: Styling.radius(0)
-
-                RowLayout {
-                    id: bypassRow
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.margins: 14
-                    spacing: 8
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Text {
-                            text: root.tr("mods.bypass_title")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.DemiBold
-                            color: Colors.overBackground
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: root.tr("mods.bypass_description")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.outline
-                            wrapMode: Text.Wrap
-                        }
-                    }
-
-                    ActionButton {
-                        text: ModsService.bypassVersionCheck ? root.tr("common.on") : root.tr("common.off")
-                        primary: ModsService.bypassVersionCheck
-                        enabled: !ModsService.busy
-                        onClicked: ModsService.setBypassVersionCheck(!ModsService.bypassVersionCheck)
                     }
                 }
             }
@@ -842,6 +676,15 @@ Item {
                                     }
                                     Text {
                                         Layout.fillWidth: true
+                                        visible: modRow.modelData.deprecated ?? false
+                                        text: root.tr("mods.deprecated_short")
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        color: modRow.item
+                                        elide: Text.ElideRight
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
                                         readonly property var update: (ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
                                         visible: ModsService.updates?.phase !== "check_again"
                                             && (update?.state === "available" || update?.state === "failed")
@@ -858,6 +701,7 @@ Item {
                                 }
 
                                 ModActions {
+                                    compact: true
                                     mod: modRow.modelData
                                     canEnable: !!(mod.valid && (mod.compatible || ModsService.bypassVersionCheck)
                                         && root.dependenciesReady(mod))
@@ -978,6 +822,17 @@ Item {
                         }
                     }
 
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.selectedMod?.deprecated ?? false
+                        text: root.tr("mods.deprecated_notice")
+                            + (root.selectedMod?.deprecatedReason ? "\n" + root.selectedMod.deprecatedReason : "")
+                        textFormat: Text.PlainText
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        color: Colors.warning
+                        wrapMode: Text.Wrap
+                    }
                     Text {
                         Layout.fillWidth: true
                         visible: (root.selectedMod?.description ?? "") !== ""
@@ -1429,6 +1284,173 @@ Item {
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            ModsUpdates {
+                id: updatePanel
+                Layout.fillWidth: true
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: installColumn.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                ColumnLayout {
+                    id: installColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    Text {
+                        text: root.tr("mods.package_source")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        font.weight: Font.DemiBold
+                        color: Colors.overBackground
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        TextField {
+                            id: sourceInput
+                            Layout.fillWidth: true
+                            implicitHeight: 38
+                            placeholderText: root.tr("mods.source_placeholder")
+                            color: Colors.overBackground
+                            placeholderTextColor: Colors.outline
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            selectByMouse: true
+                            enabled: !ModsService.busy
+                            Accessible.name: root.tr("mods.package_source")
+                            Accessible.description: root.tr("mods.source_placeholder")
+
+                            background: StyledRect {
+                                variant: sourceInput.activeFocus ? "focus" : "common"
+                                radius: Styling.radius(-2)
+                                enableShadow: false
+                            }
+
+                            onAccepted: {
+                                const source = text.trim();
+                                if (source !== "")
+                                    root.askConfirm("install", null, source);
+                            }
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.install")
+                            primary: true
+                            enabled: !ModsService.busy && sourceInput.text.trim() !== ""
+                            onClicked: root.askConfirm("install", null, sourceInput.text.trim())
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.tr("mods.trust_warning")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.outline
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: modsToggleRow.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                RowLayout {
+                    id: modsToggleRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            text: root.tr("mods.toggle_title")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.DemiBold
+                            color: Colors.overBackground
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.toggle_description")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    ActionButton {
+                        text: ModsService.modsEnabled ? root.tr("common.on") : root.tr("common.off")
+                        primary: ModsService.modsEnabled
+                        enabled: !ModsService.busy
+                        onClicked: ModsService.setModsEnabled(!ModsService.modsEnabled)
+                    }
+                }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: bypassRow.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                RowLayout {
+                    id: bypassRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            text: root.tr("mods.bypass_title")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.DemiBold
+                            color: Colors.overBackground
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.bypass_description")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    ActionButton {
+                        text: ModsService.bypassVersionCheck ? root.tr("common.on") : root.tr("common.off")
+                        primary: ModsService.bypassVersionCheck
+                        enabled: !ModsService.busy
+                        onClicked: ModsService.setBypassVersionCheck(!ModsService.bypassVersionCheck)
                     }
                 }
             }

@@ -53,13 +53,14 @@ type affectedFiles struct {
 }
 
 type State struct {
-	Version            int            `json:"version"`
-	BypassVersionCheck bool           `json:"bypassVersionCheck,omitempty"`
-	Disabled           bool           `json:"disabled,omitempty"`
-	AutoUpdate         bool           `json:"autoUpdate,omitempty"`
-	Mods               []InstalledMod `json:"mods"`
-	ActiveGeneration   string         `json:"activeGeneration,omitempty"`
-	PreviousGeneration string         `json:"previousGeneration,omitempty"`
+	Version             int            `json:"version"`
+	BypassVersionCheck  bool           `json:"bypassVersionCheck,omitempty"`
+	Disabled            bool           `json:"disabled,omitempty"`
+	AutoUpdate          bool           `json:"autoUpdate,omitempty"`
+	UpdateIntervalHours int            `json:"updateIntervalHours,omitempty"`
+	Mods                []InstalledMod `json:"mods"`
+	ActiveGeneration    string         `json:"activeGeneration,omitempty"`
+	PreviousGeneration  string         `json:"previousGeneration,omitempty"`
 }
 
 type InstalledMod struct {
@@ -106,6 +107,8 @@ type ModInfo struct {
 	AutoUpdate           string           `json:"autoUpdate"`
 	AutoUpdateEffective  bool             `json:"autoUpdateEffective"`
 	AutoUpdateAvailable  bool             `json:"autoUpdateAvailable"`
+	Deprecated           bool             `json:"deprecated"`
+	DeprecatedReason     string           `json:"deprecatedReason,omitempty"`
 }
 
 type DependencyInfo struct {
@@ -123,19 +126,20 @@ type ModSettings struct {
 }
 
 type Status struct {
-	BasePath           string      `json:"basePath"`
-	BaseVersion        string      `json:"baseVersion"`
-	BaseRevision       string      `json:"baseRevision,omitempty"`
-	ActiveGeneration   string      `json:"activeGeneration,omitempty"`
-	PreviousGeneration string      `json:"previousGeneration,omitempty"`
-	GenerationCurrent  bool        `json:"generationCurrent"`
-	GenerationError    string      `json:"generationError,omitempty"`
-	RestartRequired    bool        `json:"restartRequired"`
-	BypassVersionCheck bool        `json:"bypassVersionCheck"`
-	ModsDisabled       bool        `json:"modsDisabled"`
-	AutoUpdate         bool        `json:"autoUpdate"`
-	Updates            UpdateState `json:"updates"`
-	Mods               []ModInfo   `json:"mods"`
+	BasePath            string      `json:"basePath"`
+	BaseVersion         string      `json:"baseVersion"`
+	BaseRevision        string      `json:"baseRevision,omitempty"`
+	ActiveGeneration    string      `json:"activeGeneration,omitempty"`
+	PreviousGeneration  string      `json:"previousGeneration,omitempty"`
+	GenerationCurrent   bool        `json:"generationCurrent"`
+	GenerationError     string      `json:"generationError,omitempty"`
+	RestartRequired     bool        `json:"restartRequired"`
+	BypassVersionCheck  bool        `json:"bypassVersionCheck"`
+	ModsDisabled        bool        `json:"modsDisabled"`
+	AutoUpdate          bool        `json:"autoUpdate"`
+	UpdateIntervalHours int         `json:"updateIntervalHours"`
+	Updates             UpdateState `json:"updates"`
+	Mods                []ModInfo   `json:"mods"`
 }
 
 type generationMetadata struct {
@@ -1058,17 +1062,18 @@ func payloadStamp(manifest Manifest, root string) (string, bool) {
 func (m *Manager) statusFor(state State) (Status, error) {
 	base := paths.FindBaseShellSource()
 	status := Status{
-		BasePath:           base,
-		BaseVersion:        readTrimmed(filepath.Join(base, "version")),
-		BaseRevision:       gitRevision(base),
-		ActiveGeneration:   state.ActiveGeneration,
-		PreviousGeneration: state.PreviousGeneration,
-		GenerationCurrent:  true,
-		BypassVersionCheck: state.BypassVersionCheck,
-		ModsDisabled:       state.Disabled,
-		AutoUpdate:         state.AutoUpdate,
-		Updates:            m.updateState(),
-		Mods:               make([]ModInfo, 0, len(state.Mods)),
+		BasePath:            base,
+		BaseVersion:         readTrimmed(filepath.Join(base, "version")),
+		BaseRevision:        gitRevision(base),
+		ActiveGeneration:    state.ActiveGeneration,
+		PreviousGeneration:  state.PreviousGeneration,
+		GenerationCurrent:   true,
+		BypassVersionCheck:  state.BypassVersionCheck,
+		ModsDisabled:        state.Disabled,
+		AutoUpdate:          state.AutoUpdate,
+		UpdateIntervalHours: updateIntervalHours(state),
+		Updates:             m.updateState(),
+		Mods:                make([]ModInfo, 0, len(state.Mods)),
 	}
 	if pending, ok := m.readPendingActivation(); ok && pending.Generation == state.ActiveGeneration {
 		status.RestartRequired = true
@@ -1164,6 +1169,8 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			Localization:         manifest.Localization,
 			LocalizationWarnings: localizationWarnings(manifest.Localization, root),
 			AutoUpdate:           updatePolicy(installed),
+			Deprecated:           manifest.isDeprecated(),
+			DeprecatedReason:     manifest.deprecationReason(),
 			AutoUpdateAvailable:  automaticSource(installed),
 			AutoUpdateEffective:  automaticEnabled(state, installed),
 		})

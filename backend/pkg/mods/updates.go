@@ -25,6 +25,8 @@ type UpdateItem struct {
 	FromRevision      string            `json:"fromRevision,omitempty"`
 	Changelog         string            `json:"changelog,omitempty"`
 	ChangelogFile     string            `json:"changelogFile,omitempty"`
+	Deprecated        bool              `json:"deprecated"`
+	DeprecatedReason  string            `json:"deprecatedReason,omitempty"`
 	State             string            `json:"state"`
 	Details           string            `json:"details,omitempty"`
 	ErrorCode         string            `json:"errorCode,omitempty"`
@@ -62,6 +64,58 @@ type preparedUpdate struct {
 	generation       string
 	contentDigest    string
 	generationDigest string
+}
+
+func updateIntervalHours(state State) int {
+	switch state.UpdateIntervalHours {
+	case 1, 6, 24, 168:
+		return state.UpdateIntervalHours
+	default:
+		return 24
+	}
+}
+
+func (m *Manager) SetUpdateInterval(hours int) (Status, error) {
+	if hours != 1 && hours != 6 && hours != 24 && hours != 168 {
+		return Status{}, fmt.Errorf("update interval must be 1, 6, 24, or 168 hours")
+	}
+	if !m.updateMu.TryLock() {
+		return Status{}, fmt.Errorf("an update operation is already running")
+	}
+	defer m.updateMu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, err := m.loadState()
+	if err != nil {
+		return Status{}, err
+	}
+	previewCurrent := false
+	if m.updatePlan != nil {
+		fingerprint, err := m.updateFingerprint(state, m.updatePlan.base)
+		if err != nil {
+			return Status{}, err
+		}
+		previewCurrent = fingerprint == m.updatePlan.fingerprint
+	}
+	state.UpdateIntervalHours = hours
+	if err := m.saveState(state); err != nil {
+		return Status{}, err
+	}
+	m.updateState()
+	// The schedule does not change the reviewed candidates or opt-in policy.
+	if m.updatePlan != nil && previewCurrent {
+		fingerprint, err := m.updateFingerprint(state, m.updatePlan.base)
+		if err != nil {
+			return Status{}, err
+		}
+		m.updatePlan.next.UpdateIntervalHours = hours
+		m.updatePlan.fingerprint = fingerprint
+	}
+	m.updates.NextCheck = time.Now().Add(time.Duration(hours) * time.Hour).UTC().Format(time.RFC3339)
+	if err := m.saveUpdates(); err != nil {
+		return Status{}, err
+	}
+	return m.statusFor(state)
 }
 
 func updatePolicy(mod InstalledMod) string {
@@ -360,6 +414,10 @@ func (m *Manager) CheckUpdates(ids []string, automatic bool) (Status, error) {
 			continue
 		}
 		item.State = "available"
+		item.Deprecated, item.DeprecatedReason = manifest.isDeprecated(), manifest.deprecationReason()
+		if item.Deprecated {
+			item.ReviewReasons = append(item.ReviewReasons, "deprecated")
+		}
 		item.Changelog, item.ChangelogFile = readChangelog(fetched.root, manifest.Changelog)
 		item.Files, loadErr = manifest.AffectedFiles(fetched.root)
 		if loadErr != nil {
@@ -420,7 +478,7 @@ func (m *Manager) CheckUpdates(ids []string, automatic bool) (Status, error) {
 		m.updates.Failures = 0
 		m.updates.LastSuccess = time.Now().UTC().Format(time.RFC3339)
 	}
-	delay := 24 * time.Hour
+	delay := time.Duration(updateIntervalHours(state)) * time.Hour
 	if m.updates.Failures > 0 {
 		delay = time.Hour * time.Duration(1<<min(m.updates.Failures-1, 5))
 		if delay > 24*time.Hour {

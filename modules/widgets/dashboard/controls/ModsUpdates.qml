@@ -10,7 +10,7 @@ import qs.modules.theme
 
 StyledRect {
     id: root
-    implicitHeight: content.implicitHeight + 20
+    implicitHeight: content.implicitHeight + 32
     variant: "common"
     radius: Styling.radius(-2)
     enableShadow: false
@@ -18,6 +18,8 @@ StyledRect {
     property bool diagnosticsVisible: false
     property bool toolsVisible: false
     readonly property var updates: ModsService.updates
+    readonly property var changedItems: (updates?.items ?? []).filter(item => item.state !== "current")
+    readonly property int currentCount: (updates?.items ?? []).filter(item => item.state === "current").length
     readonly property bool working: ModsService.busy || (updates?.busy ?? false)
 
     component Label: Text {
@@ -59,9 +61,14 @@ StyledRect {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 10
-        spacing: 8
+        anchors.margins: 16
+        spacing: 12
 
+        Label {
+            text: I18n.t("mods.updates_title")
+            font.pixelSize: Styling.fontSize(1)
+            font.weight: Font.DemiBold
+        }
         RowLayout {
             Layout.fillWidth: true
             Label {
@@ -80,6 +87,28 @@ StyledRect {
             text: I18n.t("mods.auto_updates_description")
             color: Colors.outline
         }
+        Label {
+            text: I18n.t("mods.check_frequency")
+            font.weight: Font.Medium
+        }
+        Flow {
+            Layout.fillWidth: true
+            spacing: 6
+            Repeater {
+                model: [1, 6, 24, 168]
+                delegate: Action {
+                    required property int modelData
+                    text: I18n.t("mods.interval_" + modelData)
+                    primary: ModsService.updateIntervalHours === modelData
+                    onClicked: ModsService.setUpdateInterval(modelData)
+                }
+            }
+        }
+        Label {
+            text: I18n.t("mods.check_frequency_description")
+            color: Colors.outline
+        }
+        Separator { Layout.fillWidth: true; Layout.topMargin: 4; Layout.bottomMargin: 4 }
         Flow {
             Layout.fillWidth: true
             spacing: 6
@@ -114,7 +143,7 @@ StyledRect {
         }
         Label {
             visible: (root.updates?.lastAttempt ?? "") !== ""
-            text: I18n.t("mods.last_check", new Date(root.updates?.lastAttempt ?? "").toLocaleString(Qt.locale()))
+            text: I18n.t("mods.last_check", Qt.formatDateTime(new Date(root.updates?.lastAttempt ?? ""), "dd.MM.yyyy HH:mm"))
             color: Colors.outline
         }
         Label {
@@ -127,20 +156,28 @@ StyledRect {
         ColumnLayout {
             Layout.fillWidth: true
             visible: root.expanded
-            spacing: 8
+            spacing: 16
+            Label {
+                text: I18n.t("mods.update_summary", root.changedItems.length, root.currentCount)
+                font.weight: Font.DemiBold
+            }
             Label {
                 text: I18n.t("mods.preview_description")
                 color: Colors.outline
             }
             Repeater {
-                model: root.updates?.items ?? []
+                model: root.changedItems
                 delegate: ColumnLayout {
                     required property var modelData
                     property bool notesExpanded: false
+                    property bool detailsExpanded: false
                     Layout.fillWidth: true
-                    spacing: 4
+                    spacing: 10
+                    Layout.topMargin: 8
+                    Layout.bottomMargin: 8
                     Label {
-                        text: modelData.id + " · " + (modelData.fromVersion || "?")
+                        text: ((ModsService.mods ?? []).find(mod => mod.id === modelData.id)?.name ?? modelData.id)
+                            + " · " + (modelData.fromVersion || "?")
                             + (modelData.toVersion && modelData.toVersion !== modelData.fromVersion ? " → " + modelData.toVersion : "")
                             + " · " + I18n.t("mods.update_item_" + modelData.state)
                         font.weight: Font.DemiBold
@@ -150,11 +187,21 @@ StyledRect {
                         text: I18n.t("mods.revision_update")
                         color: Colors.outline
                     }
-                    Action {
-                        visible: modelData.state === "available" || modelData.state === "updated"
-                        text: I18n.t(notesExpanded ? "mods.hide_changelog" : "mods.whats_new")
-                        enabled: true
-                        onClicked: notesExpanded = !notesExpanded
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 8
+                        Action {
+                            visible: modelData.state === "available" || modelData.state === "updated"
+                            text: I18n.t(notesExpanded ? "mods.hide_changelog" : "mods.whats_new")
+                            enabled: true
+                            onClicked: notesExpanded = !notesExpanded
+                        }
+
+                        Action {
+                            text: I18n.t(detailsExpanded ? "mods.hide_preview" : "mods.package_details")
+                            enabled: true
+                            onClicked: detailsExpanded = !detailsExpanded
+                        }
                     }
                     Label {
                         visible: notesExpanded
@@ -184,7 +231,7 @@ StyledRect {
                         }
                     }
                     Label {
-                        visible: (modelData.revision ?? "") !== ""
+                        visible: detailsExpanded && (modelData.revision ?? "") !== ""
                         text: I18n.t("mods.revision") + ": "
                             + (modelData.fromRevision && modelData.fromRevision !== modelData.revision
                                 ? modelData.fromRevision.substring(0, 12) + " → " : "")
@@ -196,25 +243,30 @@ StyledRect {
                         color: Colors.warning
                     }
                     Label {
-                        visible: (modelData.dependencies ?? []).length > 0
+                        visible: !!modelData.deprecated && (modelData.deprecatedReason ?? "") !== ""
+                        text: modelData.deprecatedReason ?? ""
+                        color: Colors.warning
+                    }
+                    Label {
+                        visible: detailsExpanded && (modelData.dependencies ?? []).length > 0
                         text: I18n.t("mods.required_mods") + ": " + (modelData.dependencies ?? []).join(", ")
                     }
                     Label {
-                        visible: (modelData.permissions ?? []).length > 0
+                        visible: detailsExpanded && (modelData.permissions ?? []).length > 0
                         text: I18n.t("mods.permissions") + ": " + (modelData.permissions ?? []).join(", ")
                     }
                     Label {
-                        visible: Object.keys(modelData.dependencySources ?? {}).length > 0
+                        visible: detailsExpanded && Object.keys(modelData.dependencySources ?? {}).length > 0
                         text: Object.entries(modelData.dependencySources ?? {}).map(pair => pair[0] + ": " + pair[1]).join("\n")
                         wrapMode: Text.WrapAnywhere
                     }
                     Label {
-                        visible: (modelData.commands ?? []).length > 0
+                        visible: detailsExpanded && (modelData.commands ?? []).length > 0
                         text: I18n.t("mods.requirements") + ": " + (modelData.commands ?? []).join(", ")
                     }
                     Label {
-                        visible: (modelData.files ?? []).length > 0
-                        text: I18n.t("mods.affected_files") + ": " + (modelData.files ?? []).join(", ")
+                        visible: detailsExpanded && (modelData.files ?? []).length > 0
+                        text: I18n.t("mods.affected_files") + ": " + (modelData.files ?? []).join("\n")
                         wrapMode: Text.WrapAnywhere
                         color: Colors.outline
                     }
@@ -224,29 +276,33 @@ StyledRect {
                         color: Colors.error
                     }
                     Label {
-                        visible: (modelData.details ?? "") !== ""
+                        visible: detailsExpanded && (modelData.details ?? "") !== ""
                         text: I18n.t("mods.technical_details", modelData.details ?? "")
                         color: Colors.error
                         wrapMode: Text.WrapAnywhere
                     }
-                    Separator { Layout.fillWidth: true }
+                    Separator { Layout.fillWidth: true; Layout.topMargin: 6 }
                 }
             }
             Label {
                 visible: root.updates?.restartRequired ?? false
                 text: I18n.t("mods.update_restart_notice")
             }
-            Action {
-                visible: root.updates?.canApply ?? false
-                text: I18n.t("mods.apply_updates")
-                primary: true
-                enabled: !root.working && !ModsService.restartRequired
-                onClicked: ModsService.applyUpdates()
-            }
-            Action {
-                visible: root.updates?.canApply ?? false
-                text: I18n.t("mods.dismiss_updates")
-                onClicked: ModsService.discardUpdates()
+            Flow {
+                Layout.fillWidth: true
+                spacing: 8
+                Action {
+                    visible: root.updates?.canApply ?? false
+                    text: I18n.t("mods.apply_updates")
+                    primary: true
+                    enabled: !root.working && !ModsService.restartRequired
+                    onClicked: ModsService.applyUpdates()
+                }
+                Action {
+                    visible: root.updates?.canApply ?? false
+                    text: I18n.t("mods.dismiss_updates")
+                    onClicked: ModsService.discardUpdates()
+                }
             }
         }
 

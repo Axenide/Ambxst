@@ -6,6 +6,10 @@
   "additionalProperties": false,
   "required": ["manifestVersion", "id", "name", "version", "operations"],
   "properties": {
+    "deprecated": { "type": "boolean", "default": false },
+    "deprecated_reason": { "type": "string" },
+    "depricated": { "type": "boolean", "description": "Alias for deprecated." },
+    "depricated_reason": { "type": "string", "description": "Alias for deprecated_reason." },
     "changelog": {
       "type": "string",
       "description": "Package-relative path to a UTF-8 changelog, up to 64 KiB. Displayed as plain text in the update preview."

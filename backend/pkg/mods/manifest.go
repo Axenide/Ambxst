@@ -38,6 +38,10 @@ type Manifest struct {
 	AuthorURL         string            `json:"authorUrl,omitempty"`
 	Homepage          string            `json:"homepage,omitempty"`
 	Changelog         string            `json:"changelog,omitempty"`
+	Deprecated        bool              `json:"deprecated,omitempty"`
+	DeprecatedReason  string            `json:"deprecated_reason,omitempty"`
+	Depricated        bool              `json:"depricated,omitempty"`
+	DepricatedReason  string            `json:"depricated_reason,omitempty"`
 	Compatibility     Compatibility     `json:"compatibility,omitempty"`
 	Dependencies      []string          `json:"dependencies,omitempty"`
 	DependencySources map[string]string `json:"dependencySources,omitempty"`
@@ -56,6 +60,15 @@ type Compatibility struct {
 	API               int      `json:"api,omitempty"`
 	Ambxst            string   `json:"ambxst,omitempty"`
 	TestedBaseCommits []string `json:"testedBaseCommits,omitempty"`
+}
+
+func (m Manifest) isDeprecated() bool { return m.Deprecated || m.Depricated }
+
+func (m Manifest) deprecationReason() string {
+	if m.DeprecatedReason != "" {
+		return m.DeprecatedReason
+	}
+	return m.DepricatedReason
 }
 
 type Operation struct {

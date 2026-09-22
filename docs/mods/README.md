@@ -7,7 +7,7 @@ the active generation in one atomic state-file update after every operation
 succeeds.
 
 Repository checks run on request. Automatic updates are optional and disabled
-by default. When enabled, the existing daemon checks daily without keeping a
+by default. When enabled, the existing daemon checks on a schedule without keeping a
 separate process running. Opening Settings does not trigger a network check.
 
 ## Using the manager
@@ -48,6 +48,12 @@ invalidates a prepared preview. A daemon restart also requires a fresh check.
 The global switch sets the default for installed and future mods. Each mod can
 use that default, opt in, or opt out. Changing the global switch preserves
 individual choices. Disabled mods stay disabled after an update.
+
+**Check frequency** sets one schedule for all opted-in mods: hourly, every six
+hours, daily (the default), or weekly. Changing it schedules the next check from
+now without enabling automatic updates or discarding a valid preview.
+**Remind me tomorrow** postpones the next check by 24 hours without changing
+the recurring schedule. Failed checks still retry with backoff.
 
 Automatic updates support Git repositories with a tracked branch and GitHub
 package-directory sources. Local directories and archives require manual
@@ -224,6 +230,18 @@ or a GitHub directory URL such as
 `https://github.com/owner/repository/tree/main/packages/example`. GitHub directory
 installs use a shallow sparse checkout and retain the original URL for updates.
 
+## Deprecating a mod
+
+Use `"deprecated": true` to recommend removing an installed mod. Add
+`"deprecated_reason": "This feature is now included in Ambxst."` to explain
+why. The manager shows the warning in the installed list and mod details.
+It does not disable or remove the mod automatically. Updates to deprecated
+packages require review, even when automatic updates are enabled.
+
+The spellings `depricated` and `depricated_reason` are accepted aliases. Either
+boolean flag marks the mod deprecated. If both reason fields are present,
+`deprecated_reason` takes precedence. A reason alone does not deprecate a mod.
+
 ## Language metadata
 
 Declare the interface languages in the package manifest:
@@ -345,6 +363,7 @@ ambxst mods check-updates
 ambxst mods check-updates org.example.feature
 ambxst mods apply-updates <plan-id-from-preview>
 ambxst mods auto-update on
+ambxst mods check-interval 6
 ambxst mods auto-update off org.example.feature
 ambxst mods auto-update inherit org.example.feature
 ambxst mods check-compatibility /path/to/candidate-ambxst

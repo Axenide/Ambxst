@@ -113,6 +113,7 @@ func (m *Manager) restoreUpdate(state State) (bool, error) {
 		return false, nil
 	}
 	j.Previous.AutoUpdate = state.AutoUpdate
+	j.Previous.UpdateIntervalHours = state.UpdateIntervalHours
 	j.Previous.Disabled = state.Disabled
 	j.Previous.BypassVersionCheck = state.BypassVersionCheck
 	for i := range j.Previous.Mods {
