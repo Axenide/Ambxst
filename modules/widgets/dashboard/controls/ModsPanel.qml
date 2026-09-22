@@ -18,6 +18,7 @@ Item {
     property string selectedId: ""
     property var confirmTrigger: null
     property bool filesExpanded: false
+    property bool changelogExpanded: false
 
     // Reordering state. dropIndex is derived from where the floating card sits,
     // not from a drop target, because Drag.target is already cleared by the
@@ -227,10 +228,13 @@ Item {
     // write-back is what made the selection bind to itself in a loop.
     readonly property string effectiveId: root.selectedMod?.id ?? ""
     readonly property var selectedUpdate: (ModsService.updates?.items ?? []).find(item => item.id === root.effectiveId) ?? null
+    readonly property string selectedChangelog: root.selectedUpdate?.changelog ?? ""
+    onSelectedChangelogChanged: root.changelogExpanded = false
 
     onEffectiveIdChanged: {
         ModsService.loadSettings(root.effectiveId);
         root.filesExpanded = false;
+        root.changelogExpanded = false;
     }
 
     Component.onCompleted: ModsService.refresh()
@@ -704,6 +708,7 @@ Item {
                             activeFocusOnTab: true
                             Accessible.role: Accessible.ListItem
                             Accessible.name: modelData.name + ", " + root.stateLabel(modelData)
+                                + (updateStatus.visible ? ", " + updateStatus.text : "")
                             Accessible.onPressAction: root.selectedId = modelData.id
 
                             Keys.onReturnPressed: root.selectedId = modelData.id
@@ -784,14 +789,32 @@ Item {
                                     Layout.fillWidth: true
                                     spacing: 1
 
-                                    Text {
+                                    RowLayout {
                                         Layout.fillWidth: true
-                                        text: modRow.modelData.name
-                                        font.family: Config.theme.font
-                                        font.pixelSize: Styling.fontSize(-1)
-                                        font.weight: Font.DemiBold
-                                        color: modRow.item
-                                        elide: Text.ElideRight
+                                        spacing: 6
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: modRow.modelData.name
+                                            font.family: Config.theme.font
+                                            font.pixelSize: Styling.fontSize(-1)
+                                            font.weight: Font.DemiBold
+                                            color: modRow.item
+                                            elide: Text.ElideRight
+                                        }
+                                        Text {
+                                            visible: updateStatus.visible && updateStatus.update?.state === "available"
+                                            text: Icons.sync
+                                            font.family: Icons.font
+                                            font.pixelSize: Styling.fontSize(1)
+                                            color: modRow.item
+                                            Accessible.name: updateStatus.text
+                                            HoverHandler { id: updateIndicatorHover }
+                                            StyledToolTip {
+                                                show: updateIndicatorHover.hovered || (parent.visible && modRow.activeFocus)
+                                                tooltipText: updateStatus.text
+                                                delay: 500
+                                            }
+                                        }
                                     }
 
                                     Text {
@@ -816,6 +839,7 @@ Item {
                                     Text {
                                         Layout.fillWidth: true
                                         readonly property var update: (ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
+                                        id: updateStatus
                                         visible: ModsService.updates?.phase !== "check_again"
                                             && (update?.state === "available" || update?.state === "failed")
                                         text: update?.state === "available"
@@ -971,6 +995,38 @@ Item {
                             primary: true
                             enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false) && !ModsService.restartRequired
                             onClicked: updateDialog.review(root.effectiveId, this)
+                        }
+                        ActionButton {
+                            visible: root.selectedChangelog.trim() !== ""
+                            text: root.tr(root.changelogExpanded ? "mods.hide_changelog" : "mods.whats_new")
+                            enabled: true
+                            Accessible.role: Accessible.Button
+                            Accessible.description: root.selectedMod?.name ?? ""
+                            onClicked: root.changelogExpanded = !root.changelogExpanded
+                        }
+                    }
+
+                    ScrollView {
+                        id: selectedChangelogView
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(selectedChangelogText.implicitHeight, 240)
+                        Layout.bottomMargin: 8
+                        visible: root.changelogExpanded && root.selectedChangelog.trim() !== ""
+                        clip: true
+                        contentWidth: availableWidth
+                        TextArea {
+                            id: selectedChangelogText
+                            width: selectedChangelogView.availableWidth
+                            readOnly: true
+                            selectByMouse: true
+                            textFormat: TextEdit.PlainText
+                            wrapMode: TextEdit.Wrap
+                            text: root.selectedChangelog
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            color: Colors.overBackground
+                            Accessible.name: root.tr("mods.whats_new")
+                            background: StyledRect { variant: "internalbg"; radius: Styling.radius(-2); enableShadow: false }
                         }
                     }
 
