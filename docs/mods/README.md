@@ -356,6 +356,18 @@ than on a half-applied tree.
 
 ## Commands
 
+In **Settings → Mods**, select a mod to check its source for updates. When an
+update is available, **Update to <version>** opens a review for that mod. Updates
+without a version change use **Update package**. The review shows release notes,
+permissions, and any warnings before you confirm. Opening a single-mod review
+may prepare a new plan for that mod; it never applies the other mods from a bulk
+preview. Manual updates work with both global and per-mod automatic updates off.
+
+The **Updates** section also offers individual update buttons and
+**Apply reviewed updates** for the full preview. Restart after applying an update
+to load the new generation. Finish a pending restart before applying another
+update.
+
 The running daemon retains prepared candidates between these commands:
 
 ```sh

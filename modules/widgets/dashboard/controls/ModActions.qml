@@ -67,11 +67,6 @@ RowLayout {
         }
     }
     IconAction {
-        text: I18n.t("mods.check_updates")
-        glyph: Icons.sync
-        onClicked: ModsService.checkUpdates([root.mod.id])
-    }
-    IconAction {
         text: I18n.t("mods.remove")
         glyph: Icons.trash
         destructive: true

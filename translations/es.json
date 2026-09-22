@@ -1,4 +1,10 @@
 {
+  "mods.update_to": "Actualizar a %1",
+  "mods.update_revision_action": "Actualizar paquete",
+  "mods.update_mod_title": "Actualizar %1",
+  "mods.single_update_notice": "Solo se actualizará este mod. Revisa las notas de la versión y los permisos antes de continuar.",
+  "mods.restart_before_update": "Reinicia Ambxst para completar el cambio anterior antes de actualizar.",
+  "mods.check_again_notice": "Esta vista previa ya no está disponible. Cierra esta ventana y vuelve a buscar actualizaciones.",
   "mods.deprecated_short": "Obsoleto · Se recomienda eliminarlo",
   "mods.deprecated_notice": "Este mod está obsoleto. El autor recomienda eliminarlo.",
   "mods.review_deprecated": "El autor ha marcado este mod como obsoleto y recomienda eliminarlo. Revísalo antes de actualizar.",

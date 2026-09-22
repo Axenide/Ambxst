@@ -1,4 +1,10 @@
 {
+  "mods.update_to": "Update to %1",
+  "mods.update_revision_action": "Update package",
+  "mods.update_mod_title": "Update %1",
+  "mods.single_update_notice": "Only this mod will be updated. Review the release notes and permissions before continuing.",
+  "mods.restart_before_update": "Restart Ambxst to finish the previous change before updating.",
+  "mods.check_again_notice": "This preview is no longer available. Close this window and check for updates again.",
   "mods.deprecated_short": "Deprecated · Removal recommended",
   "mods.deprecated_notice": "This mod is deprecated. The author recommends removing it.",
   "mods.review_deprecated": "The author has deprecated this mod and recommends removing it. Review before updating.",

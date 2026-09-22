@@ -226,6 +226,7 @@ Item {
     // Derived from selectedMod instead of written back into selectedId; that
     // write-back is what made the selection bind to itself in a loop.
     readonly property string effectiveId: root.selectedMod?.id ?? ""
+    readonly property var selectedUpdate: (ModsService.updates?.items ?? []).find(item => item.id === root.effectiveId) ?? null
 
     onEffectiveIdChanged: {
         ModsService.loadSettings(root.effectiveId);
@@ -951,6 +952,38 @@ Item {
                         }
                     }
 
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        Layout.bottomMargin: 8
+                        spacing: 8
+
+                        ActionButton {
+                            text: root.tr("mods.check_updates")
+                            enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false)
+                            onClicked: ModsService.checkUpdates([root.effectiveId])
+                        }
+                        ActionButton {
+                            visible: root.selectedUpdate?.state === "available"
+                            text: root.selectedUpdate?.fromVersion === root.selectedUpdate?.toVersion
+                                ? root.tr("mods.update_revision_action")
+                                : root.tr("mods.update_to", root.selectedUpdate?.toVersion ?? "")
+                            primary: true
+                            enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false) && !ModsService.restartRequired
+                            onClicked: updateDialog.review(root.effectiveId, this)
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.selectedUpdate?.state === "available" && ModsService.restartRequired
+                        text: root.tr("mods.restart_before_update")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.outline
+                        wrapMode: Text.Wrap
+                    }
+
                     Text {
                         Layout.fillWidth: true
                         visible: root.selectedMod?.deprecated ?? false
@@ -1420,6 +1453,7 @@ Item {
             ModsUpdates {
                 id: updatePanel
                 Layout.fillWidth: true
+                onUpdateRequested: (id, trigger) => updateDialog.review(id, trigger)
             }
 
             RowLayout {
@@ -1482,6 +1516,10 @@ Item {
 
     // Trust prompt. Installing and enabling both bring somebody else's code
     // into the shell, so both say whose code it is before it happens.
+    ModUpdateDialog {
+        id: updateDialog
+    }
+
     Popup {
         parent: Overlay.overlay
         width: parent ? parent.width : root.width

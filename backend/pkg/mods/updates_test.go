@@ -75,6 +75,69 @@ func TestUpdatePreviewDoesNotModifyInstalledPackages(t *testing.T) {
 	}
 }
 
+func TestManualUpdateTargetsOneModWithAutomaticUpdatesOff(t *testing.T) {
+	m, source, writeVersion := updateFixture(t, false)
+	otherSource := filepath.Join(t.TempDir(), "other")
+	writeOtherVersion := func(version string) {
+		t.Helper()
+		manifest, err := LoadManifest(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		manifest.ID = "example.other"
+		manifest.Version = version
+		manifest.Operations[0].Target = "Other.qml"
+		data, err := json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeTestFile(t, filepath.Join(otherSource, ManifestFile), string(data))
+		writeTestFile(t, filepath.Join(otherSource, "Feature.qml"), "Item {}\n")
+	}
+	writeOtherVersion("1.0.0")
+	if _, err := m.Install(otherSource); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.SetUpdatePolicy("", "off"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.SetUpdatePolicy("example.update", "off"); err != nil {
+		t.Fatal(err)
+	}
+	writeVersion("1.0.1")
+	writeOtherVersion("1.0.1")
+	all, err := m.CheckUpdates(nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !all.Updates.CanApply || len(all.Updates.Items) != 2 {
+		t.Fatalf("missing updates: %#v", all.Updates)
+	}
+	single, err := m.CheckUpdates([]string{"example.update"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !single.Updates.CanApply || len(single.Updates.Items) != 1 {
+		t.Fatalf("wrong update scope: %#v", single.Updates)
+	}
+	if _, err := m.ApplyUpdates(all.Updates.PlanID, true); err == nil {
+		t.Fatal("superseded bulk preview was accepted")
+	}
+	result, err := m.ApplyUpdates(single.Updates.PlanID, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, mod := range result.Mods {
+		expected := "1.0.0"
+		if mod.ID == "example.update" {
+			expected = "1.0.1"
+		}
+		if mod.Version != expected {
+			t.Fatalf("%s: got %s, want %s", mod.ID, mod.Version, expected)
+		}
+	}
+}
+
 func TestUpdateRejectsStalePreview(t *testing.T) {
 	m, _, writeVersion := updateFixture(t, false)
 	writeVersion("1.1.0")

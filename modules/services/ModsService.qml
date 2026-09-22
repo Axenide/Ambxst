@@ -117,12 +117,12 @@ Singleton {
         root.checkUpdates([id]);
     }
 
-    function checkUpdates(ids) {
-        root.request("mods.checkUpdates", { ids: ids ?? [] }, "", false);
+    function checkUpdates(ids, onSuccess) {
+        root.request("mods.checkUpdates", { ids: ids ?? [] }, "", false, onSuccess);
     }
 
-    function applyUpdates() {
-        root.request("mods.applyUpdates", { planId: root.updates.planId, reviewed: true }, "mods.status_updated", false);
+    function applyUpdates(planId, onSuccess) {
+        root.request("mods.applyUpdates", { planId: planId ?? root.updates.planId, reviewed: true }, "mods.status_updated", false, onSuccess);
     }
 
     function discardUpdates() {

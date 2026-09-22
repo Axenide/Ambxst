@@ -17,6 +17,7 @@ StyledRect {
     property bool expanded: false
     property bool diagnosticsVisible: false
     property bool toolsVisible: false
+    signal updateRequested(string id, var trigger)
     readonly property var updates: ModsService.updates
     readonly property var changedItems: (updates?.items ?? []).filter(item => item.state !== "current")
     readonly property int currentCount: (updates?.items ?? []).filter(item => item.state === "current").length
@@ -190,6 +191,14 @@ StyledRect {
                     Flow {
                         Layout.fillWidth: true
                         spacing: 8
+                        Action {
+                            visible: modelData.state === "available"
+                            text: modelData.fromVersion === modelData.toVersion
+                                ? I18n.t("mods.update_revision_action") : I18n.t("mods.update_to", modelData.toVersion)
+                            primary: true
+                            enabled: !root.working && !ModsService.restartRequired
+                            onClicked: root.updateRequested(modelData.id, this)
+                        }
                         Action {
                             visible: modelData.state === "available" || modelData.state === "updated"
                             text: I18n.t(notesExpanded ? "mods.hide_changelog" : "mods.whats_new")
