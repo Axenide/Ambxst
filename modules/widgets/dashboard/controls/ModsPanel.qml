@@ -16,7 +16,7 @@ Item {
     property string searchQuery: ""
     property string sortMode: "name"
     property string selectedId: ""
-    property string removeArmedId: ""
+    property var confirmTrigger: null
     property bool filesExpanded: false
 
     // Reordering state. dropIndex is derived from where the floating card sits,
@@ -168,7 +168,8 @@ Item {
         return mod.enabled ? Colors.success : Colors.error;
     }
 
-    function askConfirm(kind, mod, source) {
+    function askConfirm(kind, mod, source, trigger) {
+        root.confirmTrigger = trigger ?? null;
         root.confirmKind = kind;
         root.confirmMod = mod ?? null;
         root.confirmSource = source ?? "";
@@ -178,6 +179,8 @@ Item {
         root.confirmKind = "";
         root.confirmMod = null;
         root.confirmSource = "";
+        if (root.confirmTrigger) root.confirmTrigger.forceActiveFocus();
+        root.confirmTrigger = null;
     }
 
     function runConfirmed() {
@@ -189,6 +192,8 @@ Item {
             ModsService.install(source);
         else if (kind === "enable" && mod)
             ModsService.setEnabled(mod.id, true);
+        else if (kind === "remove" && mod)
+            ModsService.remove(mod.id, mod.enabled);
     }
 
     readonly property int contentWidth: Math.max(0, Math.min(width - horizontalMargin * 2, maxContentWidth))
@@ -224,7 +229,6 @@ Item {
 
     onEffectiveIdChanged: {
         ModsService.loadSettings(root.effectiveId);
-        root.removeArmedId = "";
         root.filesExpanded = false;
     }
 
@@ -728,7 +732,7 @@ Item {
                                 && root.dropIndex === index
 
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 54
+                            Layout.preferredHeight: Math.max(60, rowContent.implicitHeight + 16)
                             variant: modRow.current ? "primary"
                                 : (rowMouse.containsMouse || activeFocus ? "focus" : "common")
                             radius: Styling.radius(-2)
@@ -762,6 +766,7 @@ Item {
                             }
 
                             RowLayout {
+                                id: rowContent
                                 anchors.fill: parent
                                 anchors.leftMargin: 10
                                 anchors.rightMargin: 8
@@ -849,20 +854,12 @@ Item {
                                     }
                                 }
 
-                                ActionButton {
-                                    text: modRow.modelData.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
-                                    primary: !modRow.modelData.enabled
-                                    enabled: !ModsService.busy && (modRow.modelData.enabled
-                                        || ((modRow.modelData.valid && (modRow.modelData.compatible || ModsService.bypassVersionCheck))
-                                            && root.dependenciesReady(modRow.modelData)))
-                                    onClicked: {
-                                        root.selectedId = modRow.modelData.id;
-                                        if (modRow.modelData.enabled) {
-                                            ModsService.setEnabled(modRow.modelData.id, false);
-                                            return;
-                                        }
-                                        root.askConfirm("enable", modRow.modelData, modRow.modelData.source ?? "");
-                                    }
+                                ModActions {
+                                    mod: modRow.modelData
+                                    canEnable: !!(mod.valid && (mod.compatible || ModsService.bypassVersionCheck)
+                                        && root.dependenciesReady(mod))
+                                    onEnableRequested: trigger => root.askConfirm("enable", mod, mod.source ?? "", trigger)
+                                    onRemoveRequested: trigger => root.askConfirm("remove", mod, "", trigger)
                                 }
                             }
 
@@ -950,6 +947,14 @@ Item {
                             }
                         }
 
+                        ModActions {
+                            mod: root.selectedMod
+                            canEnable: !!(mod?.valid && (mod?.compatible || ModsService.bypassVersionCheck)
+                                && root.dependenciesReady(mod))
+                            onEnableRequested: trigger => root.askConfirm("enable", mod, mod.source ?? "", trigger)
+                            onRemoveRequested: trigger => root.askConfirm("remove", mod, "", trigger)
+                        }
+
                         StyledRect {
                             Layout.alignment: Qt.AlignVCenter
                             implicitWidth: stateChip.implicitWidth + 20
@@ -1014,22 +1019,60 @@ Item {
 
                     Separator { Layout.fillWidth: true }
 
-                    MetaRow {
-                        label: root.tr("mods.languages")
-                        value: {
-                            const revision = I18n.revision;
-                            const info = root.selectedMod?.localization;
-                            if (!info) return root.tr("mods.language_unknown");
-                            if ((root.selectedMod?.localizationWarnings ?? []).length)
-                                return root.tr("mods.language_invalid");
-                            if (info.mode === "none") return root.tr("mods.language_none");
-                            const name = code => I18n.availableLanguages[code] ?? code;
-                            if (info.mode === "single")
-                                return root.tr("mods.language_single", name(info.defaultLanguage));
-                            return (info.languages ?? []).map(name).join(", ")
-                                + (!(info.languages ?? []).includes(I18n.resolvedLanguage)
-                                    ? " · " + root.tr("mods.language_fallback", name(info.defaultLanguage)) : "")
-                                + " · " + root.tr("mods.language_declared");
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        Layout.bottomMargin: 4
+                        spacing: 10
+                        Text {
+                            Layout.alignment: Qt.AlignTop
+                            text: Icons.globe
+                            font.family: Icons.font
+                            font.pixelSize: Styling.fontSize(6)
+                            color: Colors.overBackground
+                            Accessible.ignored: true
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text {
+                                text: root.tr("mods.interface_languages")
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.DemiBold
+                                color: Colors.overBackground
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: {
+                                    const revision = I18n.revision;
+                                    const info = root.selectedMod?.localization;
+                                    if (!info) return root.tr("mods.language_unknown");
+                                    if ((root.selectedMod?.localizationWarnings ?? []).length)
+                                        return root.tr("mods.language_invalid");
+                                    if (info.mode === "none") return root.tr("mods.language_none");
+                                    const name = code => I18n.availableLanguages[code] ?? code;
+                                    if (info.mode === "single")
+                                        return root.tr("mods.language_single", name(info.defaultLanguage));
+                                    return (info.languages ?? []).map(name).join(", ")
+                                        + (!(info.languages ?? []).includes(I18n.resolvedLanguage)
+                                            ? " · " + root.tr("mods.language_fallback", name(info.defaultLanguage)) : "")
+                                        + " · " + root.tr("mods.language_declared");
+                                }
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: Colors.overBackground
+                                wrapMode: Text.Wrap
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: !root.selectedMod?.localization
+                                text: root.tr("mods.language_missing_description")
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                color: Colors.outline
+                                wrapMode: Text.Wrap
+                            }
                         }
                     }
 
@@ -1384,49 +1427,6 @@ Item {
                             }
                         }
                     }
-
-                    Separator { Layout.fillWidth: true }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        ActionButton {
-                            text: root.selectedMod?.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
-                            primary: !root.selectedMod?.enabled
-                            enabled: !ModsService.busy && !!(root.selectedMod?.enabled
-                                || ((root.selectedMod?.valid && (root.selectedMod?.compatible || ModsService.bypassVersionCheck))
-                                    && root.dependenciesReady(root.selectedMod)))
-                            onClicked: {
-                                if (root.selectedMod.enabled) {
-                                    ModsService.setEnabled(root.selectedMod.id, false);
-                                    return;
-                                }
-                                root.askConfirm("enable", root.selectedMod, root.selectedMod.source ?? "");
-                            }
-                        }
-
-                        ActionButton {
-                            text: root.tr("mods.update")
-                            onClicked: ModsService.update(root.selectedMod.id, root.selectedMod.enabled)
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        ActionButton {
-                            text: root.removeArmedId === root.selectedMod?.id
-                                ? root.tr("mods.confirm_remove") : root.tr("mods.remove")
-                            destructive: true
-                            onClicked: {
-                                if (root.removeArmedId !== root.selectedMod.id) {
-                                    root.removeArmedId = root.selectedMod.id;
-                                    return;
-                                }
-                                ModsService.remove(root.selectedMod.id, root.selectedMod.enabled);
-                                root.removeArmedId = "";
-                            }
-                        }
-                    }
                 }
             }
 
@@ -1457,10 +1457,18 @@ Item {
 
     // Trust prompt. Installing and enabling both bring somebody else's code
     // into the shell, so both say whose code it is before it happens.
-    Item {
-        anchors.fill: parent
+    Popup {
+        parent: Overlay.overlay
+        width: parent ? parent.width : root.width
+        height: parent ? parent.height : root.height
+        padding: 0
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+        background: Item {}
         visible: root.confirmKind !== ""
-        z: 50
+        onOpened: cancelConfirm.forceActiveFocus()
+        onClosed: root.closeConfirm()
 
         Rectangle {
             anchors.fill: parent
@@ -1496,6 +1504,7 @@ Item {
                     Layout.fillWidth: true
                     text: root.confirmKind === "enable"
                         ? root.tr("mods.confirm_enable_title")
+                        : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_title", root.confirmMod?.name ?? "")
                         : root.tr("mods.confirm_install_title")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(1)
@@ -1508,6 +1517,7 @@ Item {
                     Layout.fillWidth: true
                     text: root.confirmKind === "enable"
                         ? root.tr("mods.confirm_enable_body")
+                        : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_body")
                         : root.tr("mods.confirm_install_body")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
@@ -1518,19 +1528,19 @@ Item {
                 Separator { Layout.fillWidth: true }
 
                 MetaRow {
-                    visible: (root.confirmMod?.author ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && (root.confirmMod?.author ?? "") !== ""
                     label: root.tr("mods.author")
                     value: root.confirmMod?.author ?? ""
 
                     ActionButton {
-                        visible: (root.confirmMod?.authorUrl ?? "") !== ""
+                        visible: root.confirmKind !== "remove" && (root.confirmMod?.authorUrl ?? "") !== ""
                         text: root.tr("mods.open_link")
                         onClicked: Qt.openUrlExternally(root.confirmMod.authorUrl)
                     }
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.license ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && (root.confirmMod?.license ?? "") !== ""
                     label: root.tr("mods.license")
                     value: root.confirmMod?.license ?? ""
                 }
@@ -1549,7 +1559,7 @@ Item {
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.homepage ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && (root.confirmMod?.homepage ?? "") !== ""
                     label: root.tr("mods.homepage")
                     value: root.confirmMod?.homepage ?? ""
                     mono: true
@@ -1561,13 +1571,13 @@ Item {
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.permissions ?? []).length > 0
+                    visible: root.confirmKind !== "remove" && (root.confirmMod?.permissions ?? []).length > 0
                     label: root.tr("mods.permissions")
                     value: (root.confirmMod?.permissions ?? []).join(", ")
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.affectedFiles ?? []).length > 0
+                    visible: root.confirmKind !== "remove" && (root.confirmMod?.affectedFiles ?? []).length > 0
                     label: root.tr("mods.affected_files")
                     value: String((root.confirmMod?.affectedFiles ?? []).length)
                 }
@@ -1580,13 +1590,17 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     ActionButton {
+                        id: cancelConfirm
                         text: root.tr("common.cancel")
                         onClicked: root.closeConfirm()
                     }
 
                     ActionButton {
-                        text: root.confirmKind === "enable" ? root.tr("mods.enable") : root.tr("mods.install")
-                        primary: true
+                        text: root.confirmKind === "enable" ? root.tr("mods.enable")
+                            : root.confirmKind === "remove" ? root.tr("mods.remove") : root.tr("mods.install")
+                        primary: root.confirmKind !== "remove"
+                        destructive: root.confirmKind === "remove"
+                        enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false)
                         onClicked: root.runConfirmed()
                     }
                 }

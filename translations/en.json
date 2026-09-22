@@ -1,4 +1,13 @@
 {
+  "mods.interface_languages": "Interface languages",
+  "mods.language_missing_description": "The author has not declared the interface language or translation support in the manifest.",
+  "mods.confirm_remove_title": "Remove %1?",
+  "mods.confirm_remove_body": "This deletes the installed package and its saved settings. Reinstalling will not restore those settings. If the mod is enabled, restart the shell after removal.",
+  "mods.revision_update": "Package contents changed. The author kept the same version number.",
+  "mods.whats_new": "What's new",
+  "mods.hide_changelog": "Hide changelog",
+  "mods.changelog_source": "Author's changelog · %1",
+  "mods.changelog_missing": "No readable changelog was supplied with this package.",
   "mods.dismiss_updates": "Remind me tomorrow",
   "mods.update_phase_deferred": "Updates deferred until the next daily check.",
   "mods.error_invalid_package": "The package failed validation.",

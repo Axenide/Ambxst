@@ -37,6 +37,7 @@ type Manifest struct {
 	Author            string            `json:"author,omitempty"`
 	AuthorURL         string            `json:"authorUrl,omitempty"`
 	Homepage          string            `json:"homepage,omitempty"`
+	Changelog         string            `json:"changelog,omitempty"`
 	Compatibility     Compatibility     `json:"compatibility,omitempty"`
 	Dependencies      []string          `json:"dependencies,omitempty"`
 	DependencySources map[string]string `json:"dependencySources,omitempty"`

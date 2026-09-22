@@ -22,6 +22,18 @@ to inspect versions, exact revisions, affected files, dependencies, and declared
 permissions. **Apply reviewed updates** applies the prepared candidates.
 The current shell keeps running until you restart it.
 
+Only changed package contents produce an update. A new commit elsewhere in a
+shared repository does not. If the author changes a package without raising its
+version, the preview identifies it as a revision update and shows both revisions.
+
+**What's new** shows the author's changelog from the staged package. Add a
+`CHANGELOG.md` or `CHANGELOG.txt` file, or set `"changelog": "docs/changes.md"`
+in the manifest. Lowercase filenames are also detected. Files must be UTF-8,
+at most 64 KiB, and inside the package. The preview shows the file as plain text,
+including its version headings; it does not infer or generate release notes.
+If no readable changelog is supplied, the preview says so. Changelog content is
+part of the reviewed candidate and is checked again before application.
+
 The preview checks the complete enabled set against the current base. A changed
 package is not installed if its manifest or composition fails. Newly required
 mods need an explicit installation through **Install required mods**. After

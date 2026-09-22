@@ -136,17 +136,59 @@ StyledRect {
                 model: root.updates?.items ?? []
                 delegate: ColumnLayout {
                     required property var modelData
+                    property bool notesExpanded: false
                     Layout.fillWidth: true
                     spacing: 4
                     Label {
                         text: modelData.id + " · " + (modelData.fromVersion || "?")
-                            + (modelData.toVersion ? " → " + modelData.toVersion : "")
+                            + (modelData.toVersion && modelData.toVersion !== modelData.fromVersion ? " → " + modelData.toVersion : "")
                             + " · " + I18n.t("mods.update_item_" + modelData.state)
                         font.weight: Font.DemiBold
                     }
                     Label {
+                        visible: modelData.state === "available" && modelData.toVersion === modelData.fromVersion
+                        text: I18n.t("mods.revision_update")
+                        color: Colors.outline
+                    }
+                    Action {
+                        visible: modelData.state === "available" || modelData.state === "updated"
+                        text: I18n.t(notesExpanded ? "mods.hide_changelog" : "mods.whats_new")
+                        enabled: true
+                        onClicked: notesExpanded = !notesExpanded
+                    }
+                    Label {
+                        visible: notesExpanded
+                        text: modelData.changelog ? I18n.t("mods.changelog_source", modelData.changelogFile)
+                            : I18n.t("mods.changelog_missing")
+                        color: Colors.outline
+                    }
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(changelogText.implicitHeight, 240)
+                        visible: notesExpanded && (modelData.changelog ?? "") !== ""
+                        clip: true
+                        contentWidth: availableWidth
+                        TextArea {
+                            id: changelogText
+                            width: parent.width
+                            readOnly: true
+                            selectByMouse: true
+                            textFormat: TextEdit.PlainText
+                            wrapMode: TextEdit.Wrap
+                            text: modelData.changelog ?? ""
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            color: Colors.overBackground
+                            Accessible.name: I18n.t("mods.whats_new")
+                            background: StyledRect { variant: "internalbg"; radius: Styling.radius(-2) }
+                        }
+                    }
+                    Label {
                         visible: (modelData.revision ?? "") !== ""
-                        text: I18n.t("mods.revision") + ": " + (modelData.revision ?? "").substring(0, 12)
+                        text: I18n.t("mods.revision") + ": "
+                            + (modelData.fromRevision && modelData.fromRevision !== modelData.revision
+                                ? modelData.fromRevision.substring(0, 12) + " → " : "")
+                            + (modelData.revision ?? "").substring(0, 12)
                     }
                     Label {
                         visible: (modelData.reviewReasons ?? []).length > 0

@@ -22,6 +22,9 @@ type UpdateItem struct {
 	FromVersion       string            `json:"fromVersion"`
 	ToVersion         string            `json:"toVersion"`
 	Revision          string            `json:"revision"`
+	FromRevision      string            `json:"fromRevision,omitempty"`
+	Changelog         string            `json:"changelog,omitempty"`
+	ChangelogFile     string            `json:"changelogFile,omitempty"`
 	State             string            `json:"state"`
 	Details           string            `json:"details,omitempty"`
 	ErrorCode         string            `json:"errorCode,omitempty"`
@@ -303,7 +306,7 @@ func (m *Manager) CheckUpdates(ids []string, automatic bool) (Status, error) {
 		}
 		oldRoot := filepath.Join(packages, mod.ID)
 		old, loadErr := LoadManifest(oldRoot)
-		item := UpdateItem{ID: mod.ID, FromVersion: old.Version, State: "current"}
+		item := UpdateItem{ID: mod.ID, FromVersion: old.Version, FromRevision: mod.Revision, State: "current"}
 		if loadErr != nil {
 			item.ErrorCode = "invalid_package"
 			item.State, item.Details = "failed", loadErr.Error()
@@ -352,11 +355,12 @@ func (m *Manager) CheckUpdates(ids []string, automatic bool) (Status, error) {
 			failed = true
 			continue
 		}
-		if oldDigest == newDigest && (fetched.revision == "" || fetched.revision == mod.Revision) {
+		if oldDigest == newDigest {
 			items = append(items, item)
 			continue
 		}
 		item.State = "available"
+		item.Changelog, item.ChangelogFile = readChangelog(fetched.root, manifest.Changelog)
 		item.Files, loadErr = manifest.AffectedFiles(fetched.root)
 		if loadErr != nil {
 			item.ErrorCode = "invalid_package"

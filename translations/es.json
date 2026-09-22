@@ -1,4 +1,13 @@
 {
+  "mods.interface_languages": "Idiomas de la interfaz",
+  "mods.language_missing_description": "El autor no ha indicado el idioma de la interfaz ni la disponibilidad de traducciones en el manifiesto.",
+  "mods.confirm_remove_title": "¿Eliminar %1?",
+  "mods.confirm_remove_body": "Se eliminarán el paquete instalado y sus ajustes guardados. Reinstalarlo no recuperará los ajustes. Si el mod está activado, reinicia el entorno después de eliminarlo.",
+  "mods.revision_update": "El contenido del paquete ha cambiado, pero el autor ha mantenido el mismo número de versión.",
+  "mods.whats_new": "Novedades",
+  "mods.hide_changelog": "Ocultar cambios",
+  "mods.changelog_source": "Registro de cambios del autor · %1",
+  "mods.changelog_missing": "El paquete no incluye un registro de cambios que se pueda leer.",
   "mods.dismiss_updates": "Recordar mañana",
   "mods.update_phase_deferred": "Actualizaciones aplazadas hasta la próxima comprobación diaria.",
   "mods.error_invalid_package": "El paquete no superó la validación.",

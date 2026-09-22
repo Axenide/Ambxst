@@ -6,6 +6,10 @@
   "additionalProperties": false,
   "required": ["manifestVersion", "id", "name", "version", "operations"],
   "properties": {
+    "changelog": {
+      "type": "string",
+      "description": "Package-relative path to a UTF-8 changelog, up to 64 KiB. Displayed as plain text in the update preview."
+    },
     "$schema": { "type": "string" },
     "manifestVersion": { "const": 1 },
     "id": {
