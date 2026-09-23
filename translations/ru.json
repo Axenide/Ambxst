@@ -1,5 +1,5 @@
 {
-  "mods.archive_drop": "Перетащите сюда архив мода",
+  "mods.archive_drop": "Или перетащите сюда архив мода (небезопасно)",
   "mods.archive_drop_hint": ".zip, .tar, .tar.gz или .tgz",
   "mods.archive_select": "Выбрать архив",
   "mods.archive_unsupported": "Выберите один архив в формате .zip, .tar, .tar.gz или .tgz.",

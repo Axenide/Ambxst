@@ -1,5 +1,5 @@
 {
-  "mods.archive_drop": "Suelta aquí un archivo de mod",
+  "mods.archive_drop": "O suelta aquí un archivo de mod (no es seguro)",
   "mods.archive_drop_hint": ".zip, .tar, .tar.gz o .tgz",
   "mods.archive_select": "Elegir archivo",
   "mods.archive_unsupported": "Elige un solo archivo .zip, .tar, .tar.gz o .tgz.",

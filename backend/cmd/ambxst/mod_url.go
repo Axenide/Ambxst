@@ -37,15 +37,6 @@ func parseModURL(raw string) (modURLAction, error) {
 			return modURLAction{}, fmt.Errorf("install source must be an HTTPS or SSH Git repository URL")
 		}
 		return modURLAction{command: "install", value: source}, nil
-	case "update":
-		if err := requireOnlyQuery(query, "id"); err != nil {
-			return modURLAction{}, err
-		}
-		id := query.Get("id")
-		if id == "" {
-			return modURLAction{}, fmt.Errorf("update URL requires a mod id")
-		}
-		return modURLAction{command: "update", value: id}, nil
 	default:
 		return modURLAction{}, fmt.Errorf("unsupported mod URL action %q", action)
 	}

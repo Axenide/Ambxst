@@ -20,7 +20,7 @@ func runMods(args []string) {
 	}
 	if command == "open-url" {
 		if len(args) != 2 {
-			modsUsage("Usage: ambxst mods open-url <ambxst://mods/install|update?...>")
+			modsUsage("Usage: ambxst mods open-url <ambxst://mods/install?source=...>")
 		}
 		action, err := parseModURL(args[1])
 		if err != nil {
@@ -96,13 +96,9 @@ func notifyModURLResult(action modURLAction, resultErr error) {
 		urgency = "normal"
 		if action.command == "install" {
 			body = "The mod was installed and remains disabled until you enable it."
-		} else {
-			body = "The mod update request finished."
 		}
 	} else if action.command == "install" {
 		body = "The mod could not be installed. Run the link command in a terminal for details."
-	} else if action.command == "update" {
-		body = "The mod could not be updated. Run the link command in a terminal for details."
 	}
 	params := map[string]any{
 		"summary":    summary,
@@ -238,7 +234,7 @@ func modsUsage(message string) {
 		"    base                             Use the base shell on the next start\n" +
 		"    list                             Show installed mods and generation state\n" +
 		"    install <source>                 Install from a directory, archive, or Git URL\n" +
-		"    open-url <ambxst-url>            Handle an install or update link from a browser\n" +
+		"    open-url <ambxst-url>            Handle an install link from a browser\n" +
 		"    install-dependencies <id>        Install and enable a mod's requirements\n" +
 		"    enable <id>                      Enable a mod and build a generation\n" +
 		"    disable <id>                     Disable a mod and build a generation\n" +

@@ -22,12 +22,6 @@ func TestParseModURL(t *testing.T) {
 			value:   "https://github.com/example/mods/tree/main/package",
 		},
 		{
-			name:    "update installed mod",
-			raw:     "ambxst://mods/update?id=org.example.clock",
-			command: "update",
-			value:   "org.example.clock",
-		},
-		{
 			name:    "install SSH repository",
 			raw:     "ambxst://mods/install?source=ssh%3A%2F%2Fgit%40github.com%2Fexample%2Fmod.git",
 			command: "install",
@@ -56,6 +50,7 @@ func TestParseModURLRejectsUnsafeOrAmbiguousInput(t *testing.T) {
 		"ambxst://mods/install?source=file%3A%2F%2F%2Ftmp%2Fmod.zip",
 		"ambxst://mods/install?source=https%3A%2F%2Fexample.com%2Fa&source=https%3A%2F%2Fexample.com%2Fb",
 		"ambxst://mods/install?source=https%3A%2F%2Fexample.com%2Fmod.git&extra=true",
+		"ambxst://mods/update?id=org.example.clock",
 		"ambxst://mods/update",
 		"ambxst://mods/update?id=one&id=two",
 		"ambxst://mods/update?id=org.example.clock#fragment",

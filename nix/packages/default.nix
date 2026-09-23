@@ -78,7 +78,7 @@ let
   modHandlerDesktop = pkgs.makeDesktopItem {
     name = "ambxst-mod-handler";
     desktopName = "Ambxst Mod Handler";
-    comment = "Install and update Ambxst mods";
+    comment = "Install Ambxst mods from browser links";
     exec = "ambxst mods open-url %u";
     icon = "application-x-addon";
     noDisplay = true;

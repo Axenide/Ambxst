@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Ambxst Mod Handler
-Comment=Install and update Ambxst mods
+Comment=Install Ambxst mods from browser links
 Exec=ambxst mods open-url %u
 Icon=application-x-addon
 NoDisplay=true

@@ -103,7 +103,7 @@ Item {
         "mods.sort_state": "Sort: State",
         "mods.source": "Source",
         "mods.source_placeholder": "Local directory, package archive, or Git URL",
-        "mods.archive_drop": "Drop a mod archive here",
+        "mods.archive_drop": "Or drop a mod archive here (unsafe)",
         "mods.archive_drop_hint": ".zip, .tar, .tar.gz, or .tgz",
         "mods.archive_select": "Choose archive",
         "mods.archive_unsupported": "Choose one supported archive: .zip, .tar, .tar.gz, or .tgz.",
