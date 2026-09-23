@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import qs.config
 import qs.modules.components
@@ -19,6 +20,7 @@ Item {
     property var confirmTrigger: null
     property bool filesExpanded: false
     property bool changelogExpanded: false
+    property string archiveError: ""
 
     // Pending action awaiting the trust confirmation. "" means no prompt.
     property string confirmKind: ""
@@ -48,6 +50,8 @@ Item {
         "mods.confirm_enable_title": "Do you trust this mod?",
         "mods.confirm_install_body": "Installing downloads the package and leaves it disabled. Nothing from it runs until you enable it, which is the moment to have read the code.",
         "mods.confirm_install_title": "Install from this source?",
+        "mods.confirm_archive_body": "A mod archive can contain untrusted code that runs with your user permissions after you enable it. Install this file only if you trust its source.",
+        "mods.confirm_archive_title": "This archive may be unsafe",
         "mods.confirm_remove": "Confirm remove",
         "mods.conflicts": "Conflicts",
         "mods.dependency_disabled": "Disabled",
@@ -63,6 +67,7 @@ Item {
         "mods.homepage": "Mod page",
         "mods.incompatible": "Incompatible",
         "mods.install": "Install",
+        "mods.install_archive": "Install archive",
         "mods.install_dependencies": "Install required mods",
         "mods.installed_count": "Installed · %1",
         "mods.invalid_number": "Enter a valid number.",
@@ -98,6 +103,10 @@ Item {
         "mods.sort_state": "Sort: State",
         "mods.source": "Source",
         "mods.source_placeholder": "Local directory, package archive, or Git URL",
+        "mods.archive_drop": "Drop a mod archive here",
+        "mods.archive_drop_hint": ".zip, .tar, .tar.gz, or .tgz",
+        "mods.archive_select": "Choose archive",
+        "mods.archive_unsupported": "Choose one supported archive: .zip, .tar, .tar.gz, or .tgz.",
         "mods.status_dependencies_installed": "Required mods installed and enabled.",
         "mods.status_disabled": "Mod disabled.",
         "mods.status_enabled": "Mod enabled.",
@@ -145,6 +154,27 @@ Item {
         return (mod?.dependencyState ?? []).every(dependency => dependency.enabled);
     }
 
+    function archivePath(fileUrl) {
+        const value = String(fileUrl ?? "");
+        if (!value.startsWith("file://"))
+            return "";
+        return decodeURIComponent(value.substring(7));
+    }
+
+    function isSupportedArchive(path) {
+        return /\.(zip|tar|tar\.gz|tgz)$/i.test(path);
+    }
+
+    function requestArchiveInstall(fileUrl, trigger) {
+        const path = root.archivePath(fileUrl);
+        if (!root.isSupportedArchive(path)) {
+            root.archiveError = root.tr("mods.archive_unsupported");
+            return;
+        }
+        root.archiveError = "";
+        root.askConfirm("installArchive", null, path, trigger);
+    }
+
     function stateLabel(mod) {
         if (!mod)
             return "";
@@ -183,7 +213,7 @@ Item {
         const mod = root.confirmMod;
         const source = root.confirmSource;
         root.closeConfirm();
-        if (kind === "install")
+        if (kind === "install" || kind === "installArchive")
             ModsService.install(source);
         else if (kind === "enable" && mod)
             ModsService.setEnabled(mod.id, true);
@@ -232,6 +262,14 @@ Item {
     }
 
     Component.onCompleted: ModsService.refresh()
+
+    FileDialog {
+        id: archiveDialog
+        title: root.tr("mods.archive_select")
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Mod archives (*.zip *.tar *.tar.gz *.tgz)"]
+        onAccepted: root.requestArchiveInstall(selectedFile, null)
+    }
 
     // The daemon clears the restart flag when a new generation survives its
     // health window, and the panel can already be open at that moment. This
@@ -434,6 +472,85 @@ Item {
                             enabled: !ModsService.busy && sourceInput.text.trim() !== ""
                             onClicked: root.askConfirm("install", null, sourceInput.text.trim())
                         }
+                    }
+
+                    StyledRect {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 66
+                        variant: archiveDrop.containsDrag ? "focus" : "common"
+                        radius: Styling.radius(-2)
+                        enableShadow: false
+
+                        DropArea {
+                            id: archiveDrop
+                            anchors.fill: parent
+
+                            onEntered: drag => {
+                                drag.accepted = !!drag.urls && drag.urls.length === 1;
+                            }
+                            onDropped: drop => {
+                                if (drop.urls && drop.urls.length === 1) {
+                                    root.requestArchiveInstall(drop.urls[0], null);
+                                    drop.accepted = true;
+                                } else {
+                                    root.archiveError = root.tr("mods.archive_unsupported");
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 10
+                            spacing: 10
+
+                            Text {
+                                text: Icons.file
+                                font.family: Icons.font
+                                font.pixelSize: Styling.fontSize(4)
+                                color: archiveDrop.containsDrag ? Colors.primary : Colors.overBackground
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: root.tr("mods.archive_drop")
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-1)
+                                    font.weight: Font.Medium
+                                    color: Colors.overBackground
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: root.tr("mods.archive_drop_hint")
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    color: Colors.outline
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            ActionButton {
+                                text: root.tr("mods.archive_select")
+                                enabled: !ModsService.busy
+                                onClicked: archiveDialog.open()
+                            }
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.archiveError !== ""
+                        text: root.archiveError
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.error
+                        wrapMode: Text.Wrap
                     }
 
                     Text {
@@ -1560,17 +1677,31 @@ Item {
                 anchors.margins: 18
                 spacing: 10
 
-                Text {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: root.confirmKind === "enable"
-                        ? root.tr("mods.confirm_enable_title")
-                        : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_title", root.confirmMod?.name ?? "")
-                        : root.tr("mods.confirm_install_title")
-                    font.family: Config.theme.font
-                    font.pixelSize: Styling.fontSize(1)
-                    font.weight: Font.DemiBold
-                    color: Colors.overBackground
-                    wrapMode: Text.Wrap
+                    spacing: 8
+
+                    Text {
+                        visible: root.confirmKind === "installArchive"
+                        text: Icons.alert
+                        font.family: Icons.font
+                        font.pixelSize: Styling.fontSize(3)
+                        color: Colors.error
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.confirmKind === "enable"
+                            ? root.tr("mods.confirm_enable_title")
+                            : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_title", root.confirmMod?.name ?? "")
+                            : root.confirmKind === "installArchive" ? root.tr("mods.confirm_archive_title")
+                            : root.tr("mods.confirm_install_title")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(1)
+                        font.weight: Font.DemiBold
+                        color: root.confirmKind === "installArchive" ? Colors.error : Colors.overBackground
+                        wrapMode: Text.Wrap
+                    }
                 }
 
                 Text {
@@ -1578,6 +1709,7 @@ Item {
                     text: root.confirmKind === "enable"
                         ? root.tr("mods.confirm_enable_body")
                         : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_body")
+                        : root.confirmKind === "installArchive" ? root.tr("mods.confirm_archive_body")
                         : root.tr("mods.confirm_install_body")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
@@ -1657,9 +1789,11 @@ Item {
 
                     ActionButton {
                         text: root.confirmKind === "enable" ? root.tr("mods.enable")
-                            : root.confirmKind === "remove" ? root.tr("mods.remove") : root.tr("mods.install")
-                        primary: root.confirmKind !== "remove"
-                        destructive: root.confirmKind === "remove"
+                            : root.confirmKind === "remove" ? root.tr("mods.remove")
+                            : root.confirmKind === "installArchive" ? root.tr("mods.install_archive")
+                            : root.tr("mods.install")
+                        primary: root.confirmKind !== "remove" && root.confirmKind !== "installArchive"
+                        destructive: root.confirmKind === "remove" || root.confirmKind === "installArchive"
                         enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false)
                         onClicked: root.runConfirmed()
                     }

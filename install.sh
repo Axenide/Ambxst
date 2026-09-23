@@ -479,6 +479,16 @@ setup_launcher() {
   # Record the repo location so the installed binary can find shell sources.
   mkdir -p "$HOME/.local/share/ambxst"
   echo "$INSTALL_PATH" >"$HOME/.local/share/ambxst/shell_repo"
+
+  # Register browser links such as ambxst://mods/install?... for this user.
+  install -Dm644 "$INSTALL_PATH/assets/ambxst/ambxst-mod-handler.desktop" \
+    "$HOME/.local/share/applications/ambxst-mod-handler.desktop"
+  if has_cmd update-desktop-database; then
+    update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+  fi
+  if has_cmd xdg-mime; then
+    xdg-mime default ambxst-mod-handler.desktop x-scheme-handler/ambxst >/dev/null 2>&1 || true
+  fi
   log_success "Binary installed"
 }
 

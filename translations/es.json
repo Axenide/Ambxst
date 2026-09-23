@@ -1,4 +1,11 @@
 {
+  "mods.archive_drop": "Suelta aquí un archivo de mod",
+  "mods.archive_drop_hint": ".zip, .tar, .tar.gz o .tgz",
+  "mods.archive_select": "Elegir archivo",
+  "mods.archive_unsupported": "Elige un solo archivo .zip, .tar, .tar.gz o .tgz.",
+  "mods.confirm_archive_body": "Un archivo de mod puede contener código no fiable que se ejecutará con tus permisos cuando lo actives. Instálalo solo si confías en su origen.",
+  "mods.confirm_archive_title": "Este archivo puede ser peligroso",
+  "mods.install_archive": "Instalar archivo",
   "mods.available_update_count": "Actualizaciones disponibles: %1",
   "mods.cached_check_failed": "La última comprobación falló. Se muestra la última actualización conocida.",
   "mods.update_phase_partial": "Se instalaron algunas actualizaciones. Las demás están pendientes de tu revisión.",

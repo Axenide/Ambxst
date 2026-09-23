@@ -75,8 +75,20 @@ let
     exec ${backendPkg}/bin/ambxst "$@"
   '';
 
+  modHandlerDesktop = pkgs.makeDesktopItem {
+    name = "ambxst-mod-handler";
+    desktopName = "Ambxst Mod Handler";
+    comment = "Install and update Ambxst mods";
+    exec = "ambxst mods open-url %u";
+    icon = "application-x-addon";
+    noDisplay = true;
+    terminal = false;
+    categories = [ "Settings" ];
+    mimeTypes = [ "x-scheme-handler/ambxst" ];
+  };
+
 in pkgs.buildEnv {
   name = "Ambxst-${version}";
-  paths = [ envAmbxst launcher ];
+  paths = [ envAmbxst launcher modHandlerDesktop ];
   meta.mainProgram = "ambxst";
 }

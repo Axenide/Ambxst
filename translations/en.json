@@ -1,4 +1,11 @@
 {
+  "mods.archive_drop": "Drop a mod archive here",
+  "mods.archive_drop_hint": ".zip, .tar, .tar.gz, or .tgz",
+  "mods.archive_select": "Choose archive",
+  "mods.archive_unsupported": "Choose one supported archive: .zip, .tar, .tar.gz, or .tgz.",
+  "mods.confirm_archive_body": "A mod archive can contain untrusted code that runs with your user permissions after you enable it. Install this file only if you trust its source.",
+  "mods.confirm_archive_title": "This archive may be unsafe",
+  "mods.install_archive": "Install archive",
   "mods.available_update_count": "Available updates: %1",
   "mods.cached_check_failed": "The latest check failed. Showing the last known update.",
   "mods.update_phase_partial": "Some updates were installed. Other updates are waiting for your review.",

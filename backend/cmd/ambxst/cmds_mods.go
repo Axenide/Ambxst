@@ -7,6 +7,7 @@ import (
 
 	modpkg "ambxst/backend/pkg/mods"
 	"ambxst/backend/pkg/paths"
+	"ambxst/backend/pkg/svc/notify"
 )
 
 func runMods(args []string) {
@@ -16,6 +17,27 @@ func runMods(args []string) {
 		if runModUpdateCommand(command, args[1:]) {
 			return
 		}
+	}
+	if command == "open-url" {
+		if len(args) != 2 {
+			modsUsage("Usage: ambxst mods open-url <ambxst://mods/install|update?...>")
+		}
+		action, err := parseModURL(args[1])
+		if err != nil {
+			notifyModURLResult(action, err)
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			os.Exit(1)
+		}
+		progress := startModProgress(modCommandProgressLabel(action.command))
+		status, err := runModCommand(action.command, []string{action.command, action.value})
+		progress.finish(err)
+		notifyModURLResult(action, err)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error:", err)
+			os.Exit(1)
+		}
+		printModStatus(status)
+		return
 	}
 
 	switch command {
@@ -64,6 +86,37 @@ func runMods(args []string) {
 	if status.RestartRequired && isAlive() {
 		fmt.Println("Restart Ambxst to load the active generation.")
 	}
+}
+
+func notifyModURLResult(action modURLAction, resultErr error) {
+	summary := "Ambxst mod link"
+	body := "The mod link is invalid."
+	urgency := "critical"
+	if resultErr == nil {
+		urgency = "normal"
+		if action.command == "install" {
+			body = "The mod was installed and remains disabled until you enable it."
+		} else {
+			body = "The mod update request finished."
+		}
+	} else if action.command == "install" {
+		body = "The mod could not be installed. Run the link command in a terminal for details."
+	} else if action.command == "update" {
+		body = "The mod could not be updated. Run the link command in a terminal for details."
+	}
+	params := map[string]any{
+		"summary":    summary,
+		"body":       body,
+		"appName":    "Ambxst",
+		"urgency":    urgency,
+		"replaceKey": "mods-url",
+	}
+	if isAlive() {
+		if _, err := newClient().Call("notify.send", params); err == nil {
+			return
+		}
+	}
+	_ = notify.SendFallback(summary, body, urgency)
 }
 
 func runModCommand(command string, args []string) (modpkg.Status, error) {
@@ -185,6 +238,7 @@ func modsUsage(message string) {
 		"    base                             Use the base shell on the next start\n" +
 		"    list                             Show installed mods and generation state\n" +
 		"    install <source>                 Install from a directory, archive, or Git URL\n" +
+		"    open-url <ambxst-url>            Handle an install or update link from a browser\n" +
 		"    install-dependencies <id>        Install and enable a mod's requirements\n" +
 		"    enable <id>                      Enable a mod and build a generation\n" +
 		"    disable <id>                     Disable a mod and build a generation\n" +

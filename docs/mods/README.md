@@ -259,6 +259,21 @@ or a GitHub directory URL such as
 `https://github.com/owner/repository/tree/main/packages/example`. GitHub directory
 installs use a shallow sparse checkout and retain the original URL for updates.
 
+## Browser links
+
+Websites can offer install and update buttons through the registered `ambxst`
+URL scheme. Percent-encode every query value:
+
+```text
+ambxst://mods/install?source=https%3A%2F%2Fgithub.com%2Fowner%2Fmod.git
+ambxst://mods/update?id=org.example.feature
+```
+
+Install links accept remote HTTPS and SSH Git repository sources. They do not
+accept local paths or `file:` URLs. New packages remain disabled. Update links
+use the installed package's saved source and follow the same validation and
+review rules as `ambxst mods update <id>`.
+
 ## Deprecating a mod
 
 Use `"deprecated": true` to recommend removing an installed mod. Add
