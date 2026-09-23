@@ -18,57 +18,44 @@ func runMods(args []string) {
 		}
 	}
 
-	var (
-		status modpkg.Status
-		err    error
-	)
 	switch command {
 	case "list", "status":
-		status, err = callMods("status", nil)
 	case "install":
 		if len(args) != 2 {
 			modsUsage("Usage: ambxst mods install <directory|archive|git-url>")
 		}
-		status, err = callMods("install", map[string]any{"source": args[1]})
 	case "install-dependencies":
 		if len(args) != 2 {
 			modsUsage("Usage: ambxst mods install-dependencies <id>")
 		}
-		status, err = callMods("installDependencies", map[string]any{"id": args[1]})
 	case "enable", "disable":
 		if len(args) != 2 {
 			modsUsage("Usage: ambxst mods " + command + " <id>")
 		}
-		status, err = callMods("setEnabled", map[string]any{"id": args[1], "enabled": command == "enable"})
 	case "remove", "update":
 		if len(args) != 2 {
 			modsUsage("Usage: ambxst mods " + command + " <id>")
 		}
-		status, err = callMods(command, map[string]any{"id": args[1]})
 	case "move":
 		if len(args) != 3 || (args[2] != "up" && args[2] != "down") {
 			modsUsage("Usage: ambxst mods move <id> <up|down>")
 		}
-		direction := 1
-		if args[2] == "up" {
-			direction = -1
-		}
-		status, err = callMods("move", map[string]any{"id": args[1], "direction": direction})
 	case "rebuild", "rollback":
 		if len(args) != 1 {
 			modsUsage("Usage: ambxst mods " + command)
 		}
-		status, err = callMods(command, nil)
 	case "bypass":
 		if len(args) != 2 || (args[1] != "on" && args[1] != "off") {
 			modsUsage("Usage: ambxst mods bypass <on|off>")
 		}
-		status, err = callMods("setBypassVersionCheck", map[string]any{"enabled": args[1] == "on"})
 	case "help", "--help", "-h":
 		modsUsage("")
 	default:
 		modsUsage("Unknown mods command: " + command)
 	}
+	progress := startModProgress(modCommandProgressLabel(command))
+	status, err := runModCommand(command, args)
+	progress.finish(err)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
@@ -76,6 +63,33 @@ func runMods(args []string) {
 	printModStatus(status)
 	if status.RestartRequired && isAlive() {
 		fmt.Println("Restart Ambxst to load the active generation.")
+	}
+}
+
+func runModCommand(command string, args []string) (modpkg.Status, error) {
+	switch command {
+	case "list", "status":
+		return callMods("status", nil)
+	case "install":
+		return callMods("install", map[string]any{"source": args[1]})
+	case "install-dependencies":
+		return callMods("installDependencies", map[string]any{"id": args[1]})
+	case "enable", "disable":
+		return callMods("setEnabled", map[string]any{"id": args[1], "enabled": command == "enable"})
+	case "remove", "update":
+		return callMods(command, map[string]any{"id": args[1]})
+	case "move":
+		direction := 1
+		if args[2] == "up" {
+			direction = -1
+		}
+		return callMods("move", map[string]any{"id": args[1], "direction": direction})
+	case "rebuild", "rollback":
+		return callMods(command, nil)
+	case "bypass":
+		return callMods("setBypassVersionCheck", map[string]any{"enabled": args[1] == "on"})
+	default:
+		return modpkg.Status{}, fmt.Errorf("unsupported mods command %q", command)
 	}
 }
 

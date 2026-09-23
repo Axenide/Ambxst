@@ -65,6 +65,7 @@ func runModUpdateCommand(command string, args []string) bool {
 	default:
 		return false
 	}
+	progress := startModProgress(modUpdateCommandProgressLabel(command))
 	var result any
 	var err error
 	if isAlive() {
@@ -94,6 +95,7 @@ func runModUpdateCommand(command string, args []string) bool {
 			result, err = manager.SetModsEnabled(false)
 		}
 	}
+	progress.finish(err)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
