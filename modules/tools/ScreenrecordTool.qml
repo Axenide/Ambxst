@@ -340,9 +340,9 @@ PanelWindow {
                 }
 
                 onActionTriggered: action => {
-                    if (action.tooltip === "Toggle Audio Output") {
+                    if (action.name === "audio") {
                         screenrecordPopup.recordAudioOutput = !screenrecordPopup.recordAudioOutput;
-                    } else if (action.tooltip === "Toggle Microphone") {
+                    } else if (action.name === "mic") {
                         screenrecordPopup.recordAudioInput = !screenrecordPopup.recordAudioInput;
                     } else {
                         screenrecordPopup.executeCapture();
