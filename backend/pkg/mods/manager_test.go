@@ -677,7 +677,32 @@ func TestInstallZipArchiveAndPersistSettings(t *testing.T) {
 	}
 
 	manager := NewManager(testPaths(root))
-	status, err := manager.Install(archivePath)
+	preview, err := manager.PreviewArchive(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.ID != "example.archive" || preview.Name != "Archive fixture" || preview.SHA256 == "" || preview.Size <= 0 {
+		t.Fatalf("unexpected archive preview: %#v", preview)
+	}
+	originalSize := preview.Size
+	mutated, err := os.OpenFile(archivePath, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mutated.Write([]byte("changed")); err != nil {
+		mutated.Close()
+		t.Fatal(err)
+	}
+	if err := mutated.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.InstallArchive(archivePath, preview.SHA256); err == nil {
+		t.Fatal("archive changed after preview was installed")
+	}
+	if err := os.Truncate(archivePath, originalSize); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.InstallArchive(archivePath, preview.SHA256)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -694,6 +719,33 @@ func TestInstallZipArchiveAndPersistSettings(t *testing.T) {
 	settings, err = manager.SetSetting("example.archive", "limit", float64(5))
 	if err != nil || settings.Values["limit"] != float64(5) {
 		t.Fatalf("setting was not persisted: %#v err=%v", settings, err)
+	}
+}
+
+func TestPackageZipRejectsDuplicatePaths(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "duplicate.zip")
+	archiveFile, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer := zip.NewWriter(archiveFile)
+	for _, contents := range []string{"first", "second"} {
+		entry, err := writer.Create("package/file.qml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := entry.Write([]byte(contents)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := archiveFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := extractZipPackage(archivePath, filepath.Join(t.TempDir(), "out")); err == nil {
+		t.Fatal("archive with duplicate paths was accepted")
 	}
 }
 

@@ -50,8 +50,11 @@ Item {
         "mods.confirm_enable_title": "Do you trust this mod?",
         "mods.confirm_install_body": "Installing downloads the package and leaves it disabled. Nothing from it runs until you enable it, which is the moment to have read the code.",
         "mods.confirm_install_title": "Install from this source?",
-        "mods.confirm_archive_body": "A mod archive can contain untrusted code that runs with your user permissions after you enable it. Install this file only if you trust its source.",
+        "mods.confirm_archive_body": "A mod archive can contain untrusted code that runs with your user permissions after you enable it. Ambxst checked the package structure, not who created it. Install only if you trust the source.",
         "mods.confirm_archive_title": "This archive may be unsafe",
+        "mods.archive_checksum": "SHA-256",
+        "mods.archive_package": "Package",
+        "mods.archive_size": "Archive size",
         "mods.confirm_remove": "Confirm remove",
         "mods.conflicts": "Conflicts",
         "mods.dependency_disabled": "Disabled",
@@ -165,14 +168,37 @@ Item {
         return /\.(zip|tar|tar\.gz|tgz)$/i.test(path);
     }
 
+    function formatArchiveSize(bytes) {
+        const size = Number(bytes ?? 0);
+        if (size >= 1048576)
+            return (size / 1048576).toFixed(1) + " MiB";
+        return Math.max(1, Math.ceil(size / 1024)) + " KiB";
+    }
+
     function requestArchiveInstall(fileUrl, trigger) {
         const path = root.archivePath(fileUrl);
+        root.requestArchivePath(path, trigger);
+    }
+
+    function requestArchivePath(path, trigger) {
         if (!root.isSupportedArchive(path)) {
             root.archiveError = root.tr("mods.archive_unsupported");
             return;
         }
         root.archiveError = "";
-        root.askConfirm("installArchive", null, path, trigger);
+        ModsService.previewArchive(path, preview => {
+            root.askConfirm("installArchive", preview, path, trigger);
+        });
+    }
+
+    function requestSourceInstall(source, trigger) {
+        const value = String(source ?? "").trim();
+        const path = value.startsWith("file://") ? root.archivePath(value) : value;
+        if (root.isSupportedArchive(path) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(path)) {
+            root.requestArchivePath(path, trigger);
+            return;
+        }
+        root.askConfirm("install", null, value, trigger);
     }
 
     function stateLabel(mod) {
@@ -213,7 +239,9 @@ Item {
         const mod = root.confirmMod;
         const source = root.confirmSource;
         root.closeConfirm();
-        if (kind === "install" || kind === "installArchive")
+        if (kind === "installArchive")
+            ModsService.installArchive(source, mod?.sha256 ?? "");
+        else if (kind === "install")
             ModsService.install(source);
         else if (kind === "enable" && mod)
             ModsService.setEnabled(mod.id, true);
@@ -462,7 +490,7 @@ Item {
                             onAccepted: {
                                 const source = text.trim();
                                 if (source !== "")
-                                    root.askConfirm("install", null, source);
+                                    root.requestSourceInstall(source, null);
                             }
                         }
 
@@ -470,7 +498,7 @@ Item {
                             text: root.tr("mods.install")
                             primary: true
                             enabled: !ModsService.busy && sourceInput.text.trim() !== ""
-                            onClicked: root.askConfirm("install", null, sourceInput.text.trim())
+                            onClicked: root.requestSourceInstall(sourceInput.text.trim(), null)
                         }
                     }
 
@@ -1718,6 +1746,26 @@ Item {
                 }
 
                 Separator { Layout.fillWidth: true }
+
+                MetaRow {
+                    visible: root.confirmKind === "installArchive"
+                    label: root.tr("mods.archive_package")
+                    value: (root.confirmMod?.name ?? root.confirmMod?.id ?? "")
+                        + ((root.confirmMod?.version ?? "") === "" ? "" : " · " + root.confirmMod.version)
+                }
+
+                MetaRow {
+                    visible: root.confirmKind === "installArchive"
+                    label: root.tr("mods.archive_size")
+                    value: root.formatArchiveSize(root.confirmMod?.size ?? 0)
+                }
+
+                MetaRow {
+                    visible: root.confirmKind === "installArchive"
+                    label: root.tr("mods.archive_checksum")
+                    value: root.confirmMod?.sha256 ?? ""
+                    mono: true
+                }
 
                 MetaRow {
                     visible: root.confirmKind !== "remove" && (root.confirmMod?.author ?? "") !== ""

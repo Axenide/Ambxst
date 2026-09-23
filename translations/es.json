@@ -1,9 +1,12 @@
 {
   "mods.archive_drop": "O suelta aquí un archivo de mod (no es seguro)",
   "mods.archive_drop_hint": ".zip, .tar, .tar.gz o .tgz",
+  "mods.archive_checksum": "SHA-256",
+  "mods.archive_package": "Paquete",
   "mods.archive_select": "Elegir archivo",
+  "mods.archive_size": "Tamaño del archivo",
   "mods.archive_unsupported": "Elige un solo archivo .zip, .tar, .tar.gz o .tgz.",
-  "mods.confirm_archive_body": "Un archivo de mod puede contener código no fiable que se ejecutará con tus permisos cuando lo actives. Instálalo solo si confías en su origen.",
+  "mods.confirm_archive_body": "Un archivo de mod puede contener código no fiable que se ejecutará con tus permisos cuando lo actives. Ambxst comprobó la estructura del paquete, no quién lo creó. Instálalo solo si confías en su origen.",
   "mods.confirm_archive_title": "Este archivo puede ser peligroso",
   "mods.install_archive": "Instalar archivo",
   "mods.available_update_count": "Actualizaciones disponibles: %1",

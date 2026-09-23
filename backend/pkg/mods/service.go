@@ -22,6 +22,8 @@ func (s *Service) Register(server *ipc.Server) {
 		Methods: map[string]ipc.HandlerFunc{
 			"status":                s.status,
 			"install":               s.install,
+			"previewArchive":        s.previewArchive,
+			"installArchive":        s.installArchive,
 			"installDependencies":   s.installDependencies,
 			"setEnabled":            s.setEnabled,
 			"remove":                s.remove,
@@ -147,6 +149,25 @@ func (s *Service) install(raw json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("invalid install request: %w", err)
 	}
 	return s.manager.Install(params.Source)
+}
+
+func (s *Service) previewArchive(raw json.RawMessage) (any, error) {
+	var params sourceParams
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid archive preview request: %w", err)
+	}
+	return s.manager.PreviewArchive(params.Source)
+}
+
+func (s *Service) installArchive(raw json.RawMessage) (any, error) {
+	var params struct {
+		Source string `json:"source"`
+		SHA256 string `json:"sha256"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid archive install request: %w", err)
+	}
+	return s.manager.InstallArchive(params.Source, params.SHA256)
 }
 
 type enabledParams struct {

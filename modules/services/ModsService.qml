@@ -107,6 +107,30 @@ Singleton {
             () => root.installed(source));
     }
 
+    function previewArchive(source, onSuccess) {
+        if (root.busy)
+            return;
+        root.busy = true;
+        root.errorMessage = "";
+        root.errorDetails = "";
+        root.statusMessage = "";
+        root.statusMessageKey = "";
+        BackendService.call("mods.previewArchive", { source }, (result, error) => {
+            root.busy = false;
+            if (error) {
+                root.showError(error);
+                return;
+            }
+            if (onSuccess)
+                onSuccess(result);
+        });
+    }
+
+    function installArchive(source, sha256) {
+        root.request("mods.installArchive", { source, sha256 }, "mods.status_installed", false,
+            () => root.installed(source));
+    }
+
     function installDependencies(id) {
         root.request("mods.installDependencies", { id }, "mods.status_dependencies_installed", true);
     }

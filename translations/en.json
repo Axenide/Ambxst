@@ -1,9 +1,12 @@
 {
   "mods.archive_drop": "Or drop a mod archive here (unsafe)",
   "mods.archive_drop_hint": ".zip, .tar, .tar.gz, or .tgz",
+  "mods.archive_checksum": "SHA-256",
+  "mods.archive_package": "Package",
   "mods.archive_select": "Choose archive",
+  "mods.archive_size": "Archive size",
   "mods.archive_unsupported": "Choose one supported archive: .zip, .tar, .tar.gz, or .tgz.",
-  "mods.confirm_archive_body": "A mod archive can contain untrusted code that runs with your user permissions after you enable it. Install this file only if you trust its source.",
+  "mods.confirm_archive_body": "A mod archive can contain untrusted code that runs with your user permissions after you enable it. Ambxst checked the package structure, not who created it. Install only if you trust the source.",
   "mods.confirm_archive_title": "This archive may be unsafe",
   "mods.install_archive": "Install archive",
   "mods.available_update_count": "Available updates: %1",

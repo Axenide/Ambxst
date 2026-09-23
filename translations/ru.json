@@ -1,9 +1,12 @@
 {
   "mods.archive_drop": "Или перетащите сюда архив мода (небезопасно)",
   "mods.archive_drop_hint": ".zip, .tar, .tar.gz или .tgz",
+  "mods.archive_checksum": "SHA-256",
+  "mods.archive_package": "Пакет",
   "mods.archive_select": "Выбрать архив",
+  "mods.archive_size": "Размер архива",
   "mods.archive_unsupported": "Выберите один архив в формате .zip, .tar, .tar.gz или .tgz.",
-  "mods.confirm_archive_body": "Архив мода может содержать недоверенный код. После включения он получит права вашего пользователя. Устанавливайте файл, только если доверяете его источнику.",
+  "mods.confirm_archive_body": "Архив мода может содержать недоверенный код. После включения он получит права вашего пользователя. Ambxst проверил структуру пакета, но не личность автора. Устанавливайте архив, только если доверяете источнику.",
   "mods.confirm_archive_title": "Этот архив может быть опасен",
   "mods.install_archive": "Установить архив",
   "mods.available_update_count": "Доступно обновлений: %1",

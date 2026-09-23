@@ -146,8 +146,16 @@ example-mod/
 
 Packages can be installed from a local directory, a `.zip`, `.tar`, `.tar.gz`,
 or `.tgz` archive, or a Git URL. New packages are always disabled. Archive
-extraction rejects links, path traversal, more than 10,000 entries, and expanded
-content over 128 MiB.
+installation first copies and inspects the file, then shows its manifest details,
+declared permissions, affected-file count, size, and SHA-256 before asking for
+confirmation. Installation reads the source again and rejects it if its SHA-256
+has changed, so the bytes installed are the bytes that were reviewed.
+
+Both the archive and its expanded contents are limited to 128 MiB. Extraction
+rejects links, path traversal, duplicate paths, more than 10,000 entries, and
+unusually deep or long paths. These checks do not prove who created the archive:
+SHA-256 identifies the reviewed file but is not a signature. Mod authors do not
+need extra metadata or tooling for local archive installation.
 
 Update prepares a separate Git checkout and pulls with fast-forward only.
 Local-directory and archive packages are reloaded from their original path.

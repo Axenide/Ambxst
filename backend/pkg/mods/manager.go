@@ -196,8 +196,11 @@ func (m *Manager) Install(source string) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	return m.installFetchedLocked(fetched)
+}
+
+func (m *Manager) installFetchedLocked(fetched acquired) (Status, error) {
 	packageRoot := fetched.root
-	source = fetched.source
 
 	manifest, err := LoadManifest(packageRoot)
 	if err != nil {
@@ -221,7 +224,7 @@ func (m *Manager) Install(source string) (Status, error) {
 		ID:          manifest.ID,
 		Enabled:     false,
 		Order:       len(state.Mods),
-		Source:      source,
+		Source:      fetched.source,
 		SourceType:  fetched.sourceType,
 		Revision:    fetched.revision,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339),
@@ -1600,6 +1603,7 @@ func extractTar(reader io.Reader, destination string, allowSymlinks bool, maxFil
 	tarReader := tar.NewReader(reader)
 	files := 0
 	var totalBytes int64
+	seen := make(map[string]bool)
 	for {
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
@@ -1626,10 +1630,16 @@ func extractTar(reader io.Reader, destination string, allowSymlinks bool, maxFil
 			// a global header for commit metadata in its default tar output.
 			continue
 		case tar.TypeDir:
+			if err := recordArchiveEntry(seen, header.Name, true); err != nil {
+				return err
+			}
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
+			if err := recordArchiveEntry(seen, header.Name, false); err != nil {
+				return err
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
@@ -1700,14 +1710,19 @@ func extractZipPackage(path, destination string) error {
 	if len(archive.File) > maxPackageFiles {
 		return fmt.Errorf("archive contains too many files")
 	}
-	var total uint64
+	var declaredTotal uint64
+	var extractedTotal int64
+	seen := make(map[string]bool)
 	for _, entry := range archive.File {
-		total += entry.UncompressedSize64
-		if total > maxPackageBytes {
+		declaredTotal += entry.UncompressedSize64
+		if declaredTotal > maxPackageBytes {
 			return fmt.Errorf("archive expands beyond the size limit")
 		}
 		if entry.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("package symlinks are not allowed: %s", entry.Name)
+		}
+		if err := recordArchiveEntry(seen, entry.Name, entry.FileInfo().IsDir()); err != nil {
+			return err
 		}
 		target, err := safeJoin(destination, entry.Name)
 		if err != nil {
@@ -1732,12 +1747,17 @@ func extractZipPackage(path, destination string) error {
 			reader.Close()
 			return err
 		}
-		copyErr := func() error {
-			_, err := io.Copy(output, reader)
-			return errors.Join(err, output.Close(), reader.Close())
+		written, copyErr := func() (int64, error) {
+			remaining := maxPackageBytes - extractedTotal
+			written, err := io.Copy(output, io.LimitReader(reader, remaining+1))
+			return written, errors.Join(err, output.Close(), reader.Close())
 		}()
 		if copyErr != nil {
 			return copyErr
+		}
+		extractedTotal += written
+		if extractedTotal > maxPackageBytes {
+			return fmt.Errorf("archive expands beyond the size limit")
 		}
 	}
 	return nil
