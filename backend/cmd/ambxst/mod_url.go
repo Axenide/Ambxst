@@ -49,13 +49,16 @@ func requireOnlyQuery(query url.Values, key string) error {
 	return nil
 }
 
+// isRemoteModSource accepts HTTPS and SSH Git sources. A host that starts
+// with "-" would reach git and ssh as an option, so it is refused here rather
+// than left to git's own check.
 func isRemoteModSource(source string) bool {
 	if strings.HasPrefix(source, "git@") {
 		parts := strings.SplitN(strings.TrimPrefix(source, "git@"), ":", 2)
-		return len(parts) == 2 && parts[0] != "" && parts[1] != ""
+		return len(parts) == 2 && parts[0] != "" && parts[1] != "" && !strings.HasPrefix(parts[0], "-")
 	}
 	parsed, err := url.Parse(source)
-	if err != nil || parsed.Host == "" {
+	if err != nil || parsed.Host == "" || strings.HasPrefix(parsed.Host, "-") {
 		return false
 	}
 	return (parsed.Scheme == "https" && parsed.User == nil) || parsed.Scheme == "ssh"

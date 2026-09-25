@@ -54,6 +54,8 @@ func TestParseModURLRejectsUnsafeOrAmbiguousInput(t *testing.T) {
 		"ambxst://mods/update",
 		"ambxst://mods/update?id=one&id=two",
 		"ambxst://mods/update?id=org.example.clock#fragment",
+		"ambxst://mods/install?source=git%40-oProxyCommand%3Did%3Amod.git",
+		"ambxst://mods/install?source=ssh%3A%2F%2F-oProxyCommand%3Did%2Fmod.git",
 	}
 	for _, raw := range invalid {
 		t.Run(raw, func(t *testing.T) {
