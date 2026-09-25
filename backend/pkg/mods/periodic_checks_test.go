@@ -2,6 +2,7 @@ package mods
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
@@ -261,5 +262,57 @@ func TestPeriodicChecksRPCRequiresExplicitChoice(t *testing.T) {
 		if _, err := service.setPeriodicChecks(json.RawMessage(input)); err == nil {
 			t.Fatalf("accepted %s", input)
 		}
+	}
+}
+
+func TestScheduleRunsWhenClockMovesBack(t *testing.T) {
+	now := time.Now().UTC()
+	state := State{AutoUpdate: true, UpdateIntervalHours: 168, Mods: []InstalledMod{{SourceType: "git"}}}
+	updates := UpdateState{NextCheck: now.Add(168 * time.Hour).Format(time.RFC3339)}
+	if automaticDue(state, updates, false, now) {
+		t.Fatal("weekly deadline treated as a clock change")
+	}
+	// A deadline saved before the clock moved back a year.
+	updates.NextCheck = now.AddDate(1, 0, 0).Format(time.RFC3339)
+	if !automaticDue(state, updates, false, now) {
+		t.Fatal("schedule waited for a deadline from before the clock change")
+	}
+}
+
+func TestFailedChecksBackOffUpToWeeklyInterval(t *testing.T) {
+	m, source, _ := updateFixture(t, false)
+	if _, err := m.SetUpdateInterval(168); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(source); err != nil {
+		t.Fatal(err)
+	}
+	for _, failures := range []int{0, 7} {
+		m.updates.Failures = failures
+		status, err := m.CheckUpdates(nil, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		next, _ := time.Parse(time.RFC3339, status.Updates.NextCheck)
+		wait := time.Until(next).Round(time.Hour)
+		want := map[int]time.Duration{0: time.Hour, 7: 128 * time.Hour}[failures]
+		if wait != want {
+			t.Fatalf("failure %d waits %v, want %v", failures+1, wait, want)
+		}
+	}
+}
+
+func TestCheckingUnknownModKeepsSchedule(t *testing.T) {
+	m, _, _ := updateFixture(t, false)
+	if _, err := m.SetPeriodicChecks(true); err != nil {
+		t.Fatal(err)
+	}
+	m.updates.NextCheck = time.Now().Add(20 * time.Hour).UTC().Format(time.RFC3339)
+	before := m.updates
+	if _, err := m.CheckUpdates([]string{"example.missing"}, false); err == nil {
+		t.Fatal("unknown mod was checked")
+	}
+	if m.updates.NextCheck != before.NextCheck || m.updates.Failures != 0 || m.updates.Phase != before.Phase {
+		t.Fatalf("a mistyped id changed the saved check: %#v", m.updates)
 	}
 }

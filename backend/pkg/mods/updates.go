@@ -82,6 +82,13 @@ func updateIntervalHours(state State) int {
 	}
 }
 
+// maxCheckDelay is the longest wait the scheduler sets: the check interval,
+// or one day for retries and postponed reviews. Failed checks back off up to
+// this delay.
+func maxCheckDelay(state State) time.Duration {
+	return max(time.Duration(updateIntervalHours(state))*time.Hour, 24*time.Hour)
+}
+
 func (m *Manager) SetUpdateInterval(hours int) (Status, error) {
 	if hours != 1 && hours != 6 && hours != 24 && hours != 168 {
 		return Status{}, fmt.Errorf("update interval must be 1, 6, 24, or 168 hours")
@@ -352,6 +359,16 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 		m.mu.Unlock()
 		return Status{}, fmt.Errorf("an update operation is already running")
 	}
+	// Reject unknown ids before the check replaces the saved results and
+	// schedule; a mistyped id is not a failed check.
+	selected := map[string]bool{}
+	for _, id := range ids {
+		if _, ok := findInstalled(state, id); !ok {
+			m.mu.Unlock()
+			return Status{}, fmt.Errorf("mod %s is not installed", id)
+		}
+		selected[id] = true
+	}
 	if m.updatePlan != nil {
 		os.RemoveAll(m.updatePlan.directory)
 		if m.updatePlan.generation != "" {
@@ -395,13 +412,6 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 			os.RemoveAll(dir)
 		}
 	}()
-	selected := map[string]bool{}
-	for _, id := range ids {
-		if _, ok := findInstalled(state, id); !ok {
-			return m.finishUpdateError("not_installed", fmt.Errorf("mod %s is not installed", id))
-		}
-		selected[id] = true
-	}
 	next := cloneState(state)
 	items := []UpdateItem{}
 	changed, restart, review, failed := false, false, false, false
@@ -536,10 +546,7 @@ func (m *Manager) checkUpdates(ids []string, automatic, discoverAll bool) (Statu
 	}
 	delay := time.Duration(updateIntervalHours(state)) * time.Hour
 	if m.updates.Failures > 0 {
-		delay = time.Hour * time.Duration(1<<min(m.updates.Failures-1, 5))
-		if delay > 24*time.Hour {
-			delay = 24 * time.Hour
-		}
+		delay = min(time.Hour<<min(m.updates.Failures-1, 8), maxCheckDelay(state))
 	}
 	if automatic || len(ids) == 0 {
 		m.updates.NextCheck = time.Now().Add(delay).UTC().Format(time.RFC3339)
@@ -668,7 +675,9 @@ func automaticDue(state State, updates UpdateState, pending bool, now time.Time)
 		return false
 	}
 	due, _ := time.Parse(time.RFC3339, updates.NextCheck)
-	if now.Before(due) {
+	// A deadline further away than any delay the scheduler sets means the
+	// clock moved back since it was saved. Check now instead of waiting.
+	if now.Before(due) && !due.After(now.Add(maxCheckDelay(state))) {
 		return false
 	}
 	for _, mod := range state.Mods {

@@ -73,7 +73,9 @@ when moving to a different revision.
 
 Checks begin no earlier than one minute after daemon startup. The scheduler
 stores its next check time and wakes every minute to see
-whether a check is due. Failed checks back off from one hour to one day.
+whether a check is due. Failed checks back off from one hour to one day, or to
+one week on the weekly schedule. If the clock moves back further than that, the
+next check runs right away instead of waiting for the saved time.
 Automatic work pauses while mods are globally disabled or a generation awaits
 its startup trial. The scheduler never restarts the shell.
 
