@@ -68,7 +68,6 @@
   "mods.policy_on": "Включено",
   "mods.policy_off": "Выключено",
   "mods.manual_source": "Для этого источника доступны только ручные обновления.",
-  "mods.languages": "Языки",
   "mods.language_unknown": "Информация о языке недоступна",
   "mods.language_none": "Нет текстов интерфейса",
   "mods.language_invalid": "Данные о языках требуют исправления",

@@ -64,7 +64,6 @@
   "mods.policy_on": "Activadas",
   "mods.policy_off": "Desactivadas",
   "mods.manual_source": "Esta fuente requiere actualizaciones manuales.",
-  "mods.languages": "Idiomas",
   "mods.language_unknown": "Información de idioma no disponible",
   "mods.language_none": "Sin texto de interfaz",
   "mods.language_invalid": "Los datos de idioma necesitan una corrección",

@@ -248,7 +248,7 @@ the tab indices as `dashboardTabs`.
 
 Load order decides where a mod's Settings entry, Dashboard tab, and bar widget
 appear by default, because it is also the order conflicts are resolved in. A
-user can override the place without touching load order, in **Settings → Mods**
+user can override the place without touching load order, in **Settings > Mods**
 or from the terminal:
 
 ```sh
@@ -402,7 +402,7 @@ A package may declare the entry when it needs a specific default position:
 `section` is the numeric section used on lines added by the package patch. Core
 sections currently reserve 0 through 10. `index` controls only the sidebar
 position and does not affect patch load order. It is zero-based; negative values
-count from the end. Users can override it in **Settings → Mods**. Without this
+count from the end. Users can override it in **Settings > Mods**. Without this
 metadata, detected entries stay together immediately before the final core item.
 
 ```json
@@ -480,7 +480,7 @@ than on a half-applied tree.
 
 ## Commands
 
-In **Settings → Mods**, select a mod to check its source for updates. When an
+In **Settings > Mods**, select a mod to check its source for updates. When an
 update is available, **Update to <version>** opens a review for that mod. Updates
 without a version change use **Update package**. The review shows release notes,
 permissions, and any warnings before you confirm. Opening a single-mod review
@@ -523,7 +523,7 @@ ambxst mods disable org.example.feature
 ambxst mods remove org.example.feature
 ```
 
-The same operations are available in **Settings → Mods**. Select a mod and use
+The same operations are available in **Settings > Mods**. Select a mod and use
 **Move up** or **Move down** in its details to change the load order. List rows
 show status icons; management controls stay in the selected mod's details.
 The manager rebuilds enabled packages in that order; the new

@@ -64,7 +64,6 @@
   "mods.policy_on": "On",
   "mods.policy_off": "Off",
   "mods.manual_source": "This source requires manual updates.",
-  "mods.languages": "Languages",
   "mods.language_unknown": "Language information unavailable",
   "mods.language_none": "No interface text",
   "mods.language_invalid": "Language metadata needs correction",
