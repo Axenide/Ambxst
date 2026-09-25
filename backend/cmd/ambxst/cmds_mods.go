@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	modpkg "ambxst/backend/pkg/mods"
 	"ambxst/backend/pkg/paths"
@@ -61,6 +63,10 @@ func runMods(args []string) {
 	case "move":
 		if len(args) != 3 || (args[2] != "up" && args[2] != "down") {
 			modsUsage("Usage: ambxst mods move <id> <up|down>")
+		}
+	case "position":
+		if len(args) != 4 || !validPositionKind(args[2]) || !validPositionValue(args[3]) {
+			modsUsage("Usage: ambxst mods position <id> <menu|tab|bar> <number|auto>")
 		}
 	case "rebuild", "rollback":
 		if len(args) != 1 {
@@ -133,6 +139,13 @@ func runModCommand(command string, args []string) (modpkg.Status, error) {
 			direction = -1
 		}
 		return callMods("move", map[string]any{"id": args[1], "direction": direction})
+	case "position":
+		params := map[string]any{"id": args[1], "kind": args[2], "position": nil}
+		if args[3] != "auto" {
+			position, _ := strconv.Atoi(args[3])
+			params["position"] = position
+		}
+		return callMods("setPosition", params)
 	case "rebuild", "rollback":
 		return callMods(command, nil)
 	case "bypass":
@@ -171,6 +184,12 @@ func callMods(method string, params map[string]any) (modpkg.Status, error) {
 		return manager.Update(params["id"].(string))
 	case "move":
 		return manager.Move(params["id"].(string), params["direction"].(int))
+	case "setPosition":
+		var position *int
+		if value, ok := params["position"].(int); ok {
+			position = &value
+		}
+		return manager.SetPosition(params["id"].(string), params["kind"].(string), position)
 	case "rebuild":
 		return manager.Rebuild()
 	case "rollback":
@@ -205,7 +224,7 @@ func printModStatus(status modpkg.Status) {
 		if mod.Enabled {
 			state = "enabled"
 		}
-		fmt.Printf("%-9s %-28s %s\n", state, mod.ID, mod.Version)
+		fmt.Printf("%-9s %-28s %s%s\n", state, mod.ID, mod.Version, modPositionSummary(mod))
 	}
 }
 
@@ -241,6 +260,8 @@ func modsUsage(message string) {
 		"    update <id>                      Refresh a mod from its original source\n" +
 		"    remove <id>                      Remove a mod package\n" +
 		"    move <id> <up|down>              Change patch load order\n" +
+		"    position <id> <menu|tab|bar> <n|auto>\n" +
+		"                                     Place a mod's menu entry, Dashboard tab, or bar widget\n" +
 		"    rebuild                          Rebuild the enabled mod set\n" +
 		"    rollback                         Activate the previous generation\n" +
 		"    bypass <on|off>                  Toggle the Ambxst version compatibility requirement\n" +
@@ -249,4 +270,41 @@ func modsUsage(message string) {
 		os.Exit(2)
 	}
 	os.Exit(0)
+}
+
+func validPositionKind(kind string) bool {
+	return kind == modpkg.PositionMenu || kind == modpkg.PositionTab || kind == modpkg.PositionBar
+}
+
+func validPositionValue(value string) bool {
+	if value == "auto" {
+		return true
+	}
+	_, err := strconv.Atoi(value)
+	return err == nil
+}
+
+// modPositionSummary lists the positions a mod uses; "auto" marks load order.
+func modPositionSummary(mod modpkg.ModInfo) string {
+	var parts []string
+	describe := func(kind string, position int, pinned bool) {
+		value := strconv.Itoa(position)
+		if !pinned {
+			value += " auto"
+		}
+		parts = append(parts, kind+" "+value)
+	}
+	if mod.HasSettingsMenu {
+		parts = append(parts, "menu "+strconv.Itoa(mod.SettingsMenuIndex))
+	}
+	if mod.HasTabPosition {
+		describe("tab", mod.TabPosition, mod.TabPositionPinned)
+	}
+	if mod.HasBarPosition {
+		describe("bar", mod.BarPosition, mod.BarPositionPinned)
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return "  [" + strings.Join(parts, ", ") + "]"
 }

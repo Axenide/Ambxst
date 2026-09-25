@@ -29,6 +29,7 @@ func (s *Service) Register(server *ipc.Server) {
 			"remove":                s.remove,
 			"move":                  s.move,
 			"setMenuIndex":          s.setMenuIndex,
+			"setPosition":           s.setPosition,
 			"update":                s.update,
 			"rebuild":               s.rebuild,
 			"rollback":              s.rollback,
@@ -308,4 +309,19 @@ func (s *Service) setModsEnabled(raw json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("invalid setModsEnabled request: %w", err)
 	}
 	return s.manager.SetModsEnabled(params.Enabled)
+}
+
+func (s *Service) setPosition(raw json.RawMessage) (any, error) {
+	var params struct {
+		ID       string `json:"id"`
+		Kind     string `json:"kind"`
+		Position *int   `json:"position"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid position request: %w", err)
+	}
+	if !idPattern.MatchString(params.ID) {
+		return nil, fmt.Errorf("invalid mod id %q", params.ID)
+	}
+	return s.manager.SetPosition(params.ID, params.Kind, params.Position)
 }

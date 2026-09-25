@@ -75,6 +75,10 @@ type InstalledMod struct {
 	InstalledAt string `json:"installedAt"`
 	AutoUpdate  string `json:"autoUpdate,omitempty"`
 	MenuIndex   *int   `json:"menuIndex,omitempty"`
+	// TabPosition and BarPosition override the load-order place of a mod's
+	// Dashboard tabs and bar widgets. Nil keeps load order.
+	TabPosition *int `json:"tabPosition,omitempty"`
+	BarPosition *int `json:"barPosition,omitempty"`
 }
 
 type ModInfo struct {
@@ -102,6 +106,13 @@ type ModInfo struct {
 	SettingsSection      int              `json:"settingsSection,omitempty"`
 	SettingsSections     []int            `json:"settingsSections,omitempty"`
 	SettingsMenuIndex    int              `json:"settingsMenuIndex,omitempty"`
+	DashboardTabs        []int            `json:"dashboardTabs,omitempty"`
+	HasTabPosition       bool             `json:"hasTabPosition"`
+	TabPosition          int              `json:"tabPosition"`
+	TabPositionPinned    bool             `json:"tabPositionPinned,omitempty"`
+	HasBarPosition       bool             `json:"hasBarPosition"`
+	BarPosition          int              `json:"barPosition"`
+	BarPositionPinned    bool             `json:"barPositionPinned,omitempty"`
 	Valid                bool             `json:"valid"`
 	Error                string           `json:"error,omitempty"`
 	Compatible           bool             `json:"compatible"`
@@ -973,16 +984,36 @@ func (m *Manager) buildGenerationAt(state State, base, packages string) (string,
 		return "", fmt.Errorf("prepare composition: %w", err)
 	}
 	settingsSections := resolvedSettingsSections(ordered, manifests)
+	coreTabs := coreDashboardTabs(base)
+	tabLoadOrder := tabMods(ordered, manifests)
+	tabOrder := compositionTabOrder(state, ordered, manifests)
+	dashboardTabs := resolvedDashboardTabs(tabOrder, manifests, coreTabs)
+	tabChildren := resolvedDashboardTabs(tabLoadOrder, manifests, coreTabs)
 	for _, id := range ordered {
 		manifest := manifests[id]
 		packageRoot := filepath.Join(packages, id)
+		remaps := patchRemaps{sections: settingsSections[id], tabs: dashboardTabs[id], tabChildren: tabChildren[id]}
 		for _, operation := range manifest.Operations {
-			if err := applyOperation(tmp, packageRoot, operation, settingsSections[id]); err != nil {
+			if err := applyOperation(tmp, packageRoot, operation, remaps); err != nil {
 				return "", fmt.Errorf("mod %s: %w", id, err)
 			}
 		}
 		if err := commitComposition(tmp, "mod "+id); err != nil {
 			return "", fmt.Errorf("mod %s: %w", id, err)
+		}
+	}
+	if strings.Join(tabOrder, "\x00") != strings.Join(tabLoadOrder, "\x00") {
+		if err := applyTabModelOrder(tmp, coreTabs, tabLoadOrder, tabOrder, manifests); err != nil {
+			return "", err
+		}
+	}
+	if hasExplicitPositions(state, PositionBar) {
+		rank := make(map[string]int)
+		for index, id := range filterOrder(positionOrder(state, manifests, PositionBar), ordered) {
+			rank[id] = index
+		}
+		if err := reorderBarWidgets(tmp, rank); err != nil {
+			return "", err
 		}
 	}
 	if err := os.RemoveAll(filepath.Join(tmp, ".git")); err != nil {
@@ -1132,9 +1163,14 @@ func (m *Manager) statusFor(state State) (Status, error) {
 		installedByID[installed.ID] = installed
 	}
 	settingsSections := make(map[string]map[int]int)
+	dashboardTabs := make(map[string]map[int]int)
 	if manifests, ordered, err := m.resolve(state, base); err == nil {
 		settingsSections = resolvedSettingsSections(ordered, manifests)
+		dashboardTabs = resolvedDashboardTabs(compositionTabOrder(state, ordered, manifests), manifests, coreDashboardTabs(base))
 	}
+	allManifests := m.installedManifests(state)
+	tabOrder := positionOrder(state, allManifests, PositionTab)
+	barOrder := positionOrder(state, allManifests, PositionBar)
 	for _, installed := range state.Mods {
 		root := filepath.Join(m.paths.ModPackagesDir(), installed.ID)
 		manifest, err := LoadManifest(root)
@@ -1211,6 +1247,13 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			SettingsSection:      firstSettingsSection(resolvedSections),
 			SettingsSections:     resolvedSections,
 			SettingsMenuIndex:    settingsMenuIndex(installed, manifest),
+			DashboardTabs:        resolvedDashboardTabList(manifest, dashboardTabs[manifest.ID]),
+			HasTabPosition:       usesPosition(manifest, PositionTab),
+			TabPosition:          positionRank(tabOrder, manifest.ID),
+			TabPositionPinned:    installed.TabPosition != nil,
+			HasBarPosition:       usesPosition(manifest, PositionBar),
+			BarPosition:          positionRank(barOrder, manifest.ID),
+			BarPositionPinned:    installed.BarPosition != nil,
 			Valid:                true,
 			Compatible:           compatibilityErr == nil,
 			CompatibilityError:   compatibilityMessage,
@@ -1340,11 +1383,11 @@ func (m *Manager) cleanupGenerations(state State) {
 // base object store is borrowed rather than copied, which keeps the pre-image
 // blobs of older mods reachable after an Ambxst update. The repository is
 // removed before the generation is activated.
-// resolveAddedBlocks settles the one merge conflict that load order can decide:
-// two mods inserting new lines at the same place. Neither side removed base
-// content there, so both blocks belong in the file, and the mod applied first
-// goes first. Any conflict that also rewrites existing lines is left alone and
-// stops the build.
+// resolveAddedBlocks settles the merge conflicts that load order can decide:
+// two mods inserting new lines at the same place, two mods appending items to
+// the same one-line list, and two mods widening the same Dashboard tab bound.
+// The mod applied first goes first. Any other conflict that rewrites existing
+// lines is left alone and stops the build.
 func resolveAddedBlocks(generation string) (bool, error) {
 	cmd := exec.Command("git", "diff", "--name-only", "--diff-filter=U")
 	cmd.Dir = generation
@@ -1365,7 +1408,7 @@ func resolveAddedBlocks(generation string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		merged, ok := mergeAddedBlocks(string(data))
+		merged, ok := mergeAddedBlocks(filepath.ToSlash(name), string(data))
 		if !ok {
 			return false, nil
 		}
@@ -1380,9 +1423,10 @@ func resolveAddedBlocks(generation string) (bool, error) {
 }
 
 // mergeAddedBlocks keeps both sides of every diff3 conflict whose merge base is
-// empty. It reports false as soon as a conflict has base content, so the caller
-// can stop instead of guessing.
-func mergeAddedBlocks(content string) (string, bool) {
+// empty or blank. It also merges appended list items and the Dashboard tab
+// bound. It reports false as soon as a conflict fits none of these, so the
+// caller can stop instead of guessing.
+func mergeAddedBlocks(path, content string) (string, bool) {
 	lines := strings.Split(content, "\n")
 	var out []string
 	for index := 0; index < len(lines); index++ {
@@ -1417,11 +1461,28 @@ func mergeAddedBlocks(content string) (string, bool) {
 				break
 			}
 		}
-		if !closed || len(base) > 0 {
+		if !closed {
 			return "", false
 		}
-		out = append(out, ours...)
-		out = append(out, theirs...)
+		if blankLines(base) {
+			// A base of blank lines is a spacer both mods inserted around;
+			// an editor that strips its trailing spaces rewrites it too.
+			if len(base) > 0 {
+				ours = trimTrailingBlankLines(ours)
+			}
+			out = append(out, ours...)
+			out = append(out, theirs...)
+			continue
+		}
+		if merged, ok := mergeAppendedList(ours, base, theirs); ok {
+			out = append(out, merged...)
+			continue
+		}
+		if merged, ok := resolvePlumbingConflict(path, ours, base, theirs); ok {
+			out = append(out, merged...)
+			continue
+		}
+		return "", false
 	}
 	return strings.Join(out, "\n"), true
 }
@@ -1481,15 +1542,15 @@ func gitObjectsDir(base string) string {
 	return directory
 }
 
-func applyOperation(generation, packageRoot string, op Operation, sectionRemaps map[int]int) error {
+func applyOperation(generation, packageRoot string, op Operation, remaps patchRemaps) error {
 	source, err := safeJoin(packageRoot, op.Source)
 	if err != nil {
 		return err
 	}
 	if op.Type == "patch" {
 		cleanup := func() {}
-		if len(sectionRemaps) > 0 {
-			source, cleanup, err = remapPatchSettingsSections(generation, source, sectionRemaps)
+		if remaps.active() {
+			source, cleanup, err = remapPatch(generation, source, remaps)
 			if err != nil {
 				return err
 			}
@@ -1601,30 +1662,69 @@ func firstSettingsSection(sections []int) int {
 	return sections[0]
 }
 
-// remapPatchSettingsSections changes section references only on lines added by
-// a package patch. Context and removed lines must keep describing the base.
-func remapPatchSettingsSections(generation, source string, remaps map[int]int) (string, func(), error) {
+// patchRemaps holds the index changes the manager assigned to one package:
+// Settings sections and Dashboard tabs, keyed by the value in the patch.
+type patchRemaps struct {
+	sections map[int]int
+	tabs     map[int]int
+	// tabChildren is each tab loader's place among the stack's children,
+	// which follows load order even when the tab index does not.
+	tabChildren map[int]int
+}
+
+func (r patchRemaps) active() bool {
+	return changedKeys(r.sections) != nil || changedKeys(r.tabs) != nil || changedKeys(r.tabChildren) != nil
+}
+
+func changedKeys(remaps map[int]int) []int {
+	var keys []int
+	for from, to := range remaps {
+		if from != to {
+			keys = append(keys, from)
+		}
+	}
+	sort.Ints(keys)
+	return keys
+}
+
+// remapPatch changes section and tab references only on lines added by a
+// package patch. Context and removed lines must keep describing the base.
+// Placeholders keep a chain such as 3->4 and 4->5 from applying twice.
+func remapPatch(generation, source string, remaps patchRemaps) (string, func(), error) {
 	data, err := os.ReadFile(source)
 	if err != nil {
 		return "", func() {}, err
 	}
 	lines := strings.Split(string(data), "\n")
-	fromSections := make([]int, 0, len(remaps))
-	for from, to := range remaps {
-		if from != to {
-			fromSections = append(fromSections, from)
+	fromSections := changedKeys(remaps.sections)
+	fromTabs := changedKeys(remaps.tabs)
+	for _, from := range changedKeys(remaps.tabChildren) {
+		if !intInList(fromTabs, from) {
+			fromTabs = append(fromTabs, from)
 		}
 	}
-	sort.Ints(fromSections)
+	sort.Ints(fromTabs)
+	target := ""
 	for index, line := range lines {
-		if !strings.HasPrefix(line, "+") || strings.HasPrefix(line, "+++") {
+		if strings.HasPrefix(line, "+++ ") {
+			target = patchTarget(line)
 			continue
 		}
-		tokens := make(map[string]string, len(fromSections))
+		if !strings.HasPrefix(line, "+") {
+			continue
+		}
+		tokens := make(map[string]string, len(fromSections)+len(fromTabs))
 		for tokenIndex, from := range fromSections {
 			token := fmt.Sprintf("__AMBXST_SECTION_%d__", tokenIndex)
 			line = replaceSectionReference(line, fmt.Sprintf("%d", from), token)
-			tokens[token] = fmt.Sprintf("%d", remaps[from])
+			tokens[token] = fmt.Sprintf("%d", remaps.sections[from])
+		}
+		for tokenIndex, from := range fromTabs {
+			token := fmt.Sprintf("__AMBXST_TAB_%d__", tokenIndex)
+			childToken := fmt.Sprintf("__AMBXST_TAB_CHILD_%d__", tokenIndex)
+			line = replaceDashboardTabReference(line, target, fmt.Sprintf("%d", from), token, childToken)
+			tokens[token] = fmt.Sprintf("%d", valueOr(remaps.tabs, from))
+			tokens[childToken] = fmt.Sprintf("%d", valueOr(remaps.tabChildren, from))
 		}
 		for token, to := range tokens {
 			line = strings.ReplaceAll(line, token, to)

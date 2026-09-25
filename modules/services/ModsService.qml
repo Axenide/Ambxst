@@ -196,6 +196,13 @@ Singleton {
         root.request("mods.move", { id, position }, "mods.status_order_updated", root.activeGeneration !== "");
     }
 
+    // Places a mod's Dashboard tab or bar widget apart from load order. A null
+    // position returns it to its load-order place. The backend rebuilds when
+    // the mod is enabled and reports whether a restart is needed.
+    function setPosition(id, kind, position) {
+        root.request("mods.setPosition", { id, kind, position }, "mods.status_position_updated", false);
+    }
+
     function setMenuIndex(id, position) {
         root.request("mods.setMenuIndex", { id, position }, "mods.status_menu_index_updated", false);
     }

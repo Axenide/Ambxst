@@ -215,10 +215,62 @@ is deleted before the generation is activated, so a generation is plain source.
 
 Two mods that only insert new lines at the same anchor are both kept, in load
 order; this is what lets independent bar widgets register next to each other.
-Two mods rewriting the same existing lines still stop the build, and the active
-generation remains unchanged. Overlay replacements still verify the target
+Three more conflicts are settled the same way:
+
+- The base between the two insertions is a blank line. Editors that strip
+  trailing spaces rewrite such spacers, so the manager treats them as an anchor.
+- Both mods append items to the same one-line list, such as `tabModel: [...]`.
+  The base items stay first, then the items of the mod applied earlier.
+- Both mods widen the Dashboard tab bound `if (idx <= 2)` for their own tabs.
+  The manager writes `if (idx >= 0 && idx < root.tabCount)`, which covers every
+  tab it assigned.
+
+Any other pair of mods rewriting the same existing lines still stops the build,
+and the active generation remains unchanged. Overlay replacements still verify the target
 checksum at the point where they run. Dependencies are applied before
 dependents; user load order resolves the remaining order.
+
+A mod that adds a Dashboard tab needs no manifest entry. The manager finds the
+`TabLoader { property int index: N }` the patch adds to `Dashboard.qml` and
+gives every mod tab a free index after the core tabs, in load order. A mod keeps
+the index it was written for when nobody took it first; a later mod with the
+same index moves to the next free one. On the lines the patch adds, the manager
+rewrites the loader index, `case N:` and `children[N]` in `Dashboard.qml`, and
+`toggleDashboardTab(N)`, `dashboardCurrentTab = N` and `currentTab === N` in any
+file. `ambxst mods list` shows the resolved positions, and the status reports
+the tab indices as `dashboardTabs`.
+
+### Positions
+
+Load order decides where a mod's Settings entry, Dashboard tab, and bar widget
+appear by default, because it is also the order conflicts are resolved in. A
+user can override the place without touching load order, in **Settings → Mods**
+or from the terminal:
+
+```sh
+ambxst mods position <id> menu <index>    # Settings sidebar index
+ambxst mods position <id> tab <position>  # among mods that add Dashboard tabs
+ambxst mods position <id> bar <position>  # among mods that add bar widgets
+ambxst mods position <id> tab auto        # back to load order
+```
+
+Only mods that use a kind of position get it: a detected or declared Settings
+entry, a Dashboard tab loader, or a QML object added to `BarContent.qml`. Tab and
+bar positions are zero-based and apply on the next build, which the command
+starts for an enabled mod. Moving one mod pins the current order of the others
+of that kind, so a later install does not shift the user's choice.
+
+The manager applies a tab position by renumbering the tabs, rebuilding
+`tabModel` in that order, and pointing each `case N:` at the loader's real
+place in the file. This needs the tab's icon, which the manager reads from the
+item the patch appends to `tabModel`; a mod that adds tabs another way keeps
+load order. A bar position orders the widgets mods add to the same layout in
+`BarContent.qml`, such as the horizontal bar row. The places those widgets take
+stay fixed and core items never move; only which mod's widget fills which place
+changes. A pinned widget therefore leaves the spot its author chose, including
+any placement option the mod offers, until the position returns to `auto`. The
+manager finds each mod's lines from the composition history and moves only
+whole QML objects the mod added and closed.
 
 A mod that adds a Settings section must claim a new `section` id and register
 its panel under the same id. Renumbering the existing sections looks harmless in

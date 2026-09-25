@@ -256,6 +256,16 @@ Item {
             ModsService.setMenuIndex(mod.id, Number(source));
     }
 
+    // Positions are shown one-based. Unpinned mods follow load order.
+    function positionLabel(position, pinned) {
+        const number = String(position + 1);
+        return pinned ? number : root.tr("mods.position_load_order").replace("%1", number);
+    }
+
+    function positionCount(flag) {
+        return (ModsService.mods ?? []).filter(mod => mod[flag]).length;
+    }
+
     function confirmMenuIndex(position, trigger) {
         root.askConfirm("menuIndex", root.selectedMod, String(position), trigger);
     }
@@ -1371,6 +1381,60 @@ Item {
                         ActionButton {
                             text: root.tr("mods.move_down")
                             onClicked: root.confirmMenuIndex(menuIndexRow.currentIndex + 1, this)
+                        }
+                    }
+
+                    MetaRow {
+                        id: tabPositionRow
+                        visible: root.selectedMod?.hasTabPosition ?? false
+                        label: root.tr("mods.tab_position")
+                        readonly property int position: root.selectedMod?.tabPosition ?? 0
+                        value: root.positionLabel(position, root.selectedMod?.tabPositionPinned ?? false)
+
+                        ActionButton {
+                            text: root.tr("mods.move_up")
+                            enabled: !ModsService.busy && tabPositionRow.position > 0
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "tab", tabPositionRow.position - 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.move_down")
+                            enabled: !ModsService.busy && tabPositionRow.position < root.positionCount("hasTabPosition") - 1
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "tab", tabPositionRow.position + 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.position_auto")
+                            visible: root.selectedMod?.tabPositionPinned ?? false
+                            enabled: !ModsService.busy
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "tab", null)
+                        }
+                    }
+
+                    MetaRow {
+                        id: barPositionRow
+                        visible: root.selectedMod?.hasBarPosition ?? false
+                        label: root.tr("mods.bar_position")
+                        readonly property int position: root.selectedMod?.barPosition ?? 0
+                        value: root.positionLabel(position, root.selectedMod?.barPositionPinned ?? false)
+
+                        ActionButton {
+                            text: root.tr("mods.move_up")
+                            enabled: !ModsService.busy && barPositionRow.position > 0
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "bar", barPositionRow.position - 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.move_down")
+                            enabled: !ModsService.busy && barPositionRow.position < root.positionCount("hasBarPosition") - 1
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "bar", barPositionRow.position + 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.position_auto")
+                            visible: root.selectedMod?.barPositionPinned ?? false
+                            enabled: !ModsService.busy
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "bar", null)
                         }
                     }
 

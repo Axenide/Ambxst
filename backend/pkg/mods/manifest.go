@@ -61,6 +61,12 @@ type Manifest struct {
 	UnknownFields         []string          `json:"-"`
 	ResolvedSettingsMenus []SettingsMenuRef `json:"-"`
 	SettingsMenuDetected  bool              `json:"-"`
+	// Dashboard tab indices the package adds, as written in its patches, and
+	// the icon each tab appends to tabModel.
+	DashboardTabs     []int    `json:"-"`
+	DashboardTabIcons []string `json:"-"`
+	// BarWidgets is set when the package adds a QML object to the bar.
+	BarWidgets bool `json:"-"`
 }
 
 type Compatibility struct {
@@ -154,6 +160,17 @@ func LoadManifest(root string) (Manifest, error) {
 	}
 	manifest.ResolvedSettingsMenus = menus
 	manifest.SettingsMenuDetected = detected
+	tabs, icons, err := discoverDashboardTabs(root, manifest)
+	if err != nil {
+		return Manifest{}, err
+	}
+	manifest.DashboardTabs = tabs
+	manifest.DashboardTabIcons = icons
+	barWidgets, err := discoverBarWidgets(root, manifest)
+	if err != nil {
+		return Manifest{}, err
+	}
+	manifest.BarWidgets = barWidgets
 	return manifest, nil
 }
 
