@@ -17,6 +17,9 @@ StyledRect {
     property bool expanded: false
     property bool diagnosticsVisible: false
     property bool toolsVisible: false
+    // The plan or failed check the preview last opened for. Status pushes
+    // repeat the same result, and reopening on each one undid "Hide".
+    property string autoExpandedFor: ""
     signal updateRequested(string id, var trigger)
     readonly property var updates: ModsService.updates
     readonly property var knownItems: updates?.known ?? updates?.items ?? []
@@ -445,7 +448,13 @@ StyledRect {
     Connections {
         target: ModsService
         function onUpdatesChanged() {
-            if (ModsService.updates?.canApply || ModsService.updates?.phase === "failed") root.expanded = true;
+            const updates = ModsService.updates;
+            const result = updates?.canApply ? "plan:" + (updates?.planId ?? "")
+                : updates?.phase === "failed" ? "failed:" + (updates?.lastAttempt ?? "") : "";
+            if (result !== "" && result !== root.autoExpandedFor) {
+                root.autoExpandedFor = result;
+                root.expanded = true;
+            }
         }
     }
 }

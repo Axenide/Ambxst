@@ -175,7 +175,11 @@ Singleton {
     }
 
     function checkCompatibility(base) {
+        if (root.busy)
+            return;
         root.busy = true;
+        root.errorMessage = "";
+        root.errorDetails = "";
         root.compatibilityReport = null;
         BackendService.call("mods.checkCompatibility", { base: base ?? "" }, (result, error) => {
             root.busy = false;
