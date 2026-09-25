@@ -330,6 +330,22 @@ Mod settings use data, not package-provided settings UI. This keeps the Settings
 surface native and prevents arbitrary controls from running before a mod is
 enabled.
 
+Mods that add a full panel to the Settings sidebar must also declare it in the
+manifest:
+
+```json
+"settingsMenu": {
+  "section": 11,
+  "index": -2
+}
+```
+
+`section` is the numeric section used on lines added by the package patch. The
+manager remaps those added references when two enabled mods use the same value.
+Core sections currently reserve 0 through 10. `index` controls only the sidebar
+position and does not affect patch load order. It is zero-based; negative values
+count from the end. Users can override it in **Settings → Mods**.
+
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/Axenide/Ambxst/main/docs/mods/settings.schema.json",

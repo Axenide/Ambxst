@@ -196,6 +196,62 @@ Singleton {
         root.request("mods.move", { id, position }, "mods.status_order_updated", root.activeGeneration !== "");
     }
 
+    function setMenuIndex(id, position) {
+        root.request("mods.setMenuIndex", { id, position }, "mods.status_menu_index_updated", false);
+    }
+
+    function settingsMenuPosition(id) {
+        const menuMods = (root.mods ?? []).filter(mod => mod.enabled && mod.hasSettingsMenu);
+        const positions = root.resolveSettingsMenuPositions(11 + menuMods.length, menuMods);
+        return Number(positions[id] ?? -1);
+    }
+
+    function resolveSettingsMenuPositions(total, menuMods) {
+        const occupied = new Array(total).fill(false);
+        const positions = {};
+        const byPriority = menuMods.slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        for (const mod of byPriority) {
+            let target = Number(mod.settingsMenuIndex ?? 0);
+            if (target < 0)
+                target = total + target;
+            target = Math.max(0, Math.min(total - 1, target));
+            let slot = target;
+            while (slot >= 0 && occupied[slot])
+                slot--;
+            if (slot < 0) {
+                slot = target + 1;
+                while (slot < total && occupied[slot])
+                    slot++;
+            }
+            if (slot < total) {
+                occupied[slot] = true;
+                positions[mod.id] = slot;
+            }
+        }
+        return positions;
+    }
+
+    function orderSettingsSections(sections) {
+        const source = (sections ?? []).slice();
+        const menuMods = (root.mods ?? []).filter(mod => mod.enabled && mod.hasSettingsMenu
+            && source.some(item => item.section === mod.settingsSection));
+        if (menuMods.length === 0)
+            return source;
+
+        const modSections = new Set(menuMods.map(mod => mod.settingsSection));
+        const core = source.filter(item => !modSections.has(item.section));
+        const result = new Array(source.length).fill(null);
+        const positions = root.resolveSettingsMenuPositions(source.length, menuMods);
+        for (const mod of menuMods)
+            result[positions[mod.id]] = source.find(item => item.section === mod.settingsSection);
+        let coreIndex = 0;
+        for (let index = 0; index < result.length; index++) {
+            if (result[index] === null)
+                result[index] = core[coreIndex++];
+        }
+        return result;
+    }
+
     function rebuild() {
         root.request("mods.rebuild", {}, "mods.status_rebuilt", true);
     }

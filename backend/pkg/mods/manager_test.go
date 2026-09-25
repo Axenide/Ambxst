@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"ambxst/backend/pkg/paths"
@@ -504,6 +505,31 @@ func TestManagerMovesModToExactPosition(t *testing.T) {
 		if mod.ID != want[i] || mod.Order != i {
 			t.Fatalf("unexpected order at %d: %#v", i, status.Mods)
 		}
+	}
+}
+
+func TestSettingsSectionsResolveCollisionsInLoadOrder(t *testing.T) {
+	ordered := []string{"example.first", "example.second", "example.none"}
+	manifests := map[string]Manifest{
+		"example.first":  {SettingsMenu: &SettingsMenuRef{Section: 11, Index: -2}},
+		"example.second": {SettingsMenu: &SettingsMenuRef{Section: 11, Index: 3}},
+		"example.none":   {},
+	}
+	resolved := resolvedSettingsSections(ordered, manifests)
+	if resolved["example.first"] != 11 || resolved["example.second"] != 12 {
+		t.Fatalf("settings section collision was not resolved: %#v", resolved)
+	}
+	if _, exists := resolved["example.none"]; exists {
+		t.Fatalf("mod without a settings menu received a section: %#v", resolved)
+	}
+}
+
+func TestReplaceSettingsSectionReferences(t *testing.T) {
+	line := "+        { section: 11, visible: currentSection === 11 }"
+	got := replaceSectionReference(line, "11", "12")
+	want := "+        { section: 12, visible: currentSection === 12 }"
+	if got != want {
+		t.Fatalf("unexpected remap:\nwant %q\n got %q", want, got)
 	}
 }
 
@@ -1082,6 +1108,69 @@ func TestManagerKeepsBothInsertionsAtTheSameAnchor(t *testing.T) {
 	}
 	if string(data) != "header\nanchor\nwidget one\nwidget two\nfooter\n" {
 		t.Fatalf("load order did not decide the insertion order: %q", data)
+	}
+}
+
+func TestManagerRemapsConflictingSettingsSections(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	original := "items: [\n    { section: 10 }\n]\n"
+	writeTestFile(t, filepath.Join(base, "shell.qml"), original)
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	packages := []struct {
+		directory string
+		id        string
+		label     string
+	}{
+		{directory: "first", id: "example.first", label: "first"},
+		{directory: "second", id: "example.second", label: "second"},
+	}
+	manager := NewManager(testPaths(root))
+	for _, item := range packages {
+		packageRoot := filepath.Join(root, item.directory)
+		after := "items: [\n    { section: 10 }\n    { label: \"" + item.label + "\", section: 11 }\n]\n"
+		writeDiffPackage(t, packageRoot, item.id, original, after)
+		manifestPath := filepath.Join(packageRoot, ManifestFile)
+		data, err := os.ReadFile(manifestPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var manifest Manifest
+		if err := json.Unmarshal(data, &manifest); err != nil {
+			t.Fatal(err)
+		}
+		manifest.SettingsMenu = &SettingsMenuRef{Section: 11, Index: -2}
+		data, err = json.Marshal(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		writeTestFile(t, manifestPath, string(data))
+		if _, err := manager.Install(packageRoot); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := manager.SetEnabled(item.id, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, "shell.qml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, `label: "first", section: 11`) ||
+		!strings.Contains(content, `label: "second", section: 12`) {
+		t.Fatalf("settings sections were not remapped:\n%s", content)
+	}
+	if status.Mods[0].SettingsSection != 11 || status.Mods[1].SettingsSection != 12 {
+		t.Fatalf("resolved sections were not reported: %#v", status.Mods)
 	}
 }
 

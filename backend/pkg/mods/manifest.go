@@ -49,6 +49,7 @@ type Manifest struct {
 	Commands          []string          `json:"commands,omitempty"`
 	Permissions       []string          `json:"permissions,omitempty"`
 	Settings          *SettingsRef      `json:"settings,omitempty"`
+	SettingsMenu      *SettingsMenuRef  `json:"settingsMenu,omitempty"`
 	Localization      *Localization     `json:"localization,omitempty"`
 	Operations        []Operation       `json:"operations"`
 
@@ -81,6 +82,15 @@ type Operation struct {
 
 type SettingsRef struct {
 	Schema string `json:"schema"`
+}
+
+// SettingsMenuRef describes a settings section added by a mod. Section is the
+// ID used in the package patch. The manager remaps it when another enabled mod
+// uses the same ID. Index is a zero-based menu position; negative values count
+// from the end (-1 is last, -2 is penultimate).
+type SettingsMenuRef struct {
+	Section int `json:"section"`
+	Index   int `json:"index"`
 }
 
 type SettingsSchema struct {
@@ -252,6 +262,9 @@ func (m Manifest) Validate(root string) error {
 		if _, err := LoadSettingsSchema(schemaPath); err != nil {
 			return err
 		}
+	}
+	if m.SettingsMenu != nil && m.SettingsMenu.Section < 0 {
+		return fmt.Errorf("settings menu section must not be negative")
 	}
 	return validatePackageTree(root)
 }

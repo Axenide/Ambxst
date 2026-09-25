@@ -105,6 +105,23 @@
         "schema": { "$ref": "#/$defs/relativePath" }
       }
     },
+    "settingsMenu": {
+      "type": "object",
+      "description": "Declares a Settings sidebar section added by this package. The manager assigns a different section ID when enabled mods collide.",
+      "additionalProperties": false,
+      "required": ["section", "index"],
+      "properties": {
+        "section": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Section ID used by added lines in the package patch. Core sections use 0 through 10."
+        },
+        "index": {
+          "type": "integer",
+          "description": "Default zero-based sidebar position. Negative values count from the end; -2 means penultimate."
+        }
+      }
+    },
     "operations": {
       "type": "array",
       "minItems": 1,

@@ -76,6 +76,10 @@ Item {
         "mods.invalid_number": "Enter a valid number.",
         "mods.license": "License",
         "mods.load_order": "Load order",
+        "mods.menu_index": "Settings menu index",
+        "mods.menu_index_change": "Change index",
+        "mods.menu_index_warning_body": "This can change how the mod's settings panel is loaded. An incompatible index may cause unexpected behavior.",
+        "mods.menu_index_warning_title": "Change this menu index?",
         "mods.loading_settings": "Loading settings…",
         "mods.move_down": "Move down",
         "mods.move_up": "Move up",
@@ -115,6 +119,7 @@ Item {
         "mods.status_enabled": "Mod enabled.",
         "mods.status_installed": "Mod installed in the disabled state.",
         "mods.status_order_updated": "Load order updated.",
+        "mods.status_menu_index_updated": "Settings menu index updated.",
         "mods.status_rebuilt": "Generation rebuilt.",
         "mods.status_removed": "Mod removed.",
         "mods.status_rolled_back": "Previous generation restored.",
@@ -247,6 +252,12 @@ Item {
             ModsService.setEnabled(mod.id, true);
         else if (kind === "remove" && mod)
             ModsService.remove(mod.id, mod.enabled);
+        else if (kind === "menuIndex" && mod)
+            ModsService.setMenuIndex(mod.id, Number(source));
+    }
+
+    function confirmMenuIndex(position, trigger) {
+        root.askConfirm("menuIndex", root.selectedMod, String(position), trigger);
     }
 
     readonly property int contentWidth: Math.max(0, Math.min(width - horizontalMargin * 2, maxContentWidth))
@@ -1344,6 +1355,26 @@ Item {
                     }
 
                     MetaRow {
+                        id: menuIndexRow
+                        visible: root.selectedMod?.hasSettingsMenu ?? false
+                        label: root.tr("mods.menu_index")
+                        readonly property int currentIndex: root.selectedMod?.enabled
+                            ? ModsService.settingsMenuPosition(root.selectedMod.id)
+                            : (root.selectedMod?.settingsMenuIndex ?? 0)
+                        value: String(menuIndexRow.currentIndex)
+
+                        ActionButton {
+                            text: root.tr("mods.move_up")
+                            onClicked: root.confirmMenuIndex(menuIndexRow.currentIndex - 1, this)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.move_down")
+                            onClicked: root.confirmMenuIndex(menuIndexRow.currentIndex + 1, this)
+                        }
+                    }
+
+                    MetaRow {
                         visible: (root.selectedMod?.permissions ?? []).length > 0
                         label: root.tr("mods.permissions")
                         value: (root.selectedMod?.permissions ?? []).join(", ")
@@ -1710,11 +1741,11 @@ Item {
                     spacing: 8
 
                     Text {
-                        visible: root.confirmKind === "installArchive"
+                        visible: root.confirmKind === "installArchive" || root.confirmKind === "menuIndex"
                         text: Icons.alert
                         font.family: Icons.font
                         font.pixelSize: Styling.fontSize(3)
-                        color: Colors.error
+                        color: root.confirmKind === "menuIndex" ? Colors.warning : Colors.error
                     }
 
                     Text {
@@ -1722,12 +1753,14 @@ Item {
                         text: root.confirmKind === "enable"
                             ? root.tr("mods.confirm_enable_title")
                             : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_title", root.confirmMod?.name ?? "")
+                            : root.confirmKind === "menuIndex" ? root.tr("mods.menu_index_warning_title")
                             : root.confirmKind === "installArchive" ? root.tr("mods.confirm_archive_title")
                             : root.tr("mods.confirm_install_title")
                         font.family: Config.theme.font
                         font.pixelSize: Styling.fontSize(1)
                         font.weight: Font.DemiBold
-                        color: root.confirmKind === "installArchive" ? Colors.error : Colors.overBackground
+                        color: root.confirmKind === "installArchive" ? Colors.error
+                            : root.confirmKind === "menuIndex" ? Colors.warning : Colors.overBackground
                         wrapMode: Text.Wrap
                     }
                 }
@@ -1737,6 +1770,7 @@ Item {
                     text: root.confirmKind === "enable"
                         ? root.tr("mods.confirm_enable_body")
                         : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_body")
+                        : root.confirmKind === "menuIndex" ? root.tr("mods.menu_index_warning_body")
                         : root.confirmKind === "installArchive" ? root.tr("mods.confirm_archive_body")
                         : root.tr("mods.confirm_install_body")
                     font.family: Config.theme.font
@@ -1768,25 +1802,28 @@ Item {
                 }
 
                 MetaRow {
-                    visible: root.confirmKind !== "remove" && (root.confirmMod?.author ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.author ?? "") !== ""
                     label: root.tr("mods.author")
                     value: root.confirmMod?.author ?? ""
 
                     ActionButton {
-                        visible: root.confirmKind !== "remove" && (root.confirmMod?.authorUrl ?? "") !== ""
+                        visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                            && (root.confirmMod?.authorUrl ?? "") !== ""
                         text: root.tr("mods.open_link")
                         onClicked: Qt.openUrlExternally(root.confirmMod.authorUrl)
                     }
                 }
 
                 MetaRow {
-                    visible: root.confirmKind !== "remove" && (root.confirmMod?.license ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.license ?? "") !== ""
                     label: root.tr("mods.license")
                     value: root.confirmMod?.license ?? ""
                 }
 
                 MetaRow {
-                    visible: root.confirmSource !== ""
+                    visible: root.confirmSource !== "" && root.confirmKind !== "menuIndex"
                     label: root.tr("mods.source")
                     value: root.confirmSource
                     mono: true
@@ -1799,7 +1836,8 @@ Item {
                 }
 
                 MetaRow {
-                    visible: root.confirmKind !== "remove" && (root.confirmMod?.homepage ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.homepage ?? "") !== ""
                     label: root.tr("mods.homepage")
                     value: root.confirmMod?.homepage ?? ""
                     mono: true
@@ -1811,13 +1849,15 @@ Item {
                 }
 
                 MetaRow {
-                    visible: root.confirmKind !== "remove" && (root.confirmMod?.permissions ?? []).length > 0
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.permissions ?? []).length > 0
                     label: root.tr("mods.permissions")
                     value: (root.confirmMod?.permissions ?? []).join(", ")
                 }
 
                 MetaRow {
-                    visible: root.confirmKind !== "remove" && (root.confirmMod?.affectedFiles ?? []).length > 0
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.affectedFiles ?? []).length > 0
                     label: root.tr("mods.affected_files")
                     value: String((root.confirmMod?.affectedFiles ?? []).length)
                 }
@@ -1838,6 +1878,7 @@ Item {
                     ActionButton {
                         text: root.confirmKind === "enable" ? root.tr("mods.enable")
                             : root.confirmKind === "remove" ? root.tr("mods.remove")
+                            : root.confirmKind === "menuIndex" ? root.tr("mods.menu_index_change")
                             : root.confirmKind === "installArchive" ? root.tr("mods.install_archive")
                             : root.tr("mods.install")
                         primary: root.confirmKind !== "remove" && root.confirmKind !== "installArchive"

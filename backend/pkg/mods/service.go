@@ -28,6 +28,7 @@ func (s *Service) Register(server *ipc.Server) {
 			"setEnabled":            s.setEnabled,
 			"remove":                s.remove,
 			"move":                  s.move,
+			"setMenuIndex":          s.setMenuIndex,
 			"update":                s.update,
 			"rebuild":               s.rebuild,
 			"rollback":              s.rollback,
@@ -240,6 +241,20 @@ func (s *Service) move(raw json.RawMessage) (any, error) {
 		return s.manager.MoveTo(params.ID, *params.Position)
 	}
 	return s.manager.Move(params.ID, params.Direction)
+}
+
+func (s *Service) setMenuIndex(raw json.RawMessage) (any, error) {
+	var params struct {
+		ID       string `json:"id"`
+		Position int    `json:"position"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid menu index request: %w", err)
+	}
+	if !idPattern.MatchString(params.ID) {
+		return nil, fmt.Errorf("invalid mod id %q", params.ID)
+	}
+	return s.manager.SetMenuIndex(params.ID, params.Position)
 }
 
 func (s *Service) rebuild(_ json.RawMessage) (any, error) {

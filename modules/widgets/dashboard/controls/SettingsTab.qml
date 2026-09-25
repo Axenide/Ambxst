@@ -200,7 +200,7 @@ Rectangle {
     }
 
     // Original sections model
-    readonly property var sectionModel: [
+    readonly property var sectionModel: ModsService.orderSettingsSections([
         {
             icon: Icons.wifiHigh,
             label: I18n.t("settings.network"),
@@ -267,7 +267,7 @@ Rectangle {
             section: 9,
             isIcon: false
         }
-    ]
+    ])
 
     // Filtered sections based on search query
     readonly property var filteredSections: {
@@ -614,7 +614,7 @@ Rectangle {
                 id: panelLoader
                 anchors.fill: parent
                 asynchronous: true
-                source: contentArea.panelComponents[root.currentSection]?.component ?? ""
+                source: contentArea.panelComponents.find(panel => panel.section === root.currentSection)?.component ?? ""
 
                 // Fade in animation
                 opacity: status === Loader.Ready ? 1 : 0

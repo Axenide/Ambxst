@@ -73,6 +73,7 @@ type InstalledMod struct {
 	Revision    string `json:"revision,omitempty"`
 	InstalledAt string `json:"installedAt"`
 	AutoUpdate  string `json:"autoUpdate,omitempty"`
+	MenuIndex   *int   `json:"menuIndex,omitempty"`
 }
 
 type ModInfo struct {
@@ -96,6 +97,9 @@ type ModInfo struct {
 	Permissions          []string         `json:"permissions,omitempty"`
 	AffectedFiles        []string         `json:"affectedFiles"`
 	HasSettings          bool             `json:"hasSettings"`
+	HasSettingsMenu      bool             `json:"hasSettingsMenu"`
+	SettingsSection      int              `json:"settingsSection,omitempty"`
+	SettingsMenuIndex    int              `json:"settingsMenuIndex,omitempty"`
 	Valid                bool             `json:"valid"`
 	Error                string           `json:"error,omitempty"`
 	Compatible           bool             `json:"compatible"`
@@ -591,6 +595,34 @@ func (m *Manager) MoveTo(id string, position int) (Status, error) {
 	return m.moveTo(state, index, position)
 }
 
+// SetMenuIndex changes only the mod's position in the Settings sidebar. It is
+// deliberately independent from patch load order.
+func (m *Manager) SetMenuIndex(id string, position int) (Status, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, err := m.loadState()
+	if err != nil {
+		return Status{}, err
+	}
+	index, ok := findInstalled(state, id)
+	if !ok {
+		return Status{}, fmt.Errorf("mod %q is not installed", id)
+	}
+	manifest, err := LoadManifest(filepath.Join(m.paths.ModPackagesDir(), id))
+	if err != nil {
+		return Status{}, err
+	}
+	if manifest.SettingsMenu == nil {
+		return Status{}, fmt.Errorf("mod %q has no settings menu entry", id)
+	}
+	next := cloneState(state)
+	next.Mods[index].MenuIndex = &position
+	if err := m.saveState(next); err != nil {
+		return Status{}, err
+	}
+	return m.statusFor(next)
+}
+
 func (m *Manager) moveTo(state State, index, target int) (Status, error) {
 	if target < 0 || target >= len(state.Mods) {
 		return Status{}, fmt.Errorf("position must be between 0 and %d", len(state.Mods)-1)
@@ -938,11 +970,13 @@ func (m *Manager) buildGenerationAt(state State, base, packages string) (string,
 	if err := initComposition(tmp, base); err != nil {
 		return "", fmt.Errorf("prepare composition: %w", err)
 	}
+	settingsSections := resolvedSettingsSections(ordered, manifests)
 	for _, id := range ordered {
 		manifest := manifests[id]
 		packageRoot := filepath.Join(packages, id)
 		for _, operation := range manifest.Operations {
-			if err := applyOperation(tmp, packageRoot, operation); err != nil {
+			section := settingsSections[id]
+			if err := applyOperation(tmp, packageRoot, operation, manifest.SettingsMenu, section); err != nil {
 				return "", fmt.Errorf("mod %s: %w", id, err)
 			}
 		}
@@ -1096,6 +1130,10 @@ func (m *Manager) statusFor(state State) (Status, error) {
 	for _, installed := range state.Mods {
 		installedByID[installed.ID] = installed
 	}
+	settingsSections := make(map[string]int)
+	if manifests, ordered, err := m.resolve(state, base); err == nil {
+		settingsSections = resolvedSettingsSections(ordered, manifests)
+	}
 	for _, installed := range state.Mods {
 		root := filepath.Join(m.paths.ModPackagesDir(), installed.ID)
 		manifest, err := LoadManifest(root)
@@ -1167,6 +1205,9 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			Permissions:          manifest.Permissions,
 			AffectedFiles:        files,
 			HasSettings:          manifest.Settings != nil,
+			HasSettingsMenu:      manifest.SettingsMenu != nil,
+			SettingsSection:      settingsSections[manifest.ID],
+			SettingsMenuIndex:    settingsMenuIndex(installed, manifest),
 			Valid:                true,
 			Compatible:           compatibilityErr == nil,
 			CompatibilityError:   compatibilityMessage,
@@ -1437,12 +1478,20 @@ func gitObjectsDir(base string) string {
 	return directory
 }
 
-func applyOperation(generation, packageRoot string, op Operation) error {
+func applyOperation(generation, packageRoot string, op Operation, menu *SettingsMenuRef, resolvedSection int) error {
 	source, err := safeJoin(packageRoot, op.Source)
 	if err != nil {
 		return err
 	}
 	if op.Type == "patch" {
+		cleanup := func() {}
+		if menu != nil && resolvedSection != menu.Section {
+			source, cleanup, err = remapPatchSettingsSection(generation, source, menu.Section, resolvedSection)
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+		}
 		if runCommand(generation, "git", "apply", "--check", "--whitespace=error-all", source) == nil {
 			if err := runCommand(generation, "git", "apply", "--whitespace=error-all", source); err != nil {
 				return fmt.Errorf("apply patch: %w", err)
@@ -1490,6 +1539,96 @@ func applyOperation(generation, packageRoot string, op Operation) error {
 		}
 	}
 	return copyFile(source, target)
+}
+
+func settingsMenuIndex(installed InstalledMod, manifest Manifest) int {
+	if installed.MenuIndex != nil {
+		return *installed.MenuIndex
+	}
+	if manifest.SettingsMenu != nil {
+		return manifest.SettingsMenu.Index
+	}
+	return 0
+}
+
+// resolvedSettingsSections assigns stable, unique section IDs in composition
+// order. Core Settings owns 0 through 10; mod packages may keep their preferred
+// ID when it is free. A collision moves only the later mod.
+func resolvedSettingsSections(ordered []string, manifests map[string]Manifest) map[string]int {
+	used := make(map[int]bool)
+	for section := 0; section <= 10; section++ {
+		used[section] = true
+	}
+	resolved := make(map[string]int)
+	for _, id := range ordered {
+		menu := manifests[id].SettingsMenu
+		if menu == nil {
+			continue
+		}
+		section := menu.Section
+		for used[section] {
+			section++
+		}
+		used[section] = true
+		resolved[id] = section
+	}
+	return resolved
+}
+
+// remapPatchSettingsSection changes section references only on lines added by
+// a package patch. Context and removed lines must keep describing the base.
+func remapPatchSettingsSection(generation, source string, from, to int) (string, func(), error) {
+	data, err := os.ReadFile(source)
+	if err != nil {
+		return "", func() {}, err
+	}
+	fromText := fmt.Sprintf("%d", from)
+	toText := fmt.Sprintf("%d", to)
+	lines := strings.Split(string(data), "\n")
+	for index, line := range lines {
+		if !strings.HasPrefix(line, "+") || strings.HasPrefix(line, "+++") {
+			continue
+		}
+		lines[index] = replaceSectionReference(line, fromText, toText)
+	}
+	temporary, err := os.CreateTemp(generation, ".ambxst-settings-*.patch")
+	if err != nil {
+		return "", func() {}, err
+	}
+	name := temporary.Name()
+	cleanup := func() { _ = os.Remove(name) }
+	if _, err := temporary.WriteString(strings.Join(lines, "\n")); err != nil {
+		_ = temporary.Close()
+		cleanup()
+		return "", func() {}, err
+	}
+	if err := temporary.Close(); err != nil {
+		cleanup()
+		return "", func() {}, err
+	}
+	return name, cleanup, nil
+}
+
+func replaceSectionReference(line, from, to string) string {
+	markers := []string{"section: ", "section === ", "section !== ", "currentSection === ", "currentSection !== "}
+	for _, marker := range markers {
+		needle := marker + from
+		for start := 0; ; {
+			index := strings.Index(line[start:], needle)
+			if index < 0 {
+				break
+			}
+			index += start
+			end := index + len(needle)
+			if end == len(line) || line[end] < '0' || line[end] > '9' {
+				line = line[:index] + marker + to + line[end:]
+				start = index + len(marker) + len(to)
+			} else {
+				start = end
+			}
+		}
+	}
+	return line
 }
 
 func checkCompatibility(manifest Manifest, base string) error {
