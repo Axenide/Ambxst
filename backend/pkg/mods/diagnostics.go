@@ -83,6 +83,15 @@ func (m *Manager) CheckBaseCompatibility(base string) (CompatibilityReport, erro
 	if base == "" {
 		base = paths.FindBaseShellSource()
 	}
+	// The daemon has its own working directory, so a path typed in Settings
+	// can only be absolute or relative to the home directory.
+	if base == "~" || strings.HasPrefix(base, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return CompatibilityReport{}, err
+		}
+		base = filepath.Join(home, strings.TrimPrefix(base, "~"))
+	}
 	base, err := filepath.Abs(base)
 	if err != nil {
 		return CompatibilityReport{}, err

@@ -400,3 +400,18 @@ func TestFailedStartRestoresUpdateAfterMenuIndexChange(t *testing.T) {
 		t.Fatal("recovery discarded the menu index chosen during the trial")
 	}
 }
+
+func TestCandidateCompatibilityExpandsHomePath(t *testing.T) {
+	m, _, _ := updateFixture(t, true)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	writeTestFile(t, filepath.Join(home, "candidate", "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(home, "candidate", "version"), "1.2.5\n")
+	report, err := m.CheckBaseCompatibility("~/candidate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !report.Composes || report.Version != "1.2.5" {
+		t.Fatalf("home-relative candidate was not checked: %#v", report)
+	}
+}

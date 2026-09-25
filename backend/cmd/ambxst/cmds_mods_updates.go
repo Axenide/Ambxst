@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"ambxst/backend/pkg/mods"
 	"ambxst/backend/pkg/paths"
@@ -55,7 +57,7 @@ func runModUpdateCommand(command string, args []string) bool {
 		}
 		method, params["base"] = "checkCompatibility", ""
 		if len(args) == 1 {
-			params["base"] = args[0]
+			params["base"] = candidateBasePath(args[0])
 		}
 	case "base":
 		if len(args) != 0 {
@@ -107,4 +109,17 @@ func runModUpdateCommand(command string, args []string) bool {
 	}
 	fmt.Println(string(data))
 	return true
+}
+
+// candidateBasePath resolves a relative candidate checkout against the
+// directory the command runs in. The daemon would resolve it against its own.
+// A leading "~" is left for the manager to expand.
+func candidateBasePath(path string) string {
+	if path == "" || path == "~" || strings.HasPrefix(path, "~/") {
+		return path
+	}
+	if absolute, err := filepath.Abs(path); err == nil {
+		return absolute
+	}
+	return path
 }

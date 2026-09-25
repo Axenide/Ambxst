@@ -106,9 +106,11 @@ describe package behavior; they do not restrict what its code can do.
 
 **Check compatibility** tests declared requirements and composition against the
 current base. Enter a local candidate Ambxst checkout to check a different
-version before installing it. This does not execute candidate QML and does not
-prove runtime behavior. The candidate must be obtained separately; the manager
-does not assume that a distribution's package updater exposes its next sources.
+version before installing it. In Settings the path must be absolute or start
+with `~/`; the command line also accepts a relative path. This does not execute
+candidate QML and does not prove runtime behavior. The candidate must be
+obtained separately; the manager does not assume that a distribution's package
+updater exposes its next sources.
 
 Updates are staged separately from installed packages. Applying them retains
 the previous packages and state in a recovery journal. Interrupted application
