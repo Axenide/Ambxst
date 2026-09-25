@@ -256,3 +256,38 @@ func TestManagerResolvesCompetingDashboardTabs(t *testing.T) {
 		t.Fatalf("resolved tabs were not reported: %#v", tabs)
 	}
 }
+
+func TestManagerKeepsTabsThatShareAnIcon(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, dashboardPath), testDashboard)
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+	manager := NewManager(testPaths(root))
+	// Git merges two identical tabModel edits into one, which left the
+	// second tab without a button.
+	for _, item := range []struct{ id, bound string }{
+		{"example.first", "if (idx >= 0 && idx < root.tabCount) {"},
+		{"example.second", "if (idx < root.tabCount) {"},
+	} {
+		packageRoot := filepath.Join(root, item.id)
+		writeFileDiffPackage(t, packageRoot, item.id, dashboardPath, testDashboard,
+			tabModDashboard("Icons.robot", item.bound, "component"))
+		if _, err := manager.Install(packageRoot); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := manager.SetEnabled(item.id, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := activeFile(t, manager, status, dashboardPath)
+	if !strings.Contains(content, "tabModel: [Icons.widgets, Icons.wallpapers, Icons.heartbeat, Icons.robot, Icons.robot]") {
+		t.Fatalf("each mod tab needs its own tabModel entry:\n%s", content)
+	}
+}

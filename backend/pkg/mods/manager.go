@@ -1005,7 +1005,7 @@ func (m *Manager) buildGenerationAt(state State, base, packages string) (string,
 			return "", fmt.Errorf("mod %s: %w", id, err)
 		}
 	}
-	if strings.Join(tabOrder, "\x00") != strings.Join(tabLoadOrder, "\x00") {
+	if len(tabLoadOrder) > 0 && canReorderTabs(tabLoadOrder, manifests) {
 		if err := applyTabModelOrder(tmp, coreTabs, tabLoadOrder, tabOrder, manifests); err != nil {
 			return "", err
 		}

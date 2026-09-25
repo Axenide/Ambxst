@@ -277,7 +277,9 @@ func discoverBarWidgets(root string, manifest Manifest) (bool, error) {
 }
 
 // applyTabModelOrder rewrites the merged tabModel so the icons follow the
-// resolved tab indices instead of the order the patches were applied in.
+// resolved tab indices instead of the order the patches were applied in. It
+// also restores icons lost when two mods append the same one: Git merges the
+// identical edits into one, and the tab after it would have no button.
 func applyTabModelOrder(generation string, core int, loadOrder, tabOrder []string, manifests map[string]Manifest) error {
 	path := filepath.Join(generation, dashboardPath)
 	data, err := os.ReadFile(path)
@@ -297,18 +299,48 @@ func applyTabModelOrder(generation string, core int, loadOrder, tabOrder []strin
 		for _, id := range loadOrder {
 			expected = append(expected, manifests[id].DashboardTabIcons...)
 		}
-		if strings.Join(items, "\x00") != strings.Join(expected, "\x00") {
+		if !sameItems(items, expected) && !collapsedItems(items[core:], expected[core:]) {
 			break
 		}
 		ordered := append([]string{}, items[:core]...)
 		for _, id := range tabOrder {
 			ordered = append(ordered, manifests[id].DashboardTabIcons...)
 		}
+		if sameItems(items, ordered) {
+			return nil
+		}
 		lines[index] = prefix + "[" + strings.Join(ordered, ", ") + "]" + suffix
 		return os.WriteFile(path, []byte(strings.Join(lines, "\n")), 0o644)
 	}
+	if sameItems(loadOrder, tabOrder) {
+		// Nothing to move; keep the list the mods wrote.
+		return nil
+	}
 	return fmt.Errorf("the Dashboard tab list was changed by another mod, so the tab order cannot be applied; " +
 		"reset it with `ambxst mods position <id> tab auto`")
+}
+
+func sameItems(a, b []string) bool {
+	return strings.Join(a, "\x00") == strings.Join(b, "\x00")
+}
+
+// collapsedItems reports whether got holds the same distinct items as want
+// but fewer of them, which is what merging identical appends leaves behind.
+func collapsedItems(got, want []string) bool {
+	if len(got) >= len(want) {
+		return false
+	}
+	for _, item := range got {
+		if !stringInList(want, item) {
+			return false
+		}
+	}
+	for _, item := range want {
+		if !stringInList(got, item) {
+			return false
+		}
+	}
+	return true
 }
 
 // reorderBarWidgets orders the widgets mods add to the same bar layout by bar
