@@ -349,3 +349,19 @@ func TestRollbackPreservesLaterInstalledMods(t *testing.T) {
 		t.Fatal("rollback discarded a later installation")
 	}
 }
+
+func TestUpdateReportsCompositionFailure(t *testing.T) {
+	m, source, writeVersion := updateFixture(t, true)
+	writeVersion("1.1.0")
+	manifest, _ := LoadManifest(source)
+	manifest.Operations[0].Target = "shell.qml"
+	data, _ := json.Marshal(manifest)
+	writeTestFile(t, filepath.Join(source, ManifestFile), string(data))
+	if _, err := m.Update("example.update"); err == nil || !strings.Contains(err.Error(), "example.update") {
+		t.Fatalf("update of a candidate that cannot compose returned %v", err)
+	}
+	status, _ := m.Status()
+	if status.Mods[0].Version != "1.0.0" {
+		t.Fatal("failed update changed the installed package")
+	}
+}

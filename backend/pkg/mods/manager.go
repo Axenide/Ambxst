@@ -691,6 +691,9 @@ func (m *Manager) Update(id string) (Status, error) {
 				return Status{}, fmt.Errorf("update %s: %s", item.ID, item.Details)
 			}
 		}
+		if status.Updates.ErrorCode == "composition_failed" {
+			return Status{}, fmt.Errorf("update %s: %s", id, status.Updates.Details)
+		}
 		return status, nil
 	}
 	if status.Updates.RequiresReview {
