@@ -365,3 +365,38 @@ func TestUpdateReportsCompositionFailure(t *testing.T) {
 		t.Fatal("failed update changed the installed package")
 	}
 }
+
+func TestFailedStartRestoresUpdateAfterMenuIndexChange(t *testing.T) {
+	m, source, writeVersion := updateFixture(t, true)
+	writeVersion("1.1.0")
+	manifest, _ := LoadManifest(source)
+	manifest.SettingsMenu = &SettingsMenuRef{Section: 11, Index: -2}
+	data, _ := json.Marshal(manifest)
+	writeTestFile(t, filepath.Join(source, ManifestFile), string(data))
+	preview, err := m.CheckUpdates(nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ApplyUpdates(preview.Updates.PlanID, true); err != nil {
+		t.Fatal(err)
+	}
+	// The menu index only affects the running shell, so it stays editable
+	// during the startup trial.
+	if _, err := m.SetMenuIndex("example.update", 3); err != nil {
+		t.Fatal(err)
+	}
+	if recovered, err := m.RecoverFailedActivation(); err != nil || !recovered {
+		t.Fatalf("recovery: %v, %v", recovered, err)
+	}
+	status, err := m.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.Mods[0].Version != "1.0.0" {
+		t.Fatalf("failed update kept package %s", status.Mods[0].Version)
+	}
+	state, _ := m.loadState()
+	if state.Mods[0].MenuIndex == nil || *state.Mods[0].MenuIndex != 3 {
+		t.Fatal("recovery discarded the menu index chosen during the trial")
+	}
+}

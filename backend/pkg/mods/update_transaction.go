@@ -101,13 +101,14 @@ func (m *Manager) restoreUpdate(state State) (bool, error) {
 		return false, nil
 	}
 	// Preserve later installs and load-order changes. An update backup only
-	// belongs to the exact package set it replaced.
+	// belongs to the exact package set it replaced. Update policies and menu
+	// indices do not change the generation and stay editable during the trial.
 	current, expected := cloneState(state), cloneState(j.Next)
 	for i := range current.Mods {
-		current.Mods[i].AutoUpdate = ""
+		current.Mods[i].AutoUpdate, current.Mods[i].MenuIndex = "", nil
 	}
 	for i := range expected.Mods {
-		expected.Mods[i].AutoUpdate = ""
+		expected.Mods[i].AutoUpdate, expected.Mods[i].MenuIndex = "", nil
 	}
 	if !reflect.DeepEqual(current.Mods, expected.Mods) {
 		return false, nil
@@ -120,6 +121,7 @@ func (m *Manager) restoreUpdate(state State) (bool, error) {
 	for i := range j.Previous.Mods {
 		if index, ok := findInstalled(state, j.Previous.Mods[i].ID); ok {
 			j.Previous.Mods[i].AutoUpdate = state.Mods[index].AutoUpdate
+			j.Previous.Mods[i].MenuIndex = state.Mods[index].MenuIndex
 		}
 	}
 	m.updateState()
