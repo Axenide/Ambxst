@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -99,6 +100,7 @@ type ModInfo struct {
 	HasSettings          bool             `json:"hasSettings"`
 	HasSettingsMenu      bool             `json:"hasSettingsMenu"`
 	SettingsSection      int              `json:"settingsSection,omitempty"`
+	SettingsSections     []int            `json:"settingsSections,omitempty"`
 	SettingsMenuIndex    int              `json:"settingsMenuIndex,omitempty"`
 	Valid                bool             `json:"valid"`
 	Error                string           `json:"error,omitempty"`
@@ -612,7 +614,7 @@ func (m *Manager) SetMenuIndex(id string, position int) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-	if manifest.SettingsMenu == nil {
+	if len(settingsMenusForManifest(manifest)) == 0 {
 		return Status{}, fmt.Errorf("mod %q has no settings menu entry", id)
 	}
 	next := cloneState(state)
@@ -975,8 +977,7 @@ func (m *Manager) buildGenerationAt(state State, base, packages string) (string,
 		manifest := manifests[id]
 		packageRoot := filepath.Join(packages, id)
 		for _, operation := range manifest.Operations {
-			section := settingsSections[id]
-			if err := applyOperation(tmp, packageRoot, operation, manifest.SettingsMenu, section); err != nil {
+			if err := applyOperation(tmp, packageRoot, operation, settingsSections[id]); err != nil {
 				return "", fmt.Errorf("mod %s: %w", id, err)
 			}
 		}
@@ -1130,7 +1131,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 	for _, installed := range state.Mods {
 		installedByID[installed.ID] = installed
 	}
-	settingsSections := make(map[string]int)
+	settingsSections := make(map[string]map[int]int)
 	if manifests, ordered, err := m.resolve(state, base); err == nil {
 		settingsSections = resolvedSettingsSections(ordered, manifests)
 	}
@@ -1184,6 +1185,7 @@ func (m *Manager) statusFor(state State) (Status, error) {
 				Enabled:   dependencyInstalled && dependency.Enabled,
 			})
 		}
+		resolvedSections := resolvedSettingsSectionList(manifest, settingsSections[manifest.ID])
 		status.Mods = append(status.Mods, ModInfo{
 			ID:                   manifest.ID,
 			Name:                 manifest.Name,
@@ -1205,8 +1207,9 @@ func (m *Manager) statusFor(state State) (Status, error) {
 			Permissions:          manifest.Permissions,
 			AffectedFiles:        files,
 			HasSettings:          manifest.Settings != nil,
-			HasSettingsMenu:      manifest.SettingsMenu != nil,
-			SettingsSection:      settingsSections[manifest.ID],
+			HasSettingsMenu:      len(settingsMenusForManifest(manifest)) > 0,
+			SettingsSection:      firstSettingsSection(resolvedSections),
+			SettingsSections:     resolvedSections,
 			SettingsMenuIndex:    settingsMenuIndex(installed, manifest),
 			Valid:                true,
 			Compatible:           compatibilityErr == nil,
@@ -1478,15 +1481,15 @@ func gitObjectsDir(base string) string {
 	return directory
 }
 
-func applyOperation(generation, packageRoot string, op Operation, menu *SettingsMenuRef, resolvedSection int) error {
+func applyOperation(generation, packageRoot string, op Operation, sectionRemaps map[int]int) error {
 	source, err := safeJoin(packageRoot, op.Source)
 	if err != nil {
 		return err
 	}
 	if op.Type == "patch" {
 		cleanup := func() {}
-		if menu != nil && resolvedSection != menu.Section {
-			source, cleanup, err = remapPatchSettingsSection(generation, source, menu.Section, resolvedSection)
+		if len(sectionRemaps) > 0 {
+			source, cleanup, err = remapPatchSettingsSections(generation, source, sectionRemaps)
 			if err != nil {
 				return err
 			}
@@ -1545,8 +1548,8 @@ func settingsMenuIndex(installed InstalledMod, manifest Manifest) int {
 	if installed.MenuIndex != nil {
 		return *installed.MenuIndex
 	}
-	if manifest.SettingsMenu != nil {
-		return manifest.SettingsMenu.Index
+	if menus := settingsMenusForManifest(manifest); len(menus) > 0 {
+		return menus[0].Index
 	}
 	return 0
 }
@@ -1554,42 +1557,79 @@ func settingsMenuIndex(installed InstalledMod, manifest Manifest) int {
 // resolvedSettingsSections assigns stable, unique section IDs in composition
 // order. Core Settings owns 0 through 10; mod packages may keep their preferred
 // ID when it is free. A collision moves only the later mod.
-func resolvedSettingsSections(ordered []string, manifests map[string]Manifest) map[string]int {
+func resolvedSettingsSections(ordered []string, manifests map[string]Manifest) map[string]map[int]int {
 	used := make(map[int]bool)
 	for section := 0; section <= 10; section++ {
 		used[section] = true
 	}
-	resolved := make(map[string]int)
+	resolved := make(map[string]map[int]int)
 	for _, id := range ordered {
-		menu := manifests[id].SettingsMenu
-		if menu == nil {
+		menus := settingsMenusForManifest(manifests[id])
+		if len(menus) == 0 {
 			continue
 		}
-		section := menu.Section
-		for used[section] {
-			section++
+		resolved[id] = make(map[int]int, len(menus))
+		for _, menu := range menus {
+			section := menu.Section
+			for used[section] {
+				section++
+			}
+			used[section] = true
+			resolved[id][menu.Section] = section
 		}
-		used[section] = true
-		resolved[id] = section
 	}
 	return resolved
 }
 
-// remapPatchSettingsSection changes section references only on lines added by
+func resolvedSettingsSectionList(manifest Manifest, resolved map[int]int) []int {
+	menus := settingsMenusForManifest(manifest)
+	sections := make([]int, 0, len(menus))
+	for _, menu := range menus {
+		section := menu.Section
+		if value, ok := resolved[section]; ok {
+			section = value
+		}
+		sections = append(sections, section)
+	}
+	return sections
+}
+
+func firstSettingsSection(sections []int) int {
+	if len(sections) == 0 {
+		return 0
+	}
+	return sections[0]
+}
+
+// remapPatchSettingsSections changes section references only on lines added by
 // a package patch. Context and removed lines must keep describing the base.
-func remapPatchSettingsSection(generation, source string, from, to int) (string, func(), error) {
+func remapPatchSettingsSections(generation, source string, remaps map[int]int) (string, func(), error) {
 	data, err := os.ReadFile(source)
 	if err != nil {
 		return "", func() {}, err
 	}
-	fromText := fmt.Sprintf("%d", from)
-	toText := fmt.Sprintf("%d", to)
 	lines := strings.Split(string(data), "\n")
+	fromSections := make([]int, 0, len(remaps))
+	for from, to := range remaps {
+		if from != to {
+			fromSections = append(fromSections, from)
+		}
+	}
+	sort.Ints(fromSections)
 	for index, line := range lines {
 		if !strings.HasPrefix(line, "+") || strings.HasPrefix(line, "+++") {
 			continue
 		}
-		lines[index] = replaceSectionReference(line, fromText, toText)
+		tokens := make(map[string]string, len(fromSections))
+		for tokenIndex, from := range fromSections {
+			token := fmt.Sprintf("__AMBXST_SECTION_%d__", tokenIndex)
+			line = replaceSectionReference(line, fmt.Sprintf("%d", from), token)
+			tokens[token] = fmt.Sprintf("%d", remaps[from])
+		}
+		for token, to := range tokens {
+			line = strings.ReplaceAll(line, token, to)
+		}
+		lines[index] = line
 	}
 	temporary, err := os.CreateTemp(generation, ".ambxst-settings-*.patch")
 	if err != nil {
@@ -1610,23 +1650,13 @@ func remapPatchSettingsSection(generation, source string, from, to int) (string,
 }
 
 func replaceSectionReference(line, from, to string) string {
-	markers := []string{"section: ", "section === ", "section !== ", "currentSection === ", "currentSection !== "}
-	for _, marker := range markers {
-		needle := marker + from
-		for start := 0; ; {
-			index := strings.Index(line[start:], needle)
-			if index < 0 {
-				break
-			}
-			index += start
-			end := index + len(needle)
-			if end == len(line) || line[end] < '0' || line[end] > '9' {
-				line = line[:index] + marker + to + line[end:]
-				start = index + len(marker) + len(to)
-			} else {
-				start = end
-			}
-		}
+	number := regexp.QuoteMeta(from)
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(\bsection\s*:\s*)` + number + `\b`),
+		regexp.MustCompile(`(\b(?:section|currentSection)\s*(?:===|!==)\s*)` + number + `\b`),
+	}
+	for _, pattern := range patterns {
+		line = pattern.ReplaceAllString(line, "${1}"+to)
 	}
 	return line
 }

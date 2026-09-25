@@ -330,8 +330,11 @@ Mod settings use data, not package-provided settings UI. This keeps the Settings
 surface native and prevents arbitrary controls from running before a mod is
 enabled.
 
-Mods that add a full panel to the Settings sidebar must also declare it in the
-manifest:
+The manager detects full panels added to the Settings sidebar by older patches.
+It assigns unique internal section IDs and keeps multiple entries from one mod
+together. No manifest change is required.
+
+A package may declare the entry when it needs a specific default position:
 
 ```json
 "settingsMenu": {
@@ -340,11 +343,11 @@ manifest:
 }
 ```
 
-`section` is the numeric section used on lines added by the package patch. The
-manager remaps those added references when two enabled mods use the same value.
-Core sections currently reserve 0 through 10. `index` controls only the sidebar
+`section` is the numeric section used on lines added by the package patch. Core
+sections currently reserve 0 through 10. `index` controls only the sidebar
 position and does not affect patch load order. It is zero-based; negative values
-count from the end. Users can override it in **Settings → Mods**.
+count from the end. Users can override it in **Settings → Mods**. Without this
+metadata, detected entries stay together immediately before the final core item.
 
 ```json
 {

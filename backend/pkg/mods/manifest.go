@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -25,6 +26,9 @@ const (
 var idPattern = regexp.MustCompile(`^[a-z0-9]+(?:[._-][a-z0-9]+)*$`)
 var settingKeyPattern = regexp.MustCompile(`^[a-z][a-zA-Z0-9]*$`)
 var sha256Pattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
+var settingsSectionPattern = regexp.MustCompile(`\bsection\s*:\s*(-?[0-9]+)\b`)
+
+const settingsTabPath = "modules/widgets/dashboard/controls/SettingsTab.qml"
 
 type Manifest struct {
 	Schema            string            `json:"$schema,omitempty"`
@@ -54,7 +58,9 @@ type Manifest struct {
 	Operations        []Operation       `json:"operations"`
 
 	// Keys this build does not recognise, kept for the package status only.
-	UnknownFields []string `json:"-"`
+	UnknownFields         []string          `json:"-"`
+	ResolvedSettingsMenus []SettingsMenuRef `json:"-"`
+	SettingsMenuDetected  bool              `json:"-"`
 }
 
 type Compatibility struct {
@@ -91,6 +97,16 @@ type SettingsRef struct {
 type SettingsMenuRef struct {
 	Section int `json:"section"`
 	Index   int `json:"index"`
+}
+
+func settingsMenusForManifest(manifest Manifest) []SettingsMenuRef {
+	if len(manifest.ResolvedSettingsMenus) > 0 {
+		return manifest.ResolvedSettingsMenus
+	}
+	if manifest.SettingsMenu != nil {
+		return []SettingsMenuRef{*manifest.SettingsMenu}
+	}
+	return nil
 }
 
 type SettingsSchema struct {
@@ -132,6 +148,12 @@ func LoadManifest(root string) (Manifest, error) {
 	if err := manifest.Validate(root); err != nil {
 		return Manifest{}, err
 	}
+	menus, detected, err := discoverSettingsMenus(root, manifest)
+	if err != nil {
+		return Manifest{}, err
+	}
+	manifest.ResolvedSettingsMenus = menus
+	manifest.SettingsMenuDetected = detected
 	return manifest, nil
 }
 
@@ -276,6 +298,109 @@ func stringInList(values []string, target string) bool {
 		}
 	}
 	return false
+}
+
+// discoverSettingsMenus keeps older mods working without making patch parsing
+// the primary package format. A top-level panel adds the same section to the
+// sidebar model and the panel loader, so two added references are a useful and
+// narrow compatibility signal. Explicit metadata remains an optional override.
+func discoverSettingsMenus(root string, manifest Manifest) ([]SettingsMenuRef, bool, error) {
+	counts := make(map[int]int)
+	var order []int
+	for _, operation := range manifest.Operations {
+		if operation.Type != "patch" {
+			continue
+		}
+		path, err := safeJoin(root, operation.Source)
+		if err != nil {
+			return nil, false, err
+		}
+		patchCounts, patchOrder, err := settingsSectionsAddedByPatch(path)
+		if err != nil {
+			return nil, false, err
+		}
+		for _, section := range patchOrder {
+			if counts[section] == 0 {
+				order = append(order, section)
+			}
+		}
+		for section, count := range patchCounts {
+			counts[section] += count
+		}
+	}
+
+	var sections []int
+	for _, section := range order {
+		// Core Settings owns 0 through 10. Repeated references to those IDs
+		// usually extend an existing panel rather than add a new menu entry.
+		if section > 10 && counts[section] >= 2 {
+			sections = append(sections, section)
+		}
+	}
+	if manifest.SettingsMenu != nil {
+		menus := []SettingsMenuRef{*manifest.SettingsMenu}
+		for _, section := range sections {
+			if section == manifest.SettingsMenu.Section {
+				continue
+			}
+			menus = append(menus, SettingsMenuRef{
+				Section: section,
+				Index:   manifest.SettingsMenu.Index + len(menus),
+			})
+		}
+		return menus, len(menus) > 1, nil
+	}
+	menus := make([]SettingsMenuRef, 0, len(sections))
+	for index, section := range sections {
+		// Keep a legacy mod's detected entries together immediately before
+		// the final core item. For one entry this is the penultimate slot.
+		menus = append(menus, SettingsMenuRef{
+			Section: section,
+			Index:   -(len(sections) - index + 1),
+		})
+	}
+	return menus, len(menus) > 0, nil
+}
+
+func settingsSectionsAddedByPatch(path string) (map[int]int, []int, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("read patch: %w", err)
+	}
+	defer file.Close()
+
+	counts := make(map[int]int)
+	var order []int
+	currentTarget := ""
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "+++ ") {
+			fields := strings.Fields(strings.TrimSpace(line[4:]))
+			currentTarget = ""
+			if len(fields) > 0 && fields[0] != "/dev/null" {
+				currentTarget = filepath.ToSlash(filepath.Clean(strings.TrimPrefix(fields[0], "b/")))
+			}
+			continue
+		}
+		if currentTarget != settingsTabPath || !strings.HasPrefix(line, "+") || strings.HasPrefix(line, "+++") {
+			continue
+		}
+		for _, match := range settingsSectionPattern.FindAllStringSubmatch(line, -1) {
+			section, err := strconv.Atoi(match[1])
+			if err != nil {
+				continue
+			}
+			if counts[section] == 0 {
+				order = append(order, section)
+			}
+			counts[section]++
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, nil, fmt.Errorf("scan patch: %w", err)
+	}
+	return counts, order, nil
 }
 
 func LoadSettingsSchema(path string) (SettingsSchema, error) {

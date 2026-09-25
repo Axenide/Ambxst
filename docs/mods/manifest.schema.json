@@ -107,7 +107,7 @@
     },
     "settingsMenu": {
       "type": "object",
-      "description": "Declares a Settings sidebar section added by this package. The manager assigns a different section ID when enabled mods collide.",
+      "description": "Optional hint for a Settings sidebar section. The manager also detects entries in legacy patches and assigns a different section ID when enabled mods collide.",
       "additionalProperties": false,
       "required": ["section", "index"],
       "properties": {

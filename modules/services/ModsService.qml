@@ -202,8 +202,30 @@ Singleton {
 
     function settingsMenuPosition(id) {
         const menuMods = (root.mods ?? []).filter(mod => mod.enabled && mod.hasSettingsMenu);
-        const positions = root.resolveSettingsMenuPositions(11 + menuMods.length, menuMods);
-        return Number(positions[id] ?? -1);
+        const entries = root.settingsMenuEntries(menuMods);
+        const positions = root.resolveSettingsMenuPositions(11 + entries.length, entries);
+        const modPositions = entries.filter(entry => entry.modId === id)
+            .map(entry => Number(positions[entry.id] ?? -1))
+            .filter(position => position >= 0);
+        return modPositions.length > 0 ? Math.min(...modPositions) : -1;
+    }
+
+    function settingsMenuEntries(menuMods) {
+        const entries = [];
+        for (const mod of menuMods) {
+            const sections = (mod.settingsSections ?? []).length > 0
+                ? mod.settingsSections : [mod.settingsSection];
+            for (let index = 0; index < sections.length; index++) {
+                entries.push({
+                    id: mod.id + "#" + index,
+                    modId: mod.id,
+                    section: sections[index],
+                    settingsMenuIndex: Number(mod.settingsMenuIndex ?? 0) + index,
+                    order: Number(mod.order ?? 0) * 1000 + index
+                });
+            }
+        }
+        return entries;
     }
 
     function resolveSettingsMenuPositions(total, menuMods) {
@@ -234,16 +256,18 @@ Singleton {
     function orderSettingsSections(sections) {
         const source = (sections ?? []).slice();
         const menuMods = (root.mods ?? []).filter(mod => mod.enabled && mod.hasSettingsMenu
-            && source.some(item => item.section === mod.settingsSection));
+            && (mod.settingsSections ?? [mod.settingsSection]).some(section => source.some(item => item.section === section)));
         if (menuMods.length === 0)
             return source;
 
-        const modSections = new Set(menuMods.map(mod => mod.settingsSection));
+        const entries = root.settingsMenuEntries(menuMods)
+            .filter(entry => source.some(item => item.section === entry.section));
+        const modSections = new Set(entries.map(entry => entry.section));
         const core = source.filter(item => !modSections.has(item.section));
         const result = new Array(source.length).fill(null);
-        const positions = root.resolveSettingsMenuPositions(source.length, menuMods);
-        for (const mod of menuMods)
-            result[positions[mod.id]] = source.find(item => item.section === mod.settingsSection);
+        const positions = root.resolveSettingsMenuPositions(source.length, entries);
+        for (const entry of entries)
+            result[positions[entry.id]] = source.find(item => item.section === entry.section);
         let coreIndex = 0;
         for (let index = 0; index < result.length; index++) {
             if (result[index] === null)

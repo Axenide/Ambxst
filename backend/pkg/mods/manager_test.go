@@ -516,7 +516,7 @@ func TestSettingsSectionsResolveCollisionsInLoadOrder(t *testing.T) {
 		"example.none":   {},
 	}
 	resolved := resolvedSettingsSections(ordered, manifests)
-	if resolved["example.first"] != 11 || resolved["example.second"] != 12 {
+	if resolved["example.first"][11] != 11 || resolved["example.second"][11] != 12 {
 		t.Fatalf("settings section collision was not resolved: %#v", resolved)
 	}
 	if _, exists := resolved["example.none"]; exists {
@@ -525,9 +525,9 @@ func TestSettingsSectionsResolveCollisionsInLoadOrder(t *testing.T) {
 }
 
 func TestReplaceSettingsSectionReferences(t *testing.T) {
-	line := "+        { section: 11, visible: currentSection === 11 }"
+	line := "+        { section:11, visible: currentSection===11 }"
 	got := replaceSectionReference(line, "11", "12")
-	want := "+        { section: 12, visible: currentSection === 12 }"
+	want := "+        { section:12, visible: currentSection===12 }"
 	if got != want {
 		t.Fatalf("unexpected remap:\nwant %q\n got %q", want, got)
 	}
@@ -1114,8 +1114,9 @@ func TestManagerKeepsBothInsertionsAtTheSameAnchor(t *testing.T) {
 func TestManagerRemapsConflictingSettingsSections(t *testing.T) {
 	root := t.TempDir()
 	base := filepath.Join(root, "base")
-	original := "items: [\n    { section: 10 }\n]\n"
-	writeTestFile(t, filepath.Join(base, "shell.qml"), original)
+	original := "items: [\n    { section: 10 }\n]\npanels: [\n    { section: 10 }\n]\n"
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, settingsTabPath), original)
 	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
 	t.Setenv("AMBXST_SHELL", base)
 	t.Setenv("AMBXST_MODS_DISABLED", "1")
@@ -1131,23 +1132,8 @@ func TestManagerRemapsConflictingSettingsSections(t *testing.T) {
 	manager := NewManager(testPaths(root))
 	for _, item := range packages {
 		packageRoot := filepath.Join(root, item.directory)
-		after := "items: [\n    { section: 10 }\n    { label: \"" + item.label + "\", section: 11 }\n]\n"
-		writeDiffPackage(t, packageRoot, item.id, original, after)
-		manifestPath := filepath.Join(packageRoot, ManifestFile)
-		data, err := os.ReadFile(manifestPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var manifest Manifest
-		if err := json.Unmarshal(data, &manifest); err != nil {
-			t.Fatal(err)
-		}
-		manifest.SettingsMenu = &SettingsMenuRef{Section: 11, Index: -2}
-		data, err = json.Marshal(manifest)
-		if err != nil {
-			t.Fatal(err)
-		}
-		writeTestFile(t, manifestPath, string(data))
+		after := "items: [\n    { section: 10 }\n    { label: \"" + item.label + "\", section: 11 }\n]\npanels: [\n    { section: 10 }\n    { component: \"" + item.label + ".qml\", section: 11 }\n]\n"
+		writeFileDiffPackage(t, packageRoot, item.id, settingsTabPath, original, after)
 		if _, err := manager.Install(packageRoot); err != nil {
 			t.Fatal(err)
 		}
@@ -1160,7 +1146,7 @@ func TestManagerRemapsConflictingSettingsSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, "shell.qml"))
+	data, err := os.ReadFile(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, settingsTabPath))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1171,6 +1157,13 @@ func TestManagerRemapsConflictingSettingsSections(t *testing.T) {
 	}
 	if status.Mods[0].SettingsSection != 11 || status.Mods[1].SettingsSection != 12 {
 		t.Fatalf("resolved sections were not reported: %#v", status.Mods)
+	}
+	status, err = manager.SetMenuIndex("example.first", 4)
+	if err != nil {
+		t.Fatalf("detected legacy menu index could not be changed: %v", err)
+	}
+	if status.Mods[0].SettingsMenuIndex != 4 {
+		t.Fatalf("legacy menu index was not saved: %#v", status.Mods[0])
 	}
 }
 
@@ -1257,6 +1250,11 @@ func TestManagerBypassesVersionCheckGlobally(t *testing.T) {
 
 func writeDiffPackage(t *testing.T, root, id, before, after string) {
 	t.Helper()
+	writeFileDiffPackage(t, root, id, "shell.qml", before, after)
+}
+
+func writeFileDiffPackage(t *testing.T, root, id, target, before, after string) {
+	t.Helper()
 	repo := t.TempDir()
 	run := func(args ...string) {
 		cmd := exec.Command("git", args...)
@@ -1268,10 +1266,10 @@ func writeDiffPackage(t *testing.T, root, id, before, after string) {
 	run("init", "-q")
 	run("config", "user.email", "test@example.com")
 	run("config", "user.name", "Test")
-	writeTestFile(t, filepath.Join(repo, "shell.qml"), before)
-	run("add", "shell.qml")
+	writeTestFile(t, filepath.Join(repo, target), before)
+	run("add", target)
 	run("commit", "-q", "-m", "base")
-	writeTestFile(t, filepath.Join(repo, "shell.qml"), after)
+	writeTestFile(t, filepath.Join(repo, target), after)
 	diff := exec.Command("git", "diff")
 	diff.Dir = repo
 	patch, err := diff.Output()
