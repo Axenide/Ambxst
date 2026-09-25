@@ -158,6 +158,12 @@ Item {
         return argument === undefined ? fallback : fallback.replace("%1", String(argument));
     }
 
+    // Manifest links come from the package author. Only web pages are opened;
+    // other schemes would reach xdg-open handlers.
+    function isWebLink(value) {
+        return /^https?:\/\//i.test(String(value ?? ""));
+    }
+
     function dependenciesReady(mod) {
         return (mod?.dependencyState ?? []).every(dependency => dependency.enabled);
     }
@@ -1303,7 +1309,7 @@ Item {
                         value: root.selectedMod?.author ?? ""
 
                         ActionButton {
-                            visible: (root.selectedMod?.authorUrl ?? "") !== ""
+                            visible: root.isWebLink(root.selectedMod?.authorUrl)
                             text: root.tr("mods.open_link")
                             onClicked: Qt.openUrlExternally(root.selectedMod.authorUrl)
                         }
@@ -1334,6 +1340,7 @@ Item {
                         mono: true
 
                         ActionButton {
+                            visible: root.isWebLink(root.selectedMod?.homepage)
                             text: root.tr("mods.open_link")
                             onClicked: Qt.openUrlExternally(root.selectedMod.homepage)
                         }
@@ -1873,7 +1880,7 @@ Item {
 
                     ActionButton {
                         visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
-                            && (root.confirmMod?.authorUrl ?? "") !== ""
+                            && root.isWebLink(root.confirmMod?.authorUrl)
                         text: root.tr("mods.open_link")
                         onClicked: Qt.openUrlExternally(root.confirmMod.authorUrl)
                     }
@@ -1907,6 +1914,7 @@ Item {
                     mono: true
 
                     ActionButton {
+                        visible: root.isWebLink(root.confirmMod?.homepage)
                         text: root.tr("mods.open_link")
                         onClicked: Qt.openUrlExternally(root.confirmMod.homepage)
                     }
