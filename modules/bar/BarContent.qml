@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
-import Quickshell.Wayland
 import qs.modules.bar.workspaces
 import qs.modules.theme
 import qs.modules.bar.clock
@@ -55,15 +54,9 @@ Item {
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
     readonly property var toplevels: (!compositorMonitor || !compositorMonitor.activeWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.activeWorkspace.id)
 
-    // Fullscreen detection - scoped to this monitor so fullscreen on the
-    // focused screen never propagates to other monitors
-    readonly property bool activeWindowFullscreen: {
-        const focused = AxctlService.focusedMonitor;
-        const active = ToplevelManager.activeToplevel;
-        if (active && active.fullscreen === true && focused && compositorMonitor && focused.id === compositorMonitor.id)
-            return true;
-        return CompositorData.monitorHasFullscreen(compositorMonitor);
-    }
+    // Fullscreen detection - scoped to this monitor so the effect only
+    // applies to the screen that actually has the fullscreen window
+    readonly property bool activeWindowFullscreen: CompositorData.monitorHasFullscreen(compositorMonitor)
 
 
     // Whether auto-hide should be active (not pinned, or fullscreen forces it)

@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.widgets.defaultview
@@ -60,15 +59,9 @@ Item {
         return false;
     }
 
-    // Fullscreen detection - use parent panel's robust detection, fallback to
-    // a monitor-scoped check so fullscreen on other screens never propagates
-    readonly property bool activeWindowFullscreen: {
-        // Prefer the parent UnifiedShellPanel's hasFullscreenWindow (checks both ToplevelManager + CompositorData)
-        if (barPanelRef && typeof barPanelRef.hasFullscreenWindow !== 'undefined') {
-            return barPanelRef.hasFullscreenWindow;
-        }
-        return CompositorData.monitorHasFullscreen(compositorMonitor);
-    }
+    // Fullscreen detection - scoped to this monitor so the effect only
+    // applies to the screen that actually has the fullscreen window
+    readonly property bool activeWindowFullscreen: CompositorData.monitorHasFullscreen(compositorMonitor)
 
     // Should auto-hide logic:
     // 1. If notch and bar are on different sides: hide if keepHidden is ON, OR if windows/fullscreen are present

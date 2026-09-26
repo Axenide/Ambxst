@@ -89,19 +89,9 @@ PanelWindow {
     readonly property bool unifiedEffectActive: false // Flag to notify children to disable internal borders
 
     readonly property var compositorMonitor: AxctlService.monitorFor(targetScreen)
-    readonly property bool hasFullscreenWindow: {
-        if (!compositorMonitor)
-            return false;
-
-        // Check active toplevel first (fast path), scoped to this monitor
-        const toplevel = ToplevelManager.activeToplevel;
-        const focused = AxctlService.focusedMonitor;
-        if (toplevel && toplevel.fullscreen && focused && focused.id === compositorMonitor.id)
-            return true;
-
-        // Check all windows on this monitor (robust path)
-        return CompositorData.monitorHasFullscreen(compositorMonitor);
-    }
+    // Fullscreen detection - scoped to this monitor so the effect only
+    // applies to the screen that actually has the fullscreen window
+    readonly property bool hasFullscreenWindow: CompositorData.monitorHasFullscreen(compositorMonitor)
 
     // Proxy properties for Bar/Notch synchronization
     // Note: BarContent and NotchContent already handle their internal sync using Visibilities.
