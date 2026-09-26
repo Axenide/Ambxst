@@ -60,17 +60,14 @@ Item {
         return false;
     }
 
-    // Fullscreen detection - use parent panel's robust detection, fallback to ToplevelManager
+    // Fullscreen detection - use parent panel's robust detection, fallback to
+    // a monitor-scoped check so fullscreen on other screens never propagates
     readonly property bool activeWindowFullscreen: {
         // Prefer the parent UnifiedShellPanel's hasFullscreenWindow (checks both ToplevelManager + CompositorData)
         if (barPanelRef && typeof barPanelRef.hasFullscreenWindow !== 'undefined') {
             return barPanelRef.hasFullscreenWindow;
         }
-        // Fallback: use ToplevelManager (native Wayland) like the bar does
-        const toplevel = ToplevelManager.activeToplevel;
-        if (!toplevel || !toplevel.activated)
-            return false;
-        return toplevel.fullscreen === true;
+        return CompositorData.monitorHasFullscreen(compositorMonitor);
     }
 
     // Should auto-hide logic:

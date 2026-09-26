@@ -93,23 +93,14 @@ PanelWindow {
         if (!compositorMonitor)
             return false;
 
-        const activeWorkspaceId = compositorMonitor.activeWorkspace.id;
-        const monId = compositorMonitor.id;
-
-        // Check active toplevel first (fast path)
+        // Check active toplevel first (fast path), scoped to this monitor
         const toplevel = ToplevelManager.activeToplevel;
-        if (toplevel && toplevel.fullscreen && AxctlService.focusedMonitor.id === monId) {
+        const focused = AxctlService.focusedMonitor;
+        if (toplevel && toplevel.fullscreen && focused && focused.id === compositorMonitor.id)
             return true;
-        }
 
         // Check all windows on this monitor (robust path)
-        const wins = CompositorData.windowList;
-        for (let i = 0; i < wins.length; i++) {
-            if (wins[i].monitor === monId && wins[i].fullscreen && wins[i].workspace.id === activeWorkspaceId) {
-                return true;
-            }
-        }
-        return false;
+        return CompositorData.monitorHasFullscreen(compositorMonitor);
     }
 
     // Proxy properties for Bar/Notch synchronization

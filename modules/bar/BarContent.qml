@@ -55,12 +55,14 @@ Item {
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
     readonly property var toplevels: (!compositorMonitor || !compositorMonitor.activeWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.activeWorkspace.id)
 
-    // Fullscreen detection - use ToplevelManager (native Wayland) for reliable detection
+    // Fullscreen detection - scoped to this monitor so fullscreen on the
+    // focused screen never propagates to other monitors
     readonly property bool activeWindowFullscreen: {
-        const toplevel = ToplevelManager.activeToplevel;
-        if (!toplevel || !toplevel.activated)
-            return false;
-        return toplevel.fullscreen === true;
+        const focused = AxctlService.focusedMonitor;
+        const active = ToplevelManager.activeToplevel;
+        if (active && active.fullscreen === true && focused && compositorMonitor && focused.id === compositorMonitor.id)
+            return true;
+        return CompositorData.monitorHasFullscreen(compositorMonitor);
     }
 
 
