@@ -18,9 +18,9 @@ QtObject {
 
     readonly property var staticItems: [
         // --- Mods ---
-        { label: "Mods", keywords: "extensions plugins modifications packages", section: 10, subSection: "", subLabel: "", icon: Icons.puzzlePiece, isIcon: true },
-        { label: "Install mod", keywords: "add local directory archive git repository source", section: 10, subSection: "", subLabel: "Mods", icon: Icons.puzzlePiece, isIcon: true },
-        { label: "Rollback generation", keywords: "restore recover previous failed", section: 10, subSection: "", subLabel: "Mods", icon: Icons.arrowCounterClockwise, isIcon: true },
+        { label: I18n.t("mods.title"), keywords: I18n.t("mods.search_keywords"), section: 10, subSection: "", subLabel: "", icon: Icons.puzzlePiece, isIcon: true },
+        { label: I18n.t("mods.install_mod"), keywords: "add local directory archive git repository source", section: 10, subSection: "", subLabel: I18n.t("mods.title"), icon: Icons.puzzlePiece, isIcon: true },
+        { label: I18n.t("mods.rollback"), keywords: "restore recover previous failed", section: 10, subSection: "", subLabel: I18n.t("mods.title"), icon: Icons.arrowCounterClockwise, isIcon: true },
 
         // --- Network ---
         { label: I18n.t("settings.network"), keywords: "internet wifi connection ethernet ip", section: 0, subSection: "", subLabel: "", icon: Icons.wifiHigh, isIcon: true },

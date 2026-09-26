@@ -17,23 +17,124 @@ func NewService(manager *Manager) *Service {
 
 func (s *Service) Register(server *ipc.Server) {
 	server.Register(&ipc.Service{
-		Name: "mods",
+		Name:      "mods",
+		Subscribe: s.subscribe,
 		Methods: map[string]ipc.HandlerFunc{
-			"status":              s.status,
-			"install":             s.install,
-			"installDependencies": s.installDependencies,
-			"setEnabled":          s.setEnabled,
-			"remove":              s.remove,
-			"move":                s.move,
-			"update":              s.update,
-			"rebuild":             s.rebuild,
-			"rollback":            s.rollback,
-			"settings":            s.settings,
-			"setSetting":          s.setSetting,
+			"status":                s.status,
+			"install":               s.install,
+			"previewArchive":        s.previewArchive,
+			"installArchive":        s.installArchive,
+			"installDependencies":   s.installDependencies,
+			"setEnabled":            s.setEnabled,
+			"remove":                s.remove,
+			"move":                  s.move,
+			"setMenuIndex":          s.setMenuIndex,
+			"setPosition":           s.setPosition,
+			"update":                s.update,
+			"rebuild":               s.rebuild,
+			"rollback":              s.rollback,
+			"settings":              s.settings,
+			"setSetting":            s.setSetting,
 			"setBypassVersionCheck": s.setBypassVersionCheck,
-			"setModsEnabled":      s.setModsEnabled,
+			"setModsEnabled":        s.setModsEnabled,
+			"checkUpdates":          s.checkUpdates,
+			"discardUpdates":        func(_ json.RawMessage) (any, error) { return s.manager.DiscardUpdates() },
+			"applyUpdates":          s.applyUpdates,
+			"setUpdatePolicy":       s.setUpdatePolicy,
+			"setUpdateInterval":     s.setUpdateInterval,
+			"setPeriodicChecks":     s.setPeriodicChecks,
+			"diagnostics":           s.diagnostics,
+			"checkCompatibility":    s.checkCompatibility,
 		},
 	})
+}
+
+func (s *Service) subscribe(sub *ipc.Subscriber) {
+	ch := make(chan struct{}, 1)
+	s.manager.eventsMu.Lock()
+	if s.manager.listeners == nil {
+		s.manager.listeners = map[chan struct{}]bool{}
+	}
+	s.manager.listeners[ch] = true
+	s.manager.eventsMu.Unlock()
+	defer func() { s.manager.eventsMu.Lock(); delete(s.manager.listeners, ch); s.manager.eventsMu.Unlock() }()
+	for {
+		if status, err := s.manager.Status(); err == nil {
+			sub.Send("mods", status)
+		}
+		select {
+		case <-sub.StopCh():
+			return
+		case <-ch:
+		}
+	}
+}
+
+func (s *Service) checkUpdates(raw json.RawMessage) (any, error) {
+	var params struct {
+		IDs []string `json:"ids"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.CheckUpdates(params.IDs, false)
+}
+
+func (s *Service) applyUpdates(raw json.RawMessage) (any, error) {
+	var params struct {
+		PlanID   string `json:"planId"`
+		Reviewed bool   `json:"reviewed"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.ApplyUpdates(params.PlanID, params.Reviewed)
+}
+
+func (s *Service) setUpdatePolicy(raw json.RawMessage) (any, error) {
+	var params struct {
+		ID     string `json:"id"`
+		Policy string `json:"policy"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.SetUpdatePolicy(params.ID, params.Policy)
+}
+
+func (s *Service) setUpdateInterval(raw json.RawMessage) (any, error) {
+	var params struct {
+		Hours int `json:"hours"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.SetUpdateInterval(params.Hours)
+}
+
+func (s *Service) setPeriodicChecks(raw json.RawMessage) (any, error) {
+	var params struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	if params.Enabled == nil {
+		return nil, fmt.Errorf("enabled is required")
+	}
+	return s.manager.SetPeriodicChecks(*params.Enabled)
+}
+
+func (s *Service) diagnostics(_ json.RawMessage) (any, error) { return s.manager.Diagnostics() }
+
+func (s *Service) checkCompatibility(raw json.RawMessage) (any, error) {
+	var params struct {
+		Base string `json:"base"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, err
+	}
+	return s.manager.CheckBaseCompatibility(params.Base)
 }
 
 func (s *Service) status(_ json.RawMessage) (any, error) {
@@ -50,6 +151,25 @@ func (s *Service) install(raw json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("invalid install request: %w", err)
 	}
 	return s.manager.Install(params.Source)
+}
+
+func (s *Service) previewArchive(raw json.RawMessage) (any, error) {
+	var params sourceParams
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid archive preview request: %w", err)
+	}
+	return s.manager.PreviewArchive(params.Source)
+}
+
+func (s *Service) installArchive(raw json.RawMessage) (any, error) {
+	var params struct {
+		Source string `json:"source"`
+		SHA256 string `json:"sha256"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid archive install request: %w", err)
+	}
+	return s.manager.InstallArchive(params.Source, params.SHA256)
 }
 
 type enabledParams struct {
@@ -124,6 +244,20 @@ func (s *Service) move(raw json.RawMessage) (any, error) {
 	return s.manager.Move(params.ID, params.Direction)
 }
 
+func (s *Service) setMenuIndex(raw json.RawMessage) (any, error) {
+	var params struct {
+		ID       string `json:"id"`
+		Position int    `json:"position"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid menu index request: %w", err)
+	}
+	if !idPattern.MatchString(params.ID) {
+		return nil, fmt.Errorf("invalid mod id %q", params.ID)
+	}
+	return s.manager.SetMenuIndex(params.ID, params.Position)
+}
+
 func (s *Service) rebuild(_ json.RawMessage) (any, error) {
 	return s.manager.Rebuild()
 }
@@ -175,4 +309,19 @@ func (s *Service) setModsEnabled(raw json.RawMessage) (any, error) {
 		return nil, fmt.Errorf("invalid setModsEnabled request: %w", err)
 	}
 	return s.manager.SetModsEnabled(params.Enabled)
+}
+
+func (s *Service) setPosition(raw json.RawMessage) (any, error) {
+	var params struct {
+		ID       string `json:"id"`
+		Kind     string `json:"kind"`
+		Position *int   `json:"position"`
+	}
+	if err := json.Unmarshal(raw, &params); err != nil {
+		return nil, fmt.Errorf("invalid position request: %w", err)
+	}
+	if !idPattern.MatchString(params.ID) {
+		return nil, fmt.Errorf("invalid mod id %q", params.ID)
+	}
+	return s.manager.SetPosition(params.ID, params.Kind, params.Position)
 }

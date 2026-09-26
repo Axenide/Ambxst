@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Ambxst Mod Handler
+Comment=Install Ambxst mods from browser links
+Exec=ambxst mods open-url %u
+Icon=application-x-addon
+NoDisplay=true
+Terminal=false
+StartupNotify=false
+MimeType=x-scheme-handler/ambxst;
+Categories=Settings;
