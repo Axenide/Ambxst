@@ -1225,6 +1225,7 @@ PanelWindow {
             VideoWallpaper {
                 id: videoWallpaperChild
                 sourceFile: parent.sourceFile
+                screenName: wallpaper.currentScreenName
                 tint: wallpaper.tintEnabled
                 onRequestVideoSync: wallpaper.requestVideoSync()
 

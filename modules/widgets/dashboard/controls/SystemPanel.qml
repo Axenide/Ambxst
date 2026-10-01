@@ -495,6 +495,17 @@ Item {
                             opacity: 0.7
                         }
 
+                        // Animated wallpaper scope toggle
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: I18n.t("performance.pause_wallpapers_all_screens")
+                            description: I18n.t("system.performance.pause_wallpapers_all_screens_desc")
+                            checked: Config.performance.pauseAnimatedWallpapersOnAllScreens
+                            onToggled: checked => {
+                                Config.performance.pauseAnimatedWallpapersOnAllScreens = checked;
+                            }
+                        }
+
                         // Blur Transition toggle
                         ToggleRow {
                             Layout.fillWidth: true
