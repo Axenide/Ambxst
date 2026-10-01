@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 )
 
@@ -117,9 +118,23 @@ func generateThumb(filePath, thumbPath string, size int) error {
 	ext := strings.ToLower(filepath.Ext(filePath))
 	if mediaVideoExts[ext] {
 		scale := fmt.Sprintf("%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", size, size, size, size)
-		_, err := exec.Command("ffmpeg", "-y", "-i", filePath,
-			"-ss", "00:00:01", "-vframes", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath).Output()
-		return err
+		// Seek before input for speed, then fall back to the first frame for
+		// clips shorter than one second or formats that do not seek cleanly.
+		args := []string{"-y", "-ss", "00:00:01", "-i", filePath, "-frames:v", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath}
+		out, err := exec.Command("ffmpeg", args...).CombinedOutput()
+		if err == nil {
+			return nil
+		}
+		args = []string{"-y", "-i", filePath, "-frames:v", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath}
+		out, fallbackErr := exec.Command("ffmpeg", args...).CombinedOutput()
+		if fallbackErr != nil {
+			message := strings.TrimSpace(string(out))
+			if message == "" {
+				message = fallbackErr.Error()
+			}
+			return fmt.Errorf("ffmpeg thumbnail failed: %s", message)
+		}
+		return nil
 	}
 	return generateThumbImage(filePath, thumbPath, size)
 }
@@ -260,6 +275,7 @@ func runThumbs(args []string, size int, recursive bool) int {
 		workers = len(jobs)
 	}
 	var wg sync.WaitGroup
+	var failed atomic.Bool
 	ch := make(chan job)
 	for w := 0; w < workers; w++ {
 		wg.Add(1)
@@ -267,6 +283,7 @@ func runThumbs(args []string, size int, recursive bool) int {
 			defer wg.Done()
 			for j := range ch {
 				if err := generateThumb(j.file, j.thumb, size); err != nil {
+					failed.Store(true)
 					fmt.Fprintf(os.Stderr, "Failed: %s: %v\n", j.file, err)
 				}
 			}
@@ -277,6 +294,9 @@ func runThumbs(args []string, size int, recursive bool) int {
 	}
 	close(ch)
 	wg.Wait()
+	if failed.Load() {
+		return 1
+	}
 	return 0
 }
 

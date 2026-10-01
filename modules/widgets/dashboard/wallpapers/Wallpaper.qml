@@ -709,7 +709,10 @@ PanelWindow {
         id: delayedThumbnailGen
         interval: 2000 // Delay 2 seconds after change to not block
         repeat: false
-        onTriggered: thumbnailGeneratorScript.running = true
+        onTriggered: {
+            if (GlobalStates.wallpaperManager === wallpaper && !thumbnailGeneratorScript.running)
+                thumbnailGeneratorScript.running = true;
+        }
     }
 
     // Proceso para generar frame de lockscreen con el script de Python
@@ -800,6 +803,8 @@ PanelWindow {
         printErrors: false
 
         onFileChanged: {
+            if (GlobalStates.wallpaperManager !== wallpaper)
+                return;
             if (wallpaperDir === "")
                 return;
             console.log("Wallpaper directory changed, rescanning...");
@@ -824,6 +829,8 @@ PanelWindow {
             watchChanges: true
             printErrors: false
             onFileChanged: {
+                if (GlobalStates.wallpaperManager !== wallpaper)
+                    return;
                 console.log("Subdirectory content changed (" + path + "), rescanning...");
                 scanWallpapers.running = true;
                 scanSubfoldersProcess.running = true;

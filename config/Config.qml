@@ -3447,31 +3447,14 @@ Singleton {
 		return result;
 	}
 
-	// Handle missing config files - copy from preset or create with defaults
-    function handleMissingConfig(name, loader, defaults, onComplete) {
-        var presetPath = root.presetDir + "/" + name + ".json";
-        var targetPath = root.configDir + "/" + name + ".json";
-        console.log(name + ".json not found, checking preset: " + presetPath);
-
-        // Create a Process component dynamically to copy the file
-        var copyProcess = Qt.createQmlObject(
-            "import QtQuick 2.0; Process { running: true; command: ['cp', '" + presetPath + "', '" + targetPath + "']; onFinished: { console.log('Copy finished for " + name + "'); } }",
-            root,
-            "copyProcess"
-        );
-
-        // Reload the loader to pick up the copied file
-        loader.reload();
-
-        // If still not ready after reload, use defaults as fallback
-        Qt.callLater(() => {
-            if (!root[name + "Ready"]) {
-                console.log("Using defaults for " + name + ".json");
-                loader.setText(JSON.stringify(defaults, null, 2));
-            }
-            onComplete();
-        });
-    }
+		// Handle missing config files by writing the validated in-code defaults.
+		// Some modules intentionally have no preset JSON, and an asynchronous
+		// copy followed by reload races the FileView and leaves them missing.
+	    function handleMissingConfig(name, loader, defaults, onComplete) {
+	        console.log(name + ".json not found, creating defaults");
+	        loader.setText(JSON.stringify(defaults, null, 2));
+	        onComplete();
+	    }
 
 
     // Exposed properties
