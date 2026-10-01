@@ -22,6 +22,11 @@ FocusScope {
         selectedIndex = newIndex;
     }
 
+    function isAnimatedWallpaper(path) {
+        const extension = path.toLowerCase().split('.').pop();
+        return ['gif', 'mp4', 'webm', 'mov', 'avi', 'mkv'].includes(extension);
+    }
+
     readonly property string currentScreenName: AxctlService.focusedMonitor ? AxctlService.focusedMonitor.name : ""
 
     property bool isPerScreen: {
@@ -1098,7 +1103,7 @@ FocusScope {
                                 // Lazy loader que solo carga cuando el item está visible
                                 Loader {
                                     anchors.fill: parent
-                                    sourceComponent: staticImageComponent
+                                    sourceComponent: isAnimatedWallpaper(modelData) ? animatedPreviewComponent : staticImageComponent
                                     property string sourceFile: modelData
                                     active: isInViewport && wallpapersTabRoot.visible && GlobalStates.dashboardOpen
                                     asynchronous: true
@@ -1224,6 +1229,47 @@ FocusScope {
                 if (status === Image.Error) {
                     // console.log("Thumbnail not ready yet for:", parent.sourceFile);
                 }
+            }
+        }
+    }
+
+    Component {
+        id: animatedPreviewComponent
+        Item {
+            property string sourceFile: parent.sourceFile
+            property string previewPath: {
+                if (!sourceFile || !GlobalStates.wallpaperManager)
+                    return "";
+                return GlobalStates.wallpaperManager.getThumbnailPath(sourceFile)
+                    + ".preview.gif?v=" + GlobalStates.wallpaperManager.thumbnailsVersion;
+            }
+
+            Image {
+                anchors.fill: parent
+                source: GlobalStates.wallpaperManager
+                    ? "file://" + GlobalStates.wallpaperManager.getThumbnailPath(parent.sourceFile)
+                        + "?v=" + GlobalStates.wallpaperManager.thumbnailsVersion
+                    : ""
+                fillMode: Image.PreserveAspectCrop
+                sourceSize.width: wallpaperGridContainer.cellSize
+                sourceSize.height: wallpaperGridContainer.cellSize
+                asynchronous: true
+                smooth: true
+                cache: true
+                visible: previewAnimation.status !== Image.Ready
+            }
+
+            AnimatedImage {
+                id: previewAnimation
+                anchors.fill: parent
+                source: parent.previewPath ? "file://" + parent.previewPath : ""
+                fillMode: Image.PreserveAspectCrop
+                sourceSize.width: 480
+                sourceSize.height: 480
+                asynchronous: true
+                cache: false
+                playing: visible
+                visible: status === Image.Ready
             }
         }
     }

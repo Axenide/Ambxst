@@ -142,6 +142,26 @@ func generateThumb(filePath, thumbPath string, size int) error {
 	return generateThumbImage(filePath, thumbPath, size)
 }
 
+func generateAnimatedPreview(filePath, previewPath string) error {
+	if err := os.MkdirAll(filepath.Dir(previewPath), 0o755); err != nil {
+		return err
+	}
+	filter := "fps=30,scale=-2:480:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:reserve_transparent=0[p];[s1][p]paletteuse=dither=sierra2_4a"
+	args := []string{"-y", "-i", filePath, "-t", "2", "-an", "-filter_complex", filter, "-loop", "0", previewPath}
+	out, err := exec.Command("ffmpeg", args...).CombinedOutput()
+	if err != nil {
+		message := strings.TrimSpace(string(out))
+		if message == "" {
+			message = err.Error()
+		}
+		return fmt.Errorf("ffmpeg animated preview failed: %s", message)
+	}
+	if info, statErr := os.Stat(previewPath); statErr != nil || info.Size() == 0 {
+		return fmt.Errorf("ffmpeg animated preview produced no output")
+	}
+	return nil
+}
+
 type devIno struct {
 	dev uint64
 	ino uint64
@@ -256,7 +276,7 @@ func runThumbs(args []string, size int, recursive bool) int {
 	}
 	os.MkdirAll(thumbDir, 0o755)
 
-	type job struct{ file, thumb string }
+	type job struct{ file, thumb, preview string }
 	jobs := []job{}
 	for _, f := range mediaFiles {
 		rel, _ := filepath.Rel(wallPath, f)
@@ -266,7 +286,9 @@ func runThumbs(args []string, size int, recursive bool) int {
 			thumb = filepath.Join(thumbDir, strings.ReplaceAll(filepath.Base(f), filepath.Ext(f), "")+filepath.Ext(f)+".jpg")
 		}
 		if needsThumbnail(f, thumb) {
-			jobs = append(jobs, job{f, thumb})
+			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview.gif"})
+		} else if mediaVideoExts[strings.ToLower(filepath.Ext(f))] && needsThumbnail(f, thumb+".preview.gif") {
+			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview.gif"})
 		}
 	}
 	if len(jobs) == 0 {
@@ -288,6 +310,13 @@ func runThumbs(args []string, size int, recursive bool) int {
 				if err := generateThumb(j.file, j.thumb, size); err != nil {
 					failed.Store(true)
 					fmt.Fprintf(os.Stderr, "Failed: %s: %v\n", j.file, err)
+					continue
+				}
+				if mediaVideoExts[strings.ToLower(filepath.Ext(j.file))] {
+					if err := generateAnimatedPreview(j.file, j.preview); err != nil {
+						failed.Store(true)
+						fmt.Fprintf(os.Stderr, "Failed animated preview: %s: %v\n", j.file, err)
+					}
 				}
 			}
 		}()
