@@ -1237,6 +1237,7 @@ FocusScope {
         id: animatedPreviewComponent
         Item {
             property string sourceFile: parent.sourceFile
+            property int previewRetry: 0
             property string previewPath: {
                 if (!sourceFile || !GlobalStates.wallpaperManager)
                     return "";
@@ -1262,7 +1263,7 @@ FocusScope {
             AnimatedImage {
                 id: previewAnimation
                 anchors.fill: parent
-                source: parent.previewPath ? "file://" + parent.previewPath : ""
+                source: parent.previewPath ? "file://" + parent.previewPath + "&retry=" + parent.previewRetry : ""
                 fillMode: Image.PreserveAspectCrop
                 sourceSize.width: 480
                 sourceSize.height: 480
@@ -1270,6 +1271,13 @@ FocusScope {
                 cache: false
                 playing: visible
                 visible: status === Image.Ready
+            }
+
+            Timer {
+                interval: 1000
+                repeat: true
+                running: parent.visible && previewAnimation.status !== Image.Ready
+                onTriggered: parent.previewRetry++
             }
         }
     }
