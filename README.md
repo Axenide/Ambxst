@@ -184,6 +184,7 @@ Nope! Besides the Ambxst import block in your `hyprland.conf`/`hyprland.lua` (or
 - [x] Customizable keybindings
 - [x] [Mod manager with native Settings integration](docs/mods/README.md)
 - [x] Compatibility with other Wayland compositors
+- [x] Animated wallpaper previews
 
 ---
 
