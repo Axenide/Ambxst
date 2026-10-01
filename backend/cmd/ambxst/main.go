@@ -251,6 +251,12 @@ func runShell() {
 		os.Setenv("QS_ICON_THEME", strings.Trim(strings.TrimSpace(string(iconTheme)), "'"))
 	}
 	os.Setenv("QT_QPA_PLATFORMTHEME", "qt6ct")
+	// Qt documents GStreamer as a limited Linux backend and recommends FFmpeg
+	// for general media playback. Keep QT_MEDIA_BACKEND user-overridable so
+	// users can select another backend when their Qt build requires it.
+	if os.Getenv("QT_MEDIA_BACKEND") == "" {
+		os.Setenv("QT_MEDIA_BACKEND", "ffmpeg")
+	}
 	os.Unsetenv("HL_INITIAL_WORKSPACE_TOKEN")
 	if tmpdir := defaultTMUXTmpDir(os.Getenv("TMUX_TMPDIR"), os.Getenv("XDG_RUNTIME_DIR")); tmpdir != "" {
 		os.Setenv("TMUX_TMPDIR", tmpdir)
