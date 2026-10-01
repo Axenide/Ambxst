@@ -117,14 +117,17 @@ func generateThumb(filePath, thumbPath string, size int) error {
 	}
 	ext := strings.ToLower(filepath.Ext(filePath))
 	if mediaVideoExts[ext] {
-		scale := fmt.Sprintf("%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", size, size, size, size)
+		scale := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", size, size, size, size)
 		// Seek before input for speed, then fall back to the first frame for
 		// clips shorter than one second or formats that do not seek cleanly.
 		args := []string{"-y", "-ss", "00:00:01", "-i", filePath, "-frames:v", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath}
 		out, err := exec.Command("ffmpeg", args...).CombinedOutput()
 		if err == nil {
-			return nil
+			if info, statErr := os.Stat(thumbPath); statErr == nil && info.Size() > 0 {
+				return nil
+			}
 		}
+		_ = os.Remove(thumbPath)
 		args = []string{"-y", "-i", filePath, "-frames:v", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath}
 		out, fallbackErr := exec.Command("ffmpeg", args...).CombinedOutput()
 		if fallbackErr != nil {
