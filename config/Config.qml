@@ -3392,11 +3392,17 @@ Singleton {
             return;
         }
 
-        try {
-            var current = JSON.parse(raw);
-            var validated = ConfigValidator.validate(current, defaults);
+		try {
+			var current = JSON.parse(raw);
+			var migrated = false;
+			if (name === "system") {
+				var migratedConfig = migrateLegacyIdleCommands(current);
+				migrated = JSON.stringify(current) !== JSON.stringify(migratedConfig);
+				current = migratedConfig;
+			}
+			var validated = ConfigValidator.validate(current, defaults);
 
-            if (JSON.stringify(current) !== JSON.stringify(validated)) {
+			if (migrated || JSON.stringify(current) !== JSON.stringify(validated)) {
                 console.log("Merging and updating " + name + ".json...");
                 loader.setText(JSON.stringify(validated, null, 2));
             }
@@ -3407,9 +3413,40 @@ Singleton {
             loader.setText(JSON.stringify(defaults, null, 2));
             onComplete();
         }
-    }
+	}
 
-    // Handle missing config files - copy from preset or create with defaults
+	// Existing installs retain persisted listener commands when defaults change.
+	// Migrate only the exact legacy brightness commands and leave all other
+	// user-authored listeners untouched.
+	function migrateLegacyIdleCommands(config) {
+		if (!config || !config.idle || !Array.isArray(config.idle.listeners))
+			return config;
+
+		var migrated = false;
+		var listeners = config.idle.listeners.map(function(listener) {
+			if (!listener || typeof listener !== "object")
+				return listener;
+			var updated = Object.assign({}, listener);
+			if (updated.onTimeout === "axctl brightness save && axctl brightness set 0.1") {
+				updated.onTimeout = "ambxst brightness 10 -s";
+				migrated = true;
+			}
+			if (updated.onResume === "axctl brightness restore") {
+				updated.onResume = "ambxst brightness -r";
+				migrated = true;
+			}
+			return updated;
+		});
+		if (!migrated)
+			return config;
+
+		var result = Object.assign({}, config);
+		result.idle = Object.assign({}, config.idle, { listeners: listeners });
+		console.log("Migrated legacy idle brightness commands in system.json");
+		return result;
+	}
+
+	// Handle missing config files - copy from preset or create with defaults
     function handleMissingConfig(name, loader, defaults, onComplete) {
         var presetPath = root.presetDir + "/" + name + ".json";
         var targetPath = root.configDir + "/" + name + ".json";

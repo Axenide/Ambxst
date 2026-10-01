@@ -41,12 +41,16 @@ func runScreen(args []string) {
 		notifyShell("Screen "+sub, "Failed to parse monitor list", "critical")
 		os.Exit(1)
 	}
+	failed := false
 	for _, m := range list {
 		id := fmt.Sprintf("%v", m.ID)
 		if err := exec.Command("axctl", "monitor", "set-dpms", id, state).Run(); err != nil {
+			failed = true
 			notifyShell("Screen "+sub, "Failed to set DPMS on monitor "+id, "critical")
-			os.Exit(1)
 		}
+	}
+	if failed {
+		os.Exit(1)
 	}
 }
 
@@ -62,10 +66,10 @@ func hasBinary(name string) bool {
 // when running the binary in isolation outside the shell.
 func notifyShell(summary, body, urgency string) {
 	params := map[string]any{
-		"summary":  summary,
-		"body":     body,
-		"appName":  "Ambxst",
-		"urgency":  urgency,
+		"summary": summary,
+		"body":    body,
+		"appName": "Ambxst",
+		"urgency": urgency,
 	}
 	if _, err := newClient().Call("notify.send", params); err != nil {
 		_ = notify.SendFallback(summary, body, urgency)

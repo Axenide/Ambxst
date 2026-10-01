@@ -10,8 +10,9 @@ Item {
     property bool respectInhibitors: true
     property bool isIdle: false
 
-    property var _monitorId: 0
-    property bool _initialized: false
+	property var _monitorId: 0
+	property bool _initialized: false
+	property bool _getInFlight: false
 
     property var _createProcess: Process {
         id: _createProcess
@@ -20,20 +21,23 @@ Item {
         stdout: StdioCollector {
             id: _createStdout
         }
-        onExited: (code) => {
-            if (code === 0 && _createStdout.text) {
+		onExited: (code) => {
+			if (code === 0 && _createStdout.text) {
                 try {
                     var json = JSON.parse(_createStdout.text.trim());
-                    _monitorId = json.id;
-                    _initialized = true;
-                    _startPolling();
+					_monitorId = json.id;
+					_initialized = true;
+					_initRetryTimer.stop();
+					_startPolling();
                 } catch (e) {
                     console.error("Failed to parse idle monitor response:", _createStdout.text, e);
+                    _initRetryTimer.start();
                 }
-            } else {
-                console.error("Failed to create idle monitor: code=", code, "output:", _createStdout.text);
-            }
-        }
+			} else {
+				console.error("Failed to create idle monitor: code=", code, "output:", _createStdout.text);
+				_initRetryTimer.start();
+			}
+		}
     }
 
     property var _getProcess: Process {
@@ -43,8 +47,9 @@ Item {
         stdout: StdioCollector {
             id: _getStdout
         }
-        onExited: (code) => {
-            if (code === 0 && _getStdout.text) {
+		onExited: (code) => {
+			_getInFlight = false;
+			if (code === 0 && _getStdout.text) {
                 try {
                     var json = JSON.parse(_getStdout.text.trim());
                     if (json.is_idle !== undefined && json.is_idle !== root.isIdle) {
@@ -83,17 +88,24 @@ Item {
         }
     }
 
-    function _initMonitor() {
-        if (_initialized || !enabled || timeout <= 0) return;
+	function _initMonitor() {
+		if (_initialized || _createProcess.running || !enabled || timeout <= 0) return;
 
         var timeoutMs = Math.round(timeout * 1000);
         var respect = respectInhibitors ? 1 : 0;
         var en = enabled ? 1 : 0;
 
         var cmd = "axctl system idle-monitor-create " + timeoutMs + " " + respect + " " + en;
-        _createProcess.command = ["sh", "-c", cmd];
-        _createProcess.running = true;
-    }
+		_createProcess.command = ["sh", "-c", cmd];
+		_createProcess.running = true;
+	}
+
+	Timer {
+		id: _initRetryTimer
+		interval: 10000
+		repeat: false
+		onTriggered: root._initMonitor()
+	}
 
     function _destroyMonitor() {
         if (_monitorId > 0) {
@@ -111,12 +123,13 @@ Item {
         pollTimer.running = false;
     }
 
-    function _checkIdle() {
-        if (!_initialized || _monitorId === 0) return;
+	function _checkIdle() {
+		if (!_initialized || _monitorId === 0 || _getInFlight || _getProcess.running) return;
 
-        var cmd = "axctl system idle-monitor-get " + _monitorId;
-        _getProcess.command = ["sh", "-c", cmd];
-        _getProcess.running = true;
+		var cmd = "axctl system idle-monitor-get " + _monitorId;
+		_getProcess.command = ["sh", "-c", cmd];
+		_getInFlight = true;
+		_getProcess.running = true;
     }
 
     function _checkMediaInhibitor() {
@@ -177,9 +190,10 @@ Item {
         onTriggered: root._checkIdle()
     }
 
-    onEnabledChanged: {
-        if (!enabled) {
-            _destroyMonitor();
+		onEnabledChanged: {
+			if (!enabled) {
+				_initRetryTimer.stop();
+				_destroyMonitor();
             _stopPolling();
             isIdle = false;
         } else if (timeout > 0) {
@@ -203,8 +217,9 @@ Item {
         }
     }
 
-    Component.onDestruction: {
-        _destroyMonitor();
+	Component.onDestruction: {
+		_initRetryTimer.stop();
+		_destroyMonitor();
     }
 
     Component.onCompleted: {

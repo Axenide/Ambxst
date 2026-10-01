@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -136,17 +137,61 @@ func runBrightness(args []string) {
 // the slider path, so OSD reflects what actually landed.
 func runBrightnessRestore(monitor string) {
 	qsPid := readQsPidOrExit()
-	if monitor == "" {
+	if monitor != "" {
+		axctlRun("brightness", "restore", monitor)
+		notifyQsBrightness(qsPid, "pull", "", monitor)
+		fmt.Printf("Restored brightness for %s\n", monitor)
+		return
+	}
+
+	// Bulk restore can abort on a stale saved key. Restore each monitor that is
+	// present now so a disconnected display cannot block the others.
+	monitors, err := currentBrightnessMonitors()
+	if err != nil || len(monitors) == 0 {
 		axctlRun("brightness", "restore")
 	} else {
-		axctlRun("brightness", "restore", monitor)
+		failed := false
+		for _, name := range monitors {
+			cmd := exec.Command("axctl", "brightness", "restore", name)
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			if err := cmd.Run(); err != nil {
+				failed = true
+				fmt.Fprintf(os.Stderr, "Warning: failed to restore brightness for %s: %v\n", name, err)
+			}
+		}
+		if failed {
+			fmt.Fprintln(os.Stderr, "Warning: one or more monitors could not be restored")
+		}
 	}
 	notifyQsBrightness(qsPid, "pull", "", monitor)
-	if monitor == "" {
-		fmt.Println("Restored brightness for all monitors")
-	} else {
-		fmt.Printf("Restored brightness for %s\n", monitor)
+	fmt.Println("Restored brightness for all present monitors")
+}
+
+func currentBrightnessMonitors() ([]string, error) {
+	output, err := exec.Command("axctl", "brightness", "list").Output()
+	if err != nil {
+		return nil, err
 	}
+	var monitors []struct {
+		Key  string `json:"key"`
+		Name string `json:"name"`
+	}
+	if err := json.Unmarshal(output, &monitors); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(monitors))
+	for _, monitor := range monitors {
+		name := strings.TrimSpace(monitor.Name)
+		if name == "" {
+			name = strings.TrimSpace(monitor.Key)
+		}
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names, nil
 }
 
 // axctlRun shells out to `axctl <args...>` and forwards stdout/stderr.
