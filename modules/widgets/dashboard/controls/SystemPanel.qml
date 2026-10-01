@@ -506,6 +506,17 @@ Item {
                             }
                         }
 
+                        // Animated wallpaper preview toggle
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: I18n.t("performance.animated_wallpaper_previews")
+                            description: I18n.t("system.performance.animated_wallpaper_previews_desc")
+                            checked: Config.performance.animatedWallpaperPreviews
+                            onToggled: checked => {
+                                Config.performance.animatedWallpaperPreviews = checked;
+                            }
+                        }
+
                         // Blur Transition toggle
                         ToggleRow {
                             Layout.fillWidth: true

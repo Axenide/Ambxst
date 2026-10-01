@@ -802,6 +802,7 @@ Singleton {
             property bool wavyLine: true
             property bool rotateCoverArt: true
             property bool pauseAnimatedWallpapersOnAllScreens: false
+            property bool animatedWallpaperPreviews: true
             property bool dashboardPersistTabs: true
             property int dashboardMaxPersistentTabs: 2
         }

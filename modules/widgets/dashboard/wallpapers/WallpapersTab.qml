@@ -1103,7 +1103,7 @@ FocusScope {
                                 // Lazy loader que solo carga cuando el item está visible
                                 Loader {
                                     anchors.fill: parent
-                                    sourceComponent: isAnimatedWallpaper(modelData) ? animatedPreviewComponent : staticImageComponent
+                                    sourceComponent: isAnimatedWallpaper(modelData) && Config.performance.animatedWallpaperPreviews ? animatedPreviewComponent : staticImageComponent
                                     property string sourceFile: modelData
                                     active: isInViewport && wallpapersTabRoot.visible && GlobalStates.dashboardOpen
                                     asynchronous: true
@@ -1241,7 +1241,7 @@ FocusScope {
                 if (!sourceFile || !GlobalStates.wallpaperManager)
                     return "";
                 return GlobalStates.wallpaperManager.getThumbnailPath(sourceFile)
-                    + ".preview.gif?v=" + GlobalStates.wallpaperManager.thumbnailsVersion;
+                    + ".preview-crop.gif?v=" + GlobalStates.wallpaperManager.thumbnailsVersion;
             }
 
             Image {

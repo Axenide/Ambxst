@@ -146,7 +146,7 @@ func generateAnimatedPreview(filePath, previewPath string) error {
 	if err := os.MkdirAll(filepath.Dir(previewPath), 0o755); err != nil {
 		return err
 	}
-	filter := "fps=30,scale=-2:480:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=256:reserve_transparent=0[p];[s1][p]paletteuse=dither=sierra2_4a"
+	filter := "fps=30,scale=480:480:force_original_aspect_ratio=increase:flags=lanczos,crop=480:480,split[s0][s1];[s0]palettegen=max_colors=256:reserve_transparent=0[p];[s1][p]paletteuse=dither=sierra2_4a"
 	args := []string{"-y", "-i", filePath, "-t", "2", "-an", "-filter_complex", filter, "-loop", "0", previewPath}
 	out, err := exec.Command("ffmpeg", args...).CombinedOutput()
 	if err != nil {
@@ -286,9 +286,9 @@ func runThumbs(args []string, size int, recursive bool) int {
 			thumb = filepath.Join(thumbDir, strings.ReplaceAll(filepath.Base(f), filepath.Ext(f), "")+filepath.Ext(f)+".jpg")
 		}
 		if needsThumbnail(f, thumb) {
-			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview.gif"})
-		} else if mediaVideoExts[strings.ToLower(filepath.Ext(f))] && needsThumbnail(f, thumb+".preview.gif") {
-			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview.gif"})
+			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview-crop.gif"})
+		} else if mediaVideoExts[strings.ToLower(filepath.Ext(f))] && needsThumbnail(f, thumb+".preview-crop.gif") {
+			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview-crop.gif"})
 		}
 	}
 	if len(jobs) == 0 {

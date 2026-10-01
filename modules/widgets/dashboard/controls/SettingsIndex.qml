@@ -108,6 +108,7 @@ QtObject {
         { label: I18n.t("settings.system.window_preview"), keywords: "thumbnail overview alt-tab", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.windowsLogo, isIcon: true },
         { label: I18n.t("settings.system.wavy_line"), keywords: "animated wave effect performance", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.lightning, isIcon: true },
         { label: I18n.t("performance.pause_wallpapers_all_screens"), keywords: "wallpaper video animated game fullscreen monitor performance", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.lightning, isIcon: true },
+        { label: I18n.t("performance.animated_wallpaper_previews"), keywords: "wallpaper video gif animated preview thumbnail performance", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.lightning, isIcon: true },
 
         // System > Resources
         { label: I18n.t("settings.system.system_resources"), keywords: "cpu ram memory usage monitor", section: 6, subSection: "resources", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.resources"), icon: Icons.circuitry, isIcon: true },
