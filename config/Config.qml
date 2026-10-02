@@ -38,6 +38,7 @@ Singleton {
     property string configDir: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/config"
     property string keybindsPath: (Quickshell.env("XDG_CONFIG_HOME") || (Quickshell.env("HOME") + "/.config")) + "/ambxst/binds.json"
     property string presetDir: Qt.resolvedUrl("../assets/presets/Ambxst Default").toString().replace("file://", "")
+    property bool configBootstrapReady: false
 
     property bool pauseAutoSave: false
 
@@ -89,6 +90,28 @@ Singleton {
             "cp -n '" + root.presetDir + "/system.json' '" + root.configDir + "/system.json' 2>/dev/null || true; " +
             "echo 'Preset files copied if missing'"
         ]
+        onExited: {
+            root.configBootstrapReady = true;
+            root.reloadConfigFiles();
+        }
+    }
+
+    function reloadConfigFiles() {
+        themeLoader.reload();
+        barLoader.reload();
+        workspacesLoader.reload();
+        overviewLoader.reload();
+        notchLoader.reload();
+        compositorLoader.reload();
+        performanceLoader.reload();
+        weatherLoader.reload();
+        desktopLoader.reload();
+        lockscreenLoader.reload();
+        prefixLoader.reload();
+        systemLoader.reload();
+        dockLoader.reload();
+        aiLoader.reload();
+        generalLoader.reload();
     }
 
     // Auto-migrate hyprland.json → compositor.json for existing users
@@ -114,6 +137,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.themeReady) {
                 handleMissingConfig("theme", themeLoader, ThemeDefaults.data, () => {
                     root.themeReady = true;
@@ -509,6 +534,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.barReady) {
                 handleMissingConfig("bar", barLoader, BarDefaults.data, () => {
                     root.barReady = true;
@@ -568,6 +595,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.workspacesReady) {
                 handleMissingConfig("workspaces", workspacesLoader, WorkspacesDefaults.data, () => {
                     root.workspacesReady = true;
@@ -611,6 +640,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.overviewReady) {
                 handleMissingConfig("overview", overviewLoader, OverviewDefaults.data, () => {
                     root.overviewReady = true;
@@ -653,6 +684,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.notchReady) {
                 handleMissingConfig("notch", notchLoader, NotchDefaults.data, () => {
                     root.notchReady = true;
@@ -698,6 +731,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.compositorReady) {
                 handleMissingConfig("compositor", compositorLoader, CompositorDefaults.data, () => {
                     root.compositorReady = true;
@@ -778,6 +813,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.performanceReady) {
                 handleMissingConfig("performance", performanceLoader, PerformanceDefaults.data, () => {
                     root.performanceReady = true;
@@ -825,6 +862,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.weatherReady) {
                 handleMissingConfig("weather", weatherLoader, WeatherDefaults.data, () => {
                     root.weatherReady = true;
@@ -865,6 +904,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.desktopReady) {
                 handleMissingConfig("desktop", desktopLoader, DesktopDefaults.data, () => {
                     root.desktopReady = true;
@@ -908,6 +949,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.lockscreenReady) {
                 handleMissingConfig("lockscreen", lockscreenLoader, LockscreenDefaults.data, () => {
                     root.lockscreenReady = true;
@@ -948,6 +991,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.prefixReady) {
                 handleMissingConfig("prefix", prefixLoader, PrefixDefaults.data, () => {
                     root.prefixReady = true;
@@ -991,6 +1036,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.systemReady) {
                 handleMissingConfig("system", systemLoader, SystemDefaults.data, () => {
                     root.systemReady = true;
@@ -1080,6 +1127,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.dockReady) {
                 handleMissingConfig("dock", dockLoader, DockDefaults.data, () => {
                     root.dockReady = true;
@@ -1171,6 +1220,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.aiReady) {
                 handleMissingConfig("ai", aiLoader, AiDefaults.data, () => {
                     root.aiReady = true;
@@ -1217,6 +1268,8 @@ Singleton {
             }
         }
         onLoadFailed: function(error) {
+            if (!root.configBootstrapReady)
+                return;
             if (error.toString().includes("FileNotFound") && !root.generalReady) {
                 handleMissingConfig("general", generalLoader, GeneralDefaults.data, () => {
                     root.generalReady = true;

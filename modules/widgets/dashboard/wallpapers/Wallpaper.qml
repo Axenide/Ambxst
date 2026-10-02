@@ -677,7 +677,7 @@ PanelWindow {
     Process {
         id: thumbnailGeneratorScript
         running: false
-        command: ["ambxst", "thumbs", Quickshell.env("HOME") + "/.cache/ambxst" + "/wallpapers.json", Quickshell.env("HOME") + "/.cache/ambxst", fallbackDir]
+        command: ["ambxst", "thumbs", Quickshell.env("HOME") + "/.cache/ambxst" + "/wallpapers.json", Quickshell.env("HOME") + "/.cache/ambxst", fallbackDir, Config.performance.animatedWallpaperPreviews ? "1" : "0"]
 
         stdout: StdioCollector {
             onStreamFinished: {

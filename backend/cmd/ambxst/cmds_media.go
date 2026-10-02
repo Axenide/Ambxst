@@ -195,13 +195,17 @@ func walkFollowSymlinks(path string, visited map[devIno]bool, fn func(path strin
 }
 
 func runThumbs(args []string, size int, recursive bool) int {
-	// args: <config_path> <cache_base_path> [fallback_wall_path]
+	// args: <config_path> <cache_base_path> [fallback_wall_path] [animated_previews]
 	if len(args) < 2 {
-		fmt.Fprintln(os.Stderr, "Usage: ambxst thumbs <config_path> <cache_base_path> [fallback_wall_path]")
+		fmt.Fprintln(os.Stderr, "Usage: ambxst thumbs <config_path> <cache_base_path> [fallback_wall_path] [animated_previews]")
 		fmt.Fprintln(os.Stderr, "       ambxst dthumbs <desktop_path> <cache_dir>")
 		return 1
 	}
 	configPath, cacheBase := expandTilde(args[0]), args[1]
+	generateAnimatedPreviews := true
+	if recursive && len(args) > 3 {
+		generateAnimatedPreviews = args[3] != "0"
+	}
 	var fallback string
 	if len(args) > 2 {
 		fallback = expandTilde(args[2])
@@ -287,7 +291,7 @@ func runThumbs(args []string, size int, recursive bool) int {
 		}
 		if needsThumbnail(f, thumb) {
 			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview-crop.gif"})
-		} else if mediaVideoExts[strings.ToLower(filepath.Ext(f))] && needsThumbnail(f, thumb+".preview-crop.gif") {
+		} else if generateAnimatedPreviews && mediaVideoExts[strings.ToLower(filepath.Ext(f))] && needsThumbnail(f, thumb+".preview-crop.gif") {
 			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview-crop.gif"})
 		}
 	}
@@ -312,7 +316,7 @@ func runThumbs(args []string, size int, recursive bool) int {
 					fmt.Fprintf(os.Stderr, "Failed: %s: %v\n", j.file, err)
 					continue
 				}
-				if mediaVideoExts[strings.ToLower(filepath.Ext(j.file))] {
+				if generateAnimatedPreviews && mediaVideoExts[strings.ToLower(filepath.Ext(j.file))] {
 					if err := generateAnimatedPreview(j.file, j.preview); err != nil {
 						failed.Store(true)
 						fmt.Fprintf(os.Stderr, "Failed animated preview: %s: %v\n", j.file, err)

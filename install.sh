@@ -50,6 +50,8 @@ declare -A BINARY_CHECK=(
   ["gradia"]="gradia"
   ["zenity"]="zenity"
   ["gpu-screen-recorder"]="gpu-screen-recorder"
+  ["ffmpeg"]="ffmpeg"
+  ["ffmpeg-free"]="ffmpeg"
 )
 
 declare -A THEME_CHECK=(
@@ -113,7 +115,7 @@ install_dependencies() {
       tmux fuzzel network-manager-applet blueman
       pipewire wireplumber easyeffects playerctl
       qt6-qtbase qt6-qtdeclarative qt6-qtwayland qt6-qtsvg qt6-qttools
-      qt6-qtimageformats qt6-qtmultimedia qt6-qtshadertools
+      qt6-qtimageformats qt6-qtmultimedia qt6-qtshadertools ffmpeg-free
       kf6-syntax-highlighting kf6-breeze-icons hicolor-icon-theme
       brightnessctl ddcutil fontconfig jq sqlite upower
       wl-clipboard wlsunset wtype glib2 zenity power-profiles-daemon
