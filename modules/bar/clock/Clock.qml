@@ -622,6 +622,7 @@ Item {
 
                 Pomodoro {
                     id: pomodoroWidget
+                    bar: root.bar
                     anchors.centerIn: parent
                     width: 300
                     onRequestPopupOpen: clockPopup.open()

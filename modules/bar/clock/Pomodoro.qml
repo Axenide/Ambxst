@@ -15,6 +15,8 @@ Item {
     width: 300
 
     // --- State & Logic ---
+    required property var bar
+    readonly property bool ipcOwner: bar && Quickshell.screens.length > 0 && bar.screen === Quickshell.screens[0]
     property bool isRunning: false
     property bool isWorkSession: true
     property bool alarmActive: false
@@ -22,6 +24,7 @@ Item {
     // --- IPC & Notifications ---
     IpcHandler {
         target: "pomodoro"
+        enabled: root.ipcOwner
         function check() {
             root.requestPopupOpen();
         }

@@ -113,7 +113,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.themeReady) {
                 handleMissingConfig("theme", themeLoader, ThemeDefaults.data, () => {
                     root.themeReady = true;
@@ -508,7 +508,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.barReady) {
                 handleMissingConfig("bar", barLoader, BarDefaults.data, () => {
                     root.barReady = true;
@@ -567,7 +567,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.workspacesReady) {
                 handleMissingConfig("workspaces", workspacesLoader, WorkspacesDefaults.data, () => {
                     root.workspacesReady = true;
@@ -610,7 +610,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.overviewReady) {
                 handleMissingConfig("overview", overviewLoader, OverviewDefaults.data, () => {
                     root.overviewReady = true;
@@ -652,7 +652,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.notchReady) {
                 handleMissingConfig("notch", notchLoader, NotchDefaults.data, () => {
                     root.notchReady = true;
@@ -697,7 +697,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.compositorReady) {
                 handleMissingConfig("compositor", compositorLoader, CompositorDefaults.data, () => {
                     root.compositorReady = true;
@@ -777,7 +777,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.performanceReady) {
                 handleMissingConfig("performance", performanceLoader, PerformanceDefaults.data, () => {
                     root.performanceReady = true;
@@ -813,6 +813,7 @@ Singleton {
     // ============================================
     FileView {
         id: weatherLoader
+        printErrors: false
         path: root.configDir + "/weather.json"
         atomicWrites: true
         watchChanges: true
@@ -823,7 +824,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.weatherReady) {
                 handleMissingConfig("weather", weatherLoader, WeatherDefaults.data, () => {
                     root.weatherReady = true;
@@ -863,7 +864,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.desktopReady) {
                 handleMissingConfig("desktop", desktopLoader, DesktopDefaults.data, () => {
                     root.desktopReady = true;
@@ -906,7 +907,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.lockscreenReady) {
                 handleMissingConfig("lockscreen", lockscreenLoader, LockscreenDefaults.data, () => {
                     root.lockscreenReady = true;
@@ -935,6 +936,7 @@ Singleton {
     // ============================================
     FileView {
         id: prefixLoader
+        printErrors: false
         path: root.configDir + "/prefix.json"
         atomicWrites: true
         watchChanges: true
@@ -945,7 +947,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.prefixReady) {
                 handleMissingConfig("prefix", prefixLoader, PrefixDefaults.data, () => {
                     root.prefixReady = true;
@@ -988,7 +990,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.systemReady) {
                 handleMissingConfig("system", systemLoader, SystemDefaults.data, () => {
                     root.systemReady = true;
@@ -1077,7 +1079,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.dockReady) {
                 handleMissingConfig("dock", dockLoader, DockDefaults.data, () => {
                     root.dockReady = true;
@@ -1157,6 +1159,7 @@ Singleton {
     // ============================================
     FileView {
         id: aiLoader
+        printErrors: false
         path: root.configDir + "/ai.json"
         atomicWrites: true
         watchChanges: true
@@ -1167,7 +1170,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.aiReady) {
                 handleMissingConfig("ai", aiLoader, AiDefaults.data, () => {
                     root.aiReady = true;
@@ -1202,6 +1205,7 @@ Singleton {
     // ============================================
     FileView {
         id: generalLoader
+        printErrors: false
         path: root.configDir + "/general.json"
         atomicWrites: true
         watchChanges: true
@@ -1212,7 +1216,7 @@ Singleton {
                 });
             }
         }
-        onLoadFailed: {
+        onLoadFailed: function(error) {
             if (error.toString().includes("FileNotFound") && !root.generalReady) {
                 handleMissingConfig("general", generalLoader, GeneralDefaults.data, () => {
                     root.generalReady = true;

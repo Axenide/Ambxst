@@ -328,8 +328,17 @@ QtObject {
 
     function _onCaptureResult(result, error) {
         if (error || !result || !result.path) {
-            console.warn("Screenshot: capture failed: " + (error || "no result"));
-            root.errorOccurred("Failed to capture screenshot");
+            var detail = "" + (error || "no result");
+            console.warn("Screenshot: capture failed: " + detail);
+            Notifications.notifyInternal({
+                summary: "Screenshot failed",
+                body: detail,
+                appName: "Ambxst",
+                urgency: "critical",
+                expireTimeout: 7000,
+                replaceKey: "screenshot-error"
+            });
+            root.errorOccurred("Failed to capture screenshot: " + detail);
             return;
         }
         console.log("Screenshot: capture saved: " + result.path);
