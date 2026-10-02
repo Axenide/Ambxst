@@ -538,6 +538,17 @@ Item {
                                 Config.performance.rotateCoverArt = !checked;
                             }
                         }
+
+                        // Pause Wallpapers on Fullscreen toggle
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: I18n.t("performance.pause_wallpapers_fullscreen")
+                            description: I18n.t("system.performance.pause_wallpapers_fullscreen_desc")
+                            checked: Config.performance.pauseWallpapersOnFullscreen
+                            onToggled: checked => {
+                                Config.performance.pauseWallpapersOnFullscreen = checked;
+                            }
+                        }
                     }
 
                     // =====================

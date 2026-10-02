@@ -123,7 +123,7 @@ PanelWindow {
             close();
         } else if (screenshotPopup.currentMode === "region") {
             if (Screenshot.selectionW > 0) {
-                Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH);
+                Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name);
                 close();
             }
         } else if (screenshotPopup.currentMode === "window") {
@@ -310,7 +310,7 @@ PanelWindow {
                 selecting = false;
                 
                 if (Screenshot.selectionW > 5 && Screenshot.selectionH > 5) {
-                    Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH);
+                    Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name);
                     close();
                 }
             }

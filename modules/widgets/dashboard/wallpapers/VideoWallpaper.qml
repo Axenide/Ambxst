@@ -1,20 +1,36 @@
 import QtQuick
 import QtMultimedia
 import qs.modules.globals
+import qs.modules.services
 import qs.modules.theme
+import qs.config
 
 Item {
     id: videoWallpaper
 
     property string sourceFile
+    property string screenName: ""
     property bool tint: false
     signal requestVideoSync
 
     readonly property real positionMs: player.position
+    readonly property var screenMonitor: AxctlService.monitorFor(screenName)
+    readonly property bool screenHasFullscreen: {
+        if (!screenMonitor)
+            return false;
+        const clients = AxctlService.clients.values || [];
+        return clients.some(client => client.fullscreen === true && client.monitor === screenMonitor.id);
+    }
+    readonly property bool gameModeOnScreen: GameModeClient.toggled
+        && screenMonitor !== null
+        && AxctlService.focusedMonitor
+        && AxctlService.focusedMonitor.id === screenMonitor.id
+    readonly property bool shouldPausePlayback: Config.performance.pauseWallpapersOnFullscreen && (screenHasFullscreen || gameModeOnScreen)
 
     readonly property var optimizedPalette: ["background", "overBackground", "shadow", "surface", "surfaceBright", "surfaceDim", "surfaceContainer", "surfaceContainerHigh", "surfaceContainerHighest", "surfaceContainerLow", "surfaceContainerLowest", "primary", "secondary", "tertiary", "red", "lightRed", "green", "lightGreen", "blue", "lightBlue", "yellow", "lightYellow", "cyan", "lightCyan", "magenta", "lightMagenta"]
 
     onSourceFileChanged: restartPlayback()
+    onShouldPausePlaybackChanged: updatePlayback()
     Component.onCompleted: restartPlayback()
 
     function restartPlayback() {
@@ -22,8 +38,20 @@ Item {
             return;
         player.stop();
         player.source = "file://" + sourceFile;
-        player.play();
         syncDebounce.restart();
+        updatePlayback();
+    }
+
+    function updatePlayback() {
+        if (!sourceFile)
+            return;
+        if (shouldPausePlayback) {
+            if (player.playbackState === MediaPlayer.PlayingState)
+                player.pause();
+            return;
+        }
+        if (player.playbackState !== MediaPlayer.PlayingState)
+            player.play();
     }
 
     Timer {
@@ -97,6 +125,8 @@ Item {
     Connections {
         target: GlobalStates
         function onVideoSyncTickChanged() {
+            if (videoWallpaper.shouldPausePlayback)
+                return;
             player.seek(0);
             if (player.playbackState !== MediaPlayer.PlayingState)
                 player.play();

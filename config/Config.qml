@@ -801,6 +801,7 @@ Singleton {
             property bool windowPreview: true
             property bool wavyLine: true
             property bool rotateCoverArt: true
+            property bool pauseWallpapersOnFullscreen: true
             property bool dashboardPersistTabs: true
             property int dashboardMaxPersistentTabs: 2
         }

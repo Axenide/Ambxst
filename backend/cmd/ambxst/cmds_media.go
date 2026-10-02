@@ -116,10 +116,27 @@ func generateThumb(filePath, thumbPath string, size int) error {
 	}
 	ext := strings.ToLower(filepath.Ext(filePath))
 	if mediaVideoExts[ext] {
-		scale := fmt.Sprintf("%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", size, size, size, size)
-		_, err := exec.Command("ffmpeg", "-y", "-i", filePath,
-			"-ss", "00:00:01", "-vframes", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath).Output()
-		return err
+		scale := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=increase,crop=%d:%d", size, size, size, size)
+		// Seek before the input for speed; retry from the first frame when
+		// the clip is too short to seek or the format does not seek cleanly.
+		args := []string{"-y", "-ss", "00:00:01", "-i", filePath, "-frames:v", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath}
+		_, err := exec.Command("ffmpeg", args...).CombinedOutput()
+		if err == nil {
+			if info, statErr := os.Stat(thumbPath); statErr == nil && info.Size() > 0 {
+				return nil
+			}
+		}
+		_ = os.Remove(thumbPath)
+		args = []string{"-y", "-i", filePath, "-frames:v", "1", "-vf", scale, "-q:v", "2", "-f", "image2", thumbPath}
+		out, fallbackErr := exec.Command("ffmpeg", args...).CombinedOutput()
+		if fallbackErr != nil {
+			message := strings.TrimSpace(string(out))
+			if message == "" {
+				message = fallbackErr.Error()
+			}
+			return fmt.Errorf("ffmpeg thumbnail failed: %s", message)
+		}
+		return nil
 	}
 	return generateThumbImage(filePath, thumbPath, size)
 }
