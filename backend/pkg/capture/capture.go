@@ -115,6 +115,15 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 	}
 
 	scale := mon.EffectiveScale()
+	if frozenW, frozenH, found := FrozenDims(name); found && mon.Width > 0 && mon.Height > 0 {
+		// axctl versions differ on whether width/height are logical or
+		// physical. The retained frame is authoritative for the crop scale.
+		frameScaleX := float64(frozenW) / float64(mon.Width)
+		frameScaleY := float64(frozenH) / float64(mon.Height)
+		if frameScaleX > 0 && frameScaleY > 0 {
+			scale = (frameScaleX + frameScaleY) / 2
+		}
+	}
 	localX := int(float64(int(rect.X)-mon.X())*scale + 0.5)
 	localY := int(float64(int(rect.Y)-mon.Y())*scale + 0.5)
 	cw := int(float64(rect.Width)*scale + 0.5)
@@ -138,7 +147,7 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 	cropped, err := screenshot.CropBuffer(result, int32(localX), int32(localY), int32(cw), int32(ch))
 	if err != nil {
 		closer()
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("crop output %q at (%d,%d) %dx%d from %dx%d: %w", name, localX, localY, cw, ch, result.Buffer.Width, result.Buffer.Height, err)
 	}
 
 	combinedCloser := func() {

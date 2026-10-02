@@ -237,7 +237,7 @@ QtObject {
                pad(d.getSeconds());
     }
 
-    function processRegion(x, y, w, h) {
+    function processRegion(x, y, w, h, outputName = "") {
         if (root.captureMode === "ocr" || root.captureMode === "qr") {
             root._runRecognition(root.captureMode, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
             return;
@@ -245,6 +245,7 @@ QtObject {
         var isLens = root.captureMode === "lens";
         var params = {
             mode: "region",
+            output: outputName,
             x: Math.round(x),
             y: Math.round(y),
             width: Math.round(w),
