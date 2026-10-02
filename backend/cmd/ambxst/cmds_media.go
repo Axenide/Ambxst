@@ -280,7 +280,10 @@ func runThumbs(args []string, size int, recursive bool) int {
 	}
 	os.MkdirAll(thumbDir, 0o755)
 
-	type job struct{ file, thumb, preview string }
+	type job struct {
+		file, thumb, preview string
+		generateThumbnail    bool
+	}
 	jobs := []job{}
 	for _, f := range mediaFiles {
 		rel, _ := filepath.Rel(wallPath, f)
@@ -289,10 +292,15 @@ func runThumbs(args []string, size int, recursive bool) int {
 		if !recursive {
 			thumb = filepath.Join(thumbDir, strings.ReplaceAll(filepath.Base(f), filepath.Ext(f), "")+filepath.Ext(f)+".jpg")
 		}
-		if needsThumbnail(f, thumb) {
-			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview-crop.gif"})
-		} else if generateAnimatedPreviews && mediaVideoExts[strings.ToLower(filepath.Ext(f))] && needsThumbnail(f, thumb+".preview-crop.gif") {
-			jobs = append(jobs, job{file: f, thumb: thumb, preview: thumb + ".preview-crop.gif"})
+		needsThumb := needsThumbnail(f, thumb)
+		needsPreview := generateAnimatedPreviews && mediaVideoExts[strings.ToLower(filepath.Ext(f))] && needsThumbnail(f, thumb+".preview-crop.gif")
+		if needsThumb || needsPreview {
+			jobs = append(jobs, job{
+				file:              f,
+				thumb:             thumb,
+				preview:           thumb + ".preview-crop.gif",
+				generateThumbnail: needsThumb,
+			})
 		}
 	}
 	if len(jobs) == 0 {
@@ -311,10 +319,12 @@ func runThumbs(args []string, size int, recursive bool) int {
 		go func() {
 			defer wg.Done()
 			for j := range ch {
-				if err := generateThumb(j.file, j.thumb, size); err != nil {
-					failed.Store(true)
-					fmt.Fprintf(os.Stderr, "Failed: %s: %v\n", j.file, err)
-					continue
+				if j.generateThumbnail {
+					if err := generateThumb(j.file, j.thumb, size); err != nil {
+						failed.Store(true)
+						fmt.Fprintf(os.Stderr, "Failed: %s: %v\n", j.file, err)
+						continue
+					}
 				}
 				if generateAnimatedPreviews && mediaVideoExts[strings.ToLower(filepath.Ext(j.file))] {
 					if err := generateAnimatedPreview(j.file, j.preview); err != nil {

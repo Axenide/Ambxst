@@ -3451,17 +3451,17 @@ Singleton {
             return;
         }
 
-		try {
-			var current = JSON.parse(raw);
-			var migrated = false;
-			if (name === "system") {
-				var migratedConfig = migrateLegacyIdleCommands(current);
-				migrated = JSON.stringify(current) !== JSON.stringify(migratedConfig);
-				current = migratedConfig;
-			}
-			var validated = ConfigValidator.validate(current, defaults);
+        try {
+            var current = JSON.parse(raw);
+            var migrated = false;
+            if (name === "system") {
+                var migratedConfig = migrateLegacyIdleCommands(current);
+                migrated = JSON.stringify(current) !== JSON.stringify(migratedConfig);
+                current = migratedConfig;
+            }
+            var validated = ConfigValidator.validate(current, defaults);
 
-			if (migrated || JSON.stringify(current) !== JSON.stringify(validated)) {
+            if (migrated || JSON.stringify(current) !== JSON.stringify(validated)) {
                 console.log("Merging and updating " + name + ".json...");
                 loader.setText(JSON.stringify(validated, null, 2));
             }
@@ -3472,47 +3472,47 @@ Singleton {
             loader.setText(JSON.stringify(defaults, null, 2));
             onComplete();
         }
-	}
+    }
 
-	// Existing installs retain persisted listener commands when defaults change.
-	// Migrate only the exact legacy brightness commands and leave all other
-	// user-authored listeners untouched.
-	function migrateLegacyIdleCommands(config) {
-		if (!config || !config.idle || !Array.isArray(config.idle.listeners))
-			return config;
+    // Existing installs retain persisted listener commands when defaults change.
+    // Migrate only the exact legacy brightness commands and leave all other
+    // user-authored listeners untouched.
+    function migrateLegacyIdleCommands(config) {
+        if (!config || !config.idle || !Array.isArray(config.idle.listeners))
+            return config;
 
-		var migrated = false;
-		var listeners = config.idle.listeners.map(function(listener) {
-			if (!listener || typeof listener !== "object")
-				return listener;
-			var updated = Object.assign({}, listener);
-			if (updated.onTimeout === "axctl brightness save && axctl brightness set 0.1") {
-				updated.onTimeout = "ambxst brightness 10 -s";
-				migrated = true;
-			}
-			if (updated.onResume === "axctl brightness restore") {
-				updated.onResume = "ambxst brightness -r";
-				migrated = true;
-			}
-			return updated;
-		});
-		if (!migrated)
-			return config;
+        var migrated = false;
+        var listeners = config.idle.listeners.map(function(listener) {
+            if (!listener || typeof listener !== "object")
+                return listener;
+            var updated = Object.assign({}, listener);
+            if (updated.onTimeout === "axctl brightness save && axctl brightness set 0.1") {
+                updated.onTimeout = "ambxst brightness 10 -s";
+                migrated = true;
+            }
+            if (updated.onResume === "axctl brightness restore") {
+                updated.onResume = "ambxst brightness -r";
+                migrated = true;
+            }
+            return updated;
+        });
+        if (!migrated)
+            return config;
 
-		var result = Object.assign({}, config);
-		result.idle = Object.assign({}, config.idle, { listeners: listeners });
-		console.log("Migrated legacy idle brightness commands in system.json");
-		return result;
-	}
+        var result = Object.assign({}, config);
+        result.idle = Object.assign({}, config.idle, { listeners: listeners });
+        console.log("Migrated legacy idle brightness commands in system.json");
+        return result;
+    }
 
-		// Handle missing config files by writing the validated in-code defaults.
-		// Some modules intentionally have no preset JSON, and an asynchronous
-		// copy followed by reload races the FileView and leaves them missing.
-	    function handleMissingConfig(name, loader, defaults, onComplete) {
-	        console.log(name + ".json not found, creating defaults");
-	        loader.setText(JSON.stringify(defaults, null, 2));
-	        onComplete();
-	    }
+        // Handle missing config files by writing the validated in-code defaults.
+        // Some modules intentionally have no preset JSON, and an asynchronous
+        // copy followed by reload races the FileView and leaves them missing.
+        function handleMissingConfig(name, loader, defaults, onComplete) {
+            console.log(name + ".json not found, creating defaults");
+            loader.setText(JSON.stringify(defaults, null, 2));
+            onComplete();
+        }
 
 
     // Exposed properties
