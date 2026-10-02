@@ -23,7 +23,24 @@ Singleton {
         return filtered;
     }
 
-    property var activePlayer: trackedPlayer ? trackedPlayer : (filteredPlayers.length > 0 ? filteredPlayers[0] : null)
+    function isUsablePlayer(player) {
+        if (!player || player.playbackState === MprisPlaybackState.Stopped)
+            return false;
+        if (player.isPlaying)
+            return true;
+        const title = (player.trackTitle || "").trim().toLowerCase();
+        return title !== "" && title !== "unknown";
+    }
+
+    property var activePlayer: {
+        if (isUsablePlayer(trackedPlayer))
+            return trackedPlayer;
+        for (let i = 0; i < filteredPlayers.length; i++) {
+            if (isUsablePlayer(filteredPlayers[i]))
+                return filteredPlayers[i];
+        }
+        return null;
+    }
     
     property bool isInitializing: true
     property string cachedDbusName: ""
@@ -43,7 +60,7 @@ Singleton {
         if (root.isInitializing && root.cachedDbusName && root.filteredPlayers.length > 0) {
             for (let i = 0; i < root.filteredPlayers.length; i++) {
                 const player = root.filteredPlayers[i];
-                if (player.dbusName === root.cachedDbusName) {
+                if (player.dbusName === root.cachedDbusName && root.isUsablePlayer(player)) {
                     root.trackedPlayer = player;
                     root.isInitializing = false;
                     return;
@@ -82,7 +99,7 @@ Singleton {
 
         for (let i = 0; i < root.filteredPlayers.length; i++) {
             const player = root.filteredPlayers[i];
-            if (player.dbusName === root.cachedDbusName) {
+            if (player.dbusName === root.cachedDbusName && root.isUsablePlayer(player)) {
                 root.trackedPlayer = player;
                 root.isInitializing = false;
                 return;
@@ -163,7 +180,7 @@ Singleton {
                 const dbusName = (modelData.dbusName || "").toLowerCase();
                 const shouldIgnore = !Config.bar.enableFirefoxPlayer && dbusName.includes("firefox");
 
-                if (!shouldIgnore && (root.trackedPlayer == null || modelData.isPlaying)) {
+                if (!shouldIgnore && root.isUsablePlayer(modelData) && (root.trackedPlayer == null || modelData.isPlaying)) {
                     root.trackedPlayer = modelData;
                 }
             }
@@ -172,7 +189,7 @@ Singleton {
                 if (root.trackedPlayer === modelData) {
                     for (let i = 0; i < root.filteredPlayers.length; i++) {
                         const player = root.filteredPlayers[i];
-                        if (player.playbackState.isPlaying) {
+                        if (root.isUsablePlayer(player) && player.isPlaying) {
                             root.trackedPlayer = player;
                             break;
                         }
@@ -185,8 +202,10 @@ Singleton {
             }
 
             function onPlaybackStateChanged() {
-                // Comentado para evitar cambio automático de player
-                // if (root.trackedPlayer !== modelData) root.trackedPlayer = modelData
+                if (root.trackedPlayer === modelData && !root.isUsablePlayer(modelData)) {
+                    root.trackedPlayer = null;
+                    StateService.set("lastPlayerDbusName", "");
+                }
             }
         }
     }
