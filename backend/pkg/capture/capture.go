@@ -121,10 +121,13 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 	ch := int(float64(rect.Height)*scale + 0.5)
 
 	if cropped, closer, found, ferr := FrozenCrop(name, int32(localX), int32(localY), int32(cw), int32(ch)); found {
-		if ferr != nil {
-			return nil, nil, ferr
+		if ferr == nil {
+			return cropped, closer, nil
 		}
-		return cropped, closer, nil
+		// A compositor can report a frozen frame whose physical dimensions
+		// differ from the current output after a scale/layout change. Do not
+		// make the screenshot fail just because that retained buffer cannot be
+		// cropped; retry against a fresh frame below.
 	}
 
 	result, closer, err := Frame(name, cursor)

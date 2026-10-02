@@ -327,9 +327,11 @@ QtObject {
 
     function _onCaptureResult(result, error) {
         if (error || !result || !result.path) {
+            console.warn("Screenshot: capture failed: " + (error || "no result"));
             root.errorOccurred("Failed to capture screenshot");
             return;
         }
+        console.log("Screenshot: capture saved: " + result.path);
         root.finalPath = result.path;
         if (root.captureMode === "lens") {
             root.runLensScript();
