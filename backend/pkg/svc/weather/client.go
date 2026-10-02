@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -82,7 +83,10 @@ func (c *Client) resolveCoords(location string) (float64, float64, error) {
 		// without GeoClue or without a location permission.
 		coords, err := c.deviceLocation()
 		if err != nil {
+			log.Printf("weather: GeoClue unavailable (%v); falling back to GeoIP", err)
 			coords, err = c.geoip()
+		} else {
+			log.Printf("weather: using GeoClue device location")
 		}
 		return parseCoords(coords, err)
 	}

@@ -296,6 +296,7 @@ Item {
                                     onEditingFinished: {
                                         if (text !== Config.weather.location) {
                                             Config.weather.location = text.trim();
+                                            Config.saveWeather();
                                         }
                                     }
 
@@ -367,7 +368,12 @@ Item {
                                             cursorShape: Qt.PointingHandCursor
                                             onEntered: unitButton.isHovered = true
                                             onExited: unitButton.isHovered = false
-                                            onClicked: Config.weather.unit = unitButton.modelData.id
+                                            onClicked: {
+                                                if (Config.weather.unit === unitButton.modelData.id)
+                                                    return;
+                                                Config.weather.unit = unitButton.modelData.id;
+                                                Config.saveWeather();
+                                            }
                                         }
                                     }
                                 }
