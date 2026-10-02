@@ -259,6 +259,25 @@ PanelWindow {
         scanSubfoldersProcess.running = true;
     }
 
+    function scheduleThumbnailGeneration() {
+        if (GlobalStates.wallpaperManager !== wallpaper || !Config.performance.animatedWallpaperPreviews)
+            return;
+
+        if (delayedThumbnailGen.running)
+            delayedThumbnailGen.restart();
+        else
+            delayedThumbnailGen.start();
+    }
+
+    Connections {
+        target: Config.performance
+
+        function onAnimatedWallpaperPreviewsChanged() {
+            if (Config.performance.animatedWallpaperPreviews)
+                wallpaper.scheduleThumbnailGeneration();
+        }
+    }
+
     // Update directory watcher when wallpaperDir changes
     onWallpaperDirChanged: {
         // Skip initial spurious changes before config is loaded
@@ -286,10 +305,7 @@ PanelWindow {
         scanSubfolders();
 
         // Regenerate thumbnails for the new directory (delayed)
-        if (delayedThumbnailGen.running)
-            delayedThumbnailGen.restart();
-        else
-            delayedThumbnailGen.start();
+        scheduleThumbnailGeneration();
     }
 
     onCurrentWallpaperChanged:
