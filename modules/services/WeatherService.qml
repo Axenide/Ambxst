@@ -500,7 +500,6 @@ Singleton {
         root.isLoading = true;
         root.hasFailed = false;
 
-        // An empty location uses the system's current location service.
         var locationStr = Config.weather.location || "";
         var location = locationStr.trim();
 

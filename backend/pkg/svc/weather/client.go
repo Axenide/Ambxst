@@ -4,13 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
-
-	"github.com/godbus/dbus/v5"
 )
 
 const (
@@ -21,9 +18,9 @@ const (
 
 // WeatherResponse mirrors the open-meteo payload consumed by WeatherService.qml.
 type WeatherResponse struct {
-	Error          string          `json:"error,omitempty"`
+	Error          string        `json:"error,omitempty"`
 	CurrentWeather *CurrentWeather `json:"current_weather"`
-	Daily          *Daily          `json:"daily"`
+	Daily          *Daily        `json:"daily"`
 }
 
 type CurrentWeather struct {
@@ -34,12 +31,12 @@ type CurrentWeather struct {
 }
 
 type Daily struct {
-	Time             []string  `json:"time"`
-	Weathercode      []int     `json:"weathercode"`
-	Temperature2mMax []float64 `json:"temperature_2m_max"`
-	Temperature2mMin []float64 `json:"temperature_2m_min"`
-	Sunrise          []string  `json:"sunrise"`
-	Sunset           []string  `json:"sunset"`
+	Time               []string `json:"time"`
+	Weathercode        []int    `json:"weathercode"`
+	Temperature2mMax   []float64 `json:"temperature_2m_max"`
+	Temperature2mMin   []float64 `json:"temperature_2m_min"`
+	Sunrise            []string `json:"sunrise"`
+	Sunset             []string `json:"sunset"`
 }
 
 // Client performs weather fetches for a given location.
@@ -51,8 +48,7 @@ func NewClient() *Client {
 	return &Client{http: &http.Client{Timeout: 20 * time.Second}}
 }
 
-// Fetch retrieves weather for a location (city name, "lat,lon", or empty for
-// the system location service with GeoIP fallback).
+// Fetch retrieves weather for a location (city name, "lat,lon", or empty for GeoIP).
 func (c *Client) Fetch(location string) (*WeatherResponse, error) {
 	lat, lon, err := c.resolveCoords(location)
 	if err != nil {
@@ -77,17 +73,7 @@ func (c *Client) Fetch(location string) (*WeatherResponse, error) {
 func (c *Client) resolveCoords(location string) (float64, float64, error) {
 	loc := strings.TrimSpace(location)
 	if loc == "" {
-		// Prefer the desktop's location provider. GeoClue can use an actual
-		// GNSS device when available and otherwise uses the system's permitted
-		// network/Wi-Fi location sources. Keep GeoIP as a fallback for systems
-		// without GeoClue or without a location permission.
-		coords, err := c.deviceLocation()
-		if err != nil {
-			log.Printf("weather: GeoClue unavailable (%v); falling back to GeoIP", err)
-			coords, err = c.geoip()
-		} else {
-			log.Printf("weather: using GeoClue device location")
-		}
+		coords, err := c.geoip()
 		return parseCoords(coords, err)
 	}
 	if isCoords(loc) {
@@ -97,61 +83,10 @@ func (c *Client) resolveCoords(location string) (float64, float64, error) {
 	return parseCoords(coords, err)
 }
 
-// deviceLocation reads the current position from GeoClue2 over the system
-// D-Bus. GeoClue is intentionally queried only for automatic weather mode;
-// manually entered locations never access device location services.
-func (c *Client) deviceLocation() (string, error) {
-	conn, err := dbus.SystemBus()
-	if err != nil {
-		return "", fmt.Errorf("geoclue bus: %w", err)
-	}
-	defer conn.Close()
-
-	manager := conn.Object("org.freedesktop.GeoClue2", "/org/freedesktop/GeoClue2/Manager")
-	var clientPath dbus.ObjectPath
-	if err := manager.Call("org.freedesktop.GeoClue2.Manager.GetClient", 0).Store(&clientPath); err != nil {
-		return "", fmt.Errorf("geoclue client: %w", err)
-	}
-
-	client := conn.Object("org.freedesktop.GeoClue2", clientPath)
-	if err := client.Call("org.freedesktop.GeoClue2.Client.SetDesktopId", 0, "ambxst").Err; err != nil {
-		return "", fmt.Errorf("geoclue desktop id: %w", err)
-	}
-	defer client.Call("org.freedesktop.GeoClue2.Client.Stop", 0)
-	if err := client.Call("org.freedesktop.GeoClue2.Client.Start", 0).Err; err != nil {
-		return "", fmt.Errorf("geoclue start: %w", err)
-	}
-
-	locationVariant, err := client.GetProperty("org.freedesktop.GeoClue2.Client.Location")
-	if err != nil {
-		return "", fmt.Errorf("geoclue location: %w", err)
-	}
-	locationPath, ok := locationVariant.Value().(dbus.ObjectPath)
-	if !ok || locationPath == "/" {
-		return "", fmt.Errorf("geoclue has no current location")
-	}
-
-	location := conn.Object("org.freedesktop.GeoClue2", locationPath)
-	latitude, err := location.GetProperty("org.freedesktop.GeoClue2.Location.Latitude")
-	if err != nil {
-		return "", fmt.Errorf("geoclue latitude: %w", err)
-	}
-	longitude, err := location.GetProperty("org.freedesktop.GeoClue2.Location.Longitude")
-	if err != nil {
-		return "", fmt.Errorf("geoclue longitude: %w", err)
-	}
-	lat, latOK := latitude.Value().(float64)
-	lon, lonOK := longitude.Value().(float64)
-	if !latOK || !lonOK {
-		return "", fmt.Errorf("geoclue returned invalid coordinates")
-	}
-	return fmt.Sprintf("%v,%v", lat, lon), nil
-}
-
 func (c *Client) geoip() (string, error) {
 	var data struct {
-		Status    string  `json:"status"`
-		Message   string  `json:"message"`
+		Status  string  `json:"status"`
+		Message string  `json:"message"`
 		Latitude  float64 `json:"lat"`
 		Longitude float64 `json:"lon"`
 	}
