@@ -305,7 +305,7 @@ Item {
             property real transitionBlur: 0.0
 
             // Aplicar MultiEffect con blur animable
-            layer.enabled: transitionBlur > 0.0
+            layer.enabled: Config.performance.blurTransition && transitionBlur > 0.001
             layer.effect: MultiEffect {
                 blurEnabled: Config.performance.blurTransition
                 blurMax: 64
@@ -341,8 +341,13 @@ Item {
                 // Activar blur al inicio de transición y animarlo a nítido
                 onBusyChanged: {
                     if (busy) {
-                        stackContainer.transitionBlur = 1.0;
-                        blurTransitionAnimation.start();
+                        blurTransitionAnimation.stop();
+                        stackContainer.transitionBlur = Config.performance.blurTransition ? 1.0 : 0.0;
+                        if (Config.performance.blurTransition)
+                            blurTransitionAnimation.start();
+                    } else {
+                        blurTransitionAnimation.stop();
+                        stackContainer.transitionBlur = 0.0;
                     }
                 }
 
