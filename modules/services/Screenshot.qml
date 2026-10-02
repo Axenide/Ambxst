@@ -34,6 +34,8 @@ QtObject {
     property bool _initialized: false
     property bool _freezing: false
     property int _pendingFrames: 0
+    property var _frameQueue: []
+    property bool _releasePending: false
 
     function initialize() {
         if (_initialized) return;
@@ -160,10 +162,12 @@ QtObject {
         }
         root.monitors = mappedMonitors;
 
-        root._pendingFrames = qsScreens.length;
-        for (var j = 0; j < qsScreens.length; j++) {
-            root._requestFrame(qsScreens[j].name);
-        }
+        root._frameQueue = [];
+        for (var j = 0; j < qsScreens.length; j++)
+            root._frameQueue.push(qsScreens[j].name);
+
+        root._pendingFrames = root._frameQueue.length;
+        root._requestNextFrame();
 
         root.fetchWindows();
     }
@@ -174,6 +178,27 @@ QtObject {
         });
     }
 
+    // Capture one output at a time. Multiple concurrent screencopy requests
+    // can contend inside the compositor, which is especially unreliable on
+    // mixed-scale multi-monitor layouts.
+    function _requestNextFrame() {
+        if (root._frameQueue.length === 0) {
+            root._freezing = false;
+            if (root._releasePending) {
+                root._releasePending = false;
+                BackendService.call("screenshot.release", {}, (result, error) => {
+                    if (error)
+                        console.warn("Screenshot: failed to release frozen frames: " + error);
+                });
+            }
+            return;
+        }
+
+        var outputName = root._frameQueue[0];
+        root._frameQueue = root._frameQueue.slice(1);
+        root._requestFrame(outputName);
+    }
+
     function _onFrameResult(outputName, result, error) {
         if (error || !result || !result.path) {
             console.warn("Screenshot: frame failed for " + outputName + ": " + (error || "no path"));
@@ -181,14 +206,16 @@ QtObject {
             root.monitorScreenshotReady(outputName, result.path);
         }
         root._pendingFrames--;
-        if (root._pendingFrames <= 0) {
-            root._freezing = false;
-        }
+        root._requestNextFrame();
     }
 
     // Drops the backend freeze session (retained frozen buffers). Called
     // when the tool closes so the daemon stops holding the memory.
     function releaseFrozenFrames() {
+        if (root._freezing) {
+            root._releasePending = true;
+            return;
+        }
         BackendService.call("screenshot.release", {}, (result, error) => {
             if (error)
                 console.warn("Screenshot: failed to release frozen frames: " + error);
