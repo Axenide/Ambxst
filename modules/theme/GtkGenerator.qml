@@ -50,12 +50,31 @@ QtObject {
         css += `@define-color card_bg_color ${surfaceContainer};\n`
         css += `@define-color card_fg_color ${onSurface};\n`
         
-        // Sidebar typically matches window or has slight contrast. 
+        // Sidebar typically matches window or has slight contrast.
         // Using window variables as reference.
         css += `@define-color sidebar_bg_color @window_bg_color;\n`
         css += `@define-color sidebar_fg_color @window_fg_color;\n`
         css += `@define-color sidebar_border_color @window_bg_color;\n`
         css += `@define-color sidebar_backdrop_color @window_bg_color;\n`
+
+        // GTK3 selection colours — without these, GTK3 apps (Thunar, etc) fall back to
+        // the theme's defaults which often leave selected rows with white text on the
+        // light accent colour (very low contrast). Map them to accent_bg/_fg so selected
+        // rows get the same dark-on-bright contrast that libadwaita uses for GTK4.
+        css += `@define-color theme_selected_bg_color @accent_bg_color;\n`
+        css += `@define-color theme_selected_fg_color @accent_fg_color;\n`
+        css += `@define-color theme_bg_color @window_bg_color;\n`
+        css += `@define-color theme_fg_color @window_fg_color;\n`
+        css += `@define-color theme_base_color @view_bg_color;\n`
+        css += `@define-color theme_text_color @view_fg_color;\n`
+
+        // Explicit selection styling override for views (file lists, tree views, etc)
+        // to force readable contrast regardless of theme defaults.
+        css += `\n`
+        css += `*:selected, *:selected:focus, row:selected, row:selected:focus {\n`
+        css += `    background-color: @accent_bg_color;\n`
+        css += `    color: @accent_fg_color;\n`
+        css += `}\n`
 
         const home = Quickshell.env("HOME")
         const gtk3Dir = home + "/.config/gtk-3.0"
