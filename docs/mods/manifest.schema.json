@@ -1,11 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/Axenide/Ambxst/dev/docs/mods/manifest.schema.json",
+  "$id": "https://raw.githubusercontent.com/Axenide/Ambxst/main/docs/mods/manifest.schema.json",
   "title": "Ambxst mod manifest",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifestVersion", "id", "name", "version", "operations"],
   "properties": {
+    "deprecated": { "type": "boolean", "default": false },
+    "deprecated_reason": { "type": "string" },
+    "depricated": { "type": "boolean", "description": "Alias for deprecated." },
+    "depricated_reason": { "type": "string", "description": "Alias for deprecated_reason." },
+    "changelog": {
+      "type": "string",
+      "description": "Package-relative path to a UTF-8 changelog, up to 64 KiB. Displayed as plain text in the update preview."
+    },
     "$schema": { "type": "string" },
     "manifestVersion": { "const": 1 },
     "id": {
@@ -20,6 +28,35 @@
     "description": { "type": "string" },
     "license": { "type": "string" },
     "author": { "type": "string" },
+    "localization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode"],
+      "properties": {
+        "mode": { "enum": ["translated", "single", "none"] },
+        "defaultLanguage": { "type": "string", "pattern": "^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$" },
+        "languages": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[a-zA-Z]{2,8}(-[a-zA-Z0-9]{1,8})*$" }
+        },
+        "resources": {
+          "type": "object",
+          "description": "Optional language-to-JSON-file mapping, relative to the package root. Files contain string keys and string values.",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "mode": { "enum": ["translated", "single"] } } },
+          "then": { "required": ["defaultLanguage"] }
+        },
+        {
+          "if": { "properties": { "mode": { "const": "translated" } } },
+          "then": { "required": ["languages"] }
+        }
+      ]
+    },
     "compatibility": {
       "type": "object",
       "additionalProperties": false,
@@ -66,6 +103,23 @@
       "required": ["schema"],
       "properties": {
         "schema": { "$ref": "#/$defs/relativePath" }
+      }
+    },
+    "settingsMenu": {
+      "type": "object",
+      "description": "Optional hint for a Settings sidebar section. The manager also detects entries in legacy patches and assigns a different section ID when enabled mods collide.",
+      "additionalProperties": false,
+      "required": ["section", "index"],
+      "properties": {
+        "section": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Section ID used by added lines in the package patch. Core sections use 0 through 10."
+        },
+        "index": {
+          "type": "integer",
+          "description": "Default zero-based sidebar position. Negative values count from the end; -2 means penultimate."
+        }
       }
     },
     "operations": {

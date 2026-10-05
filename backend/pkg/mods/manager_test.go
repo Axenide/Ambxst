@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"ambxst/backend/pkg/paths"
@@ -507,6 +508,31 @@ func TestManagerMovesModToExactPosition(t *testing.T) {
 	}
 }
 
+func TestSettingsSectionsResolveCollisionsInLoadOrder(t *testing.T) {
+	ordered := []string{"example.first", "example.second", "example.none"}
+	manifests := map[string]Manifest{
+		"example.first":  {SettingsMenu: &SettingsMenuRef{Section: 11, Index: -2}},
+		"example.second": {SettingsMenu: &SettingsMenuRef{Section: 11, Index: 3}},
+		"example.none":   {},
+	}
+	resolved := resolvedSettingsSections(ordered, manifests)
+	if resolved["example.first"][11] != 11 || resolved["example.second"][11] != 12 {
+		t.Fatalf("settings section collision was not resolved: %#v", resolved)
+	}
+	if _, exists := resolved["example.none"]; exists {
+		t.Fatalf("mod without a settings menu received a section: %#v", resolved)
+	}
+}
+
+func TestReplaceSettingsSectionReferences(t *testing.T) {
+	line := "+        { section:11, visible: currentSection===11 }"
+	got := replaceSectionReference(line, "11", "12")
+	want := "+        { section:12, visible: currentSection===12 }"
+	if got != want {
+		t.Fatalf("unexpected remap:\nwant %q\n got %q", want, got)
+	}
+}
+
 func TestConsecutiveBuildsKeepLastKnownGoodGeneration(t *testing.T) {
 	root := t.TempDir()
 	base := filepath.Join(root, "base")
@@ -677,7 +703,32 @@ func TestInstallZipArchiveAndPersistSettings(t *testing.T) {
 	}
 
 	manager := NewManager(testPaths(root))
-	status, err := manager.Install(archivePath)
+	preview, err := manager.PreviewArchive(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.ID != "example.archive" || preview.Name != "Archive fixture" || preview.SHA256 == "" || preview.Size <= 0 {
+		t.Fatalf("unexpected archive preview: %#v", preview)
+	}
+	originalSize := preview.Size
+	mutated, err := os.OpenFile(archivePath, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mutated.Write([]byte("changed")); err != nil {
+		mutated.Close()
+		t.Fatal(err)
+	}
+	if err := mutated.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.InstallArchive(archivePath, preview.SHA256); err == nil {
+		t.Fatal("archive changed after preview was installed")
+	}
+	if err := os.Truncate(archivePath, originalSize); err != nil {
+		t.Fatal(err)
+	}
+	status, err := manager.InstallArchive(archivePath, preview.SHA256)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -694,6 +745,33 @@ func TestInstallZipArchiveAndPersistSettings(t *testing.T) {
 	settings, err = manager.SetSetting("example.archive", "limit", float64(5))
 	if err != nil || settings.Values["limit"] != float64(5) {
 		t.Fatalf("setting was not persisted: %#v err=%v", settings, err)
+	}
+}
+
+func TestPackageZipRejectsDuplicatePaths(t *testing.T) {
+	archivePath := filepath.Join(t.TempDir(), "duplicate.zip")
+	archiveFile, err := os.Create(archivePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writer := zip.NewWriter(archiveFile)
+	for _, contents := range []string{"first", "second"} {
+		entry, err := writer.Create("package/file.qml")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := entry.Write([]byte(contents)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := archiveFile.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := extractZipPackage(archivePath, filepath.Join(t.TempDir(), "out")); err == nil {
+		t.Fatal("archive with duplicate paths was accepted")
 	}
 }
 
@@ -1033,6 +1111,62 @@ func TestManagerKeepsBothInsertionsAtTheSameAnchor(t *testing.T) {
 	}
 }
 
+func TestManagerRemapsConflictingSettingsSections(t *testing.T) {
+	root := t.TempDir()
+	base := filepath.Join(root, "base")
+	original := "items: [\n    { section: 10 }\n]\npanels: [\n    { section: 10 }\n]\n"
+	writeTestFile(t, filepath.Join(base, "shell.qml"), "ShellRoot {}\n")
+	writeTestFile(t, filepath.Join(base, settingsTabPath), original)
+	writeTestFile(t, filepath.Join(base, "version"), "1.2.5\n")
+	t.Setenv("AMBXST_SHELL", base)
+	t.Setenv("AMBXST_MODS_DISABLED", "1")
+
+	packages := []struct {
+		directory string
+		id        string
+		label     string
+	}{
+		{directory: "first", id: "example.first", label: "first"},
+		{directory: "second", id: "example.second", label: "second"},
+	}
+	manager := NewManager(testPaths(root))
+	for _, item := range packages {
+		packageRoot := filepath.Join(root, item.directory)
+		after := "items: [\n    { section: 10 }\n    { label: \"" + item.label + "\", section: 11 }\n]\npanels: [\n    { section: 10 }\n    { component: \"" + item.label + ".qml\", section: 11 }\n]\n"
+		writeFileDiffPackage(t, packageRoot, item.id, settingsTabPath, original, after)
+		if _, err := manager.Install(packageRoot); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := manager.SetEnabled(item.id, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	status, err := manager.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(manager.paths.ModGenerationsDir(), status.ActiveGeneration, settingsTabPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := string(data)
+	if !strings.Contains(content, `label: "first", section: 11`) ||
+		!strings.Contains(content, `label: "second", section: 12`) {
+		t.Fatalf("settings sections were not remapped:\n%s", content)
+	}
+	if status.Mods[0].SettingsSection != 11 || status.Mods[1].SettingsSection != 12 {
+		t.Fatalf("resolved sections were not reported: %#v", status.Mods)
+	}
+	status, err = manager.SetMenuIndex("example.first", 4)
+	if err != nil {
+		t.Fatalf("detected legacy menu index could not be changed: %v", err)
+	}
+	if status.Mods[0].SettingsMenuIndex != 4 {
+		t.Fatalf("legacy menu index was not saved: %#v", status.Mods[0])
+	}
+}
+
 func TestManagerBypassesVersionCheckGlobally(t *testing.T) {
 	root := t.TempDir()
 	base := filepath.Join(root, "base")
@@ -1116,6 +1250,11 @@ func TestManagerBypassesVersionCheckGlobally(t *testing.T) {
 
 func writeDiffPackage(t *testing.T, root, id, before, after string) {
 	t.Helper()
+	writeFileDiffPackage(t, root, id, "shell.qml", before, after)
+}
+
+func writeFileDiffPackage(t *testing.T, root, id, target, before, after string) {
+	t.Helper()
 	repo := t.TempDir()
 	run := func(args ...string) {
 		cmd := exec.Command("git", args...)
@@ -1127,10 +1266,10 @@ func writeDiffPackage(t *testing.T, root, id, before, after string) {
 	run("init", "-q")
 	run("config", "user.email", "test@example.com")
 	run("config", "user.name", "Test")
-	writeTestFile(t, filepath.Join(repo, "shell.qml"), before)
-	run("add", "shell.qml")
+	writeTestFile(t, filepath.Join(repo, target), before)
+	run("add", target)
 	run("commit", "-q", "-m", "base")
-	writeTestFile(t, filepath.Join(repo, "shell.qml"), after)
+	writeTestFile(t, filepath.Join(repo, target), after)
 	diff := exec.Command("git", "diff")
 	diff.Dir = repo
 	patch, err := diff.Output()

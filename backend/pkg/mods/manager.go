@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -39,6 +40,12 @@ type Manager struct {
 	// for status after each action and while a banner is up. Keyed by the
 	// package's patch stats, so an updated package rescans on its own.
 	affectedCache map[string]affectedFiles
+	updateMu      sync.Mutex
+	updatePlan    *preparedUpdate
+	updates       UpdateState
+	updatesLoaded bool
+	eventsMu      sync.Mutex
+	listeners     map[chan struct{}]bool
 }
 
 type affectedFiles struct {
@@ -47,12 +54,15 @@ type affectedFiles struct {
 }
 
 type State struct {
-	Version            int            `json:"version"`
-	BypassVersionCheck bool           `json:"bypassVersionCheck,omitempty"`
-	Disabled           bool           `json:"disabled,omitempty"`
-	Mods               []InstalledMod `json:"mods"`
-	ActiveGeneration   string         `json:"activeGeneration,omitempty"`
-	PreviousGeneration string         `json:"previousGeneration,omitempty"`
+	Version             int            `json:"version"`
+	BypassVersionCheck  bool           `json:"bypassVersionCheck,omitempty"`
+	Disabled            bool           `json:"disabled,omitempty"`
+	AutoUpdate          bool           `json:"autoUpdate,omitempty"`
+	PeriodicChecks      *bool          `json:"periodicChecks,omitempty"`
+	UpdateIntervalHours int            `json:"updateIntervalHours,omitempty"`
+	Mods                []InstalledMod `json:"mods"`
+	ActiveGeneration    string         `json:"activeGeneration,omitempty"`
+	PreviousGeneration  string         `json:"previousGeneration,omitempty"`
 }
 
 type InstalledMod struct {
@@ -63,36 +73,60 @@ type InstalledMod struct {
 	SourceType  string `json:"sourceType"`
 	Revision    string `json:"revision,omitempty"`
 	InstalledAt string `json:"installedAt"`
+	AutoUpdate  string `json:"autoUpdate,omitempty"`
+	MenuIndex   *int   `json:"menuIndex,omitempty"`
+	// TabPosition and BarPosition override the load-order place of a mod's
+	// Dashboard tabs and bar widgets. Nil keeps load order.
+	TabPosition *int `json:"tabPosition,omitempty"`
+	BarPosition *int `json:"barPosition,omitempty"`
 }
 
 type ModInfo struct {
-	ID                 string           `json:"id"`
-	Name               string           `json:"name"`
-	Version            string           `json:"version"`
-	Description        string           `json:"description"`
-	License            string           `json:"license,omitempty"`
-	Author             string           `json:"author,omitempty"`
-	AuthorURL          string           `json:"authorUrl,omitempty"`
-	Homepage           string           `json:"homepage,omitempty"`
-	Enabled            bool             `json:"enabled"`
-	Order              int              `json:"order"`
-	Source             string           `json:"source"`
-	SourceType         string           `json:"sourceType"`
-	Revision           string           `json:"revision,omitempty"`
-	Dependencies       []string         `json:"dependencies,omitempty"`
-	DependencyState    []DependencyInfo `json:"dependencyState,omitempty"`
-	Conflicts          []string         `json:"conflicts,omitempty"`
-	Commands           []string         `json:"commands,omitempty"`
-	Permissions        []string         `json:"permissions,omitempty"`
-	AffectedFiles      []string         `json:"affectedFiles"`
-	HasSettings        bool             `json:"hasSettings"`
-	Valid              bool             `json:"valid"`
-	Error              string           `json:"error,omitempty"`
-	Compatible         bool             `json:"compatible"`
-	CompatibilityError string           `json:"compatibilityError,omitempty"`
-	Untested           bool             `json:"untested,omitempty"`
-	UntestedMessage    string           `json:"untestedMessage,omitempty"`
-	UnknownFields      []string         `json:"unknownFields,omitempty"`
+	ID                   string           `json:"id"`
+	Name                 string           `json:"name"`
+	Version              string           `json:"version"`
+	Description          string           `json:"description"`
+	License              string           `json:"license,omitempty"`
+	Author               string           `json:"author,omitempty"`
+	AuthorURL            string           `json:"authorUrl,omitempty"`
+	Homepage             string           `json:"homepage,omitempty"`
+	Enabled              bool             `json:"enabled"`
+	Order                int              `json:"order"`
+	Source               string           `json:"source"`
+	SourceType           string           `json:"sourceType"`
+	Revision             string           `json:"revision,omitempty"`
+	Dependencies         []string         `json:"dependencies,omitempty"`
+	DependencyState      []DependencyInfo `json:"dependencyState,omitempty"`
+	Conflicts            []string         `json:"conflicts,omitempty"`
+	Commands             []string         `json:"commands,omitempty"`
+	Permissions          []string         `json:"permissions,omitempty"`
+	AffectedFiles        []string         `json:"affectedFiles"`
+	HasSettings          bool             `json:"hasSettings"`
+	HasSettingsMenu      bool             `json:"hasSettingsMenu"`
+	SettingsSection      int              `json:"settingsSection,omitempty"`
+	SettingsSections     []int            `json:"settingsSections,omitempty"`
+	SettingsMenuIndex    int              `json:"settingsMenuIndex,omitempty"`
+	DashboardTabs        []int            `json:"dashboardTabs,omitempty"`
+	HasTabPosition       bool             `json:"hasTabPosition"`
+	TabPosition          int              `json:"tabPosition"`
+	TabPositionPinned    bool             `json:"tabPositionPinned,omitempty"`
+	HasBarPosition       bool             `json:"hasBarPosition"`
+	BarPosition          int              `json:"barPosition"`
+	BarPositionPinned    bool             `json:"barPositionPinned,omitempty"`
+	Valid                bool             `json:"valid"`
+	Error                string           `json:"error,omitempty"`
+	Compatible           bool             `json:"compatible"`
+	CompatibilityError   string           `json:"compatibilityError,omitempty"`
+	Untested             bool             `json:"untested,omitempty"`
+	UntestedMessage      string           `json:"untestedMessage,omitempty"`
+	UnknownFields        []string         `json:"unknownFields,omitempty"`
+	Localization         *Localization    `json:"localization,omitempty"`
+	LocalizationWarnings []string         `json:"localizationWarnings,omitempty"`
+	AutoUpdate           string           `json:"autoUpdate"`
+	AutoUpdateEffective  bool             `json:"autoUpdateEffective"`
+	AutoUpdateAvailable  bool             `json:"autoUpdateAvailable"`
+	Deprecated           bool             `json:"deprecated"`
+	DeprecatedReason     string           `json:"deprecatedReason,omitempty"`
 }
 
 type DependencyInfo struct {
@@ -110,17 +144,21 @@ type ModSettings struct {
 }
 
 type Status struct {
-	BasePath           string    `json:"basePath"`
-	BaseVersion        string    `json:"baseVersion"`
-	BaseRevision       string    `json:"baseRevision,omitempty"`
-	ActiveGeneration   string    `json:"activeGeneration,omitempty"`
-	PreviousGeneration string    `json:"previousGeneration,omitempty"`
-	GenerationCurrent  bool      `json:"generationCurrent"`
-	GenerationError    string    `json:"generationError,omitempty"`
-	RestartRequired    bool      `json:"restartRequired"`
-	BypassVersionCheck bool      `json:"bypassVersionCheck"`
-	ModsDisabled       bool      `json:"modsDisabled"`
-	Mods               []ModInfo `json:"mods"`
+	BasePath            string      `json:"basePath"`
+	BaseVersion         string      `json:"baseVersion"`
+	BaseRevision        string      `json:"baseRevision,omitempty"`
+	ActiveGeneration    string      `json:"activeGeneration,omitempty"`
+	PreviousGeneration  string      `json:"previousGeneration,omitempty"`
+	GenerationCurrent   bool        `json:"generationCurrent"`
+	GenerationError     string      `json:"generationError,omitempty"`
+	RestartRequired     bool        `json:"restartRequired"`
+	BypassVersionCheck  bool        `json:"bypassVersionCheck"`
+	ModsDisabled        bool        `json:"modsDisabled"`
+	AutoUpdate          bool        `json:"autoUpdate"`
+	PeriodicChecks      bool        `json:"periodicChecks"`
+	UpdateIntervalHours int         `json:"updateIntervalHours"`
+	Updates             UpdateState `json:"updates"`
+	Mods                []ModInfo   `json:"mods"`
 }
 
 type generationMetadata struct {
@@ -154,6 +192,9 @@ func (m *Manager) Status() (Status, error) {
 func (m *Manager) Install(source string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 
 	source = strings.TrimSpace(source)
 	if source == "" {
@@ -172,8 +213,11 @@ func (m *Manager) Install(source string) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
+	return m.installFetchedLocked(fetched)
+}
+
+func (m *Manager) installFetchedLocked(fetched acquired) (Status, error) {
 	packageRoot := fetched.root
-	source = fetched.source
 
 	manifest, err := LoadManifest(packageRoot)
 	if err != nil {
@@ -197,7 +241,7 @@ func (m *Manager) Install(source string) (Status, error) {
 		ID:          manifest.ID,
 		Enabled:     false,
 		Order:       len(state.Mods),
-		Source:      source,
+		Source:      fetched.source,
 		SourceType:  fetched.sourceType,
 		Revision:    fetched.revision,
 		InstalledAt: time.Now().UTC().Format(time.RFC3339),
@@ -214,6 +258,9 @@ func (m *Manager) Install(source string) (Status, error) {
 func (m *Manager) InstallDependencies(id string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 
 	state, err := m.loadState()
 	if err != nil {
@@ -362,6 +409,9 @@ func (m *Manager) InstallDependencies(id string) (Status, error) {
 func (m *Manager) SetEnabled(id string, enabled bool) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -428,6 +478,9 @@ func (m *Manager) SetModsEnabled(enabled bool) (Status, error) {
 func (m *Manager) Rebuild() (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -486,6 +539,9 @@ func (m *Manager) EnsureCurrentGeneration() error {
 func (m *Manager) Remove(id string) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -518,6 +574,9 @@ func (m *Manager) Remove(id string) (Status, error) {
 func (m *Manager) Move(id string, direction int) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	if direction != -1 && direction != 1 {
 		return Status{}, fmt.Errorf("direction must be -1 or 1")
 	}
@@ -535,6 +594,9 @@ func (m *Manager) Move(id string, direction int) (Status, error) {
 func (m *Manager) MoveTo(id string, position int) (Status, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if err := m.guardUpdateTrial(); err != nil {
+		return Status{}, err
+	}
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
@@ -544,6 +606,34 @@ func (m *Manager) MoveTo(id string, position int) (Status, error) {
 		return Status{}, fmt.Errorf("mod %q is not installed", id)
 	}
 	return m.moveTo(state, index, position)
+}
+
+// SetMenuIndex changes only the mod's position in the Settings sidebar. It is
+// deliberately independent from patch load order.
+func (m *Manager) SetMenuIndex(id string, position int) (Status, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	state, err := m.loadState()
+	if err != nil {
+		return Status{}, err
+	}
+	index, ok := findInstalled(state, id)
+	if !ok {
+		return Status{}, fmt.Errorf("mod %q is not installed", id)
+	}
+	manifest, err := LoadManifest(filepath.Join(m.paths.ModPackagesDir(), id))
+	if err != nil {
+		return Status{}, err
+	}
+	if len(settingsMenusForManifest(manifest)) == 0 {
+		return Status{}, fmt.Errorf("mod %q has no settings menu entry", id)
+	}
+	next := cloneState(state)
+	next.Mods[index].MenuIndex = &position
+	if err := m.saveState(next); err != nil {
+		return Status{}, err
+	}
+	return m.statusFor(next)
 }
 
 func (m *Manager) moveTo(state State, index, target int) (Status, error) {
@@ -591,123 +681,25 @@ func enabledOrderChanged(before, after []InstalledMod) bool {
 }
 
 func (m *Manager) Update(id string) (Status, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	state, err := m.loadState()
+	status, err := m.CheckUpdates([]string{id}, false)
 	if err != nil {
 		return Status{}, err
 	}
-	index, ok := findInstalled(state, id)
-	if !ok {
-		return Status{}, fmt.Errorf("mod %q is not installed", id)
-	}
-	installed := state.Mods[index]
-	packageRoot := filepath.Join(m.paths.ModPackagesDir(), id)
-	if installed.SourceType != "git" {
-		return m.updateLocalSource(state, index, installed, packageRoot)
-	}
-	oldRevision := gitRevision(packageRoot)
-	if err := runCommandTimeout(5*time.Minute, packageRoot, "git", "pull", "--ff-only"); err != nil {
-		return Status{}, fmt.Errorf("update mod: %w", err)
-	}
-	manifest, err := LoadManifest(packageRoot)
-	if err != nil || manifest.ID != id {
-		_ = runCommand(packageRoot, "git", "reset", "--hard", oldRevision)
-		if err != nil {
-			return Status{}, err
+	if !status.Updates.CanApply {
+		for _, item := range status.Updates.Items {
+			if item.State == "failed" {
+				return Status{}, fmt.Errorf("update %s: %s", item.ID, item.Details)
+			}
 		}
-		return Status{}, fmt.Errorf("updated package changed its id")
-	}
-	next := cloneState(state)
-	next.Mods[index].Revision = gitRevision(packageRoot)
-	if installed.Enabled {
-		if err := m.composeAndActivate(state, &next); err != nil {
-			_ = runCommand(packageRoot, "git", "reset", "--hard", oldRevision)
-			return Status{}, err
+		if status.Updates.ErrorCode == "composition_failed" {
+			return Status{}, fmt.Errorf("update %s: %s", id, status.Updates.Details)
 		}
-	} else if err := m.saveState(next); err != nil {
-		_ = runCommand(packageRoot, "git", "reset", "--hard", oldRevision)
-		return Status{}, err
+		return status, nil
 	}
-	return m.statusForRestart(next, installed.Enabled)
-}
-
-func (m *Manager) updateLocalSource(state State, index int, installed InstalledMod, packageRoot string) (Status, error) {
-	refreshedRevision := ""
-	tmp, err := os.MkdirTemp(m.paths.ModPackagesDir(), ".update-")
-	if err != nil {
-		return Status{}, err
+	if status.Updates.RequiresReview {
+		return Status{}, fmt.Errorf("review changes with check-updates, then use apply-updates %s", status.Updates.PlanID)
 	}
-	defer os.RemoveAll(tmp)
-
-	updatedRoot := filepath.Join(tmp, "package")
-	switch installed.SourceType {
-	case "local":
-		info, err := os.Stat(installed.Source)
-		if err != nil {
-			return Status{}, fmt.Errorf("inspect source: %w", err)
-		}
-		if !info.IsDir() {
-			return Status{}, fmt.Errorf("local source is not a directory")
-		}
-		if err := copyTree(installed.Source, updatedRoot, func(path string, entry fs.DirEntry) bool {
-			return path != installed.Source && entry.IsDir() && entry.Name() == ".git"
-		}); err != nil {
-			return Status{}, fmt.Errorf("copy source: %w", err)
-		}
-	case "archive":
-		if err := extractPackageArchive(installed.Source, updatedRoot); err != nil {
-			return Status{}, err
-		}
-	case "git-subdir":
-		fetched, acquireErr := acquirePackage(installed.Source, updatedRoot)
-		if acquireErr != nil {
-			return Status{}, acquireErr
-		}
-		updatedRoot = fetched.root
-		refreshedRevision = fetched.revision
-	default:
-		return Status{}, fmt.Errorf("mod %q has unsupported source type %q", installed.ID, installed.SourceType)
-	}
-	if installed.SourceType != "git-subdir" {
-		updatedRoot, err = locatePackageRoot(updatedRoot)
-		if err != nil {
-			return Status{}, err
-		}
-	}
-	manifest, err := LoadManifest(updatedRoot)
-	if err != nil {
-		return Status{}, err
-	}
-	if manifest.ID != installed.ID {
-		return Status{}, fmt.Errorf("updated package changed its id")
-	}
-
-	backup := filepath.Join(tmp, "previous")
-	if err := os.Rename(packageRoot, backup); err != nil {
-		return Status{}, fmt.Errorf("prepare package update: %w", err)
-	}
-	restore := func() {
-		_ = os.RemoveAll(packageRoot)
-		_ = os.Rename(backup, packageRoot)
-	}
-	if err := os.Rename(updatedRoot, packageRoot); err != nil {
-		restore()
-		return Status{}, fmt.Errorf("store package update: %w", err)
-	}
-
-	next := cloneState(state)
-	next.Mods[index].Revision = refreshedRevision
-	if installed.Enabled {
-		if err := m.composeAndActivate(state, &next); err != nil {
-			restore()
-			return Status{}, err
-		}
-	} else if err := m.saveState(next); err != nil {
-		restore()
-		return Status{}, err
-	}
-	return m.statusForRestart(next, installed.Enabled)
+	return m.ApplyUpdates(status.Updates.PlanID, false)
 }
 
 func (m *Manager) Settings(id string) (ModSettings, error) {
@@ -755,6 +747,16 @@ func (m *Manager) Rollback() (Status, error) {
 	state, err := m.loadState()
 	if err != nil {
 		return Status{}, err
+	}
+	if restored, err := m.restoreUpdate(state); restored || err != nil {
+		if err != nil {
+			return Status{}, err
+		}
+		state, err = m.loadState()
+		if err != nil {
+			return Status{}, err
+		}
+		return m.statusForRestart(state, true)
 	}
 	if state.PreviousGeneration == "" {
 		return Status{}, fmt.Errorf("no previous generation is available")
@@ -848,6 +850,9 @@ func (m *Manager) RecoverFailedActivation() (bool, error) {
 	if state.ActiveGeneration != pending.Generation {
 		_ = os.Remove(m.paths.ModPendingActivationFile())
 		return false, nil
+	}
+	if restored, err := m.restoreUpdate(state); restored || err != nil {
+		return restored, err
 	}
 
 	state.ActiveGeneration = pending.PreviousGeneration
@@ -950,11 +955,14 @@ func (m *Manager) writePendingActivation(generation, previous string) error {
 }
 
 func (m *Manager) buildGeneration(state State) (string, error) {
-	base := paths.FindBaseShellSource()
+	return m.buildGenerationAt(state, paths.FindBaseShellSource(), m.paths.ModPackagesDir())
+}
+
+func (m *Manager) buildGenerationAt(state State, base, packages string) (string, error) {
 	if base == "" {
 		return "", fmt.Errorf("Ambxst base source was not found")
 	}
-	manifests, ordered, err := m.resolve(state, base)
+	manifests, ordered, err := m.resolveAt(state, base, packages)
 	if err != nil {
 		return "", err
 	}
@@ -978,16 +986,37 @@ func (m *Manager) buildGeneration(state State) (string, error) {
 	if err := initComposition(tmp, base); err != nil {
 		return "", fmt.Errorf("prepare composition: %w", err)
 	}
+	settingsSections := resolvedSettingsSections(ordered, manifests)
+	coreTabs := coreDashboardTabs(base)
+	tabLoadOrder := tabMods(ordered, manifests)
+	tabOrder := compositionTabOrder(state, ordered, manifests)
+	dashboardTabs := resolvedDashboardTabs(tabOrder, manifests, coreTabs)
+	tabChildren := resolvedDashboardTabs(tabLoadOrder, manifests, coreTabs)
 	for _, id := range ordered {
 		manifest := manifests[id]
-		packageRoot := filepath.Join(m.paths.ModPackagesDir(), id)
+		packageRoot := filepath.Join(packages, id)
+		remaps := patchRemaps{sections: settingsSections[id], tabs: dashboardTabs[id], tabChildren: tabChildren[id]}
 		for _, operation := range manifest.Operations {
-			if err := applyOperation(tmp, packageRoot, operation); err != nil {
+			if err := applyOperation(tmp, packageRoot, operation, remaps); err != nil {
 				return "", fmt.Errorf("mod %s: %w", id, err)
 			}
 		}
 		if err := commitComposition(tmp, "mod "+id); err != nil {
 			return "", fmt.Errorf("mod %s: %w", id, err)
+		}
+	}
+	if len(tabLoadOrder) > 0 && canReorderTabs(tabLoadOrder, manifests) {
+		if err := applyTabModelOrder(tmp, coreTabs, tabLoadOrder, tabOrder, manifests); err != nil {
+			return "", err
+		}
+	}
+	if hasExplicitPositions(state, PositionBar) {
+		rank := make(map[string]int)
+		for index, id := range filterOrder(positionOrder(state, manifests, PositionBar), ordered) {
+			rank[id] = index
+		}
+		if err := reorderBarWidgets(tmp, rank); err != nil {
+			return "", err
 		}
 	}
 	if err := os.RemoveAll(filepath.Join(tmp, ".git")); err != nil {
@@ -1021,6 +1050,10 @@ func (m *Manager) buildGeneration(state State) (string, error) {
 }
 
 func (m *Manager) resolve(state State, base string) (map[string]Manifest, []string, error) {
+	return m.resolveAt(state, base, m.paths.ModPackagesDir())
+}
+
+func (m *Manager) resolveAt(state State, base, packages string) (map[string]Manifest, []string, error) {
 	manifests := make(map[string]Manifest)
 	installed := make(map[string]InstalledMod)
 	for _, mod := range state.Mods {
@@ -1028,7 +1061,7 @@ func (m *Manager) resolve(state State, base string) (map[string]Manifest, []stri
 		if !mod.Enabled {
 			continue
 		}
-		manifest, err := LoadManifest(filepath.Join(m.paths.ModPackagesDir(), mod.ID))
+		manifest, err := LoadManifest(filepath.Join(packages, mod.ID))
 		if err != nil {
 			return nil, nil, fmt.Errorf("mod %s: %w", mod.ID, err)
 		}
@@ -1103,16 +1136,21 @@ func payloadStamp(manifest Manifest, root string) (string, bool) {
 func (m *Manager) statusFor(state State) (Status, error) {
 	base := paths.FindBaseShellSource()
 	status := Status{
-		BasePath:           base,
-		BaseVersion:        readTrimmed(filepath.Join(base, "version")),
-		BaseRevision:       gitRevision(base),
-		ActiveGeneration:   state.ActiveGeneration,
-		PreviousGeneration: state.PreviousGeneration,
-		GenerationCurrent:  true,
-		BypassVersionCheck: state.BypassVersionCheck,
-		ModsDisabled:       state.Disabled,
-		Mods:               make([]ModInfo, 0, len(state.Mods)),
+		BasePath:            base,
+		BaseVersion:         readTrimmed(filepath.Join(base, "version")),
+		BaseRevision:        gitRevision(base),
+		ActiveGeneration:    state.ActiveGeneration,
+		PreviousGeneration:  state.PreviousGeneration,
+		GenerationCurrent:   true,
+		BypassVersionCheck:  state.BypassVersionCheck,
+		ModsDisabled:        state.Disabled,
+		AutoUpdate:          state.AutoUpdate,
+		PeriodicChecks:      periodicChecksEnabled(state),
+		UpdateIntervalHours: updateIntervalHours(state),
+		Updates:             m.updateState(),
+		Mods:                make([]ModInfo, 0, len(state.Mods)),
 	}
+	status.Updates.Known = m.knownUpdatesFor(state)
 	if pending, ok := m.readPendingActivation(); ok && pending.Generation == state.ActiveGeneration {
 		status.RestartRequired = true
 	}
@@ -1127,6 +1165,15 @@ func (m *Manager) statusFor(state State) (Status, error) {
 	for _, installed := range state.Mods {
 		installedByID[installed.ID] = installed
 	}
+	settingsSections := make(map[string]map[int]int)
+	dashboardTabs := make(map[string]map[int]int)
+	if manifests, ordered, err := m.resolve(state, base); err == nil {
+		settingsSections = resolvedSettingsSections(ordered, manifests)
+		dashboardTabs = resolvedDashboardTabs(compositionTabOrder(state, ordered, manifests), manifests, coreDashboardTabs(base))
+	}
+	allManifests := m.installedManifests(state)
+	tabOrder := positionOrder(state, allManifests, PositionTab)
+	barOrder := positionOrder(state, allManifests, PositionBar)
 	for _, installed := range state.Mods {
 		root := filepath.Join(m.paths.ModPackagesDir(), installed.ID)
 		manifest, err := LoadManifest(root)
@@ -1177,31 +1224,52 @@ func (m *Manager) statusFor(state State) (Status, error) {
 				Enabled:   dependencyInstalled && dependency.Enabled,
 			})
 		}
+		resolvedSections := resolvedSettingsSectionList(manifest, settingsSections[manifest.ID])
 		status.Mods = append(status.Mods, ModInfo{
-			ID:                 manifest.ID,
-			Name:               manifest.Name,
-			Version:            manifest.Version,
-			Description:        manifest.Description,
-			License:            manifest.License,
-			Author:             manifest.Author,
-			Enabled:            installed.Enabled,
-			Order:              installed.Order,
-			Source:             installed.Source,
-			SourceType:         installed.SourceType,
-			Revision:           installed.Revision,
-			Dependencies:       manifest.Dependencies,
-			DependencyState:    dependencyState,
-			Conflicts:          manifest.Conflicts,
-			Commands:           manifest.Commands,
-			Permissions:        manifest.Permissions,
-			AffectedFiles:      files,
-			HasSettings:        manifest.Settings != nil,
-			Valid:              true,
-			Compatible:         compatibilityErr == nil,
-			CompatibilityError: compatibilityMessage,
-			Untested:           untestedMessage != "",
-			UntestedMessage:    untestedMessage,
-			UnknownFields:      manifest.UnknownFields,
+			ID:                   manifest.ID,
+			Name:                 manifest.Name,
+			Version:              manifest.Version,
+			Description:          manifest.Description,
+			License:              manifest.License,
+			Author:               manifest.Author,
+			AuthorURL:            manifest.AuthorURL,
+			Homepage:             manifest.Homepage,
+			Enabled:              installed.Enabled,
+			Order:                installed.Order,
+			Source:               installed.Source,
+			SourceType:           installed.SourceType,
+			Revision:             installed.Revision,
+			Dependencies:         manifest.Dependencies,
+			DependencyState:      dependencyState,
+			Conflicts:            manifest.Conflicts,
+			Commands:             manifest.Commands,
+			Permissions:          manifest.Permissions,
+			AffectedFiles:        files,
+			HasSettings:          manifest.Settings != nil,
+			HasSettingsMenu:      len(settingsMenusForManifest(manifest)) > 0,
+			SettingsSection:      firstSettingsSection(resolvedSections),
+			SettingsSections:     resolvedSections,
+			SettingsMenuIndex:    settingsMenuIndex(installed, manifest),
+			DashboardTabs:        resolvedDashboardTabList(manifest, dashboardTabs[manifest.ID]),
+			HasTabPosition:       usesPosition(manifest, PositionTab),
+			TabPosition:          positionRank(tabOrder, manifest.ID),
+			TabPositionPinned:    installed.TabPosition != nil,
+			HasBarPosition:       usesPosition(manifest, PositionBar),
+			BarPosition:          positionRank(barOrder, manifest.ID),
+			BarPositionPinned:    installed.BarPosition != nil,
+			Valid:                true,
+			Compatible:           compatibilityErr == nil,
+			CompatibilityError:   compatibilityMessage,
+			Untested:             untestedMessage != "",
+			UntestedMessage:      untestedMessage,
+			UnknownFields:        manifest.UnknownFields,
+			Localization:         manifest.Localization,
+			LocalizationWarnings: localizationWarnings(manifest.Localization, root),
+			AutoUpdate:           updatePolicy(installed),
+			Deprecated:           manifest.isDeprecated(),
+			DeprecatedReason:     manifest.deprecationReason(),
+			AutoUpdateAvailable:  automaticSource(installed),
+			AutoUpdateEffective:  periodicChecksEnabled(state) && automaticEnabled(state, installed),
 		})
 	}
 	sort.SliceStable(status.Mods, func(i, j int) bool { return status.Mods[i].Order < status.Mods[j].Order })
@@ -1260,6 +1328,9 @@ func (m *Manager) loadSettings(id string) (ModSettings, error) {
 }
 
 func (m *Manager) loadState() (State, error) {
+	if err := m.recoverInterruptedUpdate(); err != nil {
+		return State{}, err
+	}
 	data, err := os.ReadFile(m.paths.ModStateFile())
 	if os.IsNotExist(err) {
 		return State{Version: stateVersion, Mods: []InstalledMod{}}, nil
@@ -1315,11 +1386,11 @@ func (m *Manager) cleanupGenerations(state State) {
 // base object store is borrowed rather than copied, which keeps the pre-image
 // blobs of older mods reachable after an Ambxst update. The repository is
 // removed before the generation is activated.
-// resolveAddedBlocks settles the one merge conflict that load order can decide:
-// two mods inserting new lines at the same place. Neither side removed base
-// content there, so both blocks belong in the file, and the mod applied first
-// goes first. Any conflict that also rewrites existing lines is left alone and
-// stops the build.
+// resolveAddedBlocks settles the merge conflicts that load order can decide:
+// two mods inserting new lines at the same place, two mods appending items to
+// the same one-line list, and two mods widening the same Dashboard tab bound.
+// The mod applied first goes first. Any other conflict that rewrites existing
+// lines is left alone and stops the build.
 func resolveAddedBlocks(generation string) (bool, error) {
 	cmd := exec.Command("git", "diff", "--name-only", "--diff-filter=U")
 	cmd.Dir = generation
@@ -1340,7 +1411,7 @@ func resolveAddedBlocks(generation string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		merged, ok := mergeAddedBlocks(string(data))
+		merged, ok := mergeAddedBlocks(filepath.ToSlash(name), string(data))
 		if !ok {
 			return false, nil
 		}
@@ -1355,9 +1426,10 @@ func resolveAddedBlocks(generation string) (bool, error) {
 }
 
 // mergeAddedBlocks keeps both sides of every diff3 conflict whose merge base is
-// empty. It reports false as soon as a conflict has base content, so the caller
-// can stop instead of guessing.
-func mergeAddedBlocks(content string) (string, bool) {
+// empty or blank. It also merges appended list items and the Dashboard tab
+// bound. It reports false as soon as a conflict fits none of these, so the
+// caller can stop instead of guessing.
+func mergeAddedBlocks(path, content string) (string, bool) {
 	lines := strings.Split(content, "\n")
 	var out []string
 	for index := 0; index < len(lines); index++ {
@@ -1392,11 +1464,28 @@ func mergeAddedBlocks(content string) (string, bool) {
 				break
 			}
 		}
-		if !closed || len(base) > 0 {
+		if !closed {
 			return "", false
 		}
-		out = append(out, ours...)
-		out = append(out, theirs...)
+		if blankLines(base) {
+			// A base of blank lines is a spacer both mods inserted around;
+			// an editor that strips its trailing spaces rewrites it too.
+			if len(base) > 0 {
+				ours = trimTrailingBlankLines(ours)
+			}
+			out = append(out, ours...)
+			out = append(out, theirs...)
+			continue
+		}
+		if merged, ok := mergeAppendedList(ours, base, theirs); ok {
+			out = append(out, merged...)
+			continue
+		}
+		if merged, ok := resolvePlumbingConflict(path, ours, base, theirs); ok {
+			out = append(out, merged...)
+			continue
+		}
+		return "", false
 	}
 	return strings.Join(out, "\n"), true
 }
@@ -1456,12 +1545,20 @@ func gitObjectsDir(base string) string {
 	return directory
 }
 
-func applyOperation(generation, packageRoot string, op Operation) error {
+func applyOperation(generation, packageRoot string, op Operation, remaps patchRemaps) error {
 	source, err := safeJoin(packageRoot, op.Source)
 	if err != nil {
 		return err
 	}
 	if op.Type == "patch" {
+		cleanup := func() {}
+		if remaps.active() {
+			source, cleanup, err = remapPatch(generation, source, remaps)
+			if err != nil {
+				return err
+			}
+			defer cleanup()
+		}
 		if runCommand(generation, "git", "apply", "--check", "--whitespace=error-all", source) == nil {
 			if err := runCommand(generation, "git", "apply", "--whitespace=error-all", source); err != nil {
 				return fmt.Errorf("apply patch: %w", err)
@@ -1509,6 +1606,162 @@ func applyOperation(generation, packageRoot string, op Operation) error {
 		}
 	}
 	return copyFile(source, target)
+}
+
+func settingsMenuIndex(installed InstalledMod, manifest Manifest) int {
+	if installed.MenuIndex != nil {
+		return *installed.MenuIndex
+	}
+	if menus := settingsMenusForManifest(manifest); len(menus) > 0 {
+		return menus[0].Index
+	}
+	return 0
+}
+
+// resolvedSettingsSections assigns stable, unique section IDs in composition
+// order. Core Settings owns 0 through 10; mod packages may keep their preferred
+// ID when it is free. A collision moves only the later mod.
+func resolvedSettingsSections(ordered []string, manifests map[string]Manifest) map[string]map[int]int {
+	used := make(map[int]bool)
+	for section := 0; section <= 10; section++ {
+		used[section] = true
+	}
+	resolved := make(map[string]map[int]int)
+	for _, id := range ordered {
+		menus := settingsMenusForManifest(manifests[id])
+		if len(menus) == 0 {
+			continue
+		}
+		resolved[id] = make(map[int]int, len(menus))
+		for _, menu := range menus {
+			section := menu.Section
+			for used[section] {
+				section++
+			}
+			used[section] = true
+			resolved[id][menu.Section] = section
+		}
+	}
+	return resolved
+}
+
+func resolvedSettingsSectionList(manifest Manifest, resolved map[int]int) []int {
+	menus := settingsMenusForManifest(manifest)
+	sections := make([]int, 0, len(menus))
+	for _, menu := range menus {
+		section := menu.Section
+		if value, ok := resolved[section]; ok {
+			section = value
+		}
+		sections = append(sections, section)
+	}
+	return sections
+}
+
+func firstSettingsSection(sections []int) int {
+	if len(sections) == 0 {
+		return 0
+	}
+	return sections[0]
+}
+
+// patchRemaps holds the index changes the manager assigned to one package:
+// Settings sections and Dashboard tabs, keyed by the value in the patch.
+type patchRemaps struct {
+	sections map[int]int
+	tabs     map[int]int
+	// tabChildren is each tab loader's place among the stack's children,
+	// which follows load order even when the tab index does not.
+	tabChildren map[int]int
+}
+
+func (r patchRemaps) active() bool {
+	return changedKeys(r.sections) != nil || changedKeys(r.tabs) != nil || changedKeys(r.tabChildren) != nil
+}
+
+func changedKeys(remaps map[int]int) []int {
+	var keys []int
+	for from, to := range remaps {
+		if from != to {
+			keys = append(keys, from)
+		}
+	}
+	sort.Ints(keys)
+	return keys
+}
+
+// remapPatch changes section and tab references only on lines added by a
+// package patch. Context and removed lines must keep describing the base.
+// Placeholders keep a chain such as 3->4 and 4->5 from applying twice.
+func remapPatch(generation, source string, remaps patchRemaps) (string, func(), error) {
+	data, err := os.ReadFile(source)
+	if err != nil {
+		return "", func() {}, err
+	}
+	lines := strings.Split(string(data), "\n")
+	fromSections := changedKeys(remaps.sections)
+	fromTabs := changedKeys(remaps.tabs)
+	for _, from := range changedKeys(remaps.tabChildren) {
+		if !intInList(fromTabs, from) {
+			fromTabs = append(fromTabs, from)
+		}
+	}
+	sort.Ints(fromTabs)
+	target := ""
+	for index, line := range lines {
+		if strings.HasPrefix(line, "+++ ") {
+			target = patchTarget(line)
+			continue
+		}
+		if !strings.HasPrefix(line, "+") {
+			continue
+		}
+		tokens := make(map[string]string, len(fromSections)+len(fromTabs))
+		for tokenIndex, from := range fromSections {
+			token := fmt.Sprintf("__AMBXST_SECTION_%d__", tokenIndex)
+			line = replaceSectionReference(line, fmt.Sprintf("%d", from), token)
+			tokens[token] = fmt.Sprintf("%d", remaps.sections[from])
+		}
+		for tokenIndex, from := range fromTabs {
+			token := fmt.Sprintf("__AMBXST_TAB_%d__", tokenIndex)
+			childToken := fmt.Sprintf("__AMBXST_TAB_CHILD_%d__", tokenIndex)
+			line = replaceDashboardTabReference(line, target, fmt.Sprintf("%d", from), token, childToken)
+			tokens[token] = fmt.Sprintf("%d", valueOr(remaps.tabs, from))
+			tokens[childToken] = fmt.Sprintf("%d", valueOr(remaps.tabChildren, from))
+		}
+		for token, to := range tokens {
+			line = strings.ReplaceAll(line, token, to)
+		}
+		lines[index] = line
+	}
+	temporary, err := os.CreateTemp(generation, ".ambxst-settings-*.patch")
+	if err != nil {
+		return "", func() {}, err
+	}
+	name := temporary.Name()
+	cleanup := func() { _ = os.Remove(name) }
+	if _, err := temporary.WriteString(strings.Join(lines, "\n")); err != nil {
+		_ = temporary.Close()
+		cleanup()
+		return "", func() {}, err
+	}
+	if err := temporary.Close(); err != nil {
+		cleanup()
+		return "", func() {}, err
+	}
+	return name, cleanup, nil
+}
+
+func replaceSectionReference(line, from, to string) string {
+	number := regexp.QuoteMeta(from)
+	patterns := []*regexp.Regexp{
+		regexp.MustCompile(`(\bsection\s*:\s*)` + number + `\b`),
+		regexp.MustCompile(`(\b(?:section|currentSection)\s*(?:===|!==)\s*)` + number + `\b`),
+	}
+	for _, pattern := range patterns {
+		line = pattern.ReplaceAllString(line, "${1}"+to)
+	}
+	return line
 }
 
 func checkCompatibility(manifest Manifest, base string) error {
@@ -1622,6 +1875,7 @@ func extractTar(reader io.Reader, destination string, allowSymlinks bool, maxFil
 	tarReader := tar.NewReader(reader)
 	files := 0
 	var totalBytes int64
+	seen := make(map[string]bool)
 	for {
 		header, err := tarReader.Next()
 		if errors.Is(err, io.EOF) {
@@ -1648,10 +1902,16 @@ func extractTar(reader io.Reader, destination string, allowSymlinks bool, maxFil
 			// a global header for commit metadata in its default tar output.
 			continue
 		case tar.TypeDir:
+			if err := recordArchiveEntry(seen, header.Name, true); err != nil {
+				return err
+			}
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
 		case tar.TypeReg:
+			if err := recordArchiveEntry(seen, header.Name, false); err != nil {
+				return err
+			}
 			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 				return err
 			}
@@ -1722,14 +1982,19 @@ func extractZipPackage(path, destination string) error {
 	if len(archive.File) > maxPackageFiles {
 		return fmt.Errorf("archive contains too many files")
 	}
-	var total uint64
+	var declaredTotal uint64
+	var extractedTotal int64
+	seen := make(map[string]bool)
 	for _, entry := range archive.File {
-		total += entry.UncompressedSize64
-		if total > maxPackageBytes {
+		declaredTotal += entry.UncompressedSize64
+		if declaredTotal > maxPackageBytes {
 			return fmt.Errorf("archive expands beyond the size limit")
 		}
 		if entry.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("package symlinks are not allowed: %s", entry.Name)
+		}
+		if err := recordArchiveEntry(seen, entry.Name, entry.FileInfo().IsDir()); err != nil {
+			return err
 		}
 		target, err := safeJoin(destination, entry.Name)
 		if err != nil {
@@ -1754,12 +2019,17 @@ func extractZipPackage(path, destination string) error {
 			reader.Close()
 			return err
 		}
-		copyErr := func() error {
-			_, err := io.Copy(output, reader)
-			return errors.Join(err, output.Close(), reader.Close())
+		written, copyErr := func() (int64, error) {
+			remaining := maxPackageBytes - extractedTotal
+			written, err := io.Copy(output, io.LimitReader(reader, remaining+1))
+			return written, errors.Join(err, output.Close(), reader.Close())
 		}()
 		if copyErr != nil {
 			return copyErr
+		}
+		extractedTotal += written
+		if extractedTotal > maxPackageBytes {
+			return fmt.Errorf("archive expands beyond the size limit")
 		}
 	}
 	return nil
