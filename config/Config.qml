@@ -804,6 +804,7 @@ Singleton {
             property bool pauseWallpapersOnFullscreen: true
             property bool dashboardPersistTabs: true
             property int dashboardMaxPersistentTabs: 2
+            property bool obsidianEnabled: true
         }
     }
 
