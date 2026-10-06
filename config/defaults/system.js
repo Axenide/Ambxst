@@ -2,6 +2,7 @@
 
 var data = {
     "disks": ["/"],
+    "language": "auto",
     "updateServiceEnabled": true,
     "idle": {
         "general": {
@@ -44,5 +45,8 @@ var data = {
         "restTime": 300,
         "autoStart": false,
         "syncSpotify": false
+    },
+    "clipboard": {
+        "tmpfs": false
     }
 }

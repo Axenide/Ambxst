@@ -144,7 +144,7 @@ Item {
 
                 StyledToolTip {
                     visible: parent.visible && protectionIndicatorMa.containsMouse
-                    tooltipText: "Volume protection active"
+                    tooltipText: I18n.t("controls.volume_protection")
                 }
 
                 MouseArea {

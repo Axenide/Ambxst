@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.modules.theme
 import qs.config
 import qs.modules.components
+import qs.modules.services
 import org.kde.syntaxhighlighting
 
 ColumnLayout {
@@ -68,16 +69,14 @@ ColumnLayout {
                 background: null
 
                 onClicked: {
-                    let p = Qt.createQmlObject('import Quickshell; import Quickshell.Io; Process { command: ["wl-copy", "' + root.code.replace(/"/g, '\\"') + '"] }', parent);
-                    p.running = true;
-                    // Optional: Show "Copied" feedback
+                    BackendService.call("clipboard.copyText", {text: root.code});
                     copyFeedback.visible = true;
                     copyFeedbackTimer.restart();
                 }
 
                 Text {
                     id: copyFeedback
-                    text: "Copied!"
+                    text: I18n.t("common.copied")
                     font.family: Config.theme.font
                     font.pixelSize: 10
                     color: Colors.success

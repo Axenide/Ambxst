@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../docs/mods/manifest.schema.json",
+  "manifestVersion": 1,
+  "id": "community.compact-player-volume-scroll",
+  "name": "Compact player volume scroll",
+  "version": "1.0.0",
+  "description": "Changes the default sink volume when the pointer wheel is used over the compact player.",
+  "compatibility": {
+    "api": 1,
+    "ambxst": ">=1.2.5 <1.3.0",
+    "testedBaseCommits": [
+      "8f00dbaa831824e24af3a1644d32ae465acc60ea"
+    ]
+  },
+  "permissions": [
+    "Changes the default audio sink volume from pointer wheel input"
+  ],
+  "operations": [
+    {
+      "type": "patch",
+      "source": "patches/compact-player-volume-scroll.patch"
+    }
+  ]
+}

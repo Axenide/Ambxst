@@ -6,7 +6,9 @@ import QtQuick.Layouts
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
+import qs.modules.services
 
 Item {
     id: root
@@ -83,7 +85,7 @@ Item {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "System" : (root.currentSection === "system" ? "System Resources" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1)))
+                    title: root.currentSection === "" ? I18n.t("settings.system") : (root.currentSection === "system" ? I18n.t("settings.system.resources") : I18n.t("settings.system." + root.currentSection))
                     statusText: ""
 
                     actions: {
@@ -91,7 +93,7 @@ Item {
                             return [
                                 {
                                     icon: Icons.arrowLeft,
-                                    tooltip: "Back",
+                                    tooltip: I18n.t("common.back"),
                                     onClicked: function () {
                                         root.currentSection = "";
                                     }
@@ -123,28 +125,36 @@ Item {
                         spacing: 8
 
                         SectionButton {
-                            text: "Prefixes"
+                            text: I18n.t("settings.system.prefixes")
                             sectionId: "prefixes"
                         }
                         SectionButton {
-                            text: "Weather"
+                            text: I18n.t("settings.system.weather")
                             sectionId: "weather"
                         }
                         SectionButton {
-                            text: "Performance"
+                            text: I18n.t("settings.system.language")
+                            sectionId: "language"
+                        }
+                        SectionButton {
+                            text: I18n.t("settings.system.performance")
                             sectionId: "performance"
                         }
                         SectionButton {
-                            text: "System Resources"
+                            text: I18n.t("settings.system.resources")
                             sectionId: "system"
                         }
                         SectionButton {
-                            text: "Idle"
+                            text: I18n.t("settings.system.idle")
                             sectionId: "idle"
                         }
                         SectionButton {
                             text: "Terminal"
                             sectionId: "terminal"
+                        }
+                        SectionButton {
+                            text: "Clipboard"
+                            sectionId: "clipboard"
                         }
                     }
 
@@ -158,7 +168,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Prefixes"
+                            text: I18n.t("settings.system.prefixes")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -167,7 +177,7 @@ Item {
                         }
 
                         Text {
-                            text: "Keyboard shortcuts for quick actions in launcher"
+                            text: I18n.t("system.prefixes.description")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overSurfaceVariant
@@ -177,7 +187,7 @@ Item {
                         // Clipboard prefix
                         PrefixRow {
                             Layout.fillWidth: true
-                            label: "Clipboard"
+                            label: I18n.t("system.prefixes.clipboard")
                             prefixValue: Config.prefix.clipboard
                             onPrefixEdited: newValue => {
                                 Config.prefix.clipboard = newValue;
@@ -187,7 +197,7 @@ Item {
                         // Emoji prefix
                         PrefixRow {
                             Layout.fillWidth: true
-                            label: "Emoji"
+                            label: I18n.t("system.prefixes.emoji")
                             prefixValue: Config.prefix.emoji
                             onPrefixEdited: newValue => {
                                 Config.prefix.emoji = newValue;
@@ -197,7 +207,7 @@ Item {
                         // Tmux prefix
                         PrefixRow {
                             Layout.fillWidth: true
-                            label: "Tmux"
+                            label: I18n.t("system.prefixes.tmux")
                             prefixValue: Config.prefix.tmux
                             onPrefixEdited: newValue => {
                                 Config.prefix.tmux = newValue;
@@ -207,7 +217,7 @@ Item {
                         // Wallpapers prefix
                         PrefixRow {
                             Layout.fillWidth: true
-                            label: "Wallpapers"
+                            label: I18n.t("system.prefixes.wallpapers")
                             prefixValue: Config.prefix.wallpapers
                             onPrefixEdited: newValue => {
                                 Config.prefix.wallpapers = newValue;
@@ -217,7 +227,7 @@ Item {
                         // Notes prefix
                         PrefixRow {
                             Layout.fillWidth: true
-                            label: "Notes"
+                            label: I18n.t("system.prefixes.notes")
                             prefixValue: Config.prefix.notes
                             onPrefixEdited: newValue => {
                                 Config.prefix.notes = newValue;
@@ -235,7 +245,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Weather"
+                            text: I18n.t("settings.system.weather")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -249,7 +259,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Location"
+                                text: I18n.t("weather.location")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overBackground
@@ -292,7 +302,7 @@ Item {
                                     Text {
                                         anchors.verticalCenter: parent.verticalCenter
                                         visible: !locationInput.text && !locationInput.activeFocus
-                                        text: "e.g. Buenos Aires, Tokyo..."
+                                        text: I18n.t("weather.location_placeholder")
                                         font: locationInput.font
                                         color: Colors.overSurfaceVariant
                                     }
@@ -306,7 +316,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Unit"
+                                text: I18n.t("weather.unit")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overBackground
@@ -320,11 +330,11 @@ Item {
                                     model: [
                                         {
                                             id: "C",
-                                            label: "Celsius"
+                                            label: I18n.t("weather.celsius")
                                         },
                                         {
                                             id: "F",
-                                            label: "Fahrenheit"
+                                            label: I18n.t("weather.fahrenheit")
                                         }
                                     ]
 
@@ -366,6 +376,100 @@ Item {
                     }
 
                     // =====================
+                    // LANGUAGE SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "language"
+                        property string settingsSection: "language"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: I18n.t("settings.system.language")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                        }
+
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 8
+
+                            StyledRect {
+                                id: autoLangButton
+
+                                property bool isSelected: Config.system.language === "auto"
+                                property bool isHovered: false
+
+                                variant: isSelected ? "primary" : (isHovered ? "focus" : "common")
+                                width: autoLangLabel.width + 24
+                                height: 36
+                                radius: Styling.radius(-2)
+
+                                Text {
+                                    id: autoLangLabel
+                                    anchors.centerIn: parent
+                                    text: {
+                                        const detected = I18n.detectSystemLanguage();
+                                        const name = I18n.availableLanguages[detected] ?? detected;
+                                        return I18n.t("language.auto_detected").replace("%1", name);
+                                    }
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(0)
+                                    font.weight: autoLangButton.isSelected ? Font.Bold : Font.Normal
+                                    color: autoLangButton.item
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onEntered: autoLangButton.isHovered = true
+                                    onExited: autoLangButton.isHovered = false
+                                    onClicked: Config.system.language = "auto"
+                                }
+                            }
+
+                            Repeater {
+                                model: Object.keys(I18n.availableLanguages)
+
+                                delegate: StyledRect {
+                                    id: langButton
+                                    required property string modelData
+
+                                    property bool isSelected: Config.system.language === modelData
+                                    property bool isHovered: false
+
+                                    variant: isSelected ? "primary" : (isHovered ? "focus" : "common")
+                                    width: langLabel.width + 24
+                                    height: 36
+                                    radius: Styling.radius(-2)
+
+                                    Text {
+                                        id: langLabel
+                                        anchors.centerIn: parent
+                                        text: I18n.availableLanguages[langButton.modelData] ?? langButton.modelData
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Styling.fontSize(0)
+                                        font.weight: langButton.isSelected ? Font.Bold : Font.Normal
+                                        color: langButton.item
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onEntered: langButton.isHovered = true
+                                        onExited: langButton.isHovered = false
+                                        onClicked: Config.system.language = langButton.modelData
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // =====================
                     // PERFORMANCE SECTION
                     // =====================
                     ColumnLayout {
@@ -375,7 +479,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Performance"
+                            text: I18n.t("settings.system.performance")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -384,7 +488,7 @@ Item {
                         }
 
                         Text {
-                            text: "Toggle visual effects to improve performance"
+                            text: I18n.t("system.performance.description")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overSurfaceVariant
@@ -394,8 +498,8 @@ Item {
                         // Blur Transition toggle
                         ToggleRow {
                             Layout.fillWidth: true
-                            label: "Blur Transition"
-                            description: "Animated blur when opening panels"
+                            label: I18n.t("performance.blur_transition")
+                            description: I18n.t("system.performance.blur_transition_desc")
                             checked: Config.performance.blurTransition
                             onToggled: checked => {
                                 Config.performance.blurTransition = checked;
@@ -405,8 +509,8 @@ Item {
                         // Window Preview toggle
                         ToggleRow {
                             Layout.fillWidth: true
-                            label: "Window Preview"
-                            description: "Show window thumbnails in overview"
+                            label: I18n.t("performance.window_preview")
+                            description: I18n.t("system.performance.window_preview_desc")
                             checked: Config.performance.windowPreview
                             onToggled: checked => {
                                 Config.performance.windowPreview = checked;
@@ -416,8 +520,8 @@ Item {
                         // Wavy Line toggle
                         ToggleRow {
                             Layout.fillWidth: true
-                            label: "Wavy Line"
-                            description: "Animated wavy line effect"
+                            label: I18n.t("performance.wavy_line")
+                            description: I18n.t("system.performance.wavy_line_desc")
                             checked: Config.performance.wavyLine
                             onToggled: checked => {
                                 Config.performance.wavyLine = checked;
@@ -427,11 +531,22 @@ Item {
                         // Rotate Cover Art toggle
                         ToggleRow {
                             Layout.fillWidth: true
-                            label: "Disable Cover Art Rotation"
-                            description: "Stop the vinyl disc from spinning"
+                            label: I18n.t("system.performance.disable_cover_rotation")
+                            description: I18n.t("system.performance.disable_cover_rotation_desc")
                             checked: !Config.performance.rotateCoverArt
                             onToggled: checked => {
                                 Config.performance.rotateCoverArt = !checked;
+                            }
+                        }
+
+                        // Pause Wallpapers on Fullscreen toggle
+                        ToggleRow {
+                            Layout.fillWidth: true
+                            label: I18n.t("performance.pause_wallpapers_fullscreen")
+                            description: I18n.t("system.performance.pause_wallpapers_fullscreen_desc")
+                            checked: Config.performance.pauseWallpapersOnFullscreen
+                            onToggled: checked => {
+                                Config.performance.pauseWallpapersOnFullscreen = checked;
                             }
                         }
                     }
@@ -446,7 +561,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "System Resources"
+                            text: I18n.t("settings.system.resources")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -455,7 +570,7 @@ Item {
                         }
 
                         Text {
-                            text: "Configure which disks to monitor"
+                            text: I18n.t("system.resources.description")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Colors.overSurfaceVariant
@@ -508,7 +623,7 @@ Item {
                                             Text {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 visible: !diskInput.text && !diskInput.activeFocus
-                                                text: "e.g. /, /home..."
+                                                text: I18n.t("system.disk_path_placeholder")
                                                 font: diskInput.font
                                                 color: Colors.overSurfaceVariant
                                             }
@@ -546,7 +661,7 @@ Item {
 
                                         StyledToolTip {
                                             visible: removeDiskArea.containsMouse
-                                            tooltipText: "Remove disk"
+                                            tooltipText: I18n.t("system.remove_disk")
                                         }
                                     }
                                 }
@@ -574,7 +689,7 @@ Item {
                                     }
 
                                     Text {
-                                        text: "Add Disk"
+                                        text: I18n.t("system.add_disk")
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(0)
                                         color: addDiskButton.item
@@ -607,7 +722,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Idle"
+                            text: I18n.t("settings.system.idle")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -616,9 +731,9 @@ Item {
                         }
 
                         TextInputRow {
-                            label: "Lock Cmd"
+                            label: I18n.t("idle.lock_cmd_label")
                             value: Config.system.idle.general.lock_cmd ?? ""
-                            placeholder: "Command to lock screen"
+                            placeholder: I18n.t("idle.lock_cmd")
                             onValueEdited: newValue => {
                                 if (newValue !== Config.system.idle.general.lock_cmd) {
                                     GlobalStates.markShellChanged();
@@ -628,9 +743,9 @@ Item {
                         }
 
                         TextInputRow {
-                            label: "Before Sleep"
+                            label: I18n.t("idle.before_sleep_label")
                             value: Config.system.idle.general.before_sleep_cmd ?? ""
-                            placeholder: "Command before sleep"
+                            placeholder: I18n.t("idle.before_sleep")
                             onValueEdited: newValue => {
                                 if (newValue !== Config.system.idle.general.before_sleep_cmd) {
                                     GlobalStates.markShellChanged();
@@ -640,9 +755,9 @@ Item {
                         }
 
                         TextInputRow {
-                            label: "After Sleep"
+                            label: I18n.t("idle.after_sleep_label")
                             value: Config.system.idle.general.after_sleep_cmd ?? ""
-                            placeholder: "Command after sleep"
+                            placeholder: I18n.t("idle.after_sleep")
                             onValueEdited: newValue => {
                                 if (newValue !== Config.system.idle.general.after_sleep_cmd) {
                                     GlobalStates.markShellChanged();
@@ -652,7 +767,7 @@ Item {
                         }
 
                         Text {
-                            text: "Listeners"
+                            text: I18n.t("idle.listeners")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(0)
                             color: Colors.overBackground
@@ -680,7 +795,7 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth: true
                                     Text {
-                                        text: "Listener " + (index + 1)
+                                        text: I18n.t("idle.listener_n").replace("%1", index + 1)
                                         font.family: Config.theme.font
                                         font.pixelSize: Styling.fontSize(-1)
                                         font.bold: true
@@ -721,7 +836,7 @@ Item {
                                 }
 
                                 NumberInputRow {
-                                    label: "Timeout (s)"
+                                    label: I18n.t("idle.timeout")
                                     value: modelData.timeout || 0
                                     minValue: 1
                                     maxValue: 7200
@@ -736,7 +851,7 @@ Item {
                                 }
 
                                 TextInputRow {
-                                    label: "On Timeout"
+                                    label: I18n.t("idle.on_timeout")
                                     value: modelData.onTimeout || ""
                                     onValueEdited: val => {
                                         var list = [];
@@ -749,7 +864,7 @@ Item {
                                 }
 
                                 TextInputRow {
-                                    label: "On Resume"
+                                    label: I18n.t("idle.on_resume")
                                     value: modelData.onResume || ""
                                     onValueEdited: val => {
                                         var list = [];
@@ -772,7 +887,7 @@ Item {
 
                             Text {
                                 anchors.centerIn: parent
-                                text: "Add Listener"
+                                text: I18n.t("idle.add_listener")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 font.bold: true
@@ -902,6 +1017,69 @@ Item {
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // =====================
+                    // CLIPBOARD SECTION
+                    // =====================
+                    ColumnLayout {
+                        visible: root.currentSection === "clipboard"
+                        property string settingsSection: "clipboard"
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Text {
+                            text: "Clipboard"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.bottomMargin: -4
+                        }
+
+                        Text {
+                            text: "History is capped at 50 items and stored encrypted. Images are kept inside the database."
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overSurfaceVariant
+                            opacity: 0.7
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+
+                        StyledRect {
+                            variant: "pane"
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: clipColumn.implicitHeight + 24
+                            radius: Styling.radius(-2)
+
+                            ColumnLayout {
+                                id: clipColumn
+                                anchors.fill: parent
+                                anchors.margins: 12
+                                spacing: 8
+
+                                ToggleRow {
+                                    label: "Move to /tmp"
+                                    description: "Unpinned history lives in tmpfs and is wiped on reboot. Pinned items stay in the local share."
+                                    checked: Config.system.clipboard?.tmpfs ?? false
+                                    onToggled: checked => {
+                                        if (checked === (Config.system.clipboard?.tmpfs ?? false))
+                                            return;
+                                        Config.system.clipboard.tmpfs = checked;
+                                        // Tell the daemon to switch stores; it
+                                        // also re-reads this flag on boot.
+                                        BackendService.call("clipboard.setTmpMode", {enabled: checked});
+                                    }
+                                }
+                            }
+                        }
+
+                        // Bottom spacing
+                        Item {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 16
                         }
                     }
 

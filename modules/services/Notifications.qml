@@ -4,7 +4,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import Quickshell.Services.Notifications
+import qs.modules.services
 
 Singleton {
     id: root
@@ -49,13 +51,15 @@ Singleton {
 
                 // Cachear imágenes
                 if (appIcon && !appIcon.startsWith("data:")) {
-                    root.cacheImageAsBase64(appIcon, function (cachedData) {
+                    root.cacheImage(appIcon, function (cachedData) {
                         cachedAppIcon = cachedData;
+                        root.scheduleCacheSave();
                     });
                 }
                 if (image && !image.startsWith("data:")) {
-                    root.cacheImageAsBase64(image, function (cachedData) {
+                    root.cacheImage(image, function (cachedData) {
                         cachedImage = cachedData;
+                        root.scheduleCacheSave();
                     });
                 }
 
@@ -538,88 +542,287 @@ Singleton {
         root.list = root.list.slice(0);
     }
 
-    property int activeXhrCount: 0
-    property int maxConcurrentXhr: 3
-
-    function cacheImageAsBase64(imageUrl, callback) {
+    // cacheImage materializes a notification image into the daemon's
+    // hash-keyed disk cache and returns a stable file path that survives
+    // shell reloads. Falls back to the original source on any failure.
+    //
+    // Sources come in three flavors:
+    //   - data: URIs        → passed straight to the daemon
+    //   - image:// URLs     → Quickshell's in-process image provider
+    //     (raw image_data D-Bus hints land here). The daemon can't
+    //     resolve these, so we render + grab to a temp file and let the
+    //     daemon persist it as a blob.
+    //   - http(s) / file:// / local paths → sent to the daemon as-is
+    function cacheImage(imageUrl, callback) {
         if (!imageUrl || imageUrl.startsWith("data:")) {
             callback(imageUrl);
             return;
         }
 
-        if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-            callback(imageUrl);
-            return;
-        }
-
-        if (imageUrl.length > 2048) {
-            callback(imageUrl);
-            return;
-        }
-
-        if (activeXhrCount >= maxConcurrentXhr) {
-            callback(imageUrl);
-            return;
-        }
-
-        activeXhrCount++;
-        var xhr = new XMLHttpRequest();
-        xhr.open("GET", imageUrl, true);
-        xhr.responseType = "arraybuffer";
-        xhr.timeout = 5000;
-
-        var cleanupXhr = function () {
-            activeXhrCount--;
-            xhr = null;
-        };
-
-        xhr.onload = function () {
-            if (xhr.status === 200 && xhr.response) {
-                try {
-                    var arrayBuffer = xhr.response;
-                    var bytes = new Uint8Array(arrayBuffer);
-                    var binary = '';
-                    var len = Math.min(bytes.byteLength, 1024 * 1024);
-                    for (var i = 0; i < len; i++) {
-                        binary += String.fromCharCode(bytes[i]);
-                    }
-                    var base64 = btoa(binary);
-
-                    var mimeType = "image/png";
-                    var lowerUrl = imageUrl.toLowerCase();
-                    if (lowerUrl.includes(".jpg") || lowerUrl.includes(".jpeg")) {
-                        mimeType = "image/jpeg";
-                    } else if (lowerUrl.includes(".gif")) {
-                        mimeType = "image/gif";
-                    } else if (lowerUrl.includes(".webp")) {
-                        mimeType = "image/webp";
-                    }
-
-                    callback("data:" + mimeType + ";base64," + base64);
-                } catch (e) {
+        if (imageUrl.startsWith("image://")) {
+            cacheProviderImage(imageUrl, function (tmpPath) {
+                if (!tmpPath) {
+                    console.warn("Notifications: provider image cache job failed:", imageUrl);
                     callback(imageUrl);
+                    return;
                 }
-            } else {
+                BackendService.call("notify.cacheImage", {url: tmpPath}, function (result, error) {
+                    if (!result?.path) {
+                        console.warn("Notifications: daemon cacheImage failed:", error ?? "no path");
+                        callback(imageUrl);
+                        return;
+                    }
+                    const path = result.path.startsWith("/") ? "file://" + result.path : result.path;
+                    callback(path);
+                });
+            });
+            return;
+        }
+
+        const isRemote = imageUrl.startsWith("http://") || imageUrl.startsWith("https://");
+        const isLocal = imageUrl.startsWith("file://") || imageUrl.startsWith("/");
+        if (!isRemote && !isLocal) {
+            callback(imageUrl);
+            return;
+        }
+
+        BackendService.call("notify.cacheImage", {url: imageUrl}, function (result, error) {
+            if (!result?.path) {
                 callback(imageUrl);
+                return;
             }
-            cleanupXhr();
-        };
+            const path = result.path.startsWith("/") ? "file://" + result.path : result.path;
+            callback(path);
+        });
+    }
 
-        xhr.onerror = function () {
-            callback(imageUrl);
-            cleanupXhr();
-        };
+    // Caching runs at most twice per notification (icon + image); debounce
+    // the resulting disk writes instead of saving on every callback.
+    Timer {
+        id: cacheSaveTimer
+        interval: 1000
+        onTriggered: root.saveNotifications()
+    }
 
-        xhr.ontimeout = function () {
-            callback(imageUrl);
-            cleanupXhr();
-        };
+    function scheduleCacheSave() {
+        cacheSaveTimer.restart();
+    }
 
-        xhr.send();
+    // ---- Image cache plumbing -------------------------------------------
+    // Provider-backed images (image://, produced from raw D-Bus image_data
+    // hints) can only be resolved by rendering them inside a scene, and
+    // this singleton has none. A small transparent layer surface hosts the
+    // render jobs; it reserves no exclusive zone and accepts no input.
+    //
+    // The scene only produces frames while the frame-pump animation runs,
+    // which is required for grabToImage to capture actual pixels. Canvas
+    // drawImage is not an alternative: it rasterizes provider images blank.
+
+    property var cacheWindow: null
+    property int activeCacheJobs: 0
+    property int cacheJobCounter: 0
+
+    Component {
+        id: cacheWindowComponent
+
+        PanelWindow {
+            color: "transparent"
+            exclusionMode: ExclusionMode.Ignore
+            exclusiveZone: 0
+            visible: true
+            implicitWidth: 512
+            implicitHeight: 512
+            mask: Region {
+                item: null
+            }
+            anchors {
+                top: true
+                left: true
+            }
+            WlrLayershell.namespace: "ambxst:notification-cache"
+
+            Rectangle {
+                width: 1
+                height: 1
+                color: "transparent"
+                visible: root.activeCacheJobs > 0
+                SequentialAnimation on opacity {
+                    loops: Animation.Infinite
+                    NumberAnimation {
+                        to: 0
+                        duration: 16
+                    }
+                    NumberAnimation {
+                        to: 1
+                        duration: 16
+                    }
+                    running: root.activeCacheJobs > 0
+                }
+            }
+        }
+    }
+
+    Component {
+        id: imageCacheJob
+
+        Item {
+            id: job
+
+            required property string imageUrl
+            required property var callback
+            readonly property int maxSize: 512
+            property bool done: false
+
+            width: 1
+            height: 1
+
+            Component.onCompleted: root.activeCacheJobs++
+            Component.onDestruction: root.activeCacheJobs--
+
+            Image {
+                id: img
+                anchors.fill: parent
+                source: job.imageUrl
+                asynchronous: true
+                cache: false
+
+                onStatusChanged: {
+                    if (status === Image.Ready)
+                        job.setup();
+                    else if (status === Image.Error)
+                        job.finish(null);
+                }
+            }
+
+            Timer {
+                id: settleTimer
+                interval: 150
+                onTriggered: job.grab()
+            }
+
+            function setup() {
+                const iw = img.implicitWidth;
+                const ih = img.implicitHeight;
+                if (iw <= 0 || ih <= 0) {
+                    finish(null);
+                    return;
+                }
+                const scale = Math.min(1, maxSize / Math.max(iw, ih));
+                width = Math.max(1, Math.round(iw * scale));
+                height = Math.max(1, Math.round(ih * scale));
+                img.width = width;
+                img.height = height;
+                // Let the scene render the image texture before grabbing.
+                settleTimer.restart();
+            }
+
+            function grab() {
+                if (done)
+                    return;
+                done = true;
+                const tmpPath = root.cacheTmpPath();
+                grabToImage(result => {
+                    if (!result || !result.image || !result.saveToFile(tmpPath)) {
+                        console.warn("Notifications: grabToImage failed for", job.imageUrl);
+                        finish(null);
+                        return;
+                    }
+                    finish(tmpPath);
+                });
+            }
+
+            function finish(result) {
+                const cb = callback;
+                destroy();
+                if (cb)
+                    cb(result);
+            }
+        }
+    }
+
+    function cacheTmpPath() {
+        return "/tmp/ambxst-notif-cache-" + root.cacheJobCounter++ + ".png";
+    }
+
+    function cacheProviderImage(imageUrl, callback) {
+        if (!root.cacheWindow)
+            root.cacheWindow = cacheWindowComponent.createObject(root);
+        imageCacheJob.createObject(root.cacheWindow.contentItem, {
+            "imageUrl": imageUrl,
+            "callback": callback
+        });
     }
 
     Component.onCompleted: {
-        notifFileView.reload();
+        // Defer notification history reload to not block boot.
+        // The DBus notification server is registered above and live notifications work.
+        notifDeferTimer.start();
+
+        // Subscribe to the notify IPC service so external CLI commands
+        // (colorpicker, screen, …) can route their notifications through
+        // this singleton instead of shelling out to notify-send. Without
+        // this they bypass Ambxst's notification lifecycle and leak into
+        // the system daemon — see cmds_colorpicker.go for the originating
+        // bug. We register the subscription even if BackendService isn't
+        // connected yet; the callback simply won't fire until the socket
+        // is up.
+        root.notifyIpcHandle = BackendService.addSubscription(
+            ["notify"],
+            (service, data) => root.handleNotifyRequest(data)
+        );
+
         root.initDone();
+    }
+
+    property int notifyIpcHandle: -1
+
+    // handleNotifyRequest converts a CLI-driven notify.send event into a
+    // tracked notification. Actions whose source object carries a
+    // `clipboard` field get a synthetic handler that copies the value
+    // through the daemon (the selection owner) when the user clicks
+    // them, so cross-process flows (colorpicker formats) keep working
+    // without the CLI blocking on stdin.
+    function handleNotifyRequest(data) {
+        if (!data) return;
+        const rawActions = data.actions || [];
+        const actionHandlers = {};
+        const actions = [];
+        for (let i = 0; i < rawActions.length; i++) {
+            const a = rawActions[i];
+            if (!a || !a.identifier) continue;
+            actions.push({
+                identifier: a.identifier,
+                text: a.text || a.identifier
+            });
+            if (a.clipboard !== undefined && a.clipboard !== null) {
+                const value = a.clipboard;
+                actionHandlers[a.identifier] = function (_id) {
+                    BackendService.call("clipboard.copyText", {text: value});
+                };
+            }
+        }
+
+        const opts = {
+            summary: data.summary || "",
+            body: data.body || "",
+            appName: data.appName || "Ambxst",
+            appIcon: data.appIcon || "",
+            image: data.image || "",
+            urgency: data.urgency || "normal",
+            expireTimeout: data.expireTimeout || 5000,
+            replaceKey: data.replaceKey || "",
+            actions: actions,
+            actionHandlers: actionHandlers,
+            popup: true
+        };
+        root.notifyInternal(opts);
+    }
+
+    Timer {
+        id: notifDeferTimer
+        interval: 2000
+        running: false
+        repeat: false
+        onTriggered: notifFileView.reload()
     }
 }

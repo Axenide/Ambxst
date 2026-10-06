@@ -34,6 +34,16 @@ PopupWindow {
     // Logical open state (changes immediately, not after animation)
     property bool isOpen: false
 
+    // Optional group identifier. Popups that share a groupId are
+    // mutually exclusive: opening one closes the others in the same
+    // group. Defaults to "bar" so the bar's flyout controls, clock
+    // popups, layout selector, etc. don't stack on top of each other.
+    property string groupId: "bar"
+
+    // Extra windows (e.g. a nested child popup) that must not clear
+    // this popup's focus grab while they are open.
+    property list<var> extraGrabWindows: []
+
     // Signal emitted when popup is closed externally (click outside)
     signal closedExternally
 
@@ -97,16 +107,31 @@ PopupWindow {
     color: "transparent"
     visible: false
 
+    // When true, the transparent shadow margins do not capture input;
+    // only the visible content area does. Lets pointer drags from the
+    // parent window travel over the margins without breaking its grab.
+    property bool clickThroughMargins: false
+
+    Region {
+        id: contentInputMask
+        item: background
+    }
+
+    mask: root.clickThroughMargins ? contentInputMask : null
+
     // Focus grab for click-outside-to-close behavior
     property bool focusActive: false
 
     FocusGrab {
         id: focusGrab
         active: root.visible && root.focusActive
-        windows: [root]
+        windows: [root].concat(root.extraGrabWindows)
 
         onCleared: {
-            if (root.closeOnFocusLost && root.isOpen) {
+            // Only one focus grab can exist at a time: a nested child
+            // popup starting its own grab clears ours, which is not a
+            // request to close while the child is still listed.
+            if (root.closeOnFocusLost && root.isOpen && root.extraGrabWindows.length === 0) {
                 root.isOpen = false;
                 root.closedExternally();
                 root.close();
@@ -172,6 +197,11 @@ PopupWindow {
         // Debug positioning
         console.log("BarPopup OPEN - position:", barPosition, "anchorItem:", anchorItem.width, "x", anchorItem.height, "rect.x:", anchor.rect.x, "rect.y:", anchor.rect.y);
 
+        // Group-aware mutual exclusion: ask Visibilities to close any
+        // sibling popups already open in the same groupId, then
+        // register this popup so future opens in the group close us.
+        Visibilities.registerBarPopup(root);
+
         // Set logical state immediately
         isOpen = true;
 
@@ -194,6 +224,10 @@ PopupWindow {
         if (!visible)
             return;
 
+        // Drop our registration so future opens in the same group
+        // don't try to close a popup that's already gone.
+        Visibilities.unregisterBarPopup(root);
+
         // Set logical state immediately
         isOpen = false;
         focusActive = false;
@@ -214,11 +248,27 @@ PopupWindow {
         }
     }
 
+    // Re-assert the focus grab after it was cleared externally (e.g. a
+    // nested child popup took over and then closed)
+    function refreshFocusGrab() {
+        if (!visible || !isOpen)
+            return;
+        focusActive = false;
+        focusActive = true;
+    }
+
     Timer {
         id: closeTimer
         interval: Config.animDuration > 0 ? Config.animDuration + 50 : 50
         onTriggered: {
             root.visible = false;
         }
+    }
+
+    Component.onDestruction: {
+        // Make sure a popup that's torn down (parent destroyed, panel
+        // reloaded, etc.) doesn't leave a stale entry that blocks
+        // future opens in its group.
+        Visibilities.unregisterBarPopup(root);
     }
 }

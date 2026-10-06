@@ -33,20 +33,6 @@ Item {
 
     signal requestPopupOpen()
 
-    Process {
-        id: notifyProcess
-        stdout: StdioCollector { id: notifyStdout }
-        onExited: (exitCode) => {
-            let action = notifyStdout.text.trim();
-            if (action === "check") {
-                root.requestPopupOpen();
-            } else if (action === "stop") {
-                root.stopAlarm();
-                root.isRunning = false;
-            }
-        }
-    }
-    
     // Internal countdown state
     property int timeLeft: Config.system.pomodoro.workTime
     property int totalTime: Config.system.pomodoro.workTime
@@ -72,7 +58,11 @@ Item {
         }
     }
 
-    onIsRunningChanged: updateSpotify()
+    onIsRunningChanged: {
+        updateSpotify();
+        // Re-sync the timer inputs when the countdown restarts
+        if (isRunning) resyncTimerInputs();
+    }
     onIsWorkSessionChanged: updateSpotify()
     
     Connections {
@@ -102,6 +92,7 @@ Item {
         } else {
             isRunning = false;
         }
+        resyncTimerInputs();
     }
 
     // Smooth progress animation
@@ -122,6 +113,12 @@ Item {
         }
     }
 
+
+    function resyncTimerInputs() {
+        minIn.resync();
+        secIn.resync();
+    }
+
     function resetTimer() {
         stopAlarm();
         isRunning = false;
@@ -129,6 +126,7 @@ Item {
         timeLeft = Config.system.pomodoro.workTime;
         totalTime = timeLeft;
         visualProgress = 1.0;
+        resyncTimerInputs();
     }
 
     function startAlarm() {
@@ -136,6 +134,7 @@ Item {
         isRunning = false;
         alarmActive = true;
         visualProgress = 0; // Ensure it's exactly 0
+        resyncTimerInputs();
         
         if (alarmSoundLoader.item) {
             alarmSoundLoader.item.loops = Config.system.pomodoro.autoStart ? 2 : 255; // Infinite approx
@@ -155,20 +154,32 @@ Item {
             nextSession();
         }
 
-        // Prepare notification command before running
-        let cmd = [
-            "notify-send",
-            "-a", "Pomodoro",
-            "Pomodoro",
-            finishedSession + " session finished!"
-        ];
-        
-        // Add wait and actions ONLY if notify-send supports them (most modern ones do)
-        // Note: Removing --wait can help if the process hangs
-        cmd.splice(1, 0, "--wait", "--action=check=Check", "--action=stop=Stop");
-        
-        notifyProcess.command = cmd;
-        notifyProcess.running = true;
+        // Routed through Ambxst's Notifications service so the timer alert
+        // is tracked and dismissable like every other Ambxst notification
+        // (notify-send was leaking into the system daemon with no way to
+        // discard it). Action handlers preserve the previous --action
+        // behavior: "check" opens the popup, "stop" halts the alarm.
+        Notifications.notifyInternal({
+            summary: "Pomodoro",
+            body: finishedSession + " session finished!",
+            appName: "Pomodoro",
+            urgency: "normal",
+            expireTimeout: 60000,
+            replaceKey: "pomodoro-" + finishedSession,
+            actions: [
+                { identifier: "check", text: "Check" },
+                { identifier: "stop",  text: "Stop"  }
+            ],
+            actionHandlers: {
+                "check": function () {
+                    root.requestPopupOpen();
+                },
+                "stop": function () {
+                    root.stopAlarm();
+                    root.isRunning = false;
+                }
+            }
+        });
     }
 
     function stopAlarm() {
@@ -183,6 +194,7 @@ Item {
         timeLeft = isWorkSession ? Config.system.pomodoro.workTime : Config.system.pomodoro.restTime;
         totalTime = timeLeft;
         visualProgress = 1.0;
+        resyncTimerInputs();
         if (Config.system.pomodoro.autoStart) {
             isRunning = true;
         }
@@ -240,7 +252,7 @@ Item {
                 
                 Text {
                     anchors.centerIn: parent
-                    text: root.isWorkSession ? "Work Session" : "Rest Session"
+                    text: root.isWorkSession ? I18n.t("pomodoro.work_session") : I18n.t("pomodoro.rest_session")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     font.weight: Font.Bold
@@ -258,6 +270,7 @@ Item {
                         let configTime = root.isWorkSession ? Config.system.pomodoro.workTime : Config.system.pomodoro.restTime;
                         root.timeLeft = configTime;
                         root.totalTime = configTime;
+                        root.resyncTimerInputs();
                     }
                 }
             }
@@ -361,7 +374,7 @@ Item {
             spacing: 12
 
             ControlBtn {
-                text: "-1m"
+                text: I18n.t("pomodoro.minus_1m")
                 onClicked: {
                     if (root.timeLeft >= 60) {
                         root.timeLeft -= 60;
@@ -370,6 +383,7 @@ Item {
                             if (root.isWorkSession) Config.system.pomodoro.workTime = root.timeLeft;
                             else Config.system.pomodoro.restTime = root.timeLeft;
                         }
+                        root.resyncTimerInputs();
                     }
                 }
             }
@@ -383,7 +397,7 @@ Item {
                 
                 Text {
                     anchors.centerIn: parent
-                    text: root.alarmActive ? "STOP ALARM" : (root.isRunning ? "PAUSE" : (root.isResuming ? "RESUME" : "START " + (root.isWorkSession ? "WORK" : "REST")))
+                    text: root.alarmActive ? I18n.t("pomodoro.stop_alarm") : (root.isRunning ? I18n.t("pomodoro.pause") : (root.isResuming ? I18n.t("pomodoro.resume") : (root.isWorkSession ? I18n.t("pomodoro.start_work") : I18n.t("pomodoro.start_rest"))))
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(0)
                     font.weight: Font.Black
@@ -398,7 +412,7 @@ Item {
             }
 
             ControlBtn {
-                text: "+1m"
+                text: I18n.t("pomodoro.plus_1m")
                 onClicked: {
                     root.timeLeft += 60;
                     if (!root.isRunning) {
@@ -406,6 +420,7 @@ Item {
                         if (root.isWorkSession) Config.system.pomodoro.workTime = root.timeLeft;
                         else Config.system.pomodoro.restTime = root.timeLeft;
                     }
+                    root.resyncTimerInputs();
                 }
             }
         }
@@ -420,7 +435,7 @@ Item {
             RowLayout {
                 spacing: 8
                 Text {
-                    text: "Auto"
+                    text: I18n.t("common.auto")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: Colors.outline
@@ -450,7 +465,7 @@ Item {
             RowLayout {
                 spacing: 8
                 Text {
-                    text: "Sync Spotify"
+                    text: I18n.t("pomodoro.sync_spotify")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
                     color: Colors.outline
@@ -482,15 +497,16 @@ Item {
     component TimerInput: TextField {
         id: tIn
         property int value: 0
+        property bool blinkPhase: false
         signal valueUpdated(int newValue)
         
+
         text: value.toString().padStart(2, '0')
-        onActiveFocusChanged: if (!activeFocus) text = value.toString().padStart(2, '0')
         
         font.family: Config.theme.monoFont
         font.pixelSize: Styling.fontSize(8)
         font.weight: Font.Bold
-        color: root.alarmActive ? (Math.floor(Date.now() / 500) % 2 === 0 ? Styling.srItem("overprimary") : Colors.overBackground) : Colors.overBackground
+        color: root.alarmActive ? (tIn.blinkPhase ? Styling.srItem("overprimary") : Colors.overBackground) : Colors.overBackground
         
         background: Item {}
         padding: 0; leftPadding: 0; rightPadding: 0
@@ -506,10 +522,12 @@ Item {
             }
         }
         
-        onEditingFinished: {
-            let v = parseInt(text) || 0;
-            tIn.valueUpdated(v);
-            text = v.toString().padStart(2, '0');
+        onEditingFinished: resync()
+        onActiveFocusChanged: if (!activeFocus) resync()
+
+
+        function resync() {
+            text = Qt.binding(() => tIn.value.toString().padStart(2, '0'));
         }
         
         Layout.preferredWidth: 60
@@ -518,7 +536,7 @@ Item {
             interval: 500
             running: root.alarmActive
             repeat: true
-            onTriggered: tIn.update()
+            onTriggered: tIn.blinkPhase = !tIn.blinkPhase
         }
     }
 

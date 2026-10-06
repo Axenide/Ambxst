@@ -70,18 +70,19 @@ Rectangle {
         property int currentPanelIndex: 0
         property var aggregatedItems: []
         property bool isIndexing: false
+        readonly property var panels: contentArea.panelComponents.filter(panel => panel.section !== 10)
 
         // Helper to load panels one by one
         Loader {
             id: indexerLoader
             active: settingsIndexer.isIndexing
             asynchronous: true
-            source: settingsIndexer.isIndexing && settingsIndexer.currentPanelIndex < contentArea.panelComponents.length ? contentArea.panelComponents[settingsIndexer.currentPanelIndex].component : ""
+            source: settingsIndexer.isIndexing && settingsIndexer.currentPanelIndex < settingsIndexer.panels.length ? settingsIndexer.panels[settingsIndexer.currentPanelIndex].component : ""
 
             onStatusChanged: {
                 if (status === Loader.Ready && item) {
                     // Scrape
-                    const sectionId = contentArea.panelComponents[settingsIndexer.currentPanelIndex].section;
+                    const sectionId = settingsIndexer.panels[settingsIndexer.currentPanelIndex].section;
                     const newItems = SettingsCrawler.crawl(item, sectionId);
                     settingsIndexer.aggregatedItems = settingsIndexer.aggregatedItems.concat(newItems);
 
@@ -95,7 +96,7 @@ Rectangle {
         }
 
         onCurrentPanelIndexChanged: {
-            if (currentPanelIndex >= contentArea.panelComponents.length) {
+            if (currentPanelIndex >= settingsIndexer.panels.length) {
                 // Done
                 if (isIndexing) {
                     isIndexing = false;
@@ -202,61 +203,67 @@ Rectangle {
     readonly property var sectionModel: [
         {
             icon: Icons.wifiHigh,
-            label: "Network",
+            label: I18n.t("settings.network"),
             section: 0,
             isIcon: true
         },
         {
             icon: Icons.bluetooth,
-            label: "Bluetooth",
+            label: I18n.t("settings.bluetooth"),
             section: 1,
             isIcon: true
         },
         {
             icon: Icons.faders,
-            label: "Mixer",
+            label: I18n.t("settings.mixer"),
             section: 2,
             isIcon: true
         },
         {
             icon: Icons.robot,
-            label: "AI",
+            label: I18n.t("settings.ai"),
             section: 3,
             isIcon: true
         },
         {
             icon: Icons.waveform,
-            label: "Effects",
+            label: I18n.t("settings.effects"),
             section: 4,
             isIcon: true
         },
         {
             icon: Icons.paintBrush,
-            label: "Theme",
+            label: I18n.t("settings.theme"),
             section: 5,
             isIcon: true
         },
         {
             icon: Icons.keyboard,
-            label: "Binds",
+            label: I18n.t("settings.binds"),
             section: 6,
             isIcon: true
         },
         {
             icon: Icons.circuitry,
-            label: "System",
+            label: I18n.t("settings.system"),
             section: 7,
             isIcon: true
         },
         {
             icon: Icons.compositor,
-            label: "Compositor",
+            label: I18n.t("settings.compositor"),
             section: 8,
             isIcon: true
         },
         {
+            icon: Icons.puzzlePiece,
+            label: "Mods",
+            section: 10,
+            isIcon: true
+        },
+        {
             icon: Qt.resolvedUrl("../../../../assets/ambxst/ambxst-icon.svg"),
-            label: "Ambxst",
+            label: I18n.t("settings.ambxst"),
             section: 9,
             isIcon: false
         }
@@ -310,7 +317,7 @@ Rectangle {
             SearchInput {
                 id: searchInput
                 Layout.fillWidth: true
-                placeholderText: "Search..."
+                placeholderText: I18n.t("common.search")
                 clearOnEscape: true
 
                 onSearchTextChanged: text => {
@@ -538,7 +545,7 @@ Rectangle {
             clip: true
 
             property int previousSection: 0
-            readonly property int maxContentWidth: 480
+            readonly property int maxContentWidth: root.currentSection === 10 ? 760 : 480
 
             // Track section changes for animation direction
             onVisibleChanged: {
@@ -595,6 +602,10 @@ Rectangle {
                 {
                     component: "ShellPanel.qml",
                     section: 9
+                },
+                {
+                    component: "ModsPanel.qml",
+                    section: 10
                 }
             ]
 

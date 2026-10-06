@@ -4,6 +4,7 @@ import Quickshell.Io
 import qs.config
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.services
 
 StyledRect {
     id: weatherContainer
@@ -182,8 +183,12 @@ StyledRect {
 
     function updateDay() {
         var now = new Date();
-        var day = Qt.formatDateTime(now, Qt.locale(), "ddd");
-        weatherContainer.currentDayAbbrev = day.slice(0, 3).charAt(0).toUpperCase() + day.slice(1, 3);
+        var dayKeys = [
+            "calendar.day.sun", "calendar.day.mon", "calendar.day.tue",
+            "calendar.day.wed", "calendar.day.thu", "calendar.day.fri",
+            "calendar.day.sat"
+        ];
+        weatherContainer.currentDayAbbrev = I18n.t(dayKeys[now.getDay()]);
         scheduleNextDayUpdate();
     }
 

@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.modules.services
+import qs.modules.globals
 import "ai"
 import "ai/strategies"
 
@@ -66,13 +67,13 @@ Singleton {
             isRestored = true;
     }
 
+    property bool _restored: false
     Connections {
         target: StateService
-        function onStateLoaded() {
-            restoreModel();
+        function onInitializedChanged() {
+            root._restore();
         }
     }
-
     Connections {
         target: KeyStore
         function onKeysChanged() {
@@ -80,15 +81,34 @@ Singleton {
         }
     }
 
-    Component.onCompleted: {
-        if (StateService.initialized)
-            restoreModel();
+    Component.onCompleted: root._restore()
 
+    function _restore() {
+        if (StateService.initialized && !root._restored) {
+            root._restored = true;
+            restoreModel();
+        }
+    }
+
+    // Lazy init: trigger fetchAvailableModels/reloadHistory/createNewChat
+    // when AI sidebar is opened for the first time.
+    property bool _aiInitialized: false
+    function _ensureInit() {
+        if (_aiInitialized) return;
+        _aiInitialized = true;
         if (models.length === 0)
             fetchAvailableModels();
-
         reloadHistory();
         createNewChat();
+    }
+
+    // Trigger lazy init when AI sidebar is opened
+    Connections {
+        target: GlobalStates
+        function onAssistantVisibleChanged() {
+            if (GlobalStates.assistantVisible)
+                root._ensureInit();
+        }
     }
 
     // ============================================
@@ -259,16 +279,16 @@ Singleton {
                     }
                 }
                 if (!found) {
-                    pushSystemMessage("Model '" + args + "' not found.");
+                    pushSystemMessage(I18n.t("ai.model_not_found").replace("%1", args));
                 } else {
-                    pushSystemMessage("Switched to model: " + currentModel.name);
+                    pushSystemMessage(I18n.t("ai.switched_to_model").replace("%1", currentModel.name));
                 }
             } else {
                 modelSelectionRequested();
             }
             return true;
         case "/help":
-            pushSystemMessage("🤖 **Assistant Commands**\n\n" + "**`/new`**\n" + "Starts a fresh conversation context.\n\n" + "**`/model [name]`**\n" + "Switches the active AI model.\n" + "• **List models:** Type `/model` without arguments.\n" + "• **Switch:** Type `/model gemini` or `/model mistral`.\n\n" + "**`/help`**\n" + "Shows this help message.\n\n" + "💡 **Tips:**\n" + "• **Edit:** Click the pen icon on any message to modify it.\n" + "• **Regenerate:** Click the refresh icon to get a new response.\n" + "• **Copy:** Use the copy button to grab code or text.");
+            pushSystemMessage(I18n.t("ai.help_message"));
             return true;
         }
 
@@ -343,7 +363,7 @@ Singleton {
     function makeRequest() {
         let apiKey = getApiKey(currentModel);
         if (!apiKey && currentModel.requires_key) {
-            lastError = "API Key missing for " + currentModel.name + ". Add it in Settings or set " + (currentModel.key_id || "the environment variable") + ".";
+            lastError = I18n.t("ai.api_key_missing").replace("%1", currentModel.name).replace("%2", currentModel.key_id || I18n.t("ai.env_variable"));
             isLoading = false;
 
             let errChat = Array.from(currentChat);
@@ -533,14 +553,14 @@ Singleton {
                     let lastMsg = root.currentChat[root.currentChat.length - 1];
                     if (!lastMsg.content) {
                         let newChat = Array.from(root.currentChat);
-                        newChat[newChat.length - 1].content = "No response received from the API.";
+                        newChat[newChat.length - 1].content = I18n.t("ai.no_response");
                         root.currentChat = newChat;
                     }
                 }
 
                 root.saveCurrentChat();
             } else {
-                root.lastError = "Network Request Failed: " + curlStderr.text;
+                root.lastError = I18n.t("ai.network_failed").replace("%1", curlStderr.text);
 
                 // Update the placeholder message with error
                 let errChat = Array.from(root.currentChat);
@@ -568,7 +588,7 @@ Singleton {
         onExited: exitCode => {
             let output = cmdStdout.text + "\n" + cmdStderr.text;
             if (output.trim() === "")
-                output = "Command executed successfully (no output).";
+                output = I18n.t("ai.cmd_no_output");
 
             let msg = currentChat[targetIndex];
             let newChat = Array.from(currentChat);
@@ -609,25 +629,7 @@ Singleton {
     }
 
     function reloadHistory() {
-        let pyScript = `import os, json, glob
-chat_dir = "${chatDir}"
-os.makedirs(chat_dir, exist_ok=True)
-files = sorted(glob.glob(chat_dir + "/*.json"), key=os.path.getmtime, reverse=True)
-for f in files:
-    id = os.path.basename(f)[:-5]
-    title = "New Chat"
-    try:
-        with open(f, 'r') as fp:
-            data = json.load(fp)
-            for msg in data:
-                if msg.get("role") == "user":
-                    title = msg.get("content", "")[:40].replace("\\n", " ").strip()
-                    if len(msg.get("content", "")) > 40: title += "..."
-                    break
-    except: pass
-    print(f"{id}|{title}")
-`;
-        listHistoryProcess.command = ["python3", "-c", pyScript];
+        listHistoryProcess.command = ["ambxst", "chatlist", chatDir];
         listHistoryProcess.running = true;
     }
 
@@ -801,7 +803,7 @@ for f in files:
                                 let m = aiModelFactory.createObject(root, {
                                     name: item.displayName || id,
                                     icon: Qt.resolvedUrl("../../../assets/aiproviders/google.svg"),
-                                    description: item.description || "Google Gemini Model",
+                                    description: item.description || I18n.t("ai.desc_google"),
                                     endpoint: "https://generativelanguage.googleapis.com/v1beta",
                                     model: id,
                                     provider: "gemini",
@@ -847,7 +849,7 @@ for f in files:
                                 let m = aiModelFactory.createObject(root, {
                                     name: id,
                                     icon: Qt.resolvedUrl("../../../assets/aiproviders/openai.svg"),
-                                    description: "OpenAI Model",
+                                    description: I18n.t("ai.desc_openai"),
                                     endpoint: "https://api.openai.com",
                                     model: id,
                                     provider: "openai",
@@ -884,7 +886,7 @@ for f in files:
                             let m = aiModelFactory.createObject(root, {
                                 name: id,
                                 icon: Qt.resolvedUrl("../../../assets/aiproviders/mistral.svg"),
-                                description: "Mistral Model",
+                                description: I18n.t("ai.desc_mistral"),
                                 endpoint: "https://api.mistral.ai/v1",
                                 model: id,
                                 provider: "mistral",
@@ -920,7 +922,7 @@ for f in files:
                             let m = aiModelFactory.createObject(root, {
                                 name: id,
                                 icon: Qt.resolvedUrl("../../../assets/aiproviders/groq.svg"),
-                                description: "Groq Model",
+                                description: I18n.t("ai.desc_groq"),
                                 endpoint: "https://api.groq.com/openai/v1",
                                 model: id,
                                 provider: "groq",
@@ -956,7 +958,7 @@ for f in files:
                             let m = aiModelFactory.createObject(root, {
                                 name: item.display_name || id,
                                 icon: Qt.resolvedUrl("../../../assets/aiproviders/anthropic.svg"),
-                                description: item.description || "Anthropic Model",
+                                description: item.description || I18n.t("ai.desc_anthropic"),
                                 endpoint: "https://api.anthropic.com/v1/messages",
                                 model: id,
                                 provider: "anthropic",
@@ -991,7 +993,7 @@ for f in files:
                             let m = aiModelFactory.createObject(root, {
                                 name: item.name,
                                 icon: Qt.resolvedUrl("../../../assets/aiproviders/ollama.svg"),
-                                description: "Local Ollama Model",
+                                description: I18n.t("ai.desc_ollama"),
                                 endpoint: "http://127.0.0.1:11434",
                                 model: item.name,
                                 provider: "ollama",

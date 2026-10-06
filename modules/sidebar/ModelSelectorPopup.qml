@@ -115,7 +115,7 @@ Popup {
             SearchInput {
                 id: searchInput
                 Layout.fillWidth: true
-                placeholderText: "Search models..."
+                placeholderText: I18n.t("ai.search_models")
                 iconText: "" // Removed icon as requested
 
                 onSearchTextChanged: text => {
@@ -233,7 +233,7 @@ Popup {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         verticalAlignment: Text.AlignVCenter
-                        text: "Refresh?"
+                        text: I18n.t("ai.refresh_models")
                         font.family: Config.theme.font
                         font.pixelSize: 13
                         font.weight: Font.Bold

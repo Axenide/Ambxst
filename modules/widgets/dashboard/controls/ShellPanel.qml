@@ -4,9 +4,11 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
+import qs.modules.services
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -171,12 +173,15 @@ Item {
             font.family: Config.theme.font
             font.pixelSize: Styling.fontSize(0)
             color: Colors.overBackground
+            opacity: toggleRowRoot.enabled ? 1 : 0.45
             Layout.fillWidth: true
         }
 
         Switch {
             id: toggleSwitch
             checked: toggleRowRoot.checked
+            enabled: toggleRowRoot.enabled
+            opacity: toggleRowRoot.enabled ? 1 : 0.45
 
             onCheckedChanged: {
                 if (!toggleRowRoot._updating && checked !== toggleRowRoot.checked) {
@@ -442,7 +447,7 @@ Item {
     // Inline component for screen list selection
     component ScreenListRow: ColumnLayout {
         id: screenListRowRoot
-        property string label: "Screens"
+        property string label: I18n.t("shell.screens")
         property var selectedScreens: []  // Array of screen names
         signal screensChanged(var newList)
 
@@ -458,7 +463,7 @@ Item {
         }
 
         Text {
-            text: "Empty = all screens"
+            text: I18n.t("shell.screens_empty")
             font.family: Config.theme.font
             font.pixelSize: Styling.fontSize(-2)
             color: Colors.outline
@@ -568,15 +573,15 @@ Item {
                     id: titlebar
                     width: root.contentWidth
                     anchors.horizontalCenter: parent.horizontalCenter
-                    title: root.currentSection === "" ? "Shell" : (root.currentSection.charAt(0).toUpperCase() + root.currentSection.slice(1))
-                    statusText: GlobalStates.shellHasChanges ? "Unsaved changes" : ""
+                    title: root.currentSection === "" ? I18n.t("shell.shell") : I18n.t("settings.shell." + root.currentSection)
+                    statusText: GlobalStates.shellHasChanges ? I18n.t("common.unsaved_changes") : ""
                     statusColor: Colors.error
 
                     actions: {
                         let baseActions = [
                             {
                                 icon: Icons.arrowCounterClockwise,
-                                tooltip: "Discard changes",
+                                tooltip: I18n.t("common.discard_changes"),
                                 enabled: GlobalStates.shellHasChanges,
                                 onClicked: function () {
                                     GlobalStates.discardShellChanges();
@@ -584,7 +589,7 @@ Item {
                             },
                             {
                                 icon: Icons.disk,
-                                tooltip: "Apply changes",
+                                tooltip: I18n.t("common.apply_changes"),
                                 enabled: GlobalStates.shellHasChanges,
                                 onClicked: function () {
                                     GlobalStates.applyShellChanges();
@@ -596,7 +601,7 @@ Item {
                             return [
                                 {
                                     icon: Icons.arrowLeft,
-                                    tooltip: "Back",
+                                    tooltip: I18n.t("common.back"),
                                     onClicked: function () {
                                         root.currentSection = "";
                                     }
@@ -629,43 +634,43 @@ Item {
                         spacing: 8
 
                         SectionButton {
-                            text: "Bar"
+                            text: I18n.t("settings.shell.bar")
                             sectionId: "bar"
                         }
                         SectionButton {
-                            text: "Sidebar"
+                            text: I18n.t("settings.shell.sidebar")
                             sectionId: "sidebar"
                         }
                         SectionButton {
-                            text: "Frame"
+                            text: I18n.t("settings.shell.frame")
                             sectionId: "frame"
                         }
                         SectionButton {
-                            text: "Notch"
+                            text: I18n.t("settings.shell.notch")
                             sectionId: "notch"
                         }
                         SectionButton {
-                            text: "Workspaces"
+                            text: I18n.t("settings.shell.workspaces")
                             sectionId: "workspaces"
                         }
                         SectionButton {
-                            text: "Overview"
+                            text: I18n.t("settings.shell.overview")
                             sectionId: "overview"
                         }
                         SectionButton {
-                            text: "Dock"
+                            text: I18n.t("settings.shell.dock")
                             sectionId: "dock"
                         }
                         SectionButton {
-                            text: "Lockscreen"
+                            text: I18n.t("settings.shell.lockscreen")
                             sectionId: "lockscreen"
                         }
                         SectionButton {
-                            text: "Desktop"
+                            text: I18n.t("settings.shell.desktop")
                             sectionId: "desktop"
                         }
                         SectionButton {
-                            text: "System"
+                            text: I18n.t("settings.shell.system")
                             sectionId: "system"
                         }
                     }
@@ -679,7 +684,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Bar"
+                            text: I18n.t("settings.shell.bar")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -691,22 +696,22 @@ Item {
                             label: ""
                             options: [
                                 {
-                                    label: "Top",
+                                    label: I18n.t("common.top"),
                                     value: "top",
                                     icon: Icons.arrowUp
                                 },
                                 {
-                                    label: "Bottom",
+                                    label: I18n.t("common.bottom"),
                                     value: "bottom",
                                     icon: Icons.arrowDown
                                 },
                                 {
-                                    label: "Left",
+                                    label: I18n.t("common.left"),
                                     value: "left",
                                     icon: Icons.arrowLeft
                                 },
                                 {
-                                    label: "Right",
+                                    label: I18n.t("common.right"),
                                     value: "right",
                                     icon: Icons.arrowRight
                                 }
@@ -721,9 +726,9 @@ Item {
                         }
 
                         TextInputRow {
-                            label: "Launcher Icon"
+                            label: I18n.t("shell.launcher_icon")
                             value: Config.bar.launcherIcon ?? ""
-                            placeholder: "Symbol or path to icon..."
+                            placeholder: I18n.t("theme.symbol_or_icon")
                             onValueEdited: newValue => {
                                 if (newValue !== Config.bar.launcherIcon) {
                                     GlobalStates.markShellChanged();
@@ -733,7 +738,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Launcher Icon Tint"
+                            label: I18n.t("shell.launcher_icon_tint")
                             checked: Config.bar.launcherIconTint ?? true
                             onToggled: value => {
                                 if (value !== Config.bar.launcherIconTint) {
@@ -744,7 +749,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Launcher Icon Full Tint"
+                            label: I18n.t("shell.launcher_icon_full_tint")
                             checked: Config.bar.launcherIconFullTint ?? true
                             onToggled: value => {
                                 if (value !== Config.bar.launcherIconFullTint) {
@@ -755,7 +760,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Launcher Icon Size"
+                            label: I18n.t("shell.launcher_icon_size")
                             value: Config.bar.launcherIconSize ?? 24
                             minValue: 12
                             maxValue: 64
@@ -769,14 +774,14 @@ Item {
                         }
 
                         SelectorRow {
-                            label: "Pill Style"
+                            label: I18n.t("shell.pill_style")
                             options: [
                                 {
-                                    label: "Default",
+                                    label: I18n.t("common.default"),
                                     value: "default"
                                 },
                                 {
-                                    label: "Squished",
+                                    label: I18n.t("shell.squished"),
                                     value: "squished"
                                 }
                             ]
@@ -790,7 +795,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Use 12h Format"
+                            label: I18n.t("shell.use_12h_format")
                             checked: Config.bar.use12hFormat ?? false
                             onToggled: value => {
                                 if (value !== Config.bar.use12hFormat) {
@@ -801,7 +806,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Enable Firefox Player"
+                            label: I18n.t("shell.enable_firefox_player")
                             checked: Config.bar.enableFirefoxPlayer ?? false
                             onToggled: value => {
                                 if (value !== Config.bar.enableFirefoxPlayer) {
@@ -816,7 +821,7 @@ Item {
                         }
 
                         Text {
-                            text: "Auto-hide"
+                            text: I18n.t("shell.autohide")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -825,7 +830,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Pinned on Startup"
+                            label: I18n.t("shell.pinned_on_startup")
                             checked: Config.bar.pinnedOnStartup ?? true
                             onToggled: value => {
                                 if (value !== Config.bar.pinnedOnStartup) {
@@ -836,7 +841,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Hover to Reveal"
+                            label: I18n.t("shell.hover_to_reveal")
                             checked: Config.bar.hoverToReveal ?? true
                             onToggled: value => {
                                 if (value !== Config.bar.hoverToReveal) {
@@ -847,7 +852,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Hover Region Height"
+                            label: I18n.t("shell.hover_region_height")
                             value: Config.bar.hoverRegionHeight ?? 8
                             minValue: 0
                             maxValue: 32
@@ -861,7 +866,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Show Pin Button"
+                            label: I18n.t("shell.show_pin_button")
                             checked: Config.bar.showPinButton ?? true
                             onToggled: value => {
                                 if (value !== Config.bar.showPinButton) {
@@ -872,7 +877,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Available on Fullscreen"
+                            label: I18n.t("shell.available_on_fullscreen")
                             checked: Config.bar.availableOnFullscreen ?? false
                             onToggled: value => {
                                 if (value !== Config.bar.availableOnFullscreen) {
@@ -883,7 +888,7 @@ Item {
                         }
 
                         ScreenListRow {
-                            label: "Screens"
+                            label: I18n.t("shell.screens")
                             selectedScreens: Config.bar.screenList ?? []
                             onScreensChanged: newList => {
                                 GlobalStates.markShellChanged();
@@ -901,7 +906,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Frame"
+                            text: I18n.t("settings.shell.frame")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -910,7 +915,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Enabled"
+                            label: I18n.t("shell.frame.enabled")
                             checked: Config.bar.frameEnabled ?? false
                             onToggled: value => {
                                 if (value !== Config.bar.frameEnabled) {
@@ -921,7 +926,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Thickness"
+                            label: I18n.t("shell.frame.thickness")
                             value: Config.bar.frameThickness ?? 6
                             minValue: 0
                             maxValue: 40
@@ -935,7 +940,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Contain Bar"
+                            label: I18n.t("shell.frame.contain_bar")
                             checked: Config.bar.containBar ?? false
                             onToggled: value => {
                                 if (value !== Config.bar.containBar) {
@@ -946,7 +951,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Keep Bar Shadow"
+                            label: I18n.t("shell.frame.keep_bar_shadow")
                             checked: Config.bar.keepBarShadow ?? false
                             visible: Config.bar.containBar ?? false
                             onToggled: value => {
@@ -958,7 +963,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Keep Bar Border"
+                            label: I18n.t("shell.frame.keep_bar_border")
                             checked: Config.bar.keepBarBorder ?? false
                             visible: Config.bar.containBar ?? false
                             onToggled: value => {
@@ -984,7 +989,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Notch"
+                            text: I18n.t("settings.shell.notch")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -996,12 +1001,12 @@ Item {
                             label: ""
                             options: [
                                 {
-                                    label: "Top",
+                                    label: I18n.t("common.top"),
                                     value: "top",
                                     icon: Icons.arrowUp
                                 },
                                 {
-                                    label: "Bottom",
+                                    label: I18n.t("common.bottom"),
                                     value: "bottom",
                                     icon: Icons.arrowDown
                                 }
@@ -1019,11 +1024,11 @@ Item {
                             label: ""
                             options: [
                                 {
-                                    label: "Default",
+                                    label: I18n.t("common.default"),
                                     value: "default"
                                 },
                                 {
-                                    label: "Island",
+                                    label: I18n.t("shell.dock.island"),
                                     value: "island"
                                 }
                             ]
@@ -1037,7 +1042,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Hover Region Height"
+                            label: I18n.t("shell.hover_region_height")
                             value: Config.notch.hoverRegionHeight ?? 8
                             minValue: 0
                             maxValue: 32
@@ -1051,7 +1056,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Keep Hidden"
+                            label: I18n.t("shell.notch.keep_hidden")
                             checked: Config.notch.keepHidden ?? false
                             onToggled: value => {
                                 if (value !== Config.notch.keepHidden) {
@@ -1062,7 +1067,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Disable Hover Expansion"
+                            label: I18n.t("shell.notch.disable_hover_expansion")
                             checked: Config.notch.disableHoverExpansion ?? true
                             onToggled: value => {
                                 if (value !== Config.notch.disableHoverExpansion) {
@@ -1077,7 +1082,7 @@ Item {
                         }
 
                         Text {
-                            text: "No Media Display"
+                            text: I18n.t("shell.no_media_display")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1089,17 +1094,17 @@ Item {
                             label: ""
                             options: [
                                 {
-                                    label: "User@Host",
+                                    label: I18n.t("shell.notch.user_host"),
                                     value: "userHost",
                                     icon: Icons.user
                                 },
                                 {
-                                    label: "Compositor",
+                                    label: I18n.t("shell.notch.compositor"),
                                     value: "compositor",
                                     icon: Icons.compositor
                                 },
                                 {
-                                    label: "Custom",
+                                    label: I18n.t("theme.custom"),
                                     value: "custom",
                                     icon: Icons.textT
                                 }
@@ -1114,10 +1119,10 @@ Item {
                         }
 
                         TextInputRow {
-                            label: "Custom Text"
+                            label: I18n.t("shell.notch.custom_text")
                             visible: Config.notch.noMediaDisplay === "custom"
                             value: Config.notch.customText ?? "Ambxst"
-                            placeholder: "Enter text..."
+                            placeholder: I18n.t("shell.notch.enter_text")
                             onValueEdited: newValue => {
                                 if (newValue !== Config.notch.customText) {
                                     GlobalStates.markShellChanged();
@@ -1141,7 +1146,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Workspaces"
+                            text: I18n.t("settings.shell.workspaces")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1150,7 +1155,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Shown"
+                            label: I18n.t("shell.workspaces.shown")
                             value: Config.workspaces.shown ?? 10
                             minValue: 1
                             maxValue: 20
@@ -1163,7 +1168,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Show App Icons"
+                            label: I18n.t("shell.workspaces.show_app_icons")
                             checked: Config.workspaces.showAppIcons ?? true
                             onToggled: value => {
                                 if (value !== Config.workspaces.showAppIcons) {
@@ -1174,7 +1179,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Always Show Numbers"
+                            label: I18n.t("shell.workspaces.always_show_numbers")
                             checked: Config.workspaces.alwaysShowNumbers ?? false
                             onToggled: value => {
                                 if (value !== Config.workspaces.alwaysShowNumbers) {
@@ -1185,7 +1190,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Show Numbers"
+                            label: I18n.t("shell.workspaces.show_numbers")
                             checked: Config.workspaces.showNumbers ?? false
                             onToggled: value => {
                                 if (value !== Config.workspaces.showNumbers) {
@@ -1195,9 +1200,12 @@ Item {
                             }
                         }
 
+                        // Niri only has dynamic workspaces: the effective
+                        // state is forced on and the switch is inert.
                         ToggleRow {
-                            label: "Dynamic"
-                            checked: Config.workspaces.dynamic ?? false
+                            label: I18n.t("shell.workspaces.dynamic")
+                            checked: Config.workspaces.dynamic || AxctlService.compositorName === "niri"
+                            enabled: AxctlService.compositorName !== "niri"
                             onToggled: value => {
                                 if (value !== Config.workspaces.dynamic) {
                                     GlobalStates.markShellChanged();
@@ -1221,7 +1229,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Overview"
+                            text: I18n.t("settings.shell.overview")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1230,7 +1238,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Rows"
+                            label: I18n.t("shell.overview.rows")
                             value: Config.overview.rows ?? 2
                             minValue: 1
                             maxValue: 5
@@ -1243,7 +1251,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Columns"
+                            label: I18n.t("shell.overview.columns")
                             value: Config.overview.columns ?? 5
                             minValue: 1
                             maxValue: 10
@@ -1260,7 +1268,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Scale"
+                                text: I18n.t("shell.overview.scale")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overBackground
@@ -1307,7 +1315,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Workspace Spacing"
+                            label: I18n.t("shell.overview.workspace_spacing")
                             value: Config.overview.workspaceSpacing ?? 4
                             minValue: 0
                             maxValue: 20
@@ -1335,7 +1343,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Dock"
+                            text: I18n.t("settings.shell.dock")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1344,7 +1352,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Enabled"
+                            label: I18n.t("shell.dock.enabled")
                             checked: Config.dock.enabled ?? false
                             onToggled: value => {
                                 if (value !== Config.dock.enabled) {
@@ -1355,25 +1363,25 @@ Item {
                         }
 
                         SelectorRow {
-                            label: "Position"
+                            label: I18n.t("shell.position")
                             options: [
                                 {
-                                    label: "Top",
+                                    label: I18n.t("common.top"),
                                     value: "top",
                                     icon: Icons.arrowUp
                                 },
                                 {
-                                    label: "Bottom",
+                                    label: I18n.t("common.bottom"),
                                     value: "bottom",
                                     icon: Icons.arrowDown
                                 },
                                 {
-                                    label: "Left",
+                                    label: I18n.t("common.left"),
                                     value: "left",
                                     icon: Icons.arrowLeft
                                 },
                                 {
-                                    label: "Right",
+                                    label: I18n.t("common.right"),
                                     value: "right",
                                     icon: Icons.arrowRight
                                 }
@@ -1388,18 +1396,18 @@ Item {
                         }
 
                         SelectorRow {
-                            label: "Theme"
+                            label: I18n.t("shell.dock.theme")
                             options: [
                                 {
-                                    label: "Default",
+                                    label: I18n.t("common.default"),
                                     value: "default"
                                 },
                                 {
-                                    label: "Floating",
+                                    label: I18n.t("shell.dock.floating"),
                                     value: "floating"
                                 },
                                 {
-                                    label: "Integrated",
+                                    label: I18n.t("shell.dock.integrated"),
                                     value: "integrated"
                                 }
                             ]
@@ -1413,7 +1421,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Height"
+                            label: I18n.t("shell.dock.height")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             value: Config.dock.height ?? 48
                             minValue: 32
@@ -1428,7 +1436,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Icon Size"
+                            label: I18n.t("shell.dock.icon_size")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             value: Config.dock.iconSize ?? 40
                             minValue: 24
@@ -1443,7 +1451,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Spacing"
+                            label: I18n.t("shell.dock.spacing")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             value: Config.dock.spacing ?? 10
                             minValue: 0
@@ -1458,7 +1466,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Margin"
+                            label: I18n.t("shell.dock.margin")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             value: Config.dock.margin ?? 8
                             minValue: 0
@@ -1473,7 +1481,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Hover to Reveal"
+                            label: I18n.t("shell.hover_to_reveal")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             checked: Config.dock.hoverToReveal ?? true
                             onToggled: value => {
@@ -1485,7 +1493,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Hover Region"
+                            label: I18n.t("shell.dock.hover_region")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             value: Config.dock.hoverRegionHeight ?? 8
                             minValue: 0
@@ -1500,7 +1508,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Pinned on Startup"
+                            label: I18n.t("shell.pinned_on_startup")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             checked: Config.dock.pinnedOnStartup ?? true
                             onToggled: value => {
@@ -1512,7 +1520,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Show Pin Button"
+                            label: I18n.t("shell.show_pin_button")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             checked: Config.dock.showPinButton ?? true
                             onToggled: value => {
@@ -1524,7 +1532,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Available on Fullscreen"
+                            label: I18n.t("shell.available_on_fullscreen")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             checked: Config.dock.availableOnFullscreen ?? false
                             onToggled: value => {
@@ -1536,7 +1544,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Keep Hidden"
+                            label: I18n.t("shell.dock.keep_hidden")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             checked: Config.dock.keepHidden ?? false
                             onToggled: value => {
@@ -1548,7 +1556,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Show Running Indicators"
+                            label: I18n.t("shell.show_running_indicators")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             checked: Config.dock.showRunningIndicators ?? true
                             onToggled: value => {
@@ -1560,7 +1568,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Show Overview Button"
+                            label: I18n.t("shell.show_overview_button")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             checked: Config.dock.showOverviewButton ?? true
                             onToggled: value => {
@@ -1572,7 +1580,7 @@ Item {
                         }
 
                         ScreenListRow {
-                            label: "Screens"
+                            label: I18n.t("shell.screens")
                             visible: (Config.dock.theme ?? "default") !== "integrated"
                             selectedScreens: Config.dock.screenList ?? []
                             onScreensChanged: newList => {
@@ -1596,7 +1604,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Lockscreen"
+                            text: I18n.t("settings.shell.lockscreen")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1608,12 +1616,12 @@ Item {
                             label: ""
                             options: [
                                 {
-                                    label: "Top",
+                                    label: I18n.t("common.top"),
                                     value: "top",
                                     icon: Icons.arrowUp
                                 },
                                 {
-                                    label: "Bottom",
+                                    label: I18n.t("common.bottom"),
                                     value: "bottom",
                                     icon: Icons.arrowDown
                                 }
@@ -1642,7 +1650,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Desktop"
+                            text: I18n.t("settings.shell.desktop")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1651,7 +1659,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Enabled"
+                            label: I18n.t("shell.desktop.enabled")
                             checked: Config.desktop.enabled ?? false
                             onToggled: value => {
                                 if (value !== Config.desktop.enabled) {
@@ -1662,7 +1670,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Icon Size"
+                            label: I18n.t("shell.desktop.icon_size")
                             value: Config.desktop.iconSize ?? 40
                             minValue: 24
                             maxValue: 96
@@ -1676,7 +1684,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Vertical Spacing"
+                            label: I18n.t("shell.desktop.vertical_spacing")
                             value: Config.desktop.spacingVertical ?? 16
                             minValue: 0
                             maxValue: 48
@@ -1695,7 +1703,7 @@ Item {
                             spacing: 8
 
                             Text {
-                                text: "Text Color"
+                                text: I18n.t("shell.desktop.text_color")
                                 font.family: Config.theme.font
                                 font.pixelSize: Styling.fontSize(0)
                                 color: Colors.overBackground
@@ -1708,7 +1716,7 @@ Item {
                                 Layout.preferredHeight: 48
                                 colorNames: root.colorNames
                                 currentColor: Config.desktop.textColor ?? "overBackground"
-                                dialogTitle: "Desktop Text Color"
+                                dialogTitle: I18n.t("shell.desktop.text_color")
                                 compact: false
 
                                 onOpenColorPicker: (colorNames, currentColor, dialogTitle) => {
@@ -1737,7 +1745,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "System"
+                            text: I18n.t("settings.shell.system")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1746,7 +1754,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Update Service"
+                            label: I18n.t("shell.system.update_service")
                             checked: Config.system.updateServiceEnabled ?? true
                             onToggled: value => {
                                 if (value !== Config.system.updateServiceEnabled) {
@@ -1757,19 +1765,19 @@ Item {
                         }
 
                         ActionButton {
-                            text: "About Ambxst " + Config.version
+                            text: I18n.t("shell.system.about_ambxst").arg(Config.version)
                             icon: Icons.info
                             onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/ambxst"])
                         }
 
                         ActionButton {
-                            text: "Donate ❤️"
+                            text: I18n.t("shell.system.donate")
                             icon: Icons.heart
                             onClicked: Quickshell.execDetached(["xdg-open", "https://axeni.de/donate"])
                         }
 
                         Text {
-                            text: "OCR Languages"
+                            text: I18n.t("shell.system.ocr_languages")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)
                             color: Styling.srItem("overprimary")
@@ -1778,7 +1786,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "English"
+                            label: I18n.t("shell.system.ocr_english")
                             checked: Config.system.ocr.eng ?? true
                             onToggled: value => {
                                 if (value !== Config.system.ocr.eng) {
@@ -1789,7 +1797,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Spanish"
+                            label: I18n.t("shell.system.ocr_spanish")
                             checked: Config.system.ocr.spa ?? true
                             onToggled: value => {
                                 if (value !== Config.system.ocr.spa) {
@@ -1800,7 +1808,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Latin"
+                            label: I18n.t("shell.system.ocr_latin")
                             checked: Config.system.ocr.lat ?? false
                             onToggled: value => {
                                 if (value !== Config.system.ocr.lat) {
@@ -1811,7 +1819,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Japanese"
+                            label: I18n.t("shell.system.ocr_japanese")
                             checked: Config.system.ocr.jpn ?? false
                             onToggled: value => {
                                 if (value !== Config.system.ocr.jpn) {
@@ -1822,7 +1830,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Chinese (Simplified)"
+                            label: I18n.t("shell.system.ocr_chinese_simplified")
                             checked: Config.system.ocr.chi_sim ?? false
                             onToggled: value => {
                                 if (value !== Config.system.ocr.chi_sim) {
@@ -1833,7 +1841,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Chinese (Traditional)"
+                            label: I18n.t("shell.system.ocr_chinese_traditional")
                             checked: Config.system.ocr.chi_tra ?? false
                             onToggled: value => {
                                 if (value !== Config.system.ocr.chi_tra) {
@@ -1844,12 +1852,23 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Korean"
+                            label: I18n.t("shell.system.ocr_korean")
                             checked: Config.system.ocr.kor ?? false
                             onToggled: value => {
                                 if (value !== Config.system.ocr.kor) {
                                     GlobalStates.markShellChanged();
                                     Config.system.ocr.kor = value;
+                                }
+                            }
+                        }
+
+						ToggleRow {
+                            label: I18n.t("shell.system.ocr_russian")
+                            checked: Config.system.ocr.rus ?? false
+                            onToggled: value => {
+                                if (value !== Config.system.ocr.rus) {
+                                    GlobalStates.markShellChanged();
+                                    Config.system.ocr.rus = value;
                                 }
                             }
                         }
@@ -1864,7 +1883,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: "Sidebar"
+                            text: I18n.t("settings.shell.sidebar")
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-1)
                             font.weight: Font.Medium
@@ -1873,15 +1892,15 @@ Item {
                         }
 
                         SelectorRow {
-                            label: "Position"
+                            label: I18n.t("shell.position")
                             options: [
                                 {
-                                    label: "Left",
+                                    label: I18n.t("common.left"),
                                     value: "left",
                                     icon: Icons.arrowLeft
                                 },
                                 {
-                                    label: "Right",
+                                    label: I18n.t("common.right"),
                                     value: "right",
                                     icon: Icons.arrowRight
                                 }
@@ -1896,7 +1915,7 @@ Item {
                         }
 
                         NumberInputRow {
-                            label: "Width"
+                            label: I18n.t("shell.sidebar.width")
                             value: Config.ai.sidebarWidth ?? 400
                             minValue: 300
                             maxValue: 800
@@ -1910,7 +1929,7 @@ Item {
                         }
 
                         ToggleRow {
-                            label: "Pinned on Startup"
+                            label: I18n.t("shell.pinned_on_startup")
                             checked: Config.ai.sidebarPinnedOnStartup ?? false
                             onToggled: value => {
                                 if (value !== Config.ai.sidebarPinnedOnStartup) {

@@ -81,18 +81,18 @@ Item {
 
     // Monitor reference and refrence to toplevels on monitor
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
-    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.activeWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.activeWorkspace.id)
+    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.visibleWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.visibleWorkspace.id && c.monitor === compositorMonitor.id)
 
     // Check if there are any windows on the current monitor and workspace
     readonly property bool hasWindows: toplevels.length > 0
 
-    // Fullscreen detection
+    // Fullscreen detection - scoped to this monitor so the effect only
+    // applies to the screen that actually has the fullscreen window
     readonly property bool activeWindowFullscreen: {
         if (!compositorMonitor || !toplevels) return false;
 
-        // Check all toplevels on active workspace
         for (var i = 0; i < toplevels.length; i++) {
-            if (toplevels[i].fullscreen == true) {
+            if (toplevels[i].fullscreen == true && toplevels[i].monitor === compositorMonitor.id) {
                return true;
             }
         }
@@ -453,7 +453,7 @@ Item {
 
                         StyledToolTip {
                             show: pinButton.hovered
-                            tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
+                            tooltipText: root.pinned ? I18n.t("dock.tooltip.unpin_dock") : I18n.t("dock.tooltip.pin_dock")
                         }
                     }
                 }
@@ -519,6 +519,10 @@ Item {
                         }
 
                         onClicked: {
+                            if (AxctlService.compositorName === "niri") {
+                                AxctlService.dispatch("overview toggle");
+                                return;
+                            }
                             let visibilities = Visibilities.getForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;
@@ -527,7 +531,7 @@ Item {
 
                         StyledToolTip {
                             show: overviewButton.hovered
-                            tooltipText: "Overview"
+                            tooltipText: I18n.t("bar.tooltip.overview")
                         }
                     }
                 }
@@ -587,7 +591,7 @@ Item {
 
                         StyledToolTip {
                             show: pinButtonV.hovered
-                            tooltipText: root.pinned ? "Unpin dock" : "Pin dock"
+                            tooltipText: root.pinned ? I18n.t("dock.tooltip.unpin_dock") : I18n.t("dock.tooltip.pin_dock")
                         }
                     }
                 }
@@ -653,6 +657,10 @@ Item {
                         }
 
                         onClicked: {
+                            if (AxctlService.compositorName === "niri") {
+                                AxctlService.dispatch("overview toggle");
+                                return;
+                            }
                             let visibilities = Visibilities.getForScreen(root.screen.name);
                             if (visibilities) {
                                 visibilities.overview = !visibilities.overview;
@@ -661,7 +669,7 @@ Item {
 
                         StyledToolTip {
                             show: overviewButtonV.hovered
-                            tooltipText: "Overview"
+                            tooltipText: I18n.t("bar.tooltip.overview")
                         }
                     }
                 }

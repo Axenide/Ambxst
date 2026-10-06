@@ -47,8 +47,8 @@ Item {
                 id: titlebar
                 width: root.contentWidth
                 anchors.horizontalCenter: parent.horizontalCenter
-                title: "Wi-Fi"
-                statusText: NetworkService.wifiConnecting ? "Connecting..." : (NetworkService.wifiStatus === "limited" ? "Limited" : "")
+                title: I18n.t("wifi.title")
+                statusText: NetworkService.wifiConnecting ? I18n.t("wifi.connecting") : (NetworkService.wifiStatus === "limited" ? I18n.t("wifi.limited") : "")
                 statusColor: NetworkService.wifiStatus === "limited" ? Colors.warning : Styling.srItem("overprimary")
                 showToggle: true
                 toggleChecked: NetworkService.wifiStatus !== "disabled"
@@ -56,7 +56,7 @@ Item {
                 actions: [
                     {
                         icon: Icons.globe,
-                        tooltip: "Open captive portal",
+                        tooltip: I18n.t("wifi.open_portal"),
                         enabled: NetworkService.wifiStatus === "limited",
                         onClicked: function () {
                             NetworkService.openPublicWifiPortal();
@@ -64,14 +64,14 @@ Item {
                     },
                     {
                         icon: Icons.popOpen,
-                        tooltip: "Network settings",
+                        tooltip: I18n.t("wifi.network_settings"),
                         onClicked: function () {
                             Quickshell.execDetached(["nm-connection-editor"]);
                         }
                     },
                     {
                         icon: Icons.sync,
-                        tooltip: "Rescan networks",
+                        tooltip: I18n.t("wifi.rescan"),
                         enabled: NetworkService.wifiEnabled,
                         loading: NetworkService.wifiScanning || NetworkService.isUpdating,
                         onClicked: function () {
@@ -106,7 +106,7 @@ Item {
         Text {
             anchors.centerIn: parent
             visible: networkList.count === 0 && !NetworkService.wifiScanning
-            text: NetworkService.wifiEnabled ? "No networks found" : "Wi-Fi is disabled"
+            text: NetworkService.wifiEnabled ? I18n.t("wifi.no_networks") : I18n.t("wifi.disabled")
             font.family: Config.theme.font
             font.pixelSize: Config.theme.fontSize
             color: Colors.overSurfaceVariant

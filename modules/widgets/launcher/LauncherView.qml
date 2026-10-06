@@ -27,6 +27,10 @@ Rectangle {
     property int leftPanelWidth: isCompact ? 464 : 300
     property int currentTab: GlobalStates.widgetsTabCurrentIndex  // 0=launcher, 1=clip, 2=emoji, 3=tmux, 4=notes
     property bool prefixDisabled: false  // Flag to prevent re-activation after backspace
+    // Boot-time prewarm for the clipboard tab (offscreen)
+    property bool prewarmTabs: false
+    // Sticky load: `item !== null` in a loader active binding loops
+    property bool clipboardEverLoaded: false
 
     // Sync with GlobalStates
     onCurrentTabChanged: {
@@ -398,7 +402,7 @@ Rectangle {
                 width: parent.width
                 anchors.top: parent.top
                 text: GlobalStates.launcherSearchText
-                placeholderText: "Search applications..."
+                placeholderText: I18n.t("launcher.search")
                 iconText: ""
 
                 onSearchTextChanged: text => {
@@ -846,7 +850,7 @@ Rectangle {
                                 boundsBehavior: Flickable.StopAtBounds
                                 model: [
                                     {
-                                        text: "Launch",
+                                        text: I18n.t("launcher.launch"),
                                         icon: Icons.launch,
                                         highlightColor: Styling.srItem("overprimary"),
                                         textColor: Styling.srItem("primary"),
@@ -856,7 +860,7 @@ Rectangle {
                                         }
                                     },
                                     {
-                                        text: TaskbarApps.isPinned(appId) ? "Unpin from Dock" : "Pin to Dock",
+                                        text: TaskbarApps.isPinned(appId) ? I18n.t("launcher.unpin_from_dock") : I18n.t("launcher.pin_to_dock"),
                                         icon: TaskbarApps.isPinned(appId) ? Icons.unpin : Icons.pin,
                                         highlightColor: TaskbarApps.isPinned(appId) ? Colors.error : Colors.tertiary,
                                         textColor: TaskbarApps.isPinned(appId) ? Styling.srItem("error") : Styling.srItem("tertiary"),
@@ -866,7 +870,7 @@ Rectangle {
                                         }
                                     },
                                     {
-                                        text: "Create Shortcut",
+                                        text: I18n.t("launcher.create_shortcut"),
                                         icon: Icons.shortcut,
                                         highlightColor: Colors.secondary,
                                         textColor: Styling.srItem("secondary"),
@@ -1089,7 +1093,7 @@ Rectangle {
         // Tab 1: Clipboard
         Loader {
             id: clipboardLoader
-            active: currentTab === 1 || item !== null
+            active: currentTab === 1 || root.clipboardEverLoaded || root.prewarmTabs
             sourceComponent: Component {
                 ClipboardTab {
                     leftPanelWidth: root.leftPanelWidth
@@ -1107,6 +1111,7 @@ Rectangle {
                 }
             }
             onLoaded: {
+                Qt.callLater(() => { root.clipboardEverLoaded = true; });
                 if (currentTab === 1 && item && item.focusSearchInput) {
                     root.focusSearchInput();
                 }

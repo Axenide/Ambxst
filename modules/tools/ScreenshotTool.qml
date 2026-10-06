@@ -75,21 +75,24 @@ PanelWindow {
 
     property var activeWindows: []
 
+    // OCR/QR reuse this overlay restricted to plain area selection.
+    property bool regionOnly: Screenshot.captureMode === "ocr" || Screenshot.captureMode === "qr"
+
     property var modes: [
         {
             name: "region",
             icon: Icons.regionScreenshot,
-            tooltip: "Region"
+            tooltip: I18n.t("screenshot.region")
         },
         {
             name: "window",
             icon: Icons.windowScreenshot,
-            tooltip: "Window"
+            tooltip: I18n.t("screenshot.window")
         },
         {
             name: "screen",
             icon: Icons.fullScreenshot,
-            tooltip: "Screen"
+            tooltip: I18n.t("screenshot.screen")
         }
     ]
 
@@ -107,6 +110,10 @@ PanelWindow {
     function close() {
         screenshotPopup.state = "idle";
         GlobalStates.screenshotToolVisible = false;
+        Screenshot.releaseFrozenFrames();
+        if (Screenshot.captureMode === "ocr" || Screenshot.captureMode === "qr") {
+            Screenshot.captureMode = "normal";
+        }
     }
 
     function executeCapture() {
@@ -116,7 +123,7 @@ PanelWindow {
             close();
         } else if (screenshotPopup.currentMode === "region") {
             if (Screenshot.selectionW > 0) {
-                Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH);
+                Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name);
                 close();
             }
         } else if (screenshotPopup.currentMode === "window") {
@@ -303,7 +310,7 @@ PanelWindow {
                 selecting = false;
                 
                 if (Screenshot.selectionW > 5 && Screenshot.selectionH > 5) {
-                    Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH);
+                    Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name);
                     close();
                 }
             }
@@ -343,12 +350,11 @@ PanelWindow {
             color: Colors.background
             border.color: Colors.surface
             border.width: 1
-            visible: screenshotPopup.state === "active"
+            visible: screenshotPopup.state === "active" && !screenshotPopup.regionOnly
 
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
-                // preventStealing: true 
             }
 
             ActionGrid {

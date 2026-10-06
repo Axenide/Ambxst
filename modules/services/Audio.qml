@@ -27,9 +27,18 @@ Singleton {
     property bool protectionTriggered: false
 
     // Load state
+    property bool _restored: false
     Connections {
         target: StateService
-        function onStateLoaded() {
+        function onInitializedChanged() {
+            root._restore();
+        }
+    }
+    Component.onCompleted: root._restore()
+
+    function _restore() {
+        if (StateService.initialized && !root._restored) {
+            root._restored = true;
             root.protectionEnabled = StateService.get("volumeProtectionEnabled", true);
         }
     }

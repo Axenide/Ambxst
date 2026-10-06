@@ -255,7 +255,11 @@ ShellRoot {
         source: "modules/widgets/config/SettingsWindow.qml"
     }
 
-    // On-screen display
+    // On-screen display — always live so its Audio/Brightness Connections
+    // can flip GlobalStates.osdVisible on volume/brightness events. Gating
+    // the loader on osdVisible would create a chicken-and-egg loop:
+    // the OSD is the only thing that sets osdVisible true, but it has
+    // to be loaded before its signal handlers can run.
     Variants {
         model: Quickshell.screens
 
@@ -284,9 +288,16 @@ ShellRoot {
         Component.onCompleted: {
             // Critical services — init immediately (next tick)
             Qt.callLater(() => {
-                let _ = CaffeineService.inhibit;
+                let _ = CaffeineClient.inhibit;
                 _ = IdleService.lockCmd; // Force init
                 _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
+                _ = WallpaperCommandService; // Force init (IPC wallpaper.set subscriber)
+                _ = PresetCommandService;    // Force init (IPC preset.load subscriber)
+                // PresetsService.initialize() is normally triggered lazily
+                // when the user opens the Presets tab; the CLI preset
+                // command needs the list available at boot, so kick it off
+                // here too.
+                PresetsService.initialize();
             });
         }
     }
@@ -296,8 +307,8 @@ ShellRoot {
         interval: 2000
         running: true
         onTriggered: {
-            let _ = NightLightService.active;
-            _ = GameModeService.toggled;
+            let _ = NightLightClient.active;
+            _ = GameModeClient.toggled;
         }
     }
 }

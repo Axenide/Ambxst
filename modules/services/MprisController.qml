@@ -52,16 +52,22 @@ Singleton {
         }
     }
 
+    property bool _restored: false
     Component.onCompleted: {
         root.cachedDbusName = StateService.get("lastPlayerDbusName", "");
-        if (StateService.initialized) {
-            root.loadLastPlayer();
-        }
+        root._restore();
     }
 
     Connections {
         target: StateService
-        function onStateLoaded() {
+        function onInitializedChanged() {
+            root._restore();
+        }
+    }
+
+    function _restore() {
+        if (StateService.initialized && !root._restored) {
+            root._restored = true;
             root.cachedDbusName = StateService.get("lastPlayerDbusName", "");
             root.loadLastPlayer();
         }

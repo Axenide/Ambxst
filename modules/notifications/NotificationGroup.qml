@@ -235,7 +235,7 @@ Item {
                             id: timeText
                             Layout.rightMargin: 10
                             horizontalAlignment: Text.AlignLeft
-                            text: root.multipleNotifications ? "" : NotificationUtils.getFriendlyNotifTimeString(notificationGroup?.time)
+                            text: root.multipleNotifications ? "" : NotificationUtils.getFriendlyNotifTimeString(notificationGroup?.time, I18n.t)
                             font.family: Config.theme.font
                             font.pixelSize: Config.theme.fontSize
                             color: Colors.overBackground

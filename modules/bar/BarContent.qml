@@ -3,7 +3,6 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Widgets
-import Quickshell.Wayland
 import qs.modules.bar.workspaces
 import qs.modules.theme
 import qs.modules.bar.clock
@@ -37,17 +36,27 @@ Item {
 
     property bool pinned: (Config.bar && Config.bar.pinnedOnStartup !== undefined ? Config.bar.pinnedOnStartup : true)
 
+    // Keybind toggle (SUPER+SHIFT+B by default). Unpinning also drops any
+    // pending hover reveal so the bar hides immediately instead of after
+    // the mouse-leave delay.
+    Connections {
+        target: GlobalStates
+        function onBarPinToggled() {
+            root.pinned = !root.pinned;
+            if (!root.pinned) {
+                root.hoverActive = false;
+                root.hideDelayTimer.stop();
+            }
+        }
+    }
+
     // Monitor reference and reference to toplevels on monitor
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
-    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.activeWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.activeWorkspace.id)
+    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.visibleWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.visibleWorkspace.id && c.monitor === compositorMonitor.id)
 
-    // Fullscreen detection - use ToplevelManager (native Wayland) for reliable detection
-    readonly property bool activeWindowFullscreen: {
-        const toplevel = ToplevelManager.activeToplevel;
-        if (!toplevel || !toplevel.activated)
-            return false;
-        return toplevel.fullscreen === true;
-    }
+    // Fullscreen detection - scoped to this monitor so the effect only
+    // applies to the screen that actually has the fullscreen window
+    readonly property bool activeWindowFullscreen: CompositorData.monitorHasFullscreen(compositorMonitor)
 
 
     // Whether auto-hide should be active (not pinned, or fullscreen forces it)
@@ -454,7 +463,7 @@ Item {
 
                                 StyledToolTip {
                                     show: pinButton.hovered
-                                    tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                    tooltipText: root.pinned ? I18n.t("bar.tooltip.unpin_bar") : I18n.t("bar.tooltip.pin_bar")
                                 }
                             }
                         }
@@ -708,7 +717,7 @@ Item {
 
                                         StyledToolTip {
                                             show: pinButtonV.hovered
-                                            tooltipText: root.pinned ? "Unpin bar" : "Pin bar"
+                                            tooltipText: root.pinned ? I18n.t("bar.tooltip.unpin_bar") : I18n.t("bar.tooltip.pin_bar")
                                         }
                                     }
                                 }

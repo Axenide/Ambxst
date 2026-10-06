@@ -7,6 +7,7 @@ import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.components
 import qs.modules.globals
+import qs.modules.services
 import qs.config
 
 Item {
@@ -144,7 +145,7 @@ Item {
                 Layout.preferredWidth: 1
                 colorNames: root.colorNames
                 currentColor: (root.variantConfig && root.variantConfig.itemColor) ? root.variantConfig.itemColor : "surface"
-                label: "Item Color"
+                label: I18n.t("theme.item_color")
                 dialogTitle: "Select Item Color"
                 onColorSelected: color => root.updateProp("itemColor", color)
                 onOpenColorPicker: (names, current, title) => {
@@ -192,7 +193,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "Opacity"
+                                text: I18n.t("theme.opacity")
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Styling.fontSize(-2)
                                 font.bold: true
@@ -277,7 +278,7 @@ Item {
 
                             Text {
                                 Layout.fillWidth: true
-                                text: "Border"
+                                text: I18n.t("theme.border")
                                 font.family: Styling.defaultFont
                                 font.pixelSize: Styling.fontSize(-2)
                                 font.bold: true
@@ -345,7 +346,7 @@ Item {
                     spacing: 2
 
                     Text {
-                        text: "Angle"
+                        text: I18n.t("theme.angle")
                         font.family: Styling.defaultFont
                         font.pixelSize: Styling.fontSize(-2)
                         font.bold: true
@@ -511,7 +512,7 @@ Item {
                     Layout.fillWidth: true
                     colorNames: root.colorNames
                     currentColor: (root.variantConfig && root.variantConfig.halftoneDotColor) ? root.variantConfig.halftoneDotColor : "surface"
-                    label: "Dot Color"
+                    label: I18n.t("theme.dot_color")
                     circlePreview: true
                     dialogTitle: "Select Dot Color"
                     onColorSelected: color => root.updateProp("halftoneDotColor", color)
@@ -527,7 +528,7 @@ Item {
                     Layout.fillWidth: true
                     colorNames: root.colorNames
                     currentColor: (root.variantConfig && root.variantConfig.halftoneBackgroundColor) ? root.variantConfig.halftoneBackgroundColor : "surface"
-                    label: "Background"
+                    label: I18n.t("theme.background")
                     dialogTitle: "Select Background Color"
                     onColorSelected: color => root.updateProp("halftoneBackgroundColor", color)
                     onOpenColorPicker: (names, current, title) => {
@@ -578,7 +579,7 @@ Item {
                         }
 
                         Text {
-                            text: "Angle"
+                            text: I18n.t("theme.angle")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             font.bold: true
@@ -634,7 +635,7 @@ Item {
                         }
 
                         Text {
-                            text: "Size"
+                            text: I18n.t("theme.size")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             font.bold: true
@@ -727,7 +728,7 @@ Item {
                         }
 
                         Text {
-                            text: "Range"
+                            text: I18n.t("theme.range")
                             font.family: Styling.defaultFont
                             font.pixelSize: Styling.fontSize(0)
                             font.bold: true

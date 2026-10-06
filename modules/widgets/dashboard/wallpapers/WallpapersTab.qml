@@ -258,7 +258,7 @@ FocusScope {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
                 text: searchText
-                placeholderText: "Search wallpapers..."
+                placeholderText: I18n.t("wallpapers.search")
                 iconText: ""
                 clearOnEscape: false
                 handleTabNavigation: true
@@ -519,7 +519,7 @@ FocusScope {
 
                             Text {
                                 anchors.fill: parent
-                                text: "OLED"
+                                text: I18n.t("wallpapers.oled")
                                 color: Colors.overSurface
                                 font.family: Config.theme.font
                                 font.pixelSize: Config.theme.fontSize
@@ -666,7 +666,7 @@ FocusScope {
 
                             Text {
                                 anchors.fill: parent
-                                text: "Tint"
+                                text: I18n.t("wallpapers.tint")
                                 color: Colors.overSurface
                                 font.family: Config.theme.font
                                 font.pixelSize: Config.theme.fontSize
@@ -973,7 +973,7 @@ FocusScope {
                                         x: needsScroll ? 4 : undefined
                                         text: {
                                             if (parent.parent.isCurrentWallpaper) {
-                                                return "CURRENT";
+                                                return I18n.t("wallpapers.current");
                                             } else if (wallpaperGrid.currentIndex >= 0 && wallpaperGrid.currentIndex < filteredWallpapers.length) {
                                                 return filteredWallpapers[wallpaperGrid.currentIndex].split('/').pop();
                                             }
@@ -1212,7 +1212,10 @@ FocusScope {
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             smooth: true
-            cache: false // Deshabilitar cache para reducir uso de RAM
+            cache: true // Cache the decoded thumbnails: with cache:false every
+            // grid open re-decodes all 621 thumbs and the global pixmap cache
+            // retains the (old) decoded entries, growing per open instead of
+            // reusing them.
             sourceSize.width: wallpaperGridContainer.cellSize
             sourceSize.height: wallpaperGridContainer.cellSize
 

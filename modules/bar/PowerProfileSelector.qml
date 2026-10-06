@@ -17,15 +17,15 @@ StyledRect {
     readonly property int buttonSize: 32
     readonly property int spacing: 2
     readonly property int padding: 2
-    readonly property int totalButtons: PowerProfile.availableProfiles.length
+    readonly property int totalButtons: PowerProfileClient.availableProfiles.length
 
     // For vertical mode, reverse the order (performance, balanced, power-saver)
-    readonly property var displayProfiles: orientation === "vertical" ? PowerProfile.availableProfiles.slice().reverse() : PowerProfile.availableProfiles
+    readonly property var displayProfiles: orientation === "vertical" ? PowerProfileClient.availableProfiles.slice().reverse() : PowerProfileClient.availableProfiles
 
     Layout.preferredWidth: orientation === "horizontal" ? (totalButtons * buttonSize + (totalButtons - 1) * spacing + padding * 2) : 36
     Layout.preferredHeight: orientation === "vertical" ? (totalButtons * buttonSize + (totalButtons - 1) * spacing + padding * 2) : 36
 
-    opacity: PowerProfile.isAvailable && PowerProfile.availableProfiles.length > 0 ? 1 : 0
+    opacity: PowerProfileClient.isAvailable && PowerProfileClient.availableProfiles.length > 0 ? 1 : 0
     visible: opacity > 0
 
     Behavior on opacity {
@@ -53,10 +53,8 @@ StyledRect {
     }
 
     Component.onCompleted: {
-        // Refresh profile data after a short delay
         Qt.callLater(() => {
-            PowerProfile.updateCurrentProfile();
-            PowerProfile.updateAvailableProfiles();
+            PowerProfileClient.refresh();
         });
     }
 
@@ -73,7 +71,7 @@ StyledRect {
 
             property int currentIndex: {
                 for (let i = 0; i < root.displayProfiles.length; i++) {
-                    if (root.displayProfiles[i] === PowerProfile.currentProfile) {
+                    if (root.displayProfiles[i] === PowerProfileClient.currentProfile) {
                         return i;
                     }
                 }
@@ -138,8 +136,8 @@ StyledRect {
                     }
 
                     contentItem: Text {
-                        text: PowerProfile.getProfileIcon(modelData)
-                        color: PowerProfile.currentProfile === modelData ? Styling.srItem("primary") : Colors.overBackground
+                        text: PowerProfileClient.getProfileIcon(modelData)
+                        color: PowerProfileClient.currentProfile === modelData ? Styling.srItem("primary") : Colors.overBackground
                         font.family: Icons.font
                         font.pixelSize: 18
                         horizontalAlignment: Text.AlignHCenter
@@ -155,12 +153,12 @@ StyledRect {
                     }
 
                     onClicked: {
-                        PowerProfile.setProfile(modelData);
+                        PowerProfileClient.setProfile(modelData);
                     }
 
                     StyledToolTip {
                         visible: parent.hovered
-                        tooltipText: PowerProfile.getProfileDisplayName(modelData)
+                        tooltipText: PowerProfileClient.getProfileDisplayName(modelData)
                     }
                 }
             }
@@ -192,8 +190,8 @@ StyledRect {
                     }
 
                     contentItem: Text {
-                        text: PowerProfile.getProfileIcon(modelData)
-                        color: PowerProfile.currentProfile === modelData ? Styling.srItem("primary") : Colors.overBackground
+                        text: PowerProfileClient.getProfileIcon(modelData)
+                        color: PowerProfileClient.currentProfile === modelData ? Styling.srItem("primary") : Colors.overBackground
                         font.family: Icons.font
                         font.pixelSize: 18
                         horizontalAlignment: Text.AlignHCenter
@@ -209,12 +207,12 @@ StyledRect {
                     }
 
                     onClicked: {
-                        PowerProfile.setProfile(modelData);
+                        PowerProfileClient.setProfile(modelData);
                     }
 
                     StyledToolTip {
                         visible: parent.hovered
-                        tooltipText: PowerProfile.getProfileDisplayName(modelData)
+                        tooltipText: PowerProfileClient.getProfileDisplayName(modelData)
                     }
                 }
             }

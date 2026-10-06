@@ -13,29 +13,9 @@ Item {
 
     readonly property alias frameEnabled: frameContent.frameEnabled
     readonly property alias baseThickness: frameContent.thickness
-    readonly property bool hasFullscreenWindow: {
-        const monitor = AxctlService.monitorFor(targetScreen);
-        if (!monitor)
-            return false;
-
-        const activeWorkspaceId = monitor.activeWorkspace.id;
-        const monId = monitor.id;
-
-        // Check active toplevel first (fast path)
-        const toplevel = ToplevelManager.activeToplevel;
-        if (toplevel && toplevel.fullscreen && AxctlService.focusedMonitor.id === monId) {
-            return true;
-        }
-
-        // Check all windows on this monitor (robust path)
-        const wins = CompositorData.windowList;
-        for (let i = 0; i < wins.length; i++) {
-            if (wins[i].monitor === monId && wins[i].fullscreen && wins[i].workspace.id === activeWorkspaceId) {
-                return true;
-            }
-        }
-        return false;
-    }
+    // Fullscreen detection - scoped to this monitor so the effect only
+    // applies to the screen that actually has the fullscreen window
+    readonly property bool hasFullscreenWindow: CompositorData.monitorHasFullscreen(AxctlService.monitorFor(targetScreen))
     readonly property alias actualFrameSize: frameContent.actualFrameSize
     readonly property int thickness: hasFullscreenWindow ? 0 : baseThickness
 

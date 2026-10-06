@@ -12,11 +12,16 @@ QtObject {
     id: root
 
     readonly property string appId: "ambxst"
-    readonly property string ipcPipe: "/tmp/ambxst_ipc.pipe"
+    // Per-user runtime dir instead of /tmp: /tmp is world-shared and its
+    // sticky bit lets a second local account permanently squat the FIFO.
+    // The shell expression keeps this working even when XDG_RUNTIME_DIR
+    // is not exported to the compositor session.
+    readonly property string ipcDir: "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+    readonly property string ipcName: "ambxst_ipc.pipe"
 
     // High-performance Pipe Listener (Daemon mode)
     property Process pipeListener: Process {
-        command: ["bash", "-c", "rm -f " + root.ipcPipe + "; mkfifo " + root.ipcPipe + "; tail -f " + root.ipcPipe]
+        command: ["bash", "-c", 'd="' + root.ipcDir + '"; mkdir -p "$d"; rm -f "$d/' + root.ipcName + '"; mkfifo "$d/' + root.ipcName + '"; tail -f "$d/' + root.ipcName + '"']
         running: true
         
         stdout: SplitParser {
@@ -50,7 +55,13 @@ QtObject {
             case "dashboard-controls": toggleSettings(); break;
 
             // System
-            case "overview": toggleSimpleModule("overview"); break;
+            case "overview":
+                if (AxctlService.compositorName === "niri") {
+                    AxctlService.dispatch("overview toggle");
+                } else {
+                    toggleSimpleModule("overview");
+                }
+                break;
             case "powermenu": toggleSimpleModule("powermenu"); break;
             case "tools": toggleSimpleModule("tools"); break;
             case "config": toggleSettings(); break;
@@ -78,7 +89,12 @@ QtObject {
                 break;
             case "media-next": MprisController.next(); break;
             case "media-prev": MprisController.previous(); break;
-                
+
+            // Brightness (routes through the same setBrightness path the slider uses,
+            // avoiding a per-press fork of the Go CLI + qs ipc chain).
+            case "brightness-up": Brightness.increaseAll(); break;
+            case "brightness-down": Brightness.decreaseAll(); break;
+
             default: console.warn("Unknown IPC command:", command);
         }
     }
@@ -88,6 +104,31 @@ QtObject {
 
         function run(command: string) {
             root.run(command);
+        }
+    }
+
+    // Commands sent via `ambxst run <cmd>` go through the Go daemon now.
+    // The daemon pushes a "ui.command" event on the "ui" service stream;
+    // route it into the same runner. `ambxst toggle <target>` pushes a
+    // separate "ui.toggle" event with its own state-flipping switch.
+    Component.onCompleted: {
+        BackendService.addSubscription(["ui"], (service, data) => {
+            if (typeof data !== "string" || data === "")
+                return;
+            if (service === "ui.command") {
+                root.run(data);
+            } else if (service === "ui.toggle") {
+                root.toggle(data);
+            }
+        });
+    }
+
+    function toggle(target) {
+        console.log("IPC toggle command received:", target);
+        switch (target) {
+            case "bar": GlobalStates.barPinToggled(); break;
+
+            default: console.warn("Unknown toggle target:", target);
         }
     }
 

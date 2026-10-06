@@ -12,6 +12,20 @@ QtObject {
         const fmt = (c) => c.toString()
         const toRgba = (c, a) => `rgba(${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}, ${a})`
 
+        const isDark = (c) => {
+            const hex = fmt(c).replace("#", "")
+            if (hex.length < 6) return true
+
+            const red = parseInt(hex.slice(0, 2), 16)
+            const green = parseInt(hex.slice(2, 4), 16)
+            const blue = parseInt(hex.slice(4, 6), 16)
+            if (Number.isNaN(red) || Number.isNaN(green) || Number.isNaN(blue)) return true
+
+            return ((red * 299 + green * 587 + blue * 114) / 1000) < 128
+        }
+
+        const darkMode = isDark(Colors.background)
+
         const primary = fmt(Colors.primary)
         const onPrimary = fmt(Colors.overPrimary)
         const background = toRgba(Colors.background, Config.theme.srBg.opacity)
@@ -54,7 +68,8 @@ QtObject {
             mkdir -p "${gtk3Dir}" "${gtk4Dir}" && \\
             echo "${css}" | tee "${gtk3Dir}/gtk.css" "${gtk4Dir}/gtk.css" > /dev/null && \\
             gsettings set org.gnome.desktop.interface gtk-theme "" && \\
-            gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3
+            gsettings set org.gnome.desktop.interface gtk-theme adw-gtk3 && \\
+            axctl darkmode ${darkMode ? "on" : "off"}
         `
         
         writerProcess.command = ["sh", "-c", cmd]

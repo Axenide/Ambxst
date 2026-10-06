@@ -14,6 +14,7 @@ QtObject {
     readonly property string dwindle: ""
     readonly property string master: ""
     readonly property string scrolling: ""
+    readonly property string monocle: ""
 
     // Powermenu
     readonly property string lock: ""
@@ -252,6 +253,8 @@ QtObject {
     readonly property string aperture: ""
     readonly property string magicWand: ""
     readonly property string google: ""
+
+    readonly property string puzzlePiece: ""
 
     // Aliases for missing icons
     readonly property string palette: paintBrush

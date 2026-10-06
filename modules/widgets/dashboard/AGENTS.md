@@ -10,7 +10,7 @@ Central interactive hub of Ambxst. Tabbed interface with LRU-based lazy-loading 
   - `widgets/`: `WidgetsTab` — Main grid: `FullPlayer`, `Calendar`, `NotificationHistory`, weather, quick toggles.
   - `controls/`: Settings panels — `ShellPanel` (1913 lines), `ThemePanel` (1564 lines), `BindsPanel` (1974 lines), `CompositorPanel`, `SystemPanel`, `VariantEditor`.
   - `assistant/`: `AssistantTab` (1196 lines) — AI chat interface.
-  - `clipboard/`: `ClipboardTab` (3615 lines) — Searchable clipboard history with categories.
+  - `clipboard/`: `ClipboardTab` (~2450 lines) — Searchable clipboard history with categories. The right-hand preview panel lives in `ClipboardPreview.qml`, loaded through a deferred `Loader` (activate via `prewarmed` for offscreen prewarm).
   - `notes/`: `NotesTab` (3505 lines) — Rich text editor with file management.
   - `tmux/`: `TmuxTab` (2250 lines) — Tmux session manager.
   - `emoji/`: `EmojiTab` (934 lines) — Emoji picker with search.
@@ -26,7 +26,7 @@ Central interactive hub of Ambxst. Tabbed interface with LRU-based lazy-loading 
 | **Theme settings** | `controls/ThemePanel.qml` | Colors, gradients, fonts, opacity |
 | **Keybindings** | `controls/BindsPanel.qml` | Compositor keybind editor |
 | **AI chat** | `assistant/AssistantTab.qml` | Multi-provider chat with streaming |
-| **Clipboard** | `clipboard/ClipboardTab.qml` | Largest file (3615 lines). Category filtering |
+| **Clipboard** | `clipboard/ClipboardTab.qml` | ~2450 lines + `ClipboardPreview.qml` (deferred right panel). Category filtering |
 | **Notes** | `notes/NotesTab.qml` | Rich text, file tree, search |
 
 ## CONVENTIONS

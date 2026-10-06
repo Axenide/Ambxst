@@ -5,23 +5,17 @@ with pkgs; [
   brightnessctl
   ddcutil
   fontconfig
+  git
   glib
-  grim
-  imagemagick
   jq
 
   libnotify
   matugen
-  python3
   power-profiles-daemon
-  slurp
   sqlite
   upower
-  wl-clip-persist
-  wl-clipboard
   wlsunset
   wtype
-  zbar
   zenity
   inetutils
   adw-gtk3

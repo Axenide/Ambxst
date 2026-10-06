@@ -17,6 +17,7 @@ Dynamic theming layer providing colors, icons, and style utilities as singletons
 - `DiscordGenerator.qml` — Discord CSS injection
 - `NvChadGenerator.qml` — NvChad/Neovim theme
 - `PywalGenerator.qml` — Pywal color export
+- `PywalZenGenerator.qml` — Zen Browser userChrome CSS theme
 - `QtCtGenerator.qml` — Qt widget theme
 
 ## WHERE TO LOOK

@@ -55,21 +55,21 @@ Item {
                 id: titlebar
                 width: root.contentWidth
                 anchors.horizontalCenter: parent.horizontalCenter
-                title: "Bluetooth"
+                title: I18n.t("settings.bluetooth")
                 showToggle: true
                 toggleChecked: BluetoothService.enabled
 
                 actions: [
                     {
                         icon: Icons.popOpen,
-                        tooltip: "Open Blueman",
+                        tooltip: I18n.t("bluetooth.open_manager"),
                         onClicked: function () {
                             Quickshell.execDetached(["blueman-manager"]);
                         }
                     },
                     {
                         icon: Icons.sync,
-                        tooltip: "Scan for devices",
+                        tooltip: I18n.t("bluetooth.scan"),
                         enabled: BluetoothService.enabled,
                         loading: BluetoothService.discovering || BluetoothService.isUpdating,
                         onClicked: function () {
@@ -104,7 +104,7 @@ Item {
         Text {
             anchors.centerIn: parent
             visible: deviceList.count === 0 && !BluetoothService.discovering
-            text: BluetoothService.enabled ? "No devices found" : "Bluetooth is disabled"
+            text: BluetoothService.enabled ? I18n.t("bluetooth.no_devices") : I18n.t("bluetooth.disabled")
             font.family: Config.theme.font
             font.pixelSize: Config.theme.fontSize
             color: Colors.overSurfaceVariant

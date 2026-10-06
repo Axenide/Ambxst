@@ -18,10 +18,15 @@ Item {
     readonly property var monitor: AxctlService.monitorFor(bar.screen)
     readonly property Toplevel activeWindow: ToplevelManager.activeToplevel
 
+    // Niri's workspaces are created and destroyed on demand, so the
+    // dynamic (occupied-only) model is the only one that makes sense
+    // there. Forced on regardless of the persisted config value.
+    readonly property bool dynamicMode: Config.workspaces.dynamic || AxctlService.compositorName === "niri"
+
     readonly property int workspaceGroup: Math.floor(((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) / Config.workspaces.shown)
     property var workspaceOccupied: []
     property var dynamicWorkspaceIds: []
-    property int effectiveWorkspaceCount: Config.workspaces.dynamic ? dynamicWorkspaceIds.length : Config.workspaces.shown
+    property int effectiveWorkspaceCount: dynamicMode ? Math.max(dynamicWorkspaceIds.length, workspaceIndexInGroup + 1) : Config.workspaces.shown
     property int widgetPadding: 4
     property real radius: Styling.radius(0)
     property real startRadius: radius
@@ -30,15 +35,38 @@ Item {
     property int baseSize: 36
     property int workspaceButtonSize: baseSize - widgetPadding * 2
     property int workspaceButtonWidth: workspaceButtonSize
-    property real workspaceIconSize: Math.round(workspaceButtonWidth * 0.6)
+    property real workspaceIconSize: Math.floor(workspaceButtonWidth * 0.6)
     property real workspaceIconSizeShrinked: Math.round(workspaceButtonWidth * 0.5)
     property real workspaceIconOpacityShrinked: 1
     property real workspaceIconMarginShrinked: -4
-    property int workspaceIndexInGroup: Config.workspaces.dynamic ? dynamicWorkspaceIds.indexOf((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1) : ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) % Config.workspaces.shown
+    readonly property int activeWorkspaceId: (monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) || 1
+
+    // Sorted position the active workspace will occupy once the dynamic
+    // list catches up. A workspace niri just created isn't in the list
+    // yet (100ms refresh debounce); indexOf would return -1 there and
+    // drag the stretchy highlight to an out-of-bounds slot first.
+    property int workspaceIndexInGroup: {
+        if (!dynamicMode) {
+            return ((monitor && monitor.activeWorkspace ? monitor.activeWorkspace.id : undefined) - 1 || 0) % Config.workspaces.shown;
+        }
+        const idx = dynamicWorkspaceIds.indexOf(activeWorkspaceId);
+        if (idx >= 0) {
+            return idx;
+        }
+        let insert = 0;
+        for (let i = 0; i < dynamicWorkspaceIds.length; i++) {
+            if (dynamicWorkspaceIds[i] < activeWorkspaceId) {
+                insert = i + 1;
+            } else {
+                break;
+            }
+        }
+        return insert;
+    }
     property var occupiedRanges: []
 
     function updateWorkspaceOccupied() {
-        if (Config.workspaces.dynamic) {
+        if (dynamicMode) {
             // Get occupied workspace IDs using the precomputed occupation map, sorted and limited by 'shown'
             const occupiedIds = AxctlService.workspaces.values.filter(ws => CompositorData.workspaceOccupationMap[ws.id]).map(ws => ws.id).sort((a, b) => a - b).slice(0, Config.workspaces.shown);
 
@@ -106,7 +134,12 @@ Item {
     }
 
     function getWorkspaceId(index) {
-        if (Config.workspaces.dynamic) {
+        if (dynamicMode) {
+            // Pending slot: the active workspace niri just created, not
+            // yet in the refreshed dynamic list.
+            if (index >= dynamicWorkspaceIds.length) {
+                return activeWorkspaceId;
+            }
             return dynamicWorkspaceIds[index] || 1;
         }
         return workspaceGroup * Config.workspaces.shown + index + 1;
@@ -144,6 +177,10 @@ Item {
     }
 
     onWorkspaceGroupChanged: {
+        updateTimer.restart();
+    }
+
+    onDynamicModeChanged: {
         updateTimer.restart();
     }
 

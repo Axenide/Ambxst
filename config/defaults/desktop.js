@@ -4,5 +4,6 @@ var data = {
     "enabled": false,
     "iconSize": 40,
     "spacingVertical": 16,
-    "textColor": "overBackground"
+    "textColor": "overBackground",
+    "blurWallpaperOnOverview": true
 }

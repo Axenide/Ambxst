@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import qs.modules.globals
 import qs.modules.theme
 import qs.modules.widgets.defaultview
@@ -28,7 +27,7 @@ Item {
 
     // Monitor reference and refrence to toplevels on monitor
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
-    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.activeWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.activeWorkspace.id)
+    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.visibleWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.visibleWorkspace.id && c.monitor === compositorMonitor.id)
 
     // Check if there are any windows on the current monitor and workspace
     readonly property bool hasWindows: toplevels.length > 0
@@ -60,18 +59,9 @@ Item {
         return false;
     }
 
-    // Fullscreen detection - use parent panel's robust detection, fallback to ToplevelManager
-    readonly property bool activeWindowFullscreen: {
-        // Prefer the parent UnifiedShellPanel's hasFullscreenWindow (checks both ToplevelManager + CompositorData)
-        if (barPanelRef && typeof barPanelRef.hasFullscreenWindow !== 'undefined') {
-            return barPanelRef.hasFullscreenWindow;
-        }
-        // Fallback: use ToplevelManager (native Wayland) like the bar does
-        const toplevel = ToplevelManager.activeToplevel;
-        if (!toplevel || !toplevel.activated)
-            return false;
-        return toplevel.fullscreen === true;
-    }
+    // Fullscreen detection - scoped to this monitor so the effect only
+    // applies to the screen that actually has the fullscreen window
+    readonly property bool activeWindowFullscreen: CompositorData.monitorHasFullscreen(compositorMonitor)
 
     // Should auto-hide logic:
     // 1. If notch and bar are on different sides: hide if keepHidden is ON, OR if windows/fullscreen are present
@@ -161,6 +151,22 @@ Item {
         id: persistentLauncherViewLoader
         active: false
         sourceComponent: Component { LauncherView { visible: false } }
+    }
+
+    // Prewarm the launcher (and its clipboard tab) offscreen a few seconds
+    // after boot so the first real open doesn't stall on QML compilation.
+    Timer {
+        interval: 5000
+        running: !screenVisibilities.launcher
+        repeat: false
+        onTriggered: {
+            persistentLauncherViewLoader.active = true;
+            Qt.callLater(() => {
+                if (persistentLauncherViewLoader.item) {
+                    persistentLauncherViewLoader.item.prewarmTabs = true;
+                }
+            });
+        }
     }
 
     Loader {

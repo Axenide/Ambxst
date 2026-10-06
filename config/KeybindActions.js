@@ -39,6 +39,7 @@ var ACTION_CATALOG = [
     { id: "ambxst.wallpapers", label: "Open Wallpapers", category: "Ambxst", dispatcher: "exec", argument: "ambxst run wallpapers" },
     { id: "ambxst.config", label: "Open Settings", category: "Ambxst", dispatcher: "exec", argument: "ambxst run config" },
     { id: "ambxst.overview", label: "Open Overview", category: "Ambxst", dispatcher: "exec", argument: "ambxst run overview" },
+    { id: "ambxst.bar", label: "Toggle Bar", category: "Ambxst", dispatcher: "exec", argument: "ambxst toggle bar" },
     { id: "ambxst.powermenu", label: "Open Power Menu", category: "Ambxst", dispatcher: "exec", argument: "ambxst run powermenu" },
     { id: "ambxst.tools", label: "Open Tools", category: "Ambxst", dispatcher: "exec", argument: "ambxst run tools" },
     { id: "ambxst.screenshot", label: "Take Screenshot", category: "Ambxst", dispatcher: "exec", argument: "ambxst run screenshot" },
@@ -59,6 +60,7 @@ var ACTION_CATALOG = [
     { id: "window.resize", label: "Resize Window", category: "Window", dispatcher: "resizeactive", args: [{ key: "delta", label: "Delta", placeholder: "50 0", defaultValue: "50 0" }], argumentBuilder: function (args) {
         return String(args.delta || "").trim();
     } },
+    { id: "window.toggle-float", label: "Toggle Floating", category: "Window", dispatcher: "togglefloating", argument: "" },
 
     { id: "workspace.switch", label: "Switch Workspace", category: "Workspace", dispatcher: "workspace", args: [{ key: "index", label: "Workspace", placeholder: "1", defaultValue: "1" }], argumentBuilder: function (args) {
         return String(args.index || "").trim();
@@ -86,6 +88,12 @@ var ACTION_CATALOG = [
     { id: "scrolling.move-window", label: "Move Window", category: "Window", dispatcher: "movewindow", args: [{ key: "direction", label: "Direction", placeholder: "up/down/left/right", defaultValue: "left" }], argumentBuilder: function (args) {
         return directionToLetter(args.direction);
     } },
+    { id: "monocle.focus", label: "Cycle Focus", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
+    } },
+    { id: "monocle.move-window", label: "Cycle Window", category: "Monocle Layout", dispatcher: "cyclenext", args: [{ key: "direction", label: "Direction", placeholder: "up/right = next, down/left = prev", defaultValue: "next" }], argumentBuilder: function (args) {
+        return (args.direction === "d" || args.direction === "l") ? "cycleprev" : "cyclenext";
+    } },
     { id: "scrolling.resize-column", label: "Resize Column", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "delta", label: "Delta", placeholder: "+0.1 / -0.1", defaultValue: "+0.1" }], argumentBuilder: function (args) {
         return "colresize " + String(args.delta || "").trim();
     } },
@@ -109,8 +117,8 @@ var ACTION_CATALOG = [
     { id: "audio.volume-down", label: "Volume Down", category: "Audio", dispatcher: "exec", argument: "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 10%-", flags: "le" },
     { id: "audio.mute-toggle", label: "Mute Audio", category: "Audio", dispatcher: "exec", argument: "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle", flags: "le" },
 
-    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness +5", flags: "le" },
-    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "ambxst brightness -5", flags: "le" },
+    { id: "brightness.up", label: "Brightness Up", category: "Brightness", dispatcher: "exec", argument: "sh -c 'echo brightness-up > \"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ambxst_ipc.pipe\"'", flags: "le" },
+    { id: "brightness.down", label: "Brightness Down", category: "Brightness", dispatcher: "exec", argument: "sh -c 'echo brightness-down > \"${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/ambxst_ipc.pipe\"'", flags: "le" },
 
     { id: "system.calculator", label: "Calculator", category: "System", dispatcher: "exec", argument: "notify-send \"Soon\"" },
     { id: "system.lock", label: "Lock Session", category: "System", dispatcher: "exec", argument: "loginctl lock-session" },
@@ -256,6 +264,7 @@ function actionFromLegacy(dispatcher, argument, flags) {
     if (dispatcher === "movewindow") return { id: "window.move", args: { direction: arg } };
     if (dispatcher === "movefocus") return { id: "window.focus", args: { direction: arg } };
     if (dispatcher === "resizeactive") return { id: "window.resize", args: { delta: arg } };
+    if (dispatcher === "togglefloating") return { id: "window.toggle-float", args: {} };
     if (dispatcher === "layoutmsg") {
         if (arg.startsWith("focus ")) return { id: "scrolling.focus", args: { direction: arg.split(" ")[1] } };
         if (arg.startsWith("movewindowto ")) return { id: "scrolling.move-window", args: { direction: arg.split(" ")[1] } };
