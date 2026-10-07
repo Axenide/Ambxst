@@ -142,4 +142,28 @@ func TestOCRSavedImageRoundTrip(t *testing.T) {
 	if text != "Screenshot OCR 1280" || copied != text {
 		t.Fatalf("OCR/clipboard mismatch: text=%q copied=%q", text, copied)
 	}
+	copied = ""
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.recognize(data, "eng", false); err != nil {
+		t.Fatal(err)
+	}
+	if copied != "" {
+		t.Fatal("preview copied text before confirmation")
+	}
+}
+
+func TestCopySelectionPreservesText(t *testing.T) {
+	s := NewService()
+	var copied string
+	s.SetClipboardCopy(func(text string) error { copied = text; return nil })
+	params, _ := json.Marshal(map[string]string{"text": " 中文\n한국어 "})
+	if _, err := s.copy(params); err != nil {
+		t.Fatal(err)
+	}
+	if copied != " 中文\n한국어 " {
+		t.Fatalf("changed selection: %q", copied)
+	}
 }

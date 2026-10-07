@@ -18,6 +18,12 @@ QtObject {
     property string lensPath: "/tmp/image.png"
 
     property string captureMode: "normal"
+    property bool ocrReviewVisible: false
+    property bool ocrReviewBusy: false
+    property string ocrReviewText: ""
+    property string ocrReviewError: ""
+    property string ocrReviewScreenName: ""
+    property int ocrReviewRequest: 0
 
     property string screenshotsDir: ""
     property string finalPath: ""
@@ -261,10 +267,28 @@ QtObject {
         var params = { x: x, y: y, width: w, height: h };
         if (kind === "ocr") {
             params.langs = root.ocrLangs();
+            params.preview = true;
+            root.ocrReviewText = "";
+            root.ocrReviewError = "";
+            root.ocrReviewBusy = true;
+            root.ocrReviewScreenName = Quickshell.screens.length ? Quickshell.screens[0].name : "";
+            for (var i = 0; i < Quickshell.screens.length; i++) {
+                var screen = Quickshell.screens[i];
+                if (x + w / 2 >= screen.x && x + w / 2 < screen.x + screen.width && y + h / 2 >= screen.y && y + h / 2 < screen.y + screen.height) {
+                    root.ocrReviewScreenName = screen.name;
+                    break;
+                }
+            }
+            root.ocrReviewRequest++;
+            root.ocrReviewVisible = true;
         }
+        var request = root.ocrReviewRequest;
         BackendService.call(method, params, (result, error) => {
             if (kind === "ocr") {
-                root._notifyTextRecognition(result, error);
+                if (request !== root.ocrReviewRequest || !root.ocrReviewVisible) return;
+                root.ocrReviewText = result && result.text ? result.text : "";
+                root.ocrReviewError = error ? "" + error : (root.ocrReviewText ? "" : I18n.t("screenshot.no_text"));
+                root.ocrReviewBusy = false;
                 return;
             }
             if (error) {
@@ -282,6 +306,14 @@ QtObject {
                 });
             }
         });
+    }
+
+    function closeOCRReview() {
+        root.ocrReviewVisible = false;
+        root.ocrReviewRequest++;
+        root.ocrReviewBusy = false;
+        root.ocrReviewText = "";
+        root.ocrReviewError = "";
     }
 
     function recognizeImage(path, callback) {
