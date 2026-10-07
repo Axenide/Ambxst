@@ -12,14 +12,36 @@ PanelWindow {
     id: root
     required property var targetScreen
     screen: targetScreen
-    implicitWidth: Math.min(720, targetScreen.width - 32)
-    implicitHeight: Math.min(480, targetScreen.height - 32)
+    anchors {
+        top: true
+        bottom: true
+        left: true
+        right: true
+    }
     color: "transparent"
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
 
     property bool copying: false
+    property real offsetX: 0
+    property real offsetY: 0
+
+    // Match the other movable overlays: only the pane receives input,
+    // except while dragging so the pointer can follow across the screen.
+    mask: Region {
+        item: headerDrag.pressed ? dragRegion : reviewPane
+    }
+
+    Item {
+        id: dragRegion
+        anchors.fill: parent
+    }
+
+    function moveReview(x, y) {
+        offsetX = Math.max(0, Math.min(x, root.width - reviewPane.width)) - (root.width - reviewPane.width) / 2;
+        offsetY = Math.max(0, Math.min(y, root.height - reviewPane.height)) - (root.height - reviewPane.height) / 2;
+    }
 
     function copySelection() {
         if (Screenshot.ocrReviewBusy || root.copying || editor.text === "") return;
@@ -47,7 +69,12 @@ PanelWindow {
     }
 
     StyledRect {
-        anchors.fill: parent
+        id: reviewPane
+        objectName: "ocrReviewPane"
+        width: Math.max(0, Math.min(720, root.width - 32))
+        height: Math.max(0, Math.min(480, root.height - 32))
+        x: Math.max(0, Math.min((root.width - width) / 2 + root.offsetX, root.width - width))
+        y: Math.max(0, Math.min((root.height - height) / 2 + root.offsetY, root.height - height))
         variant: "popup"
         radius: Styling.radius(4)
 
@@ -56,12 +83,40 @@ PanelWindow {
             anchors.margins: 16
             spacing: 12
 
-            Text {
-                text: I18n.t("screenshot.ocr_result")
-                font.family: Styling.defaultFont
-                font.pixelSize: Styling.fontSize(2)
-                font.bold: true
-                color: Colors.overBackground
+            Item {
+                Layout.fillWidth: true
+                implicitHeight: Math.max(32, titleText.implicitHeight)
+
+                Text {
+                    id: titleText
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: I18n.t("screenshot.ocr_result")
+                    font.family: Styling.defaultFont
+                    font.pixelSize: Styling.fontSize(2)
+                    font.bold: true
+                    color: Colors.overBackground
+                }
+                MouseArea {
+                    id: headerDrag
+                    objectName: "ocrReviewHeader"
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton
+                    preventStealing: true
+                    cursorShape: pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                    property point startPoint: Qt.point(0, 0)
+                    property point startPosition: Qt.point(0, 0)
+
+                    onPressed: mouse => {
+                        startPoint = mapToItem(null, mouse.x, mouse.y);
+                        startPosition = Qt.point(reviewPane.x, reviewPane.y);
+                    }
+                    onPositionChanged: mouse => {
+                        if (!pressed) return;
+                        var point = mapToItem(null, mouse.x, mouse.y);
+                        root.moveReview(startPosition.x + point.x - startPoint.x,
+                                        startPosition.y + point.y - startPoint.y);
+                    }
+                }
             }
             Text {
                 Layout.fillWidth: true
