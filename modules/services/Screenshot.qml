@@ -263,9 +263,13 @@ QtObject {
             params.langs = root.ocrLangs();
         }
         BackendService.call(method, params, (result, error) => {
+            if (kind === "ocr") {
+                root._notifyTextRecognition(result, error);
+                return;
+            }
             if (error) {
                 Notifications.notifyInternal({
-                    summary: kind === "qr" ? "QR Scan Error" : "OCR Error",
+                    summary: "QR Scan Error",
                     body: "" + error
                 });
                 return;
@@ -276,14 +280,24 @@ QtObject {
                     summary: "QR/Barcode Result",
                     body: found ? "Content copied to clipboard" : "No code detected"
                 });
-            } else {
-                var hasText = result && result.text && result.text !== "";
-                Notifications.notifyInternal({
-                    summary: "OCR Result",
-                    body: hasText ? "Text copied to clipboard" : "No text detected"
-                });
             }
         });
+    }
+
+    function recognizeImage(path, callback) {
+        BackendService.call("ocr.file", {path: path, langs: root.ocrLangs()}, (result, error) => {
+            var success = root._notifyTextRecognition(result, error);
+            if (callback) callback(success);
+        });
+    }
+
+    function _notifyTextRecognition(result, error) {
+        var hasText = !error && result && result.text && result.text !== "";
+        Notifications.notifyInternal({
+            summary: I18n.t(error ? "screenshot.ocr_error" : "screenshot.ocr_result"),
+            body: error ? "" + error : I18n.t(hasText ? "screenshot.text_copied" : "screenshot.no_text")
+        });
+        return !!hasText;
     }
 
     function ocrLangs() {
