@@ -99,6 +99,7 @@ var ACTION_CATALOG = [
         return "colresize " + String(args.delta || "").trim();
     } },
     { id: "scrolling.promote", label: "Promote Column", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "promote" },
+    { id: "scrolling.center", label: "Center Column", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "center" },
     { id: "scrolling.toggle-fit", label: "Toggle Fit", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "togglefit" },
     { id: "scrolling.toggle-full-column", label: "Toggle Full Column", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "colresize +conf" },
     { id: "scrolling.swap-column", label: "Swap Column", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "left/right", defaultValue: "left" }], argumentBuilder: function (args) {
@@ -276,6 +277,7 @@ function actionFromLegacy(dispatcher, argument, flags) {
             return { id: "scrolling.resize-column", args: { delta: delta } };
         }
         if (arg === "promote") return { id: "scrolling.promote", args: {} };
+        if (arg === "center") return { id: "scrolling.center", args: {} };
         if (arg === "togglefit") return { id: "scrolling.toggle-fit", args: {} };
         if (arg.startsWith("swapcol ")) return { id: "scrolling.swap-column", args: { direction: arg.split(" ")[1] } };
         if (arg.startsWith("movecoltoworkspace ")) return { id: "scrolling.move-column-workspace", args: { index: arg.split(" ")[1] } };

@@ -3120,6 +3120,24 @@ Singleton {
                     "enabled": true
                 },
                 {
+                    "name": "Center Column",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "CTRL"],
+                            "key": "SPACE"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "layoutmsg",
+                            "argument": "center",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
                     "name": "Resize Column +conf",
                     "keys": [
                         {

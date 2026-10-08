@@ -94,6 +94,7 @@ var catalog = []ActionSpec{
 	}},
 	{ID: "scrolling.resize-column", Label: "Resize Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Args: []ActionArg{{Key: "delta", Label: "Delta", Placeholder: "+0.1 / -0.1", DefaultValue: "+0.1"}}, ArgumentFn: func(args map[string]any) string { return "colresize " + strings.TrimSpace(stringArg(args, "delta")) }},
 	{ID: "scrolling.promote", Label: "Promote Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "promote"},
+	{ID: "scrolling.center", Label: "Center Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "center"},
 	{ID: "scrolling.toggle-fit", Label: "Toggle Fit", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "togglefit"},
 	{ID: "scrolling.toggle-full-column", Label: "Toggle Full Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "colresize +conf"},
 	{ID: "scrolling.swap-column", Label: "Swap Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Args: []ActionArg{{Key: "direction", Label: "Direction", Placeholder: "left/right", DefaultValue: "left"}}, ArgumentFn: func(args map[string]any) string { return "swapcol " + directionToLetter(stringArg(args, "direction")) }},
@@ -248,6 +249,8 @@ func ActionFromLegacy(dispatcher, argument, flags string) Action {
 			return Action{ID: "scrolling.resize-column", Args: map[string]any{"delta": rest}}
 		case arg == "promote":
 			return Action{ID: "scrolling.promote", Args: map[string]any{}}
+		case arg == "center":
+			return Action{ID: "scrolling.center", Args: map[string]any{}}
 		case arg == "togglefit":
 			return Action{ID: "scrolling.toggle-fit", Args: map[string]any{}}
 		case head == "swapcol":
