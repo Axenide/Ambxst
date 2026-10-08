@@ -1393,6 +1393,17 @@ Singleton {
                     current.custom = normalized.binds;
                     needsUpdate = true;
                 }
+                const hasFullscreen = current.custom.some(b => b && b.name === "Toggle Fullscreen");
+                if (!hasFullscreen) {
+                    console.log("Adding missing custom bind: Toggle Fullscreen");
+                    current.custom.push({
+                        "name": "Toggle Fullscreen",
+                        "keys": [{ "modifiers": ["SUPER"], "key": "F" }],
+                        "actions": [{ "id": "window.fullscreen", "args": {} }],
+                        "enabled": true
+                    });
+                    needsUpdate = true;
+                }
             }
 
             if (needsUpdate) {
@@ -1625,6 +1636,24 @@ Singleton {
                     "actions": [
                         {
                             "dispatcher": "togglefloating",
+                            "argument": "",
+                            "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Toggle Fullscreen",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER"],
+                            "key": "F"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "dispatcher": "fullscreen",
                             "argument": "",
                             "flags": "",
                             "layouts": []
