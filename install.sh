@@ -119,7 +119,7 @@ install_dependencies() {
       wlsunset wtype glib2 zenity power-profiles-daemon
       libnotify flatpak
       tesseract tesseract-langpack-eng tesseract-langpack-spa tesseract-langpack-jpn
-      tesseract-langpack-chi_sim tesseract-langpack-chi_tra tesseract-langpack-kor tesseract-langpack-lat
+      tesseract-langpack-chi_sim tesseract-langpack-chi_tra tesseract-langpack-kor tesseract-langpack-lat tesseract-langpack-rus
       google-roboto-fonts google-roboto-mono-fonts dejavu-sans-fonts liberation-fonts
       google-noto-fonts-common google-noto-cjk-fonts google-noto-emoji-fonts
       gstreamer1 gstreamer1-plugins-base gstreamer1-plugins-good gstreamer1-plugins-bad-free gstreamer1-plugin-libav
@@ -167,7 +167,7 @@ install_dependencies() {
       wlsunset wtype glib2 zenity inetutils power-profiles-daemon
       libnotify
       tesseract tesseract-data-eng tesseract-data-spa tesseract-data-jpn
-      tesseract-data-chi_sim tesseract-data-chi_tra tesseract-data-kor tesseract-data-lat
+      tesseract-data-chi_sim tesseract-data-chi_tra tesseract-data-kor tesseract-data-lat tesseract-data-rus
       ttf-roboto ttf-roboto-mono ttf-dejavu ttf-liberation noto-fonts noto-fonts-cjk noto-fonts-emoji
       ttf-nerd-fonts-symbols
       matugen gpu-screen-recorder gradia
