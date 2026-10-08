@@ -3120,24 +3120,6 @@ Singleton {
                     "enabled": true
                 },
                 {
-                    "name": "Toggle Fit",
-                    "keys": [
-                        {
-                            "modifiers": ["SUPER", "CTRL"],
-                            "key": "SPACE"
-                        }
-                    ],
-                    "actions": [
-                        {
-                            "dispatcher": "layoutmsg",
-                            "argument": "togglefit",
-                            "flags": "",
-                            "layouts": []
-                        }
-                    ],
-                    "enabled": true
-                },
-                {
                     "name": "Resize Column +conf",
                     "keys": [
                         {
