@@ -12,16 +12,16 @@ QtObject {
         const toRGB = (c) => {
             return `${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)}`
         }
-        
+
         const accentcolor = toRGB(Colors.primary)
         const accentcolor2 = toRGB(Colors.secondary)
         const linkcolor = toRGB(Colors.blue)
         const mentioncolor = toRGB(Colors.yellow)
-        
+
         const font = Config.theme.font || "gg sans"
 
         const isLight = Config.theme.lightMode
-        
+
         // Background derivatives
         const bg = Colors.background
         const backgroundaccent = isLight ? toRGB(Qt.darker(bg, 1.05)) : toRGB(Qt.lighter(bg, 1.66))
@@ -50,7 +50,7 @@ QtObject {
  * @source https://github.com/Axenide/Ambxst
  * @authorId 294856304969908224
  * @authorLink https://axeni.de
-*/ 
+*/
 
 @import url('https://mwittrien.github.io/BetterDiscordAddons/Themes/DiscordRecolor/DiscordRecolor.css');
 
@@ -75,12 +75,19 @@ QtObject {
   --settingsicons: 1;
 }
 
-/* Any custom CSS below here */ 
+/* Any custom CSS below here */
 `
 
         const home = Quickshell.env("HOME")
-        const vesktopPath = home + "/.config/vesktop/themes/ambxst.css"
-        
+        const clients = [
+            home + "/.config/Vencord/themes/ambxst.css",
+            home + "/.config/vesktop/themes/ambxst.css",
+            home + "/.var/app/dev.vencord.Vesktop/config/vesktop/themes/ambxst.css",
+            home + "/.config/WebCord/Themes/ambxst.css",
+            home + "/.var/app/io.github.spacingbat3.webcord/config/WebCord/Themes/ambxst.css",
+            home + "/.var/app/xyz.armcord.ArmCord/config/ArmCord/themes/ambxst.css"
+        ]
+
         const escape = (str) => {
             if (!str) return ""
             return str.toString()
@@ -90,8 +97,13 @@ QtObject {
                 .replace(/`/g, '\\`');
         }
 
-        const cmd = `mkdir -p "$(dirname "${vesktopPath}")" && echo "${escape(css)}" > "${vesktopPath}"`
-        
+        const escapedCss = escape(css)
+        let cmd = ""
+        for (let i = 0; i < clients.length; i++) {
+            cmd += `if [ -d "$(dirname "${clients[i]}")" ]; then echo "${escapedCss}" > "${clients[i]}"; fi && `
+        }
+        cmd = cmd.slice(0, -4)  // Remove trailing " && "
+
         writerProcess.command = ["sh", "-c", cmd]
         writerProcess.running = true
     }
