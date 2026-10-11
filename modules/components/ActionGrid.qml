@@ -296,11 +296,14 @@ FocusScope {
                                     width: root.iconSize
                                     height: root.iconSize
                                     source: actionButton.iconUrl
+                                    sourceSize: Qt.size(width * 2, height * 2)
                                     fillMode: Image.PreserveAspectFit
-                                    mipmap: true
+                                    smooth: true
                                     asynchronous: true
 
                                     layer.enabled: true
+                                    layer.smooth: true
+                                    layer.textureSize: Qt.size(width * 2, height * 2)
                                     layer.effect: MultiEffect {
                                         brightness: 1.0
                                         colorization: 1.0
