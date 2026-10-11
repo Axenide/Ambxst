@@ -285,28 +285,33 @@ FocusScope {
                             }
 
                             // 1b. Icono SVG con tinte (misma lógica de color que el glifo)
-                            Image {
+                            Item {
                                 width: root.buttonSize
                                 height: parent.height
                                 anchors.left: parent.left
                                 visible: actionButton.iconUrl !== ""
-                                source: actionButton.iconUrl
-                                sourceSize: Qt.size(root.iconSize, root.iconSize)
-                                fillMode: Image.PreserveAspectFit
-                                mipmap: true
-                                asynchronous: true
 
-                                layer.enabled: true
-                                layer.effect: MultiEffect {
-                                    brightness: 1.0
-                                    colorization: 1.0
-                                    colorizationColor: actionButton.iconColor
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: root.iconSize
+                                    height: root.iconSize
+                                    source: actionButton.iconUrl
+                                    fillMode: Image.PreserveAspectFit
+                                    mipmap: true
+                                    asynchronous: true
 
-                                    Behavior on colorizationColor {
-                                        enabled: Config.animDuration > 0
-                                        ColorAnimation {
-                                            duration: Config.animDuration / 2
-                                            easing.type: Easing.OutQuart
+                                    layer.enabled: true
+                                    layer.effect: MultiEffect {
+                                        brightness: 1.0
+                                        colorization: 1.0
+                                        colorizationColor: actionButton.iconColor
+
+                                        Behavior on colorizationColor {
+                                            enabled: Config.animDuration > 0
+                                            ColorAnimation {
+                                                duration: Config.animDuration / 2
+                                                easing.type: Easing.OutQuart
+                                            }
                                         }
                                     }
                                 }

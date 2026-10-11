@@ -36,7 +36,7 @@ ActionGrid {
         },
         {
             icon: "",
-            iconUrl: Qt.resolvedUrl("../../../assets/icons/cloud-snow-bold.svg"),
+            iconUrl: Qt.resolvedUrl("../../../assets/icons/snowflake-bold.svg"),
             tooltip: I18n.t("powermenu.hibernate"),
             command: "systemctl hibernate"
         },
