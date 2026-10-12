@@ -3,6 +3,7 @@ package capture
 import (
 	"bytes"
 	"fmt"
+	"math"
 
 	"ambxst/backend/internal/screenshot"
 	"ambxst/backend/pkg/axmon"
@@ -120,7 +121,9 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 		// physical. The retained frame is authoritative for the crop scale.
 		frameScaleX := float64(frozenW) / float64(mon.Width)
 		frameScaleY := float64(frozenH) / float64(mon.Height)
-		if frameScaleX > 0 && frameScaleY > 0 {
+		// A ratio of ~1 means axctl reported physical dims (same as the
+		// frame), so the monitor scale is still the right one.
+		if frameScaleX > 0 && frameScaleY > 0 && math.Abs((frameScaleX+frameScaleY)/2-1) > 0.01 {
 			scale = (frameScaleX + frameScaleY) / 2
 		}
 	}
