@@ -69,33 +69,57 @@ Singleton {
     // BATCH INITIALIZATION
     // ============================================
     // Ensure config directory exists and copy preset files if missing
+    // Array-based commands only: paths are never interpolated into a shell.
     Process {
         id: ensureConfigDir
         running: true
-        command: [
-            "bash", "-c",
-            "mkdir -p '" + root.configDir + "' && " +
-            "cp -n '" + root.presetDir + "/theme.json' '" + root.configDir + "/theme.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/bar.json' '" + root.configDir + "/bar.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/workspaces.json' '" + root.configDir + "/workspaces.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/overview.json' '" + root.configDir + "/overview.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/notch.json' '" + root.configDir + "/notch.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/compositor.json' '" + root.configDir + "/compositor.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/performance.json' '" + root.configDir + "/performance.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/desktop.json' '" + root.configDir + "/desktop.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/lockscreen.json' '" + root.configDir + "/lockscreen.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/dock.json' '" + root.configDir + "/dock.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/ai.json' '" + root.configDir + "/ai.json' 2>/dev/null || true; " +
-            "cp -n '" + root.presetDir + "/system.json' '" + root.configDir + "/system.json' 2>/dev/null || true; " +
-            "echo 'Preset files copied if missing'"
-        ]
+        command: ["mkdir", "-p", root.configDir]
+        onExited: root.copyPresetConfigs()
+    }
+
+    function copyPresetConfigs() {
+        const modules = ["theme", "bar", "workspaces", "overview", "notch", "compositor", "performance", "desktop", "lockscreen", "dock", "ai", "system"];
+        for (var i = 0; i < modules.length; i++) {
+            const fileName = modules[i] + ".json";
+            try {
+                var proc = Qt.createQmlObject(
+                    "import QtQuick; import Quickshell.Io; Process { command: " + JSON.stringify(["cp", "-n", root.presetDir + "/" + fileName, root.configDir + "/" + fileName]) + "; }",
+                    root,
+                    "presetCopyProcess-" + modules[i]
+                );
+                proc.running = true;
+            } catch (e) {
+                console.log("Failed to copy preset " + fileName + ": " + e);
+            }
+        }
     }
 
     // Auto-migrate hyprland.json → compositor.json for existing users
     Process {
         id: migrateCompositorConfig
         running: true
-        command: ["bash", "-c", `test -f '${root.configDir}/hyprland.json' && ! test -f '${root.configDir}/compositor.json' && mv '${root.configDir}/hyprland.json' '${root.configDir}/compositor.json' && echo 'Migrated hyprland.json to compositor.json' || true`]
+        command: ["test", "-f", root.configDir + "/hyprland.json"]
+        onExited: code => {
+            if (code !== 0)
+                return;
+            migrateDestCheck.running = true;
+        }
+    }
+
+    Process {
+        id: migrateDestCheck
+        command: ["test", "-f", root.configDir + "/compositor.json"]
+        onExited: code => {
+            if (code === 0)
+                return;
+            migrateMove.running = true;
+        }
+    }
+
+    Process {
+        id: migrateMove
+        command: ["mv", root.configDir + "/hyprland.json", root.configDir + "/compositor.json"]
+        onExited: code => console.log("Migrated hyprland.json to compositor.json (exit " + code + ")")
     }
 
     // ============================================
@@ -3433,9 +3457,38 @@ Singleton {
             onComplete();
         } catch (e) {
             console.log("Error validating " + name + " config (invalid JSON?): " + e);
-            console.log("Overwriting with defaults due to error.");
-            loader.setText(JSON.stringify(defaults, null, 2));
-            onComplete();
+            var backupPath = root.configDir + "/" + name + ".json.corrupt-" + Date.now();
+            var sourcePath = loader.path.toString().replace("file://", "");
+            var overwrite = function() {
+                console.log("Overwriting " + name + ".json with defaults due to error.");
+                loader.setText(JSON.stringify(defaults, null, 2));
+                try {
+                    Services.Notifications.notifyInternal({
+                        summary: "Config error",
+                        body: name + ".json is invalid. A backup was saved to " + backupPath + ". Defaults restored.",
+                        appName: "Ambxst",
+                        urgency: "critical"
+                    });
+                } catch (notifError) {
+                    console.log("Could not notify about config error: " + notifError);
+                }
+                onComplete();
+            };
+            var backupSpawned = false;
+            try {
+                var backupProcess = Qt.createQmlObject(
+                    "import QtQuick; import Quickshell.Io; Process { command: " + JSON.stringify(["cp", "-p", sourcePath, backupPath]) + "; property var finish: null; onExited: code => { if (finish) finish(); } }",
+                    root,
+                    "configBackupProcess-" + name
+                );
+                backupProcess.finish = overwrite;
+                backupSpawned = true;
+                backupProcess.running = true;
+            } catch (backupError) {
+                console.log("Failed to back up corrupted " + name + ".json: " + backupError);
+            }
+            if (!backupSpawned)
+                overwrite();
         }
     }
 
@@ -3447,9 +3500,9 @@ Singleton {
 
         // Create a Process component dynamically to copy the file
         var copyProcess = Qt.createQmlObject(
-            "import QtQuick 2.0; Process { running: true; command: ['cp', '" + presetPath + "', '" + targetPath + "']; onFinished: { console.log('Copy finished for " + name + "'); } }",
+            "import QtQuick; import Quickshell.Io; Process { running: true; command: " + JSON.stringify(["cp", presetPath, targetPath]) + "; }",
             root,
-            "copyProcess"
+            "copyProcess-" + name
         );
 
         // Reload the loader to pick up the copied file

@@ -414,7 +414,34 @@ install_axctl() {
   fi
 
   log_info "Installing axctl..."
-  curl -fsSL get.axeni.de/axctl | sh
+  local installer
+  installer="$(mktemp)"
+  if ! curl -fsSL --retry 3 -o "$installer" get.axeni.de/axctl; then
+    rm -f "$installer"
+    log_error "Failed to download axctl installer"
+    exit 1
+  fi
+
+  # Verify checksum when the server publishes one (get.axeni.de/axctl.sha256)
+  local expected actual
+  if expected="$(curl -fsSL get.axeni.de/axctl.sha256 2>/dev/null | awk '{print $1}')" && [[ -n "$expected" ]]; then
+    actual="$(sha256sum "$installer" | awk '{print $1}')"
+    if [[ "$expected" != "$actual" ]]; then
+      rm -f "$installer"
+      log_error "axctl installer checksum verification failed"
+      exit 1
+    fi
+    log_info "axctl installer checksum verified"
+  fi
+
+  if [[ "$(head -c 2 "$installer")" != "#!" ]]; then
+    rm -f "$installer"
+    log_error "Downloaded axctl installer is not a valid script"
+    exit 1
+  fi
+
+  sh "$installer"
+  rm -f "$installer"
   log_success "axctl installed"
 }
 
