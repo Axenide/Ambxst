@@ -43,6 +43,24 @@ func TestManifestRejectsUndeclaredDependencySource(t *testing.T) {
 	}
 }
 
+func TestManifestRejectsNegativeSettingsSection(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "payload.qml"), "Item {}\n")
+	manifest := Manifest{
+		ManifestVersion: APIVersion,
+		ID:              "example.mod",
+		Name:            "Example",
+		Version:         "1.0.0",
+		SettingsMenu:    &SettingsMenuRef{Section: -1, Index: -2},
+		Operations: []Operation{{
+			Type: "overlay", Source: "payload.qml", Target: "payload.qml",
+		}},
+	}
+	if err := manifest.Validate(root); err == nil {
+		t.Fatal("expected a negative settings section to fail validation")
+	}
+}
+
 func TestPatchTargets(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "change.patch")
 	writeTestFile(t, path, "--- a/one.qml\n+++ b/one.qml\n@@ -1 +1 @@\n-old\n+new\n--- /dev/null\n+++ b/two.qml\n@@ -0,0 +1 @@\n+new\n")
@@ -105,5 +123,69 @@ func TestLoadManifestKeepsUnknownFields(t *testing.T) {
 	}
 	if len(loaded.UnknownFields) != 1 || loaded.UnknownFields[0] != "sponsorUrl" {
 		t.Fatalf("the unknown key was not reported: %#v", loaded.UnknownFields)
+	}
+}
+
+func TestLoadManifestDetectsLegacySettingsMenu(t *testing.T) {
+	root := t.TempDir()
+	patch := `diff --git a/modules/widgets/dashboard/controls/SettingsTab.qml b/modules/widgets/dashboard/controls/SettingsTab.qml
+--- a/modules/widgets/dashboard/controls/SettingsTab.qml
++++ b/modules/widgets/dashboard/controls/SettingsTab.qml
+@@ -1,2 +1,4 @@
+ items: [
++    { label: "Calendar", section:11 },
++    { component: "CalendarPanel.qml", section: 11 },
+ ]
+`
+	writeTestFile(t, filepath.Join(root, "feature.patch"), patch)
+	writeManifest := `{
+  "manifestVersion": 1,
+  "id": "example.legacy",
+  "name": "Legacy settings panel",
+  "version": "1.0.0",
+  "operations": [{"type": "patch", "source": "feature.patch"}]
+}`
+	writeTestFile(t, filepath.Join(root, ManifestFile), writeManifest)
+
+	manifest, err := LoadManifest(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	menus := settingsMenusForManifest(manifest)
+	if !manifest.SettingsMenuDetected || len(menus) != 1 || menus[0].Section != 11 || menus[0].Index != -2 {
+		t.Fatalf("legacy settings menu was not detected: %#v", manifest)
+	}
+}
+
+func TestLoadManifestDetectsMultipleLegacySettingsMenus(t *testing.T) {
+	root := t.TempDir()
+	patch := `diff --git a/modules/widgets/dashboard/controls/SettingsTab.qml b/modules/widgets/dashboard/controls/SettingsTab.qml
+--- a/modules/widgets/dashboard/controls/SettingsTab.qml
++++ b/modules/widgets/dashboard/controls/SettingsTab.qml
+@@ -1,2 +1,6 @@
+ items: [
++    { label: "First", section: 11 },
++    { component: "FirstPanel.qml", section: 11 },
++    { label: "Second", section: 12 },
++    { component: "SecondPanel.qml", section: 12 },
+ ]
+`
+	writeTestFile(t, filepath.Join(root, "feature.patch"), patch)
+	writeTestFile(t, filepath.Join(root, ManifestFile), `{
+  "manifestVersion": 1,
+  "id": "example.multiple",
+  "name": "Multiple settings panels",
+  "version": "1.0.0",
+  "operations": [{"type": "patch", "source": "feature.patch"}]
+}`)
+
+	manifest, err := LoadManifest(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	menus := settingsMenusForManifest(manifest)
+	if len(menus) != 2 || menus[0] != (SettingsMenuRef{Section: 11, Index: -3}) ||
+		menus[1] != (SettingsMenuRef{Section: 12, Index: -2}) {
+		t.Fatalf("multiple settings menus were not detected as a group: %#v", menus)
 	}
 }

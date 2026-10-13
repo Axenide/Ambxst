@@ -3,13 +3,25 @@
   "manifestVersion": 1,
   "id": "community.compact-player-volume-scroll",
   "name": "Compact player volume scroll",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Changes the default sink volume when the pointer wheel is used over the compact player.",
+  "license": "AGPL-3.0-only",
+  "author": "flathead",
+  "authorUrl": "https://github.com/flathead",
+  "homepage": "https://github.com/Axenide/Ambxst/tree/dev/examples/mods/compact-player-volume-scroll",
+  "changelog": "CHANGELOG.md",
+  "deprecated": false,
+  "localization": {
+    "mode": "none"
+  },
+  "conflicts": [
+    "community.volume-scroll"
+  ],
   "compatibility": {
     "api": 1,
-    "ambxst": ">=1.2.5 <1.3.0",
+    "ambxst": ">=1.3.8 <1.4.0",
     "testedBaseCommits": [
-      "8f00dbaa831824e24af3a1644d32ae465acc60ea"
+      "c33dd43da5fb6feeefa521bd1f406b8ff20db577"
     ]
   },
   "permissions": [
