@@ -265,7 +265,7 @@ Singleton {
     }
 
     function orderSettingsSections(sections) {
-        const source = (sections ?? []).slice();
+        const source = sections ?? [];
         const menuMods = (root.mods ?? []).filter(mod => mod.enabled && mod.hasSettingsMenu
             && (mod.settingsSections ?? [mod.settingsSection]).some(section => source.some(item => item.section === section)));
         if (menuMods.length === 0)
@@ -284,7 +284,13 @@ Singleton {
             if (result[index] === null)
                 result[index] = core[coreIndex++];
         }
-        return result;
+        // Keep the caller's array when the order did not change, so bindings
+        // depending on the result do not invalidate on every status push.
+        for (let index = 0; index < result.length; index++) {
+            if (result[index] !== source[index])
+                return result;
+        }
+        return source;
     }
 
     function rebuild() {

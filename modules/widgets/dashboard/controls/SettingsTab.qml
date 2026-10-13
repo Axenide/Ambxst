@@ -22,7 +22,12 @@ Rectangle {
     property int selectedIndex: GlobalStates.settingsCurrentTab
     property string searchQuery: ""
 
-    onFilteredSectionsChanged: selectedIndex = 0
+    onFilteredSectionsChanged: {
+        // Keep the selection when the list is rebuilt with the same sections
+        // (e.g. a mods status push), and reset only if it disappeared.
+        const index = getFilteredIndex(root.currentSection);
+        selectedIndex = index >= 0 ? index : 0;
+    }
 
     // Timer to restore focus after panel transitions
     Timer {
