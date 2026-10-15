@@ -18,6 +18,7 @@ PanelWindow {
     screen: targetScreen
 
     property string imagePath: ""
+    property bool recognizingText: false
 
     // Position: Bottom Left with margins
     anchors {
@@ -37,6 +38,13 @@ PanelWindow {
 
     property bool _copyRequested: false
 
+    function copyImage() {
+        BackendService.call("clipboard.copyFile", {path: root.imagePath, mime: "image/png"}, (result, error) => {
+            if (error || (result && result.error))
+                console.warn("Overlay Copy Failed:", error || result.error);
+        });
+    }
+
     onImagePathChanged: {
         if (imagePath !== "" && !_copyRequested) {
             _copyRequested = true;
@@ -55,7 +63,7 @@ PanelWindow {
         id: hideTimer
         interval: 5000
         repeat: false
-        running: root.visible && !mouseAreaHover.containsMouse
+        running: root.visible && !mouseAreaHover.containsMouse && !root.recognizingText
         onTriggered: root.imagePath = ""
     }
 
@@ -205,12 +213,33 @@ PanelWindow {
             ActionButton {
                 icon: Icons.copy
                 onTriggered: {
-                    copyOverlayProcess.running = true
+                    root.copyImage();
                 }
 
                 StyledToolTip {
                     show: parent.containsMouse
                     tooltipText: I18n.t("common.copy")
+                }
+            }
+
+            ActionButton {
+                icon: root.recognizingText ? Icons.spinnerGap : Icons.textT
+                enabled: !root.recognizingText && root.imagePath !== ""
+                opacity: enabled ? 1 : 0.5
+                cursorShape: root.recognizingText ? Qt.BusyCursor : Qt.PointingHandCursor
+                Accessible.role: Accessible.Button
+                Accessible.name: I18n.t("screenshot.recognize_text")
+                onTriggered: {
+                    var path = root.imagePath;
+                    root.recognizingText = true;
+                    Screenshot.recognizeImage(path, success => {
+                        root.recognizingText = false;
+                        if (success && root.imagePath === path) root.imagePath = "";
+                    });
+                }
+                StyledToolTip {
+                    show: parent.containsMouse
+                    tooltipText: I18n.t(root.recognizingText ? "screenshot.recognizing_text" : "screenshot.recognize_text")
                 }
             }
 

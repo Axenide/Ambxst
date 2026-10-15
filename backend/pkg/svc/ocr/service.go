@@ -1,11 +1,11 @@
 package ocr
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"os/exec"
-	"strings"
+	"io"
+	"os"
+	"path/filepath"
 
 	"ambxst/backend/pkg/capture"
 	"ambxst/backend/pkg/ipc"
@@ -31,17 +31,20 @@ func (s *Service) Register(srv *ipc.Server) {
 		Name: "ocr",
 		Methods: map[string]ipc.HandlerFunc{
 			"text":    s.text,
+			"file":    s.file,
+			"copy":    s.copy,
 			"barcode": s.barcode,
 		},
 	})
 }
 
 type rectParams struct {
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-	Langs  string `json:"langs,omitempty"`
+	X       int    `json:"x"`
+	Y       int    `json:"y"`
+	Width   int    `json:"width"`
+	Height  int    `json:"height"`
+	Langs   string `json:"langs,omitempty"`
+	Preview bool   `json:"preview,omitempty"`
 }
 
 func (s *Service) text(params json.RawMessage) (any, error) {
@@ -56,22 +59,73 @@ func (s *Service) text(params json.RawMessage) (any, error) {
 	}
 	defer closer()
 
-	langs := p.Langs
-	if strings.TrimSpace(langs) == "" {
-		langs = "eng+spa"
-	}
+	return s.recognize(pngBytes, p.Langs, !p.Preview)
+}
 
-	cmd := exec.Command("tesseract", "-", "-", "-l", langs)
-	cmd.Stdin = bytes.NewReader(pngBytes)
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("tesseract: %w", err)
+// file recognizes the saved screenshot, without recapturing the desktop.
+func (s *Service) file(params json.RawMessage) (any, error) {
+	var p struct {
+		Path  string `json:"path"`
+		Langs string `json:"langs"`
 	}
-	text := strings.TrimSpace(string(out))
-	if text != "" {
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	if !filepath.IsAbs(p.Path) {
+		return nil, fmt.Errorf("screenshot path must be absolute")
+	}
+	info, err := os.Stat(p.Path)
+	if err != nil {
+		return nil, fmt.Errorf("read screenshot: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("screenshot must be a regular file")
+	}
+	f, err := os.Open(p.Path)
+	if err != nil {
+		return nil, fmt.Errorf("read screenshot: %w", err)
+	}
+	defer f.Close()
+	info, err = f.Stat()
+	if err != nil {
+		return nil, err
+	}
+	if !info.Mode().IsRegular() {
+		return nil, fmt.Errorf("screenshot must be a regular file")
+	}
+	const maxBytes = 32 << 20
+	data, err := io.ReadAll(io.LimitReader(f, maxBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > maxBytes {
+		return nil, fmt.Errorf("screenshot exceeds 32 MiB")
+	}
+	return s.recognize(data, p.Langs, true)
+}
+
+func (s *Service) recognize(pngBytes []byte, langs string, copyResult bool) (any, error) {
+	text, err := recognizePNG(pngBytes, langs)
+	if err != nil {
+		return nil, err
+	}
+	if copyResult && text != "" {
 		s.copyText(text)
 	}
 	return map[string]any{"text": text}, nil
+}
+
+func (s *Service) copy(params json.RawMessage) (any, error) {
+	var p struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	if p.Text != "" {
+		s.copyText(p.Text)
+	}
+	return map[string]any{"copied": p.Text != ""}, nil
 }
 
 func (s *Service) barcode(params json.RawMessage) (any, error) {
