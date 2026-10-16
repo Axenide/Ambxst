@@ -46,10 +46,21 @@ QtObject {
 
             // Dashboard
             case "dashboard": toggleDashboardTab(0); break;
-            case "wallpapers": toggleDashboardTab(1); break;
+            case "wallpapers":
+            case "dashboard-wallpapers":
+                if (Visibilities.currentActiveModule === "dashboard" && GlobalStates.dashboardCurrentTab === 1 && GlobalStates.wallpapersTabShowSettings) {
+                    GlobalStates.wallpapersTabShowSettings = false;
+                } else {
+                    GlobalStates.wallpapersTabShowSettings = false;
+                    toggleDashboardTab(1);
+                }
+                break;
             case "assistant": toggleAssistant(); break;
             case "dashboard-widgets": toggleDashboardTab(0); break;
-            case "dashboard-wallpapers": toggleDashboardTab(1); break;
+            case "wallpaper-random":
+            case "random-wallpaper":
+                GlobalStates.triggerRandomWallpaper();
+                break;
             case "dashboard-kanban": toggleDashboardTab(2); break;
             case "dashboard-assistant": toggleAssistant(); break;
             case "dashboard-controls": toggleSettings(); break;
