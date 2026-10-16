@@ -190,6 +190,318 @@ Singleton {
         wallpaperSelectedIndex = -1;
     }
 
+    // Wallpaper Transitions & Automation State (persisted via StateService)
+    // The transition is one of skwd-wall's (SkwdWall.transitions),
+    // "random" picks a different one each time; duration is in milliseconds.
+    property string wallpaperTransitionStyle: StateService.get("wallpaperTransitionStyle", "random")
+    property int wallpaperTransitionDuration: StateService.get("wallpaperTransitionDuration", 700)
+    property string wallpaperPauseMode: StateService.get("wallpaperPauseMode", "fullscreen")
+    property string wallpaperPauseScope: StateService.get("wallpaperPauseScope", "perScreen")
+    property bool wallpapersTabShowSettings: false
+    property bool wallpaperPeriodicEnabled: StateService.get("wallpaperPeriodicEnabled", false)
+    property int wallpaperPeriodicSeconds: StateService.get("wallpaperPeriodicSeconds", StateService.get("wallpaperPeriodicInterval", 15) * 60)
+    property int wallpaperPeriodicInterval: Math.max(1, Math.round(wallpaperPeriodicSeconds / 60))
+    property bool wallpaperSolarSyncEnabled: StateService.get("wallpaperSolarSyncEnabled", false)
+    property string lastTriggeredSolarPeriod: ""
+    property var wallpaperRandomSourceFilters: StateService.get("wallpaperRandomSourceFilters", [])
+    property var solarCacheMap: ({})
+
+    FileView {
+        id: solarCacheFileView
+        path: Quickshell.env("HOME") + "/.cache/ambxst/wallpaper_solar_cache.json"
+        onLoaded: {
+            try {
+                let txt = solarCacheFileView.text();
+                if (txt && txt.length > 2) {
+                    root.solarCacheMap = JSON.parse(txt);
+                }
+            } catch (e) {
+                console.warn("GlobalStates: Failed to parse wallpaper_solar_cache.json:", e);
+            }
+        }
+    }
+
+    Process {
+        id: solarIndexProcess
+        // The time-of-day indexer for Match Time of Day.
+        command: ["python3", Quickshell.shellDir + "/scripts/skwd_solar_index.py"]
+        running: false
+        onExited: (code) => {
+            if (code === 0) {
+                solarCacheFileView.reload();
+            }
+        }
+    }
+
+    function refreshSolarCache() {
+        if (!solarIndexProcess.running) {
+            solarIndexProcess.running = true;
+        }
+    }
+
+    function getCurrentSolarPeriod() {
+        let hour = new Date().getHours();
+        if (hour >= 6 && hour < 11) return "morning";
+        if (hour >= 11 && hour < 17) return "afternoon";
+        if (hour >= 17 && hour < 21) return "sunset";
+        return "night";
+    }
+
+    function setWallpaperPauseMode(mode) {
+        wallpaperPauseMode = mode;
+        if (StateService && StateService.initialized) StateService.set("wallpaperPauseMode", mode);
+    }
+
+    function setWallpaperPauseScope(scope) {
+        wallpaperPauseScope = scope;
+        if (StateService && StateService.initialized) StateService.set("wallpaperPauseScope", scope);
+    }
+
+    function setWallpaperTransitionStyle(style) {
+        wallpaperTransitionStyle = style;
+        if (StateService && StateService.initialized) StateService.set("wallpaperTransitionStyle", style);
+    }
+
+    function setWallpaperTransitionDuration(duration) {
+        wallpaperTransitionDuration = duration;
+        if (StateService && StateService.initialized) StateService.set("wallpaperTransitionDuration", duration);
+    }
+
+    function setWallpaperPeriodicEnabled(enabled) {
+        wallpaperPeriodicEnabled = enabled;
+        if (StateService && StateService.initialized) StateService.set("wallpaperPeriodicEnabled", enabled);
+    }
+
+    function setWallpaperSolarSyncEnabled(enabled) {
+        wallpaperSolarSyncEnabled = enabled;
+        if (StateService && StateService.initialized) StateService.set("wallpaperSolarSyncEnabled", enabled);
+        if (enabled) {
+            if (!solarCacheMap || Object.keys(solarCacheMap).length === 0) {
+                refreshSolarCache();
+            }
+        }
+    }
+
+    function setWallpaperPeriodicSeconds(sec) {
+        let val = Math.max(5, Math.round(sec));
+        wallpaperPeriodicSeconds = val;
+        wallpaperPeriodicInterval = Math.max(1, Math.round(val / 60));
+        if (StateService && StateService.initialized) {
+            StateService.set("wallpaperPeriodicSeconds", val);
+            StateService.set("wallpaperPeriodicInterval", wallpaperPeriodicInterval);
+        }
+    }
+
+    function setWallpaperPeriodicInterval(interval) {
+        setWallpaperPeriodicSeconds(Math.max(1, interval) * 60);
+    }
+
+    function setWallpaperRandomSourceFilters(filters) {
+        wallpaperRandomSourceFilters = filters;
+        if (StateService && StateService.initialized) StateService.set("wallpaperRandomSourceFilters", filters);
+    }
+
+    function toggleWallpaperRandomSourceFilter(filterKey) {
+        let cur = (root.wallpaperRandomSourceFilters && Array.isArray(root.wallpaperRandomSourceFilters)) ? root.wallpaperRandomSourceFilters.slice() : [];
+        let idx = cur.indexOf(filterKey);
+        if (idx >= 0) {
+            cur.splice(idx, 1);
+        } else {
+            cur.push(filterKey);
+        }
+        root.setWallpaperRandomSourceFilters(cur);
+    }
+
+    property var wallpaperShuffleDeck: []
+    property string wallpaperShufflePoolKey: ""
+
+    function triggerRandomWallpaper() {
+        if (!wallpaperManager || !wallpaperManager.wallpaperPaths || wallpaperManager.wallpaperPaths.length === 0) return;
+        let allPaths = wallpaperManager.wallpaperPaths;
+        if (allPaths.length === 0) return;
+
+        let paths = allPaths;
+        let activeFilters = (root.wallpaperRandomSourceFilters && Array.isArray(root.wallpaperRandomSourceFilters)) ? root.wallpaperRandomSourceFilters : [];
+        if (activeFilters.length > 0) {
+            let basePath = wallpaperManager.wallpaperDir || "";
+            if (basePath && !basePath.endsWith("/")) basePath += "/";
+
+            let hasImage = activeFilters.includes("image");
+            let hasGif = activeFilters.includes("gif");
+            let hasVideo = activeFilters.includes("video");
+            let subfilters = [];
+            for (let j = 0; j < activeFilters.length; j++) {
+                let f = activeFilters[j];
+                if (f.startsWith("subfolder_")) {
+                    subfilters.push(f.replace("subfolder_", ""));
+                } else if (f !== "image" && f !== "gif" && f !== "video") {
+                    subfilters.push(f);
+                }
+            }
+
+            let filtered = allPaths.filter(function(path) {
+                let ext = path.substring(path.lastIndexOf('.') + 1).toLowerCase();
+                let isImg = (ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp' || ext === 'bmp' || ext === 'tif' || ext === 'tiff');
+                let isG = (ext === 'gif');
+                let isV = (ext === 'mp4' || ext === 'webm' || ext === 'mov' || ext === 'avi' || ext === 'mkv');
+
+                if ((hasImage && isImg) || (hasGif && isG) || (hasVideo && isV)) {
+                    return true;
+                }
+
+                if (subfilters.length > 0 && basePath) {
+                    let rel = path.startsWith(basePath) ? path.substring(basePath.length) : path;
+                    let slashIdx = rel.indexOf('/');
+                    if (slashIdx !== -1) {
+                        let topDir = rel.substring(0, slashIdx);
+                        if (subfilters.includes(topDir)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            });
+            if (filtered.length > 0) {
+                paths = filtered;
+            }
+        }
+
+        if (root.wallpaperSolarSyncEnabled) {
+            let period = root.getCurrentSolarPeriod();
+            let basePath = wallpaperManager.wallpaperDir || "";
+            if (basePath && !basePath.endsWith("/")) basePath += "/";
+
+            let solarFiltered = paths.filter(function(path) {
+                let rel = path.startsWith(basePath) ? path.substring(basePath.length) : path;
+                if (root.solarCacheMap && root.solarCacheMap[rel]) {
+                    return root.solarCacheMap[rel] === period;
+                }
+                // Fallback to keyword matching if not cached
+                let lower = path.toLowerCase();
+                let keywords = [];
+                if (period === "morning") {
+                    keywords = ["morning", "dawn", "sunrise", "early", "daybreak", "light"];
+                } else if (period === "afternoon") {
+                    keywords = ["afternoon", "midday", "noon", "day", "bright", "sun", "warm"];
+                } else if (period === "sunset") {
+                    keywords = ["sunset", "dusk", "evening", "golden", "twilight", "sundown", "orange"];
+                } else {
+                    keywords = ["night", "dark", "midnight", "stars", "moon", "starry", "neon", "space"];
+                }
+                for (let k = 0; k < keywords.length; k++) {
+                    if (lower.indexOf(keywords[k]) !== -1) return true;
+                }
+                return false;
+            });
+
+            if (solarFiltered.length > 0) {
+                paths = solarFiltered;
+            }
+        }
+
+        let screenName = (typeof AxctlService !== "undefined" && AxctlService.focusedMonitor && AxctlService.focusedMonitor.name)
+            ? AxctlService.focusedMonitor.name
+            : ((wallpaperManager.screen && wallpaperManager.screen.name) ? wallpaperManager.screen.name : (wallpaperManager.currentScreenName || ""));
+        let perScreen = wallpaperManager.perScreenWallpapers || {};
+        let isPerScreen = (screenName !== "" && perScreen[screenName] !== undefined);
+        let curPath = isPerScreen ? perScreen[screenName] : ((wallpaperManager.effectiveWallpaper !== undefined && wallpaperManager.effectiveWallpaper !== "") ? wallpaperManager.effectiveWallpaper : (wallpaperManager.currentWallpaper || ""));
+
+        // Shuffle Deck management: 100% fair random permutation without repetition
+        let periodKey = root.wallpaperSolarSyncEnabled ? (":" + root.getCurrentSolarPeriod()) : "";
+        let poolKey = activeFilters.slice().sort().join("|") + ":" + paths.length + periodKey;
+        if (root.wallpaperShufflePoolKey !== poolKey || !Array.isArray(root.wallpaperShuffleDeck)) {
+            root.wallpaperShuffleDeck = [];
+            root.wallpaperShufflePoolKey = poolKey;
+        }
+
+        if (root.wallpaperShuffleDeck.length === 0) {
+            let deck = paths.slice();
+            // Fisher-Yates shuffle
+            for (let i = deck.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                let temp = deck[i];
+                deck[i] = deck[j];
+                deck[j] = temp;
+            }
+            // Avoid repeating curPath on reshuffle boundary
+            if (deck.length > 1 && deck[0] === curPath) {
+                let swapIdx = 1 + Math.floor(Math.random() * (deck.length - 1));
+                let temp = deck[0];
+                deck[0] = deck[swapIdx];
+                deck[swapIdx] = temp;
+            }
+            root.wallpaperShuffleDeck = deck;
+        }
+
+        let nextWallpaper = root.wallpaperShuffleDeck.shift();
+        if (nextWallpaper === curPath && root.wallpaperShuffleDeck.length > 0) {
+            let alt = root.wallpaperShuffleDeck.shift();
+            root.wallpaperShuffleDeck.push(nextWallpaper);
+            nextWallpaper = alt;
+        }
+
+        if (isPerScreen) {
+            wallpaperManager.setWallpaper(nextWallpaper, screenName);
+        } else {
+            wallpaperManager.setWallpaper(nextWallpaper);
+        }
+        wallpaperSelectedIndex = allPaths.indexOf(nextWallpaper);
+    }
+
+    Timer {
+        id: wallpaperPeriodicTimer
+        interval: Math.max(5, root.wallpaperPeriodicSeconds) * 1000
+        repeat: true
+        running: root.wallpaperPeriodicEnabled
+        onTriggered: {
+            root.triggerRandomWallpaper();
+        }
+    }
+
+    Timer {
+        id: solarPhaseCheckTimer
+        interval: 30000
+        repeat: true
+        running: root.wallpaperPeriodicEnabled && root.wallpaperSolarSyncEnabled
+        onTriggered: {
+            let curPeriod = root.getCurrentSolarPeriod();
+            if (root.lastTriggeredSolarPeriod === "") {
+                root.lastTriggeredSolarPeriod = curPeriod;
+            } else if (curPeriod !== root.lastTriggeredSolarPeriod) {
+                root.lastTriggeredSolarPeriod = curPeriod;
+                root.triggerRandomWallpaper();
+            }
+        }
+    }
+
+    Connections {
+        target: StateService
+        function onInitializedChanged() {
+            if (StateService.initialized) {
+                root.wallpaperTransitionStyle = StateService.get("wallpaperTransitionStyle", "random");
+                root.wallpaperTransitionDuration = StateService.get("wallpaperTransitionDuration", 700);
+                root.wallpaperPeriodicEnabled = StateService.get("wallpaperPeriodicEnabled", false);
+                root.wallpaperPeriodicSeconds = StateService.get("wallpaperPeriodicSeconds", StateService.get("wallpaperPeriodicInterval", 15) * 60);
+                root.wallpaperPeriodicInterval = Math.max(1, Math.round(root.wallpaperPeriodicSeconds / 60));
+                root.wallpaperSolarSyncEnabled = StateService.get("wallpaperSolarSyncEnabled", false);
+                root.wallpaperRandomSourceFilters = StateService.get("wallpaperRandomSourceFilters", []);
+                root.wallpaperPauseMode = StateService.get("wallpaperPauseMode", "fullscreen");
+                root.wallpaperPauseScope = StateService.get("wallpaperPauseScope", "perScreen");
+            }
+        }
+        function onStateLoaded() {
+            root.wallpaperTransitionStyle = StateService.get("wallpaperTransitionStyle", "random");
+            root.wallpaperTransitionDuration = StateService.get("wallpaperTransitionDuration", 700);
+            root.wallpaperPeriodicEnabled = StateService.get("wallpaperPeriodicEnabled", false);
+            root.wallpaperPeriodicSeconds = StateService.get("wallpaperPeriodicSeconds", StateService.get("wallpaperPeriodicInterval", 15) * 60);
+            root.wallpaperPeriodicInterval = Math.max(1, Math.round(root.wallpaperPeriodicSeconds / 60));
+            root.wallpaperSolarSyncEnabled = StateService.get("wallpaperSolarSyncEnabled", false);
+            root.wallpaperRandomSourceFilters = StateService.get("wallpaperRandomSourceFilters", []);
+            root.wallpaperPauseMode = StateService.get("wallpaperPauseMode", "fullscreen");
+            root.wallpaperPauseScope = StateService.get("wallpaperPauseScope", "perScreen");
+        }
+    }
+
     function getNotchOpen(screenName) {
         let visibilities = Visibilities.getForScreen(screenName);
         return visibilities.launcher || visibilities.dashboard || visibilities.overview || visibilities.presets;
