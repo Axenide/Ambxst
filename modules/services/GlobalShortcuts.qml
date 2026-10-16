@@ -57,6 +57,15 @@ QtObject {
                 break;
             case "assistant": toggleAssistant(); break;
             case "dashboard-widgets": toggleDashboardTab(0); break;
+            case "wallpaper-settings":
+                if (Visibilities.currentActiveModule === "dashboard" && GlobalStates.dashboardCurrentTab === 1 && GlobalStates.wallpapersTabShowSettings) {
+                    GlobalStates.wallpapersTabShowSettings = false;
+                } else {
+                    if (!(Visibilities.currentActiveModule === "dashboard" && GlobalStates.dashboardCurrentTab === 1))
+                        toggleDashboardTab(1);
+                    GlobalStates.wallpapersTabShowSettings = true;
+                }
+                break;
             case "wallpaper-random":
             case "random-wallpaper":
                 GlobalStates.triggerRandomWallpaper();
