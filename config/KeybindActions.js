@@ -62,6 +62,8 @@ var ACTION_CATALOG = [
     } },
     { id: "window.toggle-float", label: "Toggle Floating", category: "Window", dispatcher: "togglefloating", argument: "" },
     { id: "window.fullscreen", label: "Toggle Fullscreen", category: "Window", dispatcher: "fullscreen", argument: "" },
+    { id: "window.maximize", label: "Toggle Maximize", category: "Window", dispatcher: "fullscreen", argument: "1" },
+    { id: "window.fake-fullscreen", label: "Toggle Fake Fullscreen", category: "Window", dispatcher: "fullscreen", argument: "2" },
 
     { id: "workspace.switch", label: "Switch Workspace", category: "Workspace", dispatcher: "workspace", args: [{ key: "index", label: "Workspace", placeholder: "1", defaultValue: "1" }], argumentBuilder: function (args) {
         return String(args.index || "").trim();
@@ -267,7 +269,11 @@ function actionFromLegacy(dispatcher, argument, flags) {
     if (dispatcher === "movefocus") return { id: "window.focus", args: { direction: arg } };
     if (dispatcher === "resizeactive") return { id: "window.resize", args: { delta: arg } };
     if (dispatcher === "togglefloating") return { id: "window.toggle-float", args: {} };
-    if (dispatcher === "fullscreen" && arg !== "1") return { id: "window.fullscreen", args: {} };
+    if (dispatcher === "fullscreen") {
+        if (arg === "1") return { id: "window.maximize", args: {} };
+        if (arg === "2") return { id: "window.fake-fullscreen", args: {} };
+        return { id: "window.fullscreen", args: {} };
+    }
     if (dispatcher === "layoutmsg") {
         if (arg.startsWith("focus ")) return { id: "scrolling.focus", args: { direction: arg.split(" ")[1] } };
         if (arg.startsWith("movewindowto ")) return { id: "scrolling.move-window", args: { direction: arg.split(" ")[1] } };

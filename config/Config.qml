@@ -1428,6 +1428,28 @@ Singleton {
                     });
                     needsUpdate = true;
                 }
+                const hasMaximize = current.custom.some(b => b && b.name === "Toggle Maximize");
+                if (!hasMaximize) {
+                    console.log("Adding missing custom bind: Toggle Maximize");
+                    current.custom.push({
+                        "name": "Toggle Maximize",
+                        "keys": [{ "modifiers": ["SUPER", "SHIFT"], "key": "F" }],
+                        "actions": [{ "id": "window.maximize", "args": {} }],
+                        "enabled": true
+                    });
+                    needsUpdate = true;
+                }
+                const hasFakeFullscreen = current.custom.some(b => b && b.name === "Toggle Fake Fullscreen");
+                if (!hasFakeFullscreen) {
+                    console.log("Adding missing custom bind: Toggle Fake Fullscreen");
+                    current.custom.push({
+                        "name": "Toggle Fake Fullscreen",
+                        "keys": [{ "modifiers": ["SUPER", "CTRL"], "key": "F" }],
+                        "actions": [{ "id": "window.fake-fullscreen", "args": {} }],
+                        "enabled": true
+                    });
+                    needsUpdate = true;
+                }
             }
 
             if (needsUpdate) {
@@ -1680,6 +1702,40 @@ Singleton {
                             "dispatcher": "fullscreen",
                             "argument": "",
                             "flags": "",
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Toggle Maximize",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "SHIFT"],
+                            "key": "F"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "id": "window.maximize",
+                            "args": {},
+                            "layouts": []
+                        }
+                    ],
+                    "enabled": true
+                },
+                {
+                    "name": "Toggle Fake Fullscreen",
+                    "keys": [
+                        {
+                            "modifiers": ["SUPER", "CTRL"],
+                            "key": "F"
+                        }
+                    ],
+                    "actions": [
+                        {
+                            "id": "window.fake-fullscreen",
+                            "args": {},
                             "layouts": []
                         }
                     ],
