@@ -61,8 +61,7 @@ Item {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
-            easing.overshoot: isExpanded ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
         }
     }
 
@@ -70,8 +69,7 @@ Item {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
-            easing.overshoot: isExpanded ? 1.2 : 1.0
+            easing.type: Easing.OutQuart
         }
     }
 
@@ -98,8 +96,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                easing.type: Easing.OutQuart
             }
         }
 
@@ -107,8 +104,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                easing.type: Easing.OutQuart
             }
         }
 
@@ -116,8 +112,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                easing.type: Easing.OutQuart
             }
         }
 
@@ -125,8 +120,7 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                easing.type: Easing.OutQuart
             }
         }
 
@@ -251,8 +245,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                    easing.type: Easing.OutQuart
                 }
             }
 
@@ -260,8 +253,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                    easing.type: Easing.OutQuart
                 }
             }
 
@@ -269,8 +261,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                    easing.type: Easing.OutQuart
                 }
             }
 
@@ -278,8 +269,7 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
-                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
+                    easing.type: Easing.OutQuart
                 }
             }
         }
@@ -305,10 +295,12 @@ Item {
             property real transitionBlur: 0.0
 
             // Aplicar MultiEffect con blur animable
-            layer.enabled: transitionBlur > 0.0
+            // Gate the offscreen pass on the perf toggle: when blur is
+            // disabled there is no visual effect, only FBO cost.
+            layer.enabled: transitionBlur > 0.0 && Config.performance.blurTransition
             layer.effect: MultiEffect {
                 blurEnabled: Config.performance.blurTransition
-                blurMax: 64
+                blurMax: 32
                 blur: Math.min(Math.max(stackContainer.transitionBlur, 0.0), 1.0)
             }
 
@@ -466,6 +458,22 @@ Item {
         z: 5000
         antialiasing: true
 
+        // Coalesce repaints: width/height/radius change every frame during
+        // expansion, and rasterizing this 2D path per frame janks. Cap at
+        // ~60Hz with a trailing paint after the last change.
+        Timer {
+            id: outlineRepaintCoalescer
+            interval: 16
+            repeat: false
+            onTriggered: outlineCanvas.requestPaint()
+        }
+
+        function scheduleOutlineRepaint() {
+            if (!outlineRepaintCoalescer.running) {
+                outlineRepaintCoalescer.start();
+            }
+        }
+
         readonly property var borderData: Config.theme.srBg.border
         readonly property int borderWidth: borderData[1]
         readonly property color borderColor: Config.resolveColor(borderData[0])
@@ -581,55 +589,55 @@ Item {
         Connections {
             target: Colors
             function onPrimaryChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
         }
         Connections {
             target: Config.theme.srBg
             function onBorderChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
         }
         Connections {
             target: notchRect
             function onBottomLeftRadiusChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
             function onBottomRightRadiusChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
             function onWidthChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
             function onHeightChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
         }
         Connections {
             target: notchContainer
             function onImplicitWidthChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
             function onImplicitHeightChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
         }
         Connections {
             target: Config
             function onNotchThemeChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
         }
         Connections {
             target: leftCornerMaskPart
             function onWidthChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
         }
         Connections {
             target: rightCornerMaskPart
             function onWidthChanged() {
-                outlineCanvas.requestPaint();
+                outlineCanvas.scheduleOutlineRepaint();
             }
         }
     }

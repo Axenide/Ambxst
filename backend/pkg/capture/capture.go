@@ -114,14 +114,22 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 		return nil, nil, fmt.Errorf("output %q not found", name)
 	}
 
+	// axctl reports width/height in physical pixels and x/y in logical
+	// pixels, so logical extents divide by scale. The frozen frame is
+	// physical (post-Upright) and authoritative for the exact factor.
 	scale := mon.EffectiveScale()
-	if frozenW, frozenH, found := FrozenDims(name); found && mon.Width > 0 && mon.Height > 0 {
-		// axctl versions differ on whether width/height are logical or
-		// physical. The retained frame is authoritative for the crop scale.
-		frameScaleX := float64(frozenW) / float64(mon.Width)
-		frameScaleY := float64(frozenH) / float64(mon.Height)
+	logicalW, logicalH := mon.LogicalWidth(), mon.LogicalHeight()
+	if frozenW, frozenH, found := FrozenDims(name); found && logicalW > 0 && logicalH > 0 {
+		frameScaleX := float64(frozenW) / float64(logicalW)
+		frameScaleY := float64(frozenH) / float64(logicalH)
 		if frameScaleX > 0 && frameScaleY > 0 {
-			scale = (frameScaleX + frameScaleY) / 2
+			derived := (frameScaleX + frameScaleY) / 2
+			// A stale frozen frame (layout/scale changed since the freeze)
+			// disagrees with the compositor scale; fall back instead of
+			// cropping with a bogus factor.
+			if mon.Scale <= 0 || (derived >= scale*0.75 && derived <= scale*1.25) {
+				scale = derived
+			}
 		}
 	}
 	localX := int(float64(int(rect.X)-mon.X())*scale + 0.5)
