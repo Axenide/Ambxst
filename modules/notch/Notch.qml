@@ -61,7 +61,8 @@ Item {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
+            easing.overshoot: isExpanded ? 1.2 : 1.0
         }
     }
 
@@ -69,7 +70,8 @@ Item {
         enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
-            easing.type: Easing.OutQuart
+            easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
+            easing.overshoot: isExpanded ? 1.2 : 1.0
         }
     }
 
@@ -96,7 +98,8 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
             }
         }
 
@@ -104,7 +107,8 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
             }
         }
 
@@ -112,7 +116,8 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
             }
         }
 
@@ -120,7 +125,8 @@ Item {
             enabled: Config.animDuration > 0
             NumberAnimation {
                 duration: Config.animDuration
-                easing.type: Easing.OutQuart
+                easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
             }
         }
 
@@ -245,7 +251,8 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
                 }
             }
 
@@ -253,7 +260,8 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
                 }
             }
 
@@ -261,7 +269,8 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
                 }
             }
 
@@ -269,7 +278,8 @@ Item {
                 enabled: Config.animDuration > 0
                 NumberAnimation {
                     duration: Config.animDuration
-                    easing.type: Easing.OutQuart
+                    easing.type: screenNotchOpen || hasActiveNotifications ? Easing.OutBack : Easing.OutQuart
+                    easing.overshoot: screenNotchOpen || hasActiveNotifications ? 1.2 : 1.0
                 }
             }
         }
