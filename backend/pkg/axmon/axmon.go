@@ -3,6 +3,7 @@ package axmon
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os/exec"
 )
 
@@ -44,6 +45,29 @@ func (m Monitor) EffectiveScale() float64 {
 	return 1.0
 }
 
+// NOTE: `axctl monitor list` reports width/height in PHYSICAL pixels but
+// x/y in LOGICAL pixels (observed live: a 2880-wide scale-2 output is
+// followed by the next output at x=1440). Always use LogicalWidth and
+// LogicalHeight when comparing against logical coordinates.
+
+// LogicalWidth returns the width in logical pixels.
+func (m Monitor) LogicalWidth() int {
+	s := m.EffectiveScale()
+	if s <= 0 {
+		return m.Width
+	}
+	return int(math.Round(float64(m.Width) / s))
+}
+
+// LogicalHeight returns the height in logical pixels.
+func (m Monitor) LogicalHeight() int {
+	s := m.EffectiveScale()
+	if s <= 0 {
+		return m.Height
+	}
+	return int(math.Round(float64(m.Height) / s))
+}
+
 // List returns the current monitor layout via axctl.
 func List() ([]Monitor, error) {
 	out, err := exec.Command("axctl", "monitor", "list").Output()
@@ -81,11 +105,14 @@ func Focused(monitors []Monitor) (*Monitor, bool) {
 }
 
 // Containing resolves which monitor holds a logical global point.
+// Extents use logical dimensions: raw width/height are physical pixels
+// while x/y are logical, so comparing a logical point against the raw
+// width overextends scaled outputs into their neighbor.
 func Containing(monitors []Monitor, x, y int) (*Monitor, bool) {
 	for i := range monitors {
 		m := &monitors[i]
 		mx, my := m.X(), m.Y()
-		if x >= mx && x < mx+m.Width && y >= my && y < my+m.Height {
+		if x >= mx && x < mx+m.LogicalWidth() && y >= my && y < my+m.LogicalHeight() {
 			return m, true
 		}
 	}
