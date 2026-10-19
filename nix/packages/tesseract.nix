@@ -10,6 +10,7 @@
       "chi_sim"
       "chi_tra"
       "kor"
+      "rus"
     ];
   })
 ]
