@@ -61,6 +61,9 @@ var ACTION_CATALOG = [
         return String(args.delta || "").trim();
     } },
     { id: "window.toggle-float", label: "Toggle Floating", category: "Window", dispatcher: "togglefloating", argument: "" },
+    { id: "window.fullscreen", label: "Toggle Fullscreen", category: "Window", dispatcher: "fullscreen", argument: "" },
+    { id: "window.maximize", label: "Toggle Maximize", category: "Window", dispatcher: "fullscreen", argument: "1" },
+    { id: "window.fake-fullscreen", label: "Toggle Fake Fullscreen", category: "Window", dispatcher: "fullscreen", argument: "2" },
 
     { id: "workspace.switch", label: "Switch Workspace", category: "Workspace", dispatcher: "workspace", args: [{ key: "index", label: "Workspace", placeholder: "1", defaultValue: "1" }], argumentBuilder: function (args) {
         return String(args.index || "").trim();
@@ -98,6 +101,7 @@ var ACTION_CATALOG = [
         return "colresize " + String(args.delta || "").trim();
     } },
     { id: "scrolling.promote", label: "Promote Column", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "promote" },
+    { id: "scrolling.center", label: "Center Column", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "center" },
     { id: "scrolling.toggle-fit", label: "Toggle Fit", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "togglefit" },
     { id: "scrolling.toggle-full-column", label: "Toggle Full Column", category: "Scrolling Layout", dispatcher: "layoutmsg", argument: "colresize +conf" },
     { id: "scrolling.swap-column", label: "Swap Column", category: "Scrolling Layout", dispatcher: "layoutmsg", args: [{ key: "direction", label: "Direction", placeholder: "left/right", defaultValue: "left" }], argumentBuilder: function (args) {
@@ -265,6 +269,11 @@ function actionFromLegacy(dispatcher, argument, flags) {
     if (dispatcher === "movefocus") return { id: "window.focus", args: { direction: arg } };
     if (dispatcher === "resizeactive") return { id: "window.resize", args: { delta: arg } };
     if (dispatcher === "togglefloating") return { id: "window.toggle-float", args: {} };
+    if (dispatcher === "fullscreen") {
+        if (arg === "1") return { id: "window.maximize", args: {} };
+        if (arg === "2") return { id: "window.fake-fullscreen", args: {} };
+        return { id: "window.fullscreen", args: {} };
+    }
     if (dispatcher === "layoutmsg") {
         if (arg.startsWith("focus ")) return { id: "scrolling.focus", args: { direction: arg.split(" ")[1] } };
         if (arg.startsWith("movewindowto ")) return { id: "scrolling.move-window", args: { direction: arg.split(" ")[1] } };
@@ -274,6 +283,7 @@ function actionFromLegacy(dispatcher, argument, flags) {
             return { id: "scrolling.resize-column", args: { delta: delta } };
         }
         if (arg === "promote") return { id: "scrolling.promote", args: {} };
+        if (arg === "center") return { id: "scrolling.center", args: {} };
         if (arg === "togglefit") return { id: "scrolling.toggle-fit", args: {} };
         if (arg.startsWith("swapcol ")) return { id: "scrolling.swap-column", args: { direction: arg.split(" ")[1] } };
         if (arg.startsWith("movecoltoworkspace ")) return { id: "scrolling.move-column-workspace", args: { index: arg.split(" ")[1] } };

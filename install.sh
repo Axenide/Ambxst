@@ -414,7 +414,22 @@ install_axctl() {
   fi
 
   log_info "Installing axctl..."
-  curl -fsSL get.axeni.de/axctl | sh
+  local installer
+  installer="$(mktemp)"
+  if ! curl -fsSL --retry 3 -o "$installer" get.axeni.de/axctl; then
+    rm -f "$installer"
+    log_error "Failed to download axctl installer"
+    exit 1
+  fi
+
+  if [[ "$(head -c 2 "$installer")" != "#!" ]]; then
+    rm -f "$installer"
+    log_error "Downloaded axctl installer is not a valid script"
+    exit 1
+  fi
+
+  sh "$installer"
+  rm -f "$installer"
   log_success "axctl installed"
 }
 
@@ -479,6 +494,16 @@ setup_launcher() {
   # Record the repo location so the installed binary can find shell sources.
   mkdir -p "$HOME/.local/share/ambxst"
   echo "$INSTALL_PATH" >"$HOME/.local/share/ambxst/shell_repo"
+
+  # Register browser links such as ambxst://mods/install?... for this user.
+  install -Dm644 "$INSTALL_PATH/assets/ambxst/ambxst-mod-handler.desktop" \
+    "$HOME/.local/share/applications/ambxst-mod-handler.desktop"
+  if has_cmd update-desktop-database; then
+    update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+  fi
+  if has_cmd xdg-mime; then
+    xdg-mime default ambxst-mod-handler.desktop x-scheme-handler/ambxst >/dev/null 2>&1 || true
+  fi
   log_success "Binary installed"
 }
 

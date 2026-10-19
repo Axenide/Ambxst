@@ -611,12 +611,18 @@ Singleton {
     // ---- Image cache plumbing -------------------------------------------
     // Provider-backed images (image://, produced from raw D-Bus image_data
     // hints) can only be resolved by rendering them inside a scene, and
-    // this singleton has none. A small transparent layer surface hosts the
+    // this singleton has none. A tiny transparent layer surface hosts the
     // render jobs; it reserves no exclusive zone and accepts no input.
     //
-    // The scene only produces frames while the frame-pump animation runs,
-    // which is required for grabToImage to capture actual pixels. Canvas
-    // drawImage is not an alternative: it rasterizes provider images blank.
+    // The surface must stay mapped and keep producing frames for
+    // grabToImage to capture actual pixels (the frame-pump animation below
+    // guarantees that), but its viewport is shrunk to 1x1 and the jobs are
+    // placed outside it, so nothing they paint is ever composited on
+    // screen. The grab itself re-renders the item subtree into its own
+    // full-size FBO, unaffected by the window viewport.
+    //
+    // Canvas drawImage is not an alternative: it rasterizes provider
+    // images blank.
 
     property var cacheWindow: null
     property int activeCacheJobs: 0
@@ -630,8 +636,8 @@ Singleton {
             exclusionMode: ExclusionMode.Ignore
             exclusiveZone: 0
             visible: true
-            implicitWidth: 512
-            implicitHeight: 512
+            implicitWidth: 1
+            implicitHeight: 1
             mask: Region {
                 item: null
             }
@@ -749,7 +755,8 @@ Singleton {
             root.cacheWindow = cacheWindowComponent.createObject(root);
         imageCacheJob.createObject(root.cacheWindow.contentItem, {
             "imageUrl": imageUrl,
-            "callback": callback
+            "callback": callback,
+            "x": 512
         });
     }
 

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import qs.config
 import qs.modules.components
@@ -16,14 +17,10 @@ Item {
     property string searchQuery: ""
     property string sortMode: "name"
     property string selectedId: ""
-    property string removeArmedId: ""
+    property var confirmTrigger: null
     property bool filesExpanded: false
-
-    // Reordering state. dropIndex is derived from where the floating card sits,
-    // not from a drop target, because Drag.target is already cleared by the
-    // time the handler reports the release.
-    property string draggingId: ""
-    property int dropIndex: -1
+    property bool changelogExpanded: false
+    property string archiveError: ""
 
     // Pending action awaiting the trust confirmation. "" means no prompt.
     property string confirmKind: ""
@@ -53,6 +50,11 @@ Item {
         "mods.confirm_enable_title": "Do you trust this mod?",
         "mods.confirm_install_body": "Installing downloads the package and leaves it disabled. Nothing from it runs until you enable it, which is the moment to have read the code.",
         "mods.confirm_install_title": "Install from this source?",
+        "mods.confirm_archive_body": "A mod archive can contain untrusted code that runs with your user permissions after you enable it. Ambxst checked the package structure, not who created it. Install only if you trust the source.",
+        "mods.confirm_archive_title": "This archive may be unsafe",
+        "mods.archive_checksum": "SHA-256",
+        "mods.archive_package": "Package",
+        "mods.archive_size": "Archive size",
         "mods.confirm_remove": "Confirm remove",
         "mods.conflicts": "Conflicts",
         "mods.dependency_disabled": "Disabled",
@@ -68,11 +70,16 @@ Item {
         "mods.homepage": "Mod page",
         "mods.incompatible": "Incompatible",
         "mods.install": "Install",
+        "mods.install_archive": "Install archive",
         "mods.install_dependencies": "Install required mods",
         "mods.installed_count": "Installed · %1",
         "mods.invalid_number": "Enter a valid number.",
         "mods.license": "License",
         "mods.load_order": "Load order",
+        "mods.menu_index": "Settings menu index",
+        "mods.menu_index_change": "Change index",
+        "mods.menu_index_warning_body": "This can change how the mod's settings panel is loaded. An incompatible index may cause unexpected behavior.",
+        "mods.menu_index_warning_title": "Change this menu index?",
         "mods.loading_settings": "Loading settings…",
         "mods.move_down": "Move down",
         "mods.move_up": "Move up",
@@ -103,11 +110,16 @@ Item {
         "mods.sort_state": "Sort: State",
         "mods.source": "Source",
         "mods.source_placeholder": "Local directory, package archive, or Git URL",
+        "mods.archive_drop": "Or drop a mod archive here (unsafe)",
+        "mods.archive_drop_hint": ".zip, .tar, .tar.gz, or .tgz",
+        "mods.archive_select": "Choose archive",
+        "mods.archive_unsupported": "Choose one supported archive: .zip, .tar, .tar.gz, or .tgz.",
         "mods.status_dependencies_installed": "Required mods installed and enabled.",
         "mods.status_disabled": "Mod disabled.",
         "mods.status_enabled": "Mod enabled.",
         "mods.status_installed": "Mod installed in the disabled state.",
         "mods.status_order_updated": "Load order updated.",
+        "mods.status_menu_index_updated": "Settings menu index updated.",
         "mods.status_rebuilt": "Generation rebuilt.",
         "mods.status_removed": "Mod removed.",
         "mods.status_rolled_back": "Previous generation restored.",
@@ -125,6 +137,7 @@ Item {
     })
 
     function tr(key, argument) {
+        const translationRevision = I18n.revision;
         const fallback = root.fallbackText[key] ?? key;
         if (root.i18nActive) {
             try {
@@ -145,8 +158,58 @@ Item {
         return argument === undefined ? fallback : fallback.replace("%1", String(argument));
     }
 
+    // Manifest links come from the package author. Only web pages are opened;
+    // other schemes would reach xdg-open handlers.
+    function isWebLink(value) {
+        return /^https?:\/\//i.test(String(value ?? ""));
+    }
+
     function dependenciesReady(mod) {
         return (mod?.dependencyState ?? []).every(dependency => dependency.enabled);
+    }
+
+    function archivePath(fileUrl) {
+        const value = String(fileUrl ?? "");
+        if (!value.startsWith("file://"))
+            return "";
+        return decodeURIComponent(value.substring(7));
+    }
+
+    function isSupportedArchive(path) {
+        return /\.(zip|tar|tar\.gz|tgz)$/i.test(path);
+    }
+
+    function formatArchiveSize(bytes) {
+        const size = Number(bytes ?? 0);
+        if (size >= 1048576)
+            return (size / 1048576).toFixed(1) + " MiB";
+        return Math.max(1, Math.ceil(size / 1024)) + " KiB";
+    }
+
+    function requestArchiveInstall(fileUrl, trigger) {
+        const path = root.archivePath(fileUrl);
+        root.requestArchivePath(path, trigger);
+    }
+
+    function requestArchivePath(path, trigger) {
+        if (!root.isSupportedArchive(path)) {
+            root.archiveError = root.tr("mods.archive_unsupported");
+            return;
+        }
+        root.archiveError = "";
+        ModsService.previewArchive(path, preview => {
+            root.askConfirm("installArchive", preview, path, trigger);
+        });
+    }
+
+    function requestSourceInstall(source, trigger) {
+        const value = String(source ?? "").trim();
+        const path = value.startsWith("file://") ? root.archivePath(value) : value;
+        if (root.isSupportedArchive(path) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(path)) {
+            root.requestArchivePath(path, trigger);
+            return;
+        }
+        root.askConfirm("install", null, value, trigger);
     }
 
     function stateLabel(mod) {
@@ -167,7 +230,8 @@ Item {
         return mod.enabled ? Colors.success : Colors.error;
     }
 
-    function askConfirm(kind, mod, source) {
+    function askConfirm(kind, mod, source, trigger) {
+        root.confirmTrigger = trigger ?? null;
         root.confirmKind = kind;
         root.confirmMod = mod ?? null;
         root.confirmSource = source ?? "";
@@ -177,6 +241,8 @@ Item {
         root.confirmKind = "";
         root.confirmMod = null;
         root.confirmSource = "";
+        if (root.confirmTrigger) root.confirmTrigger.forceActiveFocus();
+        root.confirmTrigger = null;
     }
 
     function runConfirmed() {
@@ -184,10 +250,30 @@ Item {
         const mod = root.confirmMod;
         const source = root.confirmSource;
         root.closeConfirm();
-        if (kind === "install")
+        if (kind === "installArchive")
+            ModsService.installArchive(source, mod?.sha256 ?? "");
+        else if (kind === "install")
             ModsService.install(source);
         else if (kind === "enable" && mod)
             ModsService.setEnabled(mod.id, true);
+        else if (kind === "remove" && mod)
+            ModsService.remove(mod.id, mod.enabled);
+        else if (kind === "menuIndex" && mod)
+            ModsService.setMenuIndex(mod.id, Number(source));
+    }
+
+    // Positions are shown one-based. Unpinned mods follow load order.
+    function positionLabel(position, pinned) {
+        const number = String(position + 1);
+        return pinned ? number : root.tr("mods.position_load_order").replace("%1", number);
+    }
+
+    function positionCount(flag) {
+        return (ModsService.mods ?? []).filter(mod => mod[flag]).length;
+    }
+
+    function confirmMenuIndex(position, trigger) {
+        root.askConfirm("menuIndex", root.selectedMod, String(position), trigger);
     }
 
     readonly property int contentWidth: Math.max(0, Math.min(width - horizontalMargin * 2, maxContentWidth))
@@ -220,14 +306,25 @@ Item {
     // Derived from selectedMod instead of written back into selectedId; that
     // write-back is what made the selection bind to itself in a loop.
     readonly property string effectiveId: root.selectedMod?.id ?? ""
+    readonly property var selectedUpdate: (ModsService.updates?.known ?? ModsService.updates?.items ?? []).find(item => item.id === root.effectiveId) ?? null
+    readonly property string selectedChangelog: root.selectedUpdate?.changelog ?? ""
+    onSelectedChangelogChanged: root.changelogExpanded = false
 
     onEffectiveIdChanged: {
         ModsService.loadSettings(root.effectiveId);
-        root.removeArmedId = "";
         root.filesExpanded = false;
+        root.changelogExpanded = false;
     }
 
     Component.onCompleted: ModsService.refresh()
+
+    FileDialog {
+        id: archiveDialog
+        title: root.tr("mods.archive_select")
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Mod archives (*.zip *.tar *.tar.gz *.tgz)"]
+        onAccepted: root.requestArchiveInstall(selectedFile, null)
+    }
 
     // The daemon clears the restart flag when a new generation survives its
     // health window, and the panel can already be open at that moment. This
@@ -366,9 +463,261 @@ Item {
                 ]
 
                 ActionButton {
-                    text: root.tr("mods.rebuild")
-                    onClicked: ModsService.rebuild()
+                    text: root.tr("mods.updates_title")
+                    onClicked: mainFlickable.contentY = Math.min(updatePanel.y, Math.max(0, mainFlickable.contentHeight - mainFlickable.height))
                 }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: installColumn.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                ColumnLayout {
+                    id: installColumn
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    Text {
+                        text: root.tr("mods.package_source")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        font.weight: Font.DemiBold
+                        color: Colors.overBackground
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        TextField {
+                            id: sourceInput
+                            Layout.fillWidth: true
+                            implicitHeight: 38
+                            placeholderText: root.tr("mods.source_placeholder")
+                            color: Colors.overBackground
+                            placeholderTextColor: Colors.outline
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            selectByMouse: true
+                            enabled: !ModsService.busy
+                            Accessible.name: root.tr("mods.package_source")
+                            Accessible.description: root.tr("mods.source_placeholder")
+
+                            background: StyledRect {
+                                variant: sourceInput.activeFocus ? "focus" : "common"
+                                radius: Styling.radius(-2)
+                                enableShadow: false
+                            }
+
+                            onAccepted: {
+                                const source = text.trim();
+                                if (source !== "")
+                                    root.requestSourceInstall(source, null);
+                            }
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.install")
+                            primary: true
+                            enabled: !ModsService.busy && sourceInput.text.trim() !== ""
+                            onClicked: root.requestSourceInstall(sourceInput.text.trim(), null)
+                        }
+                    }
+
+                    StyledRect {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 66
+                        variant: archiveDrop.containsDrag ? "focus" : "common"
+                        radius: Styling.radius(-2)
+                        enableShadow: false
+
+                        DropArea {
+                            id: archiveDrop
+                            anchors.fill: parent
+
+                            onEntered: drag => {
+                                drag.accepted = !!drag.urls && drag.urls.length === 1;
+                            }
+                            onDropped: drop => {
+                                if (drop.urls && drop.urls.length === 1) {
+                                    root.requestArchiveInstall(drop.urls[0], null);
+                                    drop.accepted = true;
+                                } else {
+                                    root.archiveError = root.tr("mods.archive_unsupported");
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 10
+                            spacing: 10
+
+                            Text {
+                                text: Icons.file
+                                font.family: Icons.font
+                                font.pixelSize: Styling.fontSize(4)
+                                color: archiveDrop.containsDrag ? Colors.primary : Colors.overBackground
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 2
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: root.tr("mods.archive_drop")
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-1)
+                                    font.weight: Font.Medium
+                                    color: Colors.overBackground
+                                    elide: Text.ElideRight
+                                }
+
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: root.tr("mods.archive_drop_hint")
+                                    font.family: Config.theme.font
+                                    font.pixelSize: Styling.fontSize(-2)
+                                    color: Colors.outline
+                                    elide: Text.ElideRight
+                                }
+                            }
+
+                            ActionButton {
+                                text: root.tr("mods.archive_select")
+                                enabled: !ModsService.busy
+                                onClicked: archiveDialog.open()
+                            }
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.archiveError !== ""
+                        text: root.archiveError
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.error
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.tr("mods.trust_warning")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.outline
+                        wrapMode: Text.Wrap
+                    }
+                }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: modsToggleRow.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                RowLayout {
+                    id: modsToggleRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            text: root.tr("mods.toggle_title")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.DemiBold
+                            color: Colors.overBackground
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.toggle_description")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    ActionButton {
+                        text: ModsService.modsEnabled ? root.tr("common.on") : root.tr("common.off")
+                        primary: ModsService.modsEnabled
+                        enabled: !ModsService.busy
+                        onClicked: ModsService.setModsEnabled(!ModsService.modsEnabled)
+                    }
+                }
+            }
+
+            StyledRect {
+                Layout.fillWidth: true
+                Layout.preferredHeight: bypassRow.implicitHeight + 28
+                variant: "pane"
+                radius: Styling.radius(0)
+
+                RowLayout {
+                    id: bypassRow
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.margins: 14
+                    spacing: 8
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 2
+
+                        Text {
+                            text: root.tr("mods.bypass_title")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.DemiBold
+                            color: Colors.overBackground
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.bypass_description")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
+                    ActionButton {
+                        text: ModsService.bypassVersionCheck ? root.tr("common.on") : root.tr("common.off")
+                        primary: ModsService.bypassVersionCheck
+                        enabled: !ModsService.busy
+                        onClicked: ModsService.setBypassVersionCheck(!ModsService.bypassVersionCheck)
+                    }
+                }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                visible: ModsService.errorDetails !== ""
+                text: root.tr("mods.technical_details", ModsService.errorDetails)
+                font.family: Config.theme.monoFont
+                font.pixelSize: Styling.fontSize(-2)
+                color: Colors.error
+                textFormat: Text.PlainText
+                wrapMode: Text.WrapAnywhere
             }
 
             StyledRect {
@@ -422,168 +771,6 @@ Item {
                         text: root.tr("mods.restart_now")
                         primary: true
                         onClicked: ModsService.restart()
-                    }
-                }
-            }
-
-            StyledRect {
-                Layout.fillWidth: true
-                Layout.preferredHeight: modsToggleRow.implicitHeight + 28
-                variant: "pane"
-                radius: Styling.radius(0)
-
-                RowLayout {
-                    id: modsToggleRow
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.margins: 14
-                    spacing: 8
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Text {
-                            text: root.tr("mods.toggle_title")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.DemiBold
-                            color: Colors.overBackground
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: root.tr("mods.toggle_description")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.outline
-                            wrapMode: Text.Wrap
-                        }
-                    }
-
-                    ActionButton {
-                        text: ModsService.modsEnabled ? root.tr("common.on") : root.tr("common.off")
-                        primary: ModsService.modsEnabled
-                        enabled: !ModsService.busy
-                        onClicked: ModsService.setModsEnabled(!ModsService.modsEnabled)
-                    }
-                }
-            }
-
-            StyledRect {
-                Layout.fillWidth: true
-                Layout.preferredHeight: installColumn.implicitHeight + 28
-                variant: "pane"
-                radius: Styling.radius(0)
-
-                ColumnLayout {
-                    id: installColumn
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.margins: 14
-                    spacing: 8
-
-                    Text {
-                        text: root.tr("mods.package_source")
-                        font.family: Config.theme.font
-                        font.pixelSize: Styling.fontSize(-1)
-                        font.weight: Font.DemiBold
-                        color: Colors.overBackground
-                    }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        TextField {
-                            id: sourceInput
-                            Layout.fillWidth: true
-                            implicitHeight: 38
-                            placeholderText: root.tr("mods.source_placeholder")
-                            color: Colors.overBackground
-                            placeholderTextColor: Colors.outline
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            selectByMouse: true
-                            enabled: !ModsService.busy
-                            Accessible.name: root.tr("mods.package_source")
-                            Accessible.description: root.tr("mods.source_placeholder")
-
-                            background: StyledRect {
-                                variant: sourceInput.activeFocus ? "focus" : "common"
-                                radius: Styling.radius(-2)
-                                enableShadow: false
-                            }
-
-                            onAccepted: {
-                                const source = text.trim();
-                                if (source !== "")
-                                    root.askConfirm("install", null, source);
-                            }
-                        }
-
-                        ActionButton {
-                            text: root.tr("mods.install")
-                            primary: true
-                            enabled: !ModsService.busy && sourceInput.text.trim() !== ""
-                            onClicked: root.askConfirm("install", null, sourceInput.text.trim())
-                        }
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        text: root.tr("mods.trust_warning")
-                        font.family: Config.theme.font
-                        font.pixelSize: Styling.fontSize(-2)
-                        color: Colors.outline
-                        wrapMode: Text.Wrap
-                    }
-                }
-            }
-
-            StyledRect {
-                Layout.fillWidth: true
-                Layout.preferredHeight: bypassRow.implicitHeight + 28
-                variant: "pane"
-                radius: Styling.radius(0)
-
-                RowLayout {
-                    id: bypassRow
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.margins: 14
-                    spacing: 8
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-
-                        Text {
-                            text: root.tr("mods.bypass_title")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-1)
-                            font.weight: Font.DemiBold
-                            color: Colors.overBackground
-                        }
-
-                        Text {
-                            Layout.fillWidth: true
-                            text: root.tr("mods.bypass_description")
-                            font.family: Config.theme.font
-                            font.pixelSize: Styling.fontSize(-2)
-                            color: Colors.outline
-                            wrapMode: Text.Wrap
-                        }
-                    }
-
-                    ActionButton {
-                        text: ModsService.bypassVersionCheck ? root.tr("common.on") : root.tr("common.off")
-                        primary: ModsService.bypassVersionCheck
-                        enabled: !ModsService.busy
-                        onClicked: ModsService.setBypassVersionCheck(!ModsService.bypassVersionCheck)
                     }
                 }
             }
@@ -674,12 +861,9 @@ Item {
                             required property var modelData
                             required property int index
                             readonly property bool current: root.effectiveId === modelData.id
-                            readonly property bool dropTarget: root.draggingId !== ""
-                                && root.draggingId !== modelData.id
-                                && root.dropIndex === index
 
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 54
+                            Layout.preferredHeight: Math.max(60, rowContent.implicitHeight + 16)
                             variant: modRow.current ? "primary"
                                 : (rowMouse.containsMouse || activeFocus ? "focus" : "common")
                             radius: Styling.radius(-2)
@@ -687,19 +871,12 @@ Item {
                             activeFocusOnTab: true
                             Accessible.role: Accessible.ListItem
                             Accessible.name: modelData.name + ", " + root.stateLabel(modelData)
+                                + (updateStatus.visible ? ", " + updateStatus.text : "")
                             Accessible.onPressAction: root.selectedId = modelData.id
 
                             Keys.onReturnPressed: root.selectedId = modelData.id
                             Keys.onEnterPressed: root.selectedId = modelData.id
                             Keys.onSpacePressed: root.selectedId = modelData.id
-
-                            StyledRect {
-                                anchors.fill: parent
-                                visible: modRow.dropTarget
-                                variant: "focus"
-                                radius: Styling.radius(-2)
-                                enableShadow: false
-                            }
 
                             MouseArea {
                                 id: rowMouse
@@ -713,54 +890,11 @@ Item {
                             }
 
                             RowLayout {
+                                id: rowContent
                                 anchors.fill: parent
                                 anchors.leftMargin: 10
                                 anchors.rightMargin: 8
                                 spacing: 10
-
-                                Text {
-                                    visible: root.sortMode === "loadOrder" && root.searchQuery === ""
-                                    text: Icons.dotsNine
-                                    font.family: Icons.font
-                                    font.pixelSize: 17
-                                    color: modRow.item
-                                    opacity: reorderDrag.active ? 1 : 0.6
-                                    Accessible.role: Accessible.Button
-                                    Accessible.name: root.tr("mods.drag_order")
-
-                                    DragHandler {
-                                        id: reorderDrag
-                                        target: dragPreview
-                                        xAxis.enabled: false
-                                        enabled: !ModsService.busy
-                                        onActiveChanged: {
-                                            if (active) {
-                                                const point = modRow.mapToItem(dragPreview.parent, 0, 0);
-                                                dragPreview.x = point.x;
-                                                dragPreview.y = point.y;
-                                                root.draggingId = modRow.modelData.id;
-                                                root.dropIndex = modRow.index;
-                                                return;
-                                            }
-                                            const landing = root.dropIndex;
-                                            root.draggingId = "";
-                                            root.dropIndex = -1;
-                                            if (landing >= 0 && landing !== modRow.index)
-                                                ModsService.moveTo(modRow.modelData.id, landing);
-                                        }
-                                    }
-                                }
-
-                                // Status rail: the state is readable before any text is.
-                                Rectangle {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    implicitWidth: 6
-                                    implicitHeight: 6
-                                    radius: 3
-                                    // Green for running, red for off, on the
-                                    // selected row too: the state is the point.
-                                    color: root.stateColor(modRow.modelData)
-                                }
 
                                 ColumnLayout {
                                     Layout.fillWidth: true
@@ -786,61 +920,70 @@ Item {
                                         opacity: 0.7
                                         elide: Text.ElideRight
                                     }
-                                }
-
-                                ActionButton {
-                                    text: modRow.modelData.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
-                                    primary: !modRow.modelData.enabled
-                                    enabled: !ModsService.busy && (modRow.modelData.enabled
-                                        || ((modRow.modelData.valid && (modRow.modelData.compatible || ModsService.bypassVersionCheck))
-                                            && root.dependenciesReady(modRow.modelData)))
-                                    onClicked: {
-                                        root.selectedId = modRow.modelData.id;
-                                        if (modRow.modelData.enabled) {
-                                            ModsService.setEnabled(modRow.modelData.id, false);
-                                            return;
-                                        }
-                                        root.askConfirm("enable", modRow.modelData, modRow.modelData.source ?? "");
-                                    }
-                                }
-                            }
-
-                            Item {
-                                id: dragPreview
-                                parent: modList.parent
-                                width: modRow.width
-                                height: modRow.height
-                                visible: reorderDrag.active
-                                z: 100
-
-                                onYChanged: {
-                                    if (!reorderDrag.active)
-                                        return;
-                                    const pitch = modRow.height + modList.spacing;
-                                    const slot = Math.round((dragPreview.y - modList.y) / pitch);
-                                    root.dropIndex = Math.max(0, Math.min(root.filteredMods.length - 1, slot));
-                                }
-
-                                StyledRect {
-                                    id: dragPreviewSurface
-                                    anchors.fill: parent
-                                    variant: "primary"
-                                    radius: Styling.radius(-2)
-
                                     Text {
-                                        anchors.fill: parent
-                                        anchors.margins: 10
-                                        text: modRow.modelData.name
+                                        Layout.fillWidth: true
+                                        visible: modRow.modelData.deprecated ?? false
+                                        text: root.tr("mods.deprecated_short")
                                         font.family: Config.theme.font
-                                        font.pixelSize: Styling.fontSize(-1)
-                                        font.weight: Font.DemiBold
-                                        color: dragPreviewSurface.item
-                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: Styling.fontSize(-2)
+                                        color: modRow.item
                                         elide: Text.ElideRight
                                     }
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        readonly property var update: (ModsService.updates?.known ?? ModsService.updates?.items ?? []).find(item => item.id === modRow.modelData.id)
+                                        id: updateStatus
+                                        spacing: 4
+                                        visible: update?.state === "available" || update?.state === "failed"
+                                        readonly property string text: update?.state === "available"
+                                            ? (update?.toVersion === update?.fromVersion
+                                                ? root.tr("mods.revision_update_short")
+                                                : root.tr("mods.update_item_available") + " · " + (update?.toVersion ?? ""))
+                                            : root.tr("mods.update_item_failed")
+                                        Text {
+                                            Layout.fillWidth: true
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: updateStatus.text
+                                            font.family: Config.theme.font
+                                            font.pixelSize: Styling.fontSize(-2)
+                                            color: modRow.item
+                                            elide: Text.ElideRight
+                                        }
+                                    }
                                 }
 
+                                RowLayout {
+                                    Layout.alignment: Qt.AlignVCenter
+                                    spacing: 10
+
+                                    Text {
+                                        visible: updateStatus.update?.state === "available"
+                                        text: Icons.sync
+                                        font.family: Icons.font
+                                        font.pixelSize: Styling.fontSize(1)
+                                        color: modRow.item
+                                        Accessible.ignored: true
+                                    }
+                                    Text {
+                                        visible: !modRow.modelData.valid || !modRow.modelData.compatible
+                                            || (modRow.modelData.deprecated ?? false) || updateStatus.update?.state === "failed"
+                                        text: Icons.alert
+                                        font.family: Icons.font
+                                        font.pixelSize: Styling.fontSize(1)
+                                        color: modRow.item
+                                        Accessible.ignored: true
+                                    }
+                                    Text {
+                                        text: modRow.modelData.enabled ? Icons.accept : Icons.pause
+                                        font.family: Icons.font
+                                        font.pixelSize: Styling.fontSize(1)
+                                        color: modRow.item
+                                        opacity: modRow.modelData.enabled ? 1 : 0.6
+                                        Accessible.ignored: true
+                                    }
+                                }
                             }
+
                         }
                     }
                 }
@@ -889,6 +1032,14 @@ Item {
                             }
                         }
 
+                        ModActions {
+                            mod: root.selectedMod
+                            canEnable: !!(mod?.valid && (mod?.compatible || ModsService.bypassVersionCheck)
+                                && root.dependenciesReady(mod))
+                            onEnableRequested: trigger => root.askConfirm("enable", mod, mod.source ?? "", trigger)
+                            onRemoveRequested: trigger => root.askConfirm("remove", mod, "", trigger)
+                        }
+
                         StyledRect {
                             Layout.alignment: Qt.AlignVCenter
                             implicitWidth: stateChip.implicitWidth + 20
@@ -909,6 +1060,101 @@ Item {
                         }
                     }
 
+                    Flow {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        Layout.bottomMargin: 8
+                        spacing: 8
+
+                        ActionButton {
+                            text: root.tr("mods.check_updates")
+                            enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false)
+                            onClicked: ModsService.checkUpdates([root.effectiveId])
+                        }
+                        ActionButton {
+                            visible: root.selectedUpdate?.state === "available"
+                            text: root.selectedUpdate?.fromVersion === root.selectedUpdate?.toVersion
+                                ? root.tr("mods.update_revision_action")
+                                : root.tr("mods.update_to", root.selectedUpdate?.toVersion ?? "")
+                            primary: true
+                            enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false) && !ModsService.restartRequired
+                            onClicked: updateDialog.review(root.effectiveId, this)
+                        }
+                        ActionButton {
+                            visible: root.selectedChangelog.trim() !== ""
+                            text: root.tr(root.changelogExpanded ? "mods.hide_changelog" : "mods.whats_new")
+                            enabled: true
+                            Accessible.role: Accessible.Button
+                            Accessible.description: root.selectedMod?.name ?? ""
+                            onClicked: root.changelogExpanded = !root.changelogExpanded
+                        }
+                    }
+
+                    ScrollView {
+                        id: selectedChangelogView
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: Math.min(selectedChangelogText.implicitHeight, 240)
+                        Layout.bottomMargin: 8
+                        visible: root.changelogExpanded && root.selectedChangelog.trim() !== ""
+                        clip: true
+                        contentWidth: availableWidth
+                        TextArea {
+                            id: selectedChangelogText
+                            width: selectedChangelogView.availableWidth
+                            readOnly: true
+                            selectByMouse: true
+                            textFormat: TextEdit.PlainText
+                            wrapMode: TextEdit.Wrap
+                            text: root.selectedChangelog
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            color: Colors.overBackground
+                            Accessible.name: root.tr("mods.whats_new")
+                            background: StyledRect { variant: "internalbg"; radius: Styling.radius(-2); enableShadow: false }
+                        }
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: (root.selectedUpdate?.checkedAt ?? "") !== ""
+                        text: root.tr("mods.last_check", Qt.formatDateTime(new Date(root.selectedUpdate?.checkedAt ?? ""), "dd.MM.yyyy HH:mm"))
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.outline
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: (root.selectedUpdate?.checkError ?? "") !== ""
+                        text: root.tr("mods.cached_check_failed")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.error
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.selectedUpdate?.state === "available" && ModsService.restartRequired
+                        text: root.tr("mods.restart_before_update")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.outline
+                        wrapMode: Text.Wrap
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        visible: root.selectedMod?.deprecated ?? false
+                        text: root.tr("mods.deprecated_notice")
+                            + (root.selectedMod?.deprecatedReason ? "\n" + root.selectedMod.deprecatedReason : "")
+                        textFormat: Text.PlainText
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-1)
+                        color: Colors.warning
+                        wrapMode: Text.Wrap
+                    }
                     Text {
                         Layout.fillWidth: true
                         visible: (root.selectedMod?.description ?? "") !== ""
@@ -953,13 +1199,117 @@ Item {
 
                     Separator { Layout.fillWidth: true }
 
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.topMargin: 4
+                        Layout.bottomMargin: 4
+                        spacing: 10
+                        Text {
+                            Layout.alignment: Qt.AlignTop
+                            text: Icons.globe
+                            font.family: Icons.font
+                            font.pixelSize: Styling.fontSize(6)
+                            color: Colors.overBackground
+                            Accessible.ignored: true
+                        }
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 4
+                            Text {
+                                text: root.tr("mods.interface_languages")
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                font.weight: Font.DemiBold
+                                color: Colors.overBackground
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                text: {
+                                    const revision = I18n.revision;
+                                    const info = root.selectedMod?.localization;
+                                    if (!info) return root.tr("mods.language_unknown");
+                                    if ((root.selectedMod?.localizationWarnings ?? []).length)
+                                        return root.tr("mods.language_invalid");
+                                    if (info.mode === "none") return root.tr("mods.language_none");
+                                    const name = code => I18n.availableLanguages[code] ?? code;
+                                    if (info.mode === "single")
+                                        return root.tr("mods.language_single", name(info.defaultLanguage));
+                                    return (info.languages ?? []).map(name).join(", ")
+                                        + (!(info.languages ?? []).includes(I18n.resolvedLanguage)
+                                            ? " · " + root.tr("mods.language_fallback", name(info.defaultLanguage)) : "")
+                                        + " · " + root.tr("mods.language_declared");
+                                }
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-1)
+                                color: Colors.overBackground
+                                wrapMode: Text.Wrap
+                            }
+                            Text {
+                                Layout.fillWidth: true
+                                visible: !root.selectedMod?.localization
+                                text: root.tr("mods.language_missing_description")
+                                font.family: Config.theme.font
+                                font.pixelSize: Styling.fontSize(-2)
+                                color: Colors.outline
+                                wrapMode: Text.Wrap
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 6
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.tr("mods.auto_updates") + " · "
+                                + root.tr(root.selectedMod?.autoUpdateEffective ? "common.on" : "common.off")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overBackground
+                            wrapMode: Text.Wrap
+                        }
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 6
+                            Repeater {
+                                model: ["inherit", "on", "off"]
+                                delegate: ActionButton {
+                                    required property string modelData
+                                    text: root.tr("mods.policy_" + modelData)
+                                    primary: (root.selectedMod?.autoUpdate ?? "inherit") === modelData
+                                    enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false)
+                                        && (root.selectedMod?.autoUpdateAvailable ?? false)
+                                    onClicked: ModsService.setUpdatePolicy(root.selectedMod.id, modelData)
+                                }
+                            }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            visible: !(root.selectedMod?.autoUpdateAvailable ?? false)
+                            text: root.tr("mods.manual_source")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            visible: !ModsService.periodicChecks && !!root.selectedMod?.autoUpdateAvailable
+                            text: root.tr("mods.schedule_paused_short")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.Wrap
+                        }
+                    }
+
                     MetaRow {
                         visible: (root.selectedMod?.author ?? "") !== ""
                         label: root.tr("mods.author")
                         value: root.selectedMod?.author ?? ""
 
                         ActionButton {
-                            visible: (root.selectedMod?.authorUrl ?? "") !== ""
+                            visible: root.isWebLink(root.selectedMod?.authorUrl)
                             text: root.tr("mods.open_link")
                             onClicked: Qt.openUrlExternally(root.selectedMod.authorUrl)
                         }
@@ -990,6 +1340,7 @@ Item {
                         mono: true
 
                         ActionButton {
+                            visible: root.isWebLink(root.selectedMod?.homepage)
                             text: root.tr("mods.open_link")
                             onClicked: Qt.openUrlExternally(root.selectedMod.homepage)
                         }
@@ -1017,6 +1368,80 @@ Item {
                             enabled: !ModsService.busy
                                 && (root.selectedMod?.order ?? 0) < (ModsService.mods ?? []).length - 1
                             onClicked: ModsService.move(root.selectedMod.id, 1)
+                        }
+                    }
+
+                    MetaRow {
+                        id: menuIndexRow
+                        visible: root.selectedMod?.hasSettingsMenu ?? false
+                        label: root.tr("mods.menu_index")
+                        readonly property int currentIndex: root.selectedMod?.enabled
+                            ? ModsService.settingsMenuPosition(root.selectedMod.id)
+                            : (root.selectedMod?.settingsMenuIndex ?? 0)
+                        value: String(menuIndexRow.currentIndex)
+
+                        ActionButton {
+                            text: root.tr("mods.move_up")
+                            onClicked: root.confirmMenuIndex(menuIndexRow.currentIndex - 1, this)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.move_down")
+                            onClicked: root.confirmMenuIndex(menuIndexRow.currentIndex + 1, this)
+                        }
+                    }
+
+                    MetaRow {
+                        id: tabPositionRow
+                        visible: root.selectedMod?.hasTabPosition ?? false
+                        label: root.tr("mods.tab_position")
+                        readonly property int position: root.selectedMod?.tabPosition ?? 0
+                        value: root.positionLabel(position, root.selectedMod?.tabPositionPinned ?? false)
+
+                        ActionButton {
+                            text: root.tr("mods.move_up")
+                            enabled: !ModsService.busy && tabPositionRow.position > 0
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "tab", tabPositionRow.position - 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.move_down")
+                            enabled: !ModsService.busy && tabPositionRow.position < root.positionCount("hasTabPosition") - 1
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "tab", tabPositionRow.position + 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.position_auto")
+                            visible: root.selectedMod?.tabPositionPinned ?? false
+                            enabled: !ModsService.busy
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "tab", null)
+                        }
+                    }
+
+                    MetaRow {
+                        id: barPositionRow
+                        visible: root.selectedMod?.hasBarPosition ?? false
+                        label: root.tr("mods.bar_position")
+                        readonly property int position: root.selectedMod?.barPosition ?? 0
+                        value: root.positionLabel(position, root.selectedMod?.barPositionPinned ?? false)
+
+                        ActionButton {
+                            text: root.tr("mods.move_up")
+                            enabled: !ModsService.busy && barPositionRow.position > 0
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "bar", barPositionRow.position - 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.move_down")
+                            enabled: !ModsService.busy && barPositionRow.position < root.positionCount("hasBarPosition") - 1
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "bar", barPositionRow.position + 1)
+                        }
+
+                        ActionButton {
+                            text: root.tr("mods.position_auto")
+                            visible: root.selectedMod?.barPositionPinned ?? false
+                            enabled: !ModsService.busy
+                            onClicked: ModsService.setPosition(root.selectedMod.id, "bar", null)
                         }
                     }
 
@@ -1266,50 +1691,13 @@ Item {
                             }
                         }
                     }
-
-                    Separator { Layout.fillWidth: true }
-
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        ActionButton {
-                            text: root.selectedMod?.enabled ? root.tr("mods.disable") : root.tr("mods.enable")
-                            primary: !root.selectedMod?.enabled
-                            enabled: !ModsService.busy && (root.selectedMod?.enabled
-                                || ((root.selectedMod?.valid && (root.selectedMod?.compatible || ModsService.bypassVersionCheck))
-                                    && root.dependenciesReady(root.selectedMod)))
-                            onClicked: {
-                                if (root.selectedMod.enabled) {
-                                    ModsService.setEnabled(root.selectedMod.id, false);
-                                    return;
-                                }
-                                root.askConfirm("enable", root.selectedMod, root.selectedMod.source ?? "");
-                            }
-                        }
-
-                        ActionButton {
-                            text: root.tr("mods.update")
-                            onClicked: ModsService.update(root.selectedMod.id, root.selectedMod.enabled)
-                        }
-
-                        Item { Layout.fillWidth: true }
-
-                        ActionButton {
-                            text: root.removeArmedId === root.selectedMod?.id
-                                ? root.tr("mods.confirm_remove") : root.tr("mods.remove")
-                            destructive: true
-                            onClicked: {
-                                if (root.removeArmedId !== root.selectedMod.id) {
-                                    root.removeArmedId = root.selectedMod.id;
-                                    return;
-                                }
-                                ModsService.remove(root.selectedMod.id, root.selectedMod.enabled);
-                                root.removeArmedId = "";
-                            }
-                        }
-                    }
                 }
+            }
+
+            ModsUpdates {
+                id: updatePanel
+                Layout.fillWidth: true
+                onUpdateRequested: (id, trigger) => updateDialog.review(id, trigger)
             }
 
             RowLayout {
@@ -1334,15 +1722,60 @@ Item {
                     onClicked: ModsService.rollback()
                 }
             }
+            StyledRect {
+                Layout.fillWidth: true
+                implicitHeight: docsRow.implicitHeight + 16
+                variant: "common"
+                radius: Styling.radius(-2)
+                enableShadow: false
+
+                RowLayout {
+                    id: docsRow
+                    anchors.fill: parent
+                    anchors.margins: 8
+                    spacing: 8
+                    Text {
+                        text: Icons.info
+                        font.family: Icons.font
+                        font.pixelSize: Styling.fontSize(3)
+                        color: Colors.primary
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.tr("mods.docs_hint")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(-2)
+                        color: Colors.overBackground
+                        wrapMode: Text.Wrap
+                    }
+                    ActionButton {
+                        text: root.tr("mods.documentation")
+                        onClicked: Qt.openUrlExternally("https://github.com/Axenide/Ambxst/blob/main/docs/mods/README.md")
+                    }
+                }
+            }
+
         }
     }
 
     // Trust prompt. Installing and enabling both bring somebody else's code
     // into the shell, so both say whose code it is before it happens.
-    Item {
-        anchors.fill: parent
+    ModUpdateDialog {
+        id: updateDialog
+    }
+
+    Popup {
+        parent: Overlay.overlay
+        width: parent ? parent.width : root.width
+        height: parent ? parent.height : root.height
+        padding: 0
+        modal: true
+        focus: true
+        closePolicy: Popup.CloseOnEscape
+        background: Item {}
         visible: root.confirmKind !== ""
-        z: 50
+        onOpened: cancelConfirm.forceActiveFocus()
+        onClosed: root.closeConfirm()
 
         Rectangle {
             anchors.fill: parent
@@ -1374,22 +1807,42 @@ Item {
                 anchors.margins: 18
                 spacing: 10
 
-                Text {
+                RowLayout {
                     Layout.fillWidth: true
-                    text: root.confirmKind === "enable"
-                        ? root.tr("mods.confirm_enable_title")
-                        : root.tr("mods.confirm_install_title")
-                    font.family: Config.theme.font
-                    font.pixelSize: Styling.fontSize(1)
-                    font.weight: Font.DemiBold
-                    color: Colors.overBackground
-                    wrapMode: Text.Wrap
+                    spacing: 8
+
+                    Text {
+                        visible: root.confirmKind === "installArchive" || root.confirmKind === "menuIndex"
+                        text: Icons.alert
+                        font.family: Icons.font
+                        font.pixelSize: Styling.fontSize(3)
+                        color: root.confirmKind === "menuIndex" ? Colors.warning : Colors.error
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.confirmKind === "enable"
+                            ? root.tr("mods.confirm_enable_title")
+                            : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_title", root.confirmMod?.name ?? "")
+                            : root.confirmKind === "menuIndex" ? root.tr("mods.menu_index_warning_title")
+                            : root.confirmKind === "installArchive" ? root.tr("mods.confirm_archive_title")
+                            : root.tr("mods.confirm_install_title")
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(1)
+                        font.weight: Font.DemiBold
+                        color: root.confirmKind === "installArchive" ? Colors.error
+                            : root.confirmKind === "menuIndex" ? Colors.warning : Colors.overBackground
+                        wrapMode: Text.Wrap
+                    }
                 }
 
                 Text {
                     Layout.fillWidth: true
                     text: root.confirmKind === "enable"
                         ? root.tr("mods.confirm_enable_body")
+                        : root.confirmKind === "remove" ? root.tr("mods.confirm_remove_body")
+                        : root.confirmKind === "menuIndex" ? root.tr("mods.menu_index_warning_body")
+                        : root.confirmKind === "installArchive" ? root.tr("mods.confirm_archive_body")
                         : root.tr("mods.confirm_install_body")
                     font.family: Config.theme.font
                     font.pixelSize: Styling.fontSize(-1)
@@ -1400,25 +1853,48 @@ Item {
                 Separator { Layout.fillWidth: true }
 
                 MetaRow {
-                    visible: (root.confirmMod?.author ?? "") !== ""
+                    visible: root.confirmKind === "installArchive"
+                    label: root.tr("mods.archive_package")
+                    value: (root.confirmMod?.name ?? root.confirmMod?.id ?? "")
+                        + ((root.confirmMod?.version ?? "") === "" ? "" : " · " + root.confirmMod.version)
+                }
+
+                MetaRow {
+                    visible: root.confirmKind === "installArchive"
+                    label: root.tr("mods.archive_size")
+                    value: root.formatArchiveSize(root.confirmMod?.size ?? 0)
+                }
+
+                MetaRow {
+                    visible: root.confirmKind === "installArchive"
+                    label: root.tr("mods.archive_checksum")
+                    value: root.confirmMod?.sha256 ?? ""
+                    mono: true
+                }
+
+                MetaRow {
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.author ?? "") !== ""
                     label: root.tr("mods.author")
                     value: root.confirmMod?.author ?? ""
 
                     ActionButton {
-                        visible: (root.confirmMod?.authorUrl ?? "") !== ""
+                        visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                            && root.isWebLink(root.confirmMod?.authorUrl)
                         text: root.tr("mods.open_link")
                         onClicked: Qt.openUrlExternally(root.confirmMod.authorUrl)
                     }
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.license ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.license ?? "") !== ""
                     label: root.tr("mods.license")
                     value: root.confirmMod?.license ?? ""
                 }
 
                 MetaRow {
-                    visible: root.confirmSource !== ""
+                    visible: root.confirmSource !== "" && root.confirmKind !== "menuIndex"
                     label: root.tr("mods.source")
                     value: root.confirmSource
                     mono: true
@@ -1431,25 +1907,29 @@ Item {
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.homepage ?? "") !== ""
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.homepage ?? "") !== ""
                     label: root.tr("mods.homepage")
                     value: root.confirmMod?.homepage ?? ""
                     mono: true
 
                     ActionButton {
+                        visible: root.isWebLink(root.confirmMod?.homepage)
                         text: root.tr("mods.open_link")
                         onClicked: Qt.openUrlExternally(root.confirmMod.homepage)
                     }
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.permissions ?? []).length > 0
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.permissions ?? []).length > 0
                     label: root.tr("mods.permissions")
                     value: (root.confirmMod?.permissions ?? []).join(", ")
                 }
 
                 MetaRow {
-                    visible: (root.confirmMod?.affectedFiles ?? []).length > 0
+                    visible: root.confirmKind !== "remove" && root.confirmKind !== "menuIndex"
+                        && (root.confirmMod?.affectedFiles ?? []).length > 0
                     label: root.tr("mods.affected_files")
                     value: String((root.confirmMod?.affectedFiles ?? []).length)
                 }
@@ -1462,13 +1942,20 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     ActionButton {
+                        id: cancelConfirm
                         text: root.tr("common.cancel")
                         onClicked: root.closeConfirm()
                     }
 
                     ActionButton {
-                        text: root.confirmKind === "enable" ? root.tr("mods.enable") : root.tr("mods.install")
-                        primary: true
+                        text: root.confirmKind === "enable" ? root.tr("mods.enable")
+                            : root.confirmKind === "remove" ? root.tr("mods.remove")
+                            : root.confirmKind === "menuIndex" ? root.tr("mods.menu_index_change")
+                            : root.confirmKind === "installArchive" ? root.tr("mods.install_archive")
+                            : root.tr("mods.install")
+                        primary: root.confirmKind !== "remove" && root.confirmKind !== "installArchive"
+                        destructive: root.confirmKind === "remove" || root.confirmKind === "installArchive"
+                        enabled: !ModsService.busy && !(ModsService.updates?.busy ?? false)
                         onClicked: root.runConfirmed()
                     }
                 }

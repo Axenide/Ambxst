@@ -81,6 +81,26 @@ Rectangle {
         focusRetryTimer.start();
     }
 
+    function shellSingleQuote(value) {
+        return "'" + String(value).replace(/'/g, "'\\''") + "'";
+    }
+
+    function sanitizeAppId(value) {
+        return String(value).replace(/[^A-Za-z0-9._-]/g, "_");
+    }
+
+    function buildDesktopShortcut(appId, appName, appExecString, appIcon, appComment, appCategories, appRunInTerminal) {
+        let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
+        let timestamp = Date.now();
+        let fileName = sanitizeAppId(appId) + "-" + timestamp + ".desktop";
+        let filePath = desktopDir + "/" + fileName;
+
+        let desktopContent = "[Desktop Entry]\n" + "Version=1.0\n" + "Type=Application\n" + "Name=" + appName + "\n" + "Exec=" + appExecString + "\n" + "Icon=" + appIcon + "\n" + (appComment ? "Comment=" + appComment + "\n" : "") + (appCategories.length > 0 ? "Categories=" + appCategories.join(";") + ";\n" : "") + (appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
+
+        let quotedPath = shellSingleQuote(filePath);
+        return "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > " + quotedPath + " && chmod 755 " + quotedPath + " && gio set " + quotedPath + " metadata::trusted true";
+    }
+
     Component.onCompleted: {
         focusSearchInput();
     }
@@ -445,14 +465,7 @@ Rectangle {
                                     appLauncher.expandedItemIndex = -1;
                                 }, function () {
                                     // Create shortcut
-                                    let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
-                                    let timestamp = Date.now();
-                                    let fileName = selectedApp.appId + "-" + timestamp + ".desktop";
-                                    let filePath = desktopDir + "/" + fileName;
-
-                                    let desktopContent = "[Desktop Entry]\n" + "Version=1.0\n" + "Type=Application\n" + "Name=" + selectedApp.appName + "\n" + "Exec=" + selectedApp.appExecString + "\n" + "Icon=" + selectedApp.appIcon + "\n" + (selectedApp.appComment ? "Comment=" + selectedApp.appComment + "\n" : "") + (selectedApp.appCategories.length > 0 ? "Categories=" + selectedApp.appCategories.join(";") + ";\n" : "") + (selectedApp.appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
-
-                                    let writeCmd = "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > \"" + filePath + "\" && chmod 755 \"" + filePath + "\" && gio set \"" + filePath + "\" metadata::trusted true";
+                                    let writeCmd = buildDesktopShortcut(selectedApp.appId, selectedApp.appName, selectedApp.appExecString, selectedApp.appIcon, selectedApp.appComment, selectedApp.appCategories, selectedApp.appRunInTerminal);
                                     copyProcess.command = ["sh", "-c", writeCmd];
                                     copyProcess.running = true;
                                     appLauncher.expandedItemIndex = -1;
@@ -875,14 +888,7 @@ Rectangle {
                                         highlightColor: Colors.secondary,
                                         textColor: Styling.srItem("secondary"),
                                         action: function () {
-                                            let desktopDir = Quickshell.env("XDG_DESKTOP_DIR") || Quickshell.env("HOME") + "/Desktop";
-                                            let timestamp = Date.now();
-                                            let fileName = appId + "-" + timestamp + ".desktop";
-                                            let filePath = desktopDir + "/" + fileName;
-
-                                            let desktopContent = "[Desktop Entry]\n" + "Version=1.0\n" + "Type=Application\n" + "Name=" + appName + "\n" + "Exec=" + appExecString + "\n" + "Icon=" + appIcon + "\n" + (appComment ? "Comment=" + appComment + "\n" : "") + (appCategories.length > 0 ? "Categories=" + appCategories.join(";") + ";\n" : "") + (appRunInTerminal ? "Terminal=true\n" : "Terminal=false\n");
-
-                                            let writeCmd = "printf '%s' '" + desktopContent.replace(/'/g, "'\\''") + "' > \"" + filePath + "\" && chmod 755 \"" + filePath + "\" && gio set \"" + filePath + "\" metadata::trusted true";
+                                            let writeCmd = buildDesktopShortcut(appId, appName, appExecString, appIcon, appComment, appCategories, appRunInTerminal);
                                             copyProcess.command = ["sh", "-c", writeCmd];
                                             copyProcess.running = true;
                                             appLauncher.expandedItemIndex = -1;

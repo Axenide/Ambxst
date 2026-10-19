@@ -35,7 +35,8 @@ ActionGrid {
             command: "systemctl suspend"
         },
         {
-            icon: Icons.hibernate,
+            icon: "",
+            iconUrl: Qt.resolvedUrl("../../../assets/icons/snowflake-bold.svg"),
             tooltip: I18n.t("powermenu.hibernate"),
             command: "systemctl hibernate"
         },

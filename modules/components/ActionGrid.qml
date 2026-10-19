@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Io
 import qs.modules.theme
@@ -254,6 +255,9 @@ FocusScope {
                             radius: Styling.radius(4)
                         }
 
+                        readonly property color iconColor: actionButton.pressed ? Styling.srItem("overprimary") : (index === root.currentIndex ? (highlight.targetItem ? highlight.item : Styling.srItem("primary")) : Colors.overBackground)
+                        readonly property string iconUrl: (modelData && modelData.iconUrl) ? modelData.iconUrl.toString() : ""
+
                         contentItem: Item {
                             anchors.fill: parent
 
@@ -262,11 +266,12 @@ FocusScope {
                                 width: root.buttonSize
                                 height: parent.height
                                 anchors.left: parent.left
+                                visible: actionButton.iconUrl === ""
                                 text: modelData.icon || ""
                                 textFormat: Text.RichText
                                 font.family: Icons.font
                                 font.pixelSize: root.iconSize
-                                color: actionButton.pressed ? Styling.srItem("overprimary") : (index === root.currentIndex ? (highlight.targetItem ? highlight.item : Styling.srItem("primary")) : Colors.overBackground)
+                                color: actionButton.iconColor
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
 
@@ -275,6 +280,42 @@ FocusScope {
                                     ColorAnimation {
                                         duration: Config.animDuration / 2
                                         easing.type: Easing.OutQuart
+                                    }
+                                }
+                            }
+
+                            // 1b. Icono SVG con tinte (misma lógica de color que el glifo)
+                            Item {
+                                width: root.buttonSize
+                                height: parent.height
+                                anchors.left: parent.left
+                                visible: actionButton.iconUrl !== ""
+
+                                Image {
+                                    anchors.centerIn: parent
+                                    width: root.iconSize
+                                    height: root.iconSize
+                                    source: actionButton.iconUrl
+                                    sourceSize: Qt.size(width * 2, height * 2)
+                                    fillMode: Image.PreserveAspectFit
+                                    smooth: true
+                                    asynchronous: true
+
+                                    layer.enabled: true
+                                    layer.smooth: true
+                                    layer.textureSize: Qt.size(width * 2, height * 2)
+                                    layer.effect: MultiEffect {
+                                        brightness: 1.0
+                                        colorization: 1.0
+                                        colorizationColor: actionButton.iconColor
+
+                                        Behavior on colorizationColor {
+                                            enabled: Config.animDuration > 0
+                                            ColorAnimation {
+                                                duration: Config.animDuration / 2
+                                                easing.type: Easing.OutQuart
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -290,7 +331,7 @@ FocusScope {
                                 font.family: Config.defaultFont
                                 font.pixelSize: root.iconSize * 0.7
                                 font.weight: Font.DemiBold
-                                color: actionButton.pressed ? Styling.srItem("overprimary") : (index === root.currentIndex ? (highlight.targetItem ? highlight.item : Styling.srItem("primary")) : Colors.overBackground)
+                                color: actionButton.iconColor
                                 verticalAlignment: Text.AlignVCenter
 
                                 Behavior on color {

@@ -39,6 +39,9 @@ nix:
 ## install: build, sudo install the binary, then remove the local copy
 install: build
 	sudo install $(BINARY) /usr/local/bin/$(BINARY)
+	install -Dm644 assets/ambxst/ambxst-mod-handler.desktop $(HOME)/.local/share/applications/ambxst-mod-handler.desktop
+	@if command -v update-desktop-database >/dev/null; then update-desktop-database $(HOME)/.local/share/applications; fi
+	@if command -v xdg-mime >/dev/null; then xdg-mime default ambxst-mod-handler.desktop x-scheme-handler/ambxst; fi
 	rm -f $(BINARY)
 
 ## clean: remove the compiled binary

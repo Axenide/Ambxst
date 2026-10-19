@@ -22,7 +22,12 @@ Rectangle {
     property int selectedIndex: GlobalStates.settingsCurrentTab
     property string searchQuery: ""
 
-    onFilteredSectionsChanged: selectedIndex = 0
+    onFilteredSectionsChanged: {
+        // Keep the selection when the list is rebuilt with the same sections
+        // (e.g. a mods status push), and reset only if it disappeared.
+        const index = getFilteredIndex(root.currentSection);
+        selectedIndex = index >= 0 ? index : 0;
+    }
 
     // Timer to restore focus after panel transitions
     Timer {
@@ -200,7 +205,7 @@ Rectangle {
     }
 
     // Original sections model
-    readonly property var sectionModel: [
+    readonly property var sectionModel: ModsService.orderSettingsSections([
         {
             icon: Icons.wifiHigh,
             label: I18n.t("settings.network"),
@@ -257,7 +262,7 @@ Rectangle {
         },
         {
             icon: Icons.puzzlePiece,
-            label: "Mods",
+            label: I18n.t("mods.title"),
             section: 10,
             isIcon: true
         },
@@ -267,7 +272,7 @@ Rectangle {
             section: 9,
             isIcon: false
         }
-    ]
+    ])
 
     // Filtered sections based on search query
     readonly property var filteredSections: {
@@ -614,7 +619,7 @@ Rectangle {
                 id: panelLoader
                 anchors.fill: parent
                 asynchronous: true
-                source: contentArea.panelComponents[root.currentSection]?.component ?? ""
+                source: contentArea.panelComponents.find(panel => panel.section === root.currentSection)?.component ?? ""
 
                 // Fade in animation
                 opacity: status === Loader.Ready ? 1 : 0

@@ -91,6 +91,7 @@ func TestActionFromLegacyRoundTrip(t *testing.T) {
 		{"layoutmsg", "colresize +0.1", "", "scrolling.resize-column"},
 		{"layoutmsg", "colresize +conf", "", "scrolling.toggle-full-column"},
 		{"layoutmsg", "promote", "", "scrolling.promote"},
+		{"layoutmsg", "center", "", "scrolling.center"},
 		{"layoutmsg", "swapcol r", "", "scrolling.swap-column"},
 		{"exec", "playerctl play-pause", "l", "media.play-pause-locked"},
 		{"exec", "loginctl lock-session", "l", "system.lock-locked"},

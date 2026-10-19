@@ -674,7 +674,7 @@ Timer {
     // Proceso para verificar tiempo de faillock
     Process {
         id: failLockCheck
-        command: ["bash", "-c", `faillock --user '${usernameCollector.text.trim()}' 2>/dev/null | grep -oP 'left \\K[0-9]+' | head -1`]
+        command: ["bash", "-c", `faillock --user '${usernameCollector.text.trim().replace(/'/g, "'\\''")}' 2>/dev/null | grep -oP 'left \\K[0-9]+' | head -1`]
         running: false
 
         stdout: StdioCollector {

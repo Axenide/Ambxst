@@ -27,6 +27,10 @@ Item {
     property string notesPath: notesDir + "/notes"
     property string noteExtension: ".html"  // Store as HTML for rich text (Markdown uses .md)
 
+    function shellSingleQuote(value) {
+        return "'" + String(value).replace(/'/g, "'\\''") + "'";
+    }
+
     // Search and selection state
     property string searchText: ""
     property bool showResults: searchText.length > 0
@@ -668,7 +672,7 @@ Item {
         createNoteProcess.noteId = noteId;
         createNoteProcess.noteTitle = noteTitle;
         createNoteProcess.noteIsMarkdown = isMarkdown || false;
-        createNoteProcess.command = ["sh", "-c", "mkdir -p '" + notesPath + "' && printf '%s' '" + initialContent.replace(/'/g, "'\\''") + "' > '" + notesPath + "/" + noteId + extension + "'"];
+        createNoteProcess.command = ["sh", "-c", "mkdir -p " + shellSingleQuote(notesPath) + " && printf '%s' " + shellSingleQuote(initialContent) + " > " + shellSingleQuote(notesPath + "/" + noteId + extension)];
         createNoteProcess.running = true;
     }
 
@@ -707,7 +711,7 @@ Item {
 
         // Get the text content
         var content = currentNoteIsMarkdown ? mdEditor.text : noteEditor.text;
-        saveNoteProcess.command = ["sh", "-c", "printf '%s' '" + content.replace(/'/g, "'\\''") + "' > '" + notesPath + "/" + currentNoteId + extension + "'"];
+        saveNoteProcess.command = ["sh", "-c", "printf '%s' " + shellSingleQuote(content) + " > " + shellSingleQuote(notesPath + "/" + currentNoteId + extension)];
         saveNoteProcess.running = true;
         editorDirty = false;
 
@@ -820,7 +824,7 @@ Item {
             };
         }
         var jsonContent = NotesUtils.serializeIndex(indexData);
-        saveIndexProcess.command = ["sh", "-c", "printf '%s' '" + jsonContent.replace(/'/g, "'\\''") + "' > '" + indexPath + "'"];
+        saveIndexProcess.command = ["sh", "-c", "printf '%s' " + shellSingleQuote(jsonContent) + " > " + shellSingleQuote(indexPath)];
         saveIndexProcess.running = true;
     }
 
@@ -833,7 +837,7 @@ Item {
     // Initialize directories
     Process {
         id: initDirProcess
-        command: ["sh", "-c", "mkdir -p '" + notesPath + "' && touch '" + indexPath + "'"]
+        command: ["sh", "-c", "mkdir -p " + shellSingleQuote(notesPath) + " && touch " + shellSingleQuote(indexPath)]
 
         onExited: code => {
             refreshNotes();
@@ -1005,7 +1009,7 @@ Item {
             }
 
             var jsonContent = NotesUtils.serializeIndex(indexData);
-            saveIndexProcess.command = ["sh", "-c", "printf '%s' '" + jsonContent.replace(/'/g, "'\\''") + "' > '" + indexPath + "'"];
+            saveIndexProcess.command = ["sh", "-c", "printf '%s' " + shellSingleQuote(jsonContent) + " > " + shellSingleQuote(indexPath)];
             saveIndexProcess.running = true;
 
             updateFilteredNotes();
@@ -1032,7 +1036,7 @@ Item {
             }
 
             var jsonContent = NotesUtils.serializeIndex(indexData);
-            saveIndexProcess.command = ["sh", "-c", "printf '%s' '" + jsonContent.replace(/'/g, "'\\''") + "' > '" + indexPath + "'"];
+            saveIndexProcess.command = ["sh", "-c", "printf '%s' " + shellSingleQuote(jsonContent) + " > " + shellSingleQuote(indexPath)];
             saveIndexProcess.running = true;
             noteId = "";
         }

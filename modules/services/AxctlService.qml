@@ -69,6 +69,9 @@ Singleton {
             if (rawArgs) cmdArgs.push(rawArgs);
         } else if (action === "overview") {
             cmdArgs = ["overview", "toggle"];
+        } else if (action === "fullscreen") {
+            const state = rawArgs.trim().startsWith("1") ? "1" : "0";
+            cmdArgs = ["window", "fullscreen", state];
         } else {
             cmdArgs = ["system", "execute", command];
         }

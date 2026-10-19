@@ -67,6 +67,9 @@ var catalog = []ActionSpec{
 	{ID: "window.resize-drag", Label: "Resize Window (Drag)", Category: "Window", Dispatcher: "resizewindow", Argument: "", Flags: "m"},
 	{ID: "window.resize", Label: "Resize Window", Category: "Window", Dispatcher: "resizeactive", Args: []ActionArg{{Key: "delta", Label: "Delta", Placeholder: "50 0", DefaultValue: "50 0"}}, ArgumentFn: func(args map[string]any) string { return strings.TrimSpace(stringArg(args, "delta")) }},
 	{ID: "window.toggle-float", Label: "Toggle Floating", Category: "Window", Dispatcher: "togglefloating", Argument: ""},
+	{ID: "window.fullscreen", Label: "Toggle Fullscreen", Category: "Window", Dispatcher: "fullscreen", Argument: ""},
+	{ID: "window.maximize", Label: "Toggle Maximize", Category: "Window", Dispatcher: "fullscreen", Argument: "1"},
+	{ID: "window.fake-fullscreen", Label: "Toggle Fake Fullscreen", Category: "Window", Dispatcher: "fullscreen", Argument: "2"},
 
 	{ID: "workspace.switch", Label: "Switch Workspace", Category: "Workspace", Dispatcher: "workspace", Args: []ActionArg{{Key: "index", Label: "Workspace", Placeholder: "1", DefaultValue: "1"}}, ArgumentFn: func(args map[string]any) string { return strings.TrimSpace(stringArg(args, "index")) }},
 	{ID: "workspace.switch-relative", Label: "Switch Workspace (Relative)", Category: "Workspace", Dispatcher: "workspace", Args: []ActionArg{{Key: "offset", Label: "Offset", Placeholder: "+1 / -1", DefaultValue: "+1"}}, ArgumentFn: func(args map[string]any) string { return formatOffset(stringArg(args, "offset")) }},
@@ -93,6 +96,7 @@ var catalog = []ActionSpec{
 	}},
 	{ID: "scrolling.resize-column", Label: "Resize Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Args: []ActionArg{{Key: "delta", Label: "Delta", Placeholder: "+0.1 / -0.1", DefaultValue: "+0.1"}}, ArgumentFn: func(args map[string]any) string { return "colresize " + strings.TrimSpace(stringArg(args, "delta")) }},
 	{ID: "scrolling.promote", Label: "Promote Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "promote"},
+	{ID: "scrolling.center", Label: "Center Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "center"},
 	{ID: "scrolling.toggle-fit", Label: "Toggle Fit", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "togglefit"},
 	{ID: "scrolling.toggle-full-column", Label: "Toggle Full Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Argument: "colresize +conf"},
 	{ID: "scrolling.swap-column", Label: "Swap Column", Category: "Scrolling Layout", Dispatcher: "layoutmsg", Args: []ActionArg{{Key: "direction", Label: "Direction", Placeholder: "left/right", DefaultValue: "left"}}, ArgumentFn: func(args map[string]any) string { return "swapcol " + directionToLetter(stringArg(args, "direction")) }},
@@ -221,6 +225,14 @@ func ActionFromLegacy(dispatcher, argument, flags string) Action {
 		return Action{ID: "window.resize", Args: map[string]any{"delta": arg}}
 	case "togglefloating":
 		return Action{ID: "window.toggle-float", Args: map[string]any{}}
+	case "fullscreen":
+		switch arg {
+		case "1":
+			return Action{ID: "window.maximize", Args: map[string]any{}}
+		case "2":
+			return Action{ID: "window.fake-fullscreen", Args: map[string]any{}}
+		}
+		return Action{ID: "window.fullscreen", Args: map[string]any{}}
 	case "layoutmsg":
 		parts := strings.SplitN(arg, " ", 2)
 		head := ""
@@ -243,6 +255,8 @@ func ActionFromLegacy(dispatcher, argument, flags string) Action {
 			return Action{ID: "scrolling.resize-column", Args: map[string]any{"delta": rest}}
 		case arg == "promote":
 			return Action{ID: "scrolling.promote", Args: map[string]any{}}
+		case arg == "center":
+			return Action{ID: "scrolling.center", Args: map[string]any{}}
 		case arg == "togglefit":
 			return Action{ID: "scrolling.toggle-fit", Args: map[string]any{}}
 		case head == "swapcol":
