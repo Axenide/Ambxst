@@ -77,6 +77,28 @@ func OutputFrame(name string, cursor bool) (*screenshot.CaptureResult, func(), e
 	return Frame(name, cursor)
 }
 
+// regionScale resolves the physical/logical factor used to map a logical
+// region onto the output's physical frame. It prefers the factor derived
+// from the frozen frame (physical pixels over logical extents) but only
+// while it agrees with the compositor scale; a frozen frame that disagrees
+// by more than 25% is stale (layout/scale changed since the freeze) and
+// cropping with it would produce bogus results.
+func regionScale(mon axmon.Monitor, output string) float64 {
+	scale := mon.EffectiveScale()
+	logicalW, logicalH := mon.LogicalWidth(), mon.LogicalHeight()
+	if frozenW, frozenH, found := FrozenDims(output); found && logicalW > 0 && logicalH > 0 {
+		frameScaleX := float64(frozenW) / float64(logicalW)
+		frameScaleY := float64(frozenH) / float64(logicalH)
+		if frameScaleX > 0 && frameScaleY > 0 {
+			derived := (frameScaleX + frameScaleY) / 2
+			if mon.Scale <= 0 || (derived >= scale*0.75 && derived <= scale*1.25) {
+				scale = derived
+			}
+		}
+	}
+	return scale
+}
+
 // Region resolves the monitor containing a logical global rect and crops
 // it at physical scale, preferring the frozen session frame for that
 // output so captures read from the buffer the tool displayed. Falls back
@@ -114,16 +136,7 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 		return nil, nil, fmt.Errorf("output %q not found", name)
 	}
 
-	scale := mon.EffectiveScale()
-	if frozenW, frozenH, found := FrozenDims(name); found && mon.Width > 0 && mon.Height > 0 {
-		// axctl versions differ on whether width/height are logical or
-		// physical. The retained frame is authoritative for the crop scale.
-		frameScaleX := float64(frozenW) / float64(mon.Width)
-		frameScaleY := float64(frozenH) / float64(mon.Height)
-		if frameScaleX > 0 && frameScaleY > 0 {
-			scale = (frameScaleX + frameScaleY) / 2
-		}
-	}
+	scale := regionScale(*mon, name)
 	localX := int(float64(int(rect.X)-mon.X())*scale + 0.5)
 	localY := int(float64(int(rect.Y)-mon.Y())*scale + 0.5)
 	cw := int(float64(rect.Width)*scale + 0.5)

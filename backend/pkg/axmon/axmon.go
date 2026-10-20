@@ -7,10 +7,15 @@ import (
 )
 
 type Monitor struct {
-	ID        string                 `json:"id"`
-	Name      string                 `json:"name"`
-	Width     int                    `json:"width"`
-	Height    int                    `json:"height"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Width  int    `json:"width"`
+	Height int    `json:"height"`
+	// Explicit logical extents from axctl. Older axctl versions omit
+	// them (and report width/height in different units per compositor),
+	// in which case the accessors fall back to the legacy behavior.
+	LogicalW  int                    `json:"logical_width"`
+	LogicalH  int                    `json:"logical_height"`
 	Scale     float64                `json:"scale"`
 	IsFocused bool                   `json:"is_focused"`
 	Metadata  map[string]interface{} `json:"metadata,omitempty"`
@@ -42,6 +47,24 @@ func (m Monitor) EffectiveScale() float64 {
 		return m.Scale
 	}
 	return 1.0
+}
+
+// LogicalWidth returns the width in logical pixels when axctl reports it
+// explicitly, falling back to the legacy raw width.
+func (m Monitor) LogicalWidth() int {
+	if m.LogicalW > 0 {
+		return m.LogicalW
+	}
+	return m.Width
+}
+
+// LogicalHeight returns the height in logical pixels when axctl reports
+// it explicitly, falling back to the legacy raw height.
+func (m Monitor) LogicalHeight() int {
+	if m.LogicalH > 0 {
+		return m.LogicalH
+	}
+	return m.Height
 }
 
 // List returns the current monitor layout via axctl.
@@ -81,11 +104,15 @@ func Focused(monitors []Monitor) (*Monitor, bool) {
 }
 
 // Containing resolves which monitor holds a logical global point.
+// Extents use logical dimensions: raw width/height are in compositor
+// units that don't necessarily match the logical x/y positions, so
+// comparing against the raw size overextends scaled outputs into their
+// neighbor.
 func Containing(monitors []Monitor, x, y int) (*Monitor, bool) {
 	for i := range monitors {
 		m := &monitors[i]
 		mx, my := m.X(), m.Y()
-		if x >= mx && x < mx+m.Width && y >= my && y < my+m.Height {
+		if x >= mx && x < mx+m.LogicalWidth() && y >= my && y < my+m.LogicalHeight() {
 			return m, true
 		}
 	}
