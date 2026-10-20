@@ -436,6 +436,7 @@ Item {
         if (targetLoader) {
             targetLoader.active = true;
             var target = targetLoader.item;
+            var changed = false;
             if (target && view.currentItem !== target) {
                 // Replace when something is already pushed so depth never
                 // grows past 2 — a single pop always returns to default.
@@ -443,11 +444,17 @@ Item {
                     view.replace(target);
                 else
                     view.push(target);
+                changed = true;
             }
-            Qt.callLater(() => {
-                if (view.currentItem)
-                    view.currentItem.forceActiveFocus();
-            });
+            if (changed) {
+                // Focus only on an actual stack change: the busy-end repair
+                // pass re-runs this after the transition, and an unconditional
+                // focus there would steal focus from the view's own input.
+                Qt.callLater(() => {
+                    if (view.currentItem)
+                        view.currentItem.forceActiveFocus();
+                });
+            }
         } else if (view.depth > 1) {
             view.pop();
             notchContainer.isShowingDefault = true;
