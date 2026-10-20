@@ -417,96 +417,74 @@ Item {
         }
     }
 
+    // Single source of truth for the notch stack: every visibility change
+    // acts immediately, in the same tick the background retargets — so a
+    // close issued mid-push interrupts and reverses instead of queueing
+    // behind the running transition. A busy-end re-sync below repairs the
+    // stack if a mid-transition op got dropped, so convergence holds.
+    function syncNotchStack() {
+        var view = notchContainer.stackView;
+        var targetLoader = null;
+        if (screenVisibilities.launcher)
+            targetLoader = persistentLauncherViewLoader;
+        else if (screenVisibilities.dashboard)
+            targetLoader = persistentDashboardViewLoader;
+        else if (screenVisibilities.powermenu)
+            targetLoader = persistentPowerMenuViewLoader;
+        else if (screenVisibilities.tools)
+            targetLoader = persistentToolsMenuViewLoader;
+        if (targetLoader) {
+            targetLoader.active = true;
+            var target = targetLoader.item;
+            if (target && view.currentItem !== target) {
+                // Replace when something is already pushed so depth never
+                // grows past 2 — a single pop always returns to default.
+                if (view.depth > 1)
+                    view.replace(target);
+                else
+                    view.push(target);
+            }
+            Qt.callLater(() => {
+                if (view.currentItem)
+                    view.currentItem.forceActiveFocus();
+            });
+        } else if (view.depth > 1) {
+            view.pop();
+            notchContainer.isShowingDefault = true;
+            notchContainer.isShowingNotifications = false;
+        }
+    }
+
     // Listen for dashboard and powermenu state changes
     Connections {
         target: screenVisibilities
 
         function onLauncherChanged() {
-            if (screenVisibilities.launcher) {
-                persistentLauncherViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentLauncherViewLoader.item) {
-                        notchContainer.stackView.push(persistentLauncherViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            syncNotchStack();
         }
 
         function onDashboardChanged() {
-            if (screenVisibilities.dashboard) {
-                persistentDashboardViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentDashboardViewLoader.item) {
-                        notchContainer.stackView.push(persistentDashboardViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            syncNotchStack();
         }
 
         function onPowermenuChanged() {
-            if (screenVisibilities.powermenu) {
-                persistentPowerMenuViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentPowerMenuViewLoader.item) {
-                        notchContainer.stackView.push(persistentPowerMenuViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            syncNotchStack();
         }
 
         function onToolsChanged() {
-            if (screenVisibilities.tools) {
-                persistentToolsMenuViewLoader.active = true;
-                Qt.callLater(() => {
-                    if (persistentToolsMenuViewLoader.item) {
-                        notchContainer.stackView.push(persistentToolsMenuViewLoader.item);
-                        Qt.callLater(() => {
-                            if (notchContainer.stackView.currentItem) {
-                                notchContainer.stackView.currentItem.forceActiveFocus();
-                            }
-                        });
-                    }
-                });
-            } else {
-                if (notchContainer.stackView.depth > 1) {
-                    notchContainer.stackView.pop();
-                    notchContainer.isShowingDefault = true;
-                    notchContainer.isShowingNotifications = false;
-                }
-            }
+            syncNotchStack();
+        }
+    }
+
+    // Repair pass: if an op landed mid-transition and the view dropped it,
+    // converge again once idle. Deferred out of the busyChanged emission to
+    // avoid mutating the stack while StackView is mid-signal; no-op when
+    // already converged, so it can't loop.
+    Connections {
+        target: notchContainer.stackView
+        function onBusyChanged() {
+            if (!notchContainer.stackView.busy)
+                Qt.callLater(syncNotchStack);
         }
     }
 

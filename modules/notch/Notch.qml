@@ -57,8 +57,12 @@ Item {
     implicitWidth: screenNotchOpen ? Math.max(stackContainer.width + totalCornerWidth, 290) : stackContainer.width + totalCornerWidth
     implicitHeight: Config.notchTheme === "default" ? defaultHeight : (Config.notchTheme === "island" ? islandHeight : defaultHeight)
 
+    // Keep these Behaviors always-on (when animations exist): disabling a
+    // Behavior mid-animation stops it dead and freezes the property at its
+    // current interpolated value. They don't run on the initial binding,
+    // so always-on is safe.
     Behavior on implicitWidth {
-        enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
+        enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
             easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
@@ -67,7 +71,7 @@ Item {
     }
 
     Behavior on implicitHeight {
-        enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
+        enabled: Config.animDuration > 0
         NumberAnimation {
             duration: Config.animDuration
             easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
@@ -305,7 +309,9 @@ Item {
             property real transitionBlur: 0.0
 
             // Aplicar MultiEffect con blur animable
-            layer.enabled: transitionBlur > 0.0
+            // Gate the offscreen pass on the perf toggle: when blur is
+            // disabled there is no visual effect, only FBO cost.
+            layer.enabled: transitionBlur > 0.0 && Config.performance.blurTransition
             layer.effect: MultiEffect {
                 blurEnabled: Config.performance.blurTransition
                 blurMax: 64
