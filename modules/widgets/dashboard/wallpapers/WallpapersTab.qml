@@ -247,6 +247,7 @@ FocusScope {
 
         // Barra superior con OLED mode, búsqueda y scheme selector
         RowLayout {
+            id: topBar
             Layout.fillWidth: true
             Layout.preferredHeight: 48
             spacing: 8
@@ -774,15 +775,18 @@ FocusScope {
 
             // Scheme Selector a la derecha
             Item {
+                id: schemeSlot
                 Layout.preferredWidth: 200
                 Layout.preferredHeight: 48
 
+                // Reparented to the tab root so the open list is hit-tested above the wallpaper grid instead of falling through to it
                 SchemeSelector {
                     id: schemeSelector
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    // No height set, allows expansion based on implicitHeight
+                    parent: wallpapersTabRoot
+                    z: 2000
+                    x: topBar.x + schemeSlot.x
+                    y: topBar.y + schemeSlot.y
+                    width: schemeSlot.width
 
                     onSchemeSelectorClosed: {
                         wallpapersTabRoot.focusSearch();
