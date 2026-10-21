@@ -57,13 +57,17 @@ Item {
     implicitWidth: screenNotchOpen ? Math.max(stackContainer.width + totalCornerWidth, 290) : stackContainer.width + totalCornerWidth
     implicitHeight: Config.notchTheme === "default" ? defaultHeight : (Config.notchTheme === "island" ? islandHeight : defaultHeight)
 
-    // Keep these Behaviors always-on (when animations exist): disabling a
-    // Behavior mid-animation stops it dead and freezes the property at its
-    // current interpolated value. They don't run on the initial binding,
-    // so always-on is safe.
+    // Animate only around open/close transitions. While idle the background
+    // must track content-driven size changes (notification arrival, hover
+    // expansion in DefaultView) 1:1: the inner view animates its own
+    // implicit size, and an outer animation here would chase it with the
+    // background lagging behind the content. alwaysRunToEnd keeps a
+    // mid-flight animation finishing after the Behavior is disabled, so a
+    // transition ending early can no longer freeze the size halfway.
     Behavior on implicitWidth {
-        enabled: Config.animDuration > 0
+        enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
+            alwaysRunToEnd: true
             duration: Config.animDuration
             easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
             easing.overshoot: isExpanded ? 1.2 : 1.0
@@ -71,8 +75,9 @@ Item {
     }
 
     Behavior on implicitHeight {
-        enabled: Config.animDuration > 0
+        enabled: (screenNotchOpen || stackViewInternal.busy) && Config.animDuration > 0
         NumberAnimation {
+            alwaysRunToEnd: true
             duration: Config.animDuration
             easing.type: isExpanded ? Easing.OutBack : Easing.OutQuart
             easing.overshoot: isExpanded ? 1.2 : 1.0
