@@ -83,13 +83,13 @@ QtObject {
 
         writer.text = conf;
 
-        // QUICKSHELL-GIT: const ghosttyConfPath = Quickshell.cachePath("ghostty");
-        const ghosttyConfPath = Quickshell.env("HOME") + "/.cache/ambxst/ghostty";
+        // QUICKSHELL-GIT: const ghosttyConfPath = Quickshell.cacheDir + "/ghostty/themes/ambxst";
+        const ghosttyThemePath = Quickshell.env("HOME") + "/.config/ghostty/themes/ambxst";
 
         // Ensure directory exists and write file
         const cmd = `
-            mkdir -p "$(dirname "${ghosttyConfPath}")" && \\
-            echo "${conf}" > "${ghosttyConfPath}" && \\
+            mkdir -p "$(dirname "${ghosttyThemePath}")" && \\
+            echo "${conf}" > "${ghosttyThemePath}" && \\
             killall -SIGUSR2 ghostty
         `;
 
