@@ -83,8 +83,8 @@ QtObject {
 
         writer.text = conf;
 
-        // QUICKSHELL-GIT: const ghosttyConfPath = Quickshell.cachePath("ghostty.conf");
-        const ghosttyConfPath = Quickshell.env("HOME") + "/.cache/ambxst/ghostty.conf";
+        // QUICKSHELL-GIT: const ghosttyConfPath = Quickshell.cachePath("ghostty");
+        const ghosttyConfPath = Quickshell.env("HOME") + "/.cache/ambxst/ghostty";
 
         // Ensure directory exists and write file
         const cmd = `
