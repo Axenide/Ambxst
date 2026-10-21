@@ -45,6 +45,10 @@ FileView {
         id: kittyGenerator
     }
 
+    property GhosttyGenerator ghosttyGenerator: GhosttyGenerator {
+        id: ghosttyGenerator
+    }
+
     property NvChadGenerator nvChadGenerator: NvChadGenerator {
         id: nvChadGenerator
     }
@@ -66,6 +70,7 @@ FileView {
             gtkGenerator.generate(colors);
             pywalGenerator.generate(colors);
             kittyGenerator.generate(colors);
+            ghosttyGenerator.generate(colors);
             nvChadGenerator.generate(colors);
             discordGenerator.generate(colors);
             pywalZenGenerator.generate(colors);
