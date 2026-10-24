@@ -91,6 +91,8 @@ PanelWindow {
     // React to light/dark mode changes
     property bool isLightMode: Config.theme.lightMode
     onIsLightModeChanged: {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper)
+            return;
         if (activeColorPreset) {
             applyColorPreset();
         } else {
@@ -99,6 +101,8 @@ PanelWindow {
     }
 
     onActiveColorPresetChanged: {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper)
+            return;
         if (activeColorPreset) {
             applyColorPreset();
         } else {
@@ -111,6 +115,10 @@ PanelWindow {
     }
 
     function applyColorPreset() {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.applyColorPreset();
+            return;
+        }
         if (!activeColorPreset)
             return;
 
@@ -130,8 +138,19 @@ PanelWindow {
     }
 
     function setColorPreset(name) {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.setColorPreset(name);
+            return;
+        }
+        if (wallpaper.activeColorPreset === name) {
+            wallpaperConfig.adapter.activeColorPreset = "";
+            wallpaper.activeColorPreset = "";
+            runMatugenForCurrentWallpaper();
+            return;
+        }
         wallpaperConfig.adapter.activeColorPreset = name;
-    // activeColorPreset property will update automatically via binding to adapter
+        wallpaper.activeColorPreset = name;
+        applyColorPreset();
     }
 
     // Funciones utilitarias para tipos de archivo
@@ -402,27 +421,36 @@ PanelWindow {
 
     // Función para re-ejecutar Matugen con el wallpaper actual
     function setMatugenScheme(scheme) {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.setMatugenScheme(scheme);
+            return;
+        }
         wallpaperConfig.adapter.matugenScheme = scheme;
 
-        if (wallpaperConfig.adapter.activeColorPreset) {
+        if (wallpaperConfig.adapter.activeColorPreset || wallpaper.activeColorPreset) {
             console.log("Switching to Matugen scheme, clearing preset");
             wallpaperConfig.adapter.activeColorPreset = "";
-        } else {
-            runMatugenForCurrentWallpaper();
+            wallpaper.activeColorPreset = "";
         }
+        runMatugenForCurrentWallpaper();
     }
 
-    function runMatugenForCurrentWallpaper() {
+    function runMatugenForCurrentWallpaper(targetPath) {
+        if (GlobalStates.wallpaperManager && GlobalStates.wallpaperManager !== wallpaper) {
+            GlobalStates.wallpaperManager.runMatugenForCurrentWallpaper(targetPath);
+            return;
+        }
         if (activeColorPreset) {
             console.log("Skipping Matugen because color preset is active:", activeColorPreset);
             return;
         }
 
-        if (currentWallpaper && initialLoadCompleted) {
-            console.log("Running Matugen for current wallpaper:", currentWallpaper);
+        var wall = targetPath || currentWallpaper;
+        if (wall && initialLoadCompleted) {
+            console.log("Running Matugen for current wallpaper:", wall);
 
-            var fileType = getFileType(currentWallpaper);
-            var matugenSource = getColorSource(currentWallpaper);
+            var fileType = getFileType(wall);
+            var matugenSource = getColorSource(wall);
 
             console.log("Using source for matugen:", matugenSource, "(type:", fileType + ")");
 

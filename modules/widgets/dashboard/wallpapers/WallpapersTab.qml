@@ -11,6 +11,7 @@ import qs.config
 // Componente principal para el selector de fondos de pantalla.
 FocusScope {
     id: wallpapersTabRoot
+    focus: true
 
     // Propiedades personalizadas para la funcionalidad del componente.
     property string searchText: ""
@@ -28,6 +29,47 @@ FocusScope {
         if (!GlobalStates.wallpaperManager || currentScreenName === "") return false;
         let perScreen = GlobalStates.wallpaperManager.perScreenWallpapers || {};
         return perScreen[currentScreenName] !== undefined;
+    }
+
+    readonly property string activeWallpaperPath: {
+        if (!GlobalStates.wallpaperManager) return "";
+        let perScreen = GlobalStates.wallpaperManager.perScreenWallpapers || {};
+        if (currentScreenName !== "" && perScreen[currentScreenName] !== undefined) {
+            return perScreen[currentScreenName];
+        }
+        return GlobalStates.wallpaperManager.currentWallpaper || "";
+    }
+
+    property bool showSettings: GlobalStates.wallpapersTabShowSettings
+
+    Connections {
+        target: GlobalStates
+        function onDashboardOpenChanged() {
+            if (!GlobalStates.dashboardOpen) {
+                wallpapersTabRoot.showSettings = false;
+            }
+        }
+        function onWallpapersTabShowSettingsChanged() {
+            if (wallpapersTabRoot.showSettings !== GlobalStates.wallpapersTabShowSettings) {
+                wallpapersTabRoot.showSettings = GlobalStates.wallpapersTabShowSettings;
+            }
+        }
+    }
+
+    onShowSettingsChanged: {
+        if (GlobalStates.wallpapersTabShowSettings !== showSettings) {
+            GlobalStates.wallpapersTabShowSettings = showSettings;
+        }
+        if (showSettings) {
+            wallpaperSettingsView.forceActiveFocus();
+        } else {
+            wallpapersTabRoot.forceActiveFocus();
+            wallpapersTabRoot.focusSearch();
+            Qt.callLater(function() {
+                wallpapersTabRoot.forceActiveFocus();
+                wallpapersTabRoot.focusSearch();
+            });
+        }
     }
 
     function togglePerScreenMode() {
@@ -74,9 +116,24 @@ FocusScope {
             }
         },
         {
-            id: "schemeSelector",
+            id: "dayNightToggle",
             focusFunc: function () {
-                schemeSelector.openAndFocus();
+                dayNightContainer.keyboardNavigationActive = true;
+                dayNightBtn.forceActiveFocus();
+            }
+        },
+        {
+            id: "randomButton",
+            focusFunc: function () {
+                randomBtnContainer.keyboardNavigationActive = true;
+                randomBtn.forceActiveFocus();
+            }
+        },
+        {
+            id: "settingsButton",
+            focusFunc: function () {
+                settingsBtnContainer.keyboardNavigationActive = true;
+                settingsBtn.forceActiveFocus();
             }
         },
         {
@@ -91,7 +148,12 @@ FocusScope {
 
     // Función para enfocar el campo de búsqueda
     function focusSearch() {
+        if (showSettings) {
+            wallpaperSettingsView.forceActiveFocus();
+            return;
+        }
         currentFocusIndex = -1;
+        wallpapersTabRoot.forceActiveFocus();
         wallpaperSearchInput.focusInput();
 
         // Restaurar índice válido si está en -1 y hay wallpapers
@@ -128,8 +190,11 @@ FocusScope {
 
     // Función para navegar hacia atrás (Shift+Tab)
     function focusPreviousElement() {
-        if (currentFocusIndex === -1 || currentFocusIndex === 0) {
-            // Si estamos en el search o en el primer elemento focusable, volver al search
+        if (currentFocusIndex === -1) {
+            currentFocusIndex = focusableElements.length - 1;
+            focusableElements[currentFocusIndex].focusFunc();
+        } else if (currentFocusIndex === 0) {
+            // Si estamos en el primer elemento focusable, volver al search
             focusSearch();
         } else {
             currentFocusIndex--;
@@ -155,24 +220,10 @@ FocusScope {
 
     // Función para encontrar el índice del wallpaper actual en la lista filtrada
     function findCurrentWallpaperIndex() {
-        if (!GlobalStates.wallpaperManager) {
+        if (!activeWallpaperPath) {
             return -1;
         }
-
-        let perScreen = GlobalStates.wallpaperManager.perScreenWallpapers || {};
-        let currentWallpaper = "";
-        
-        if (currentScreenName !== "" && perScreen[currentScreenName] !== undefined) {
-            currentWallpaper = perScreen[currentScreenName];
-        } else {
-            currentWallpaper = GlobalStates.wallpaperManager.currentWallpaper;
-        }
-
-        if (!currentWallpaper) {
-            return -1;
-        }
-
-        return filteredWallpapers.indexOf(currentWallpaper);
+        return filteredWallpapers.indexOf(activeWallpaperPath);
     }
 
     // Llama a focusSearch una vez que el componente se ha completado.
@@ -180,22 +231,20 @@ FocusScope {
         centerTimer.start();
     }
 
-    // Actualizar subcarpetas cuando la pestaña se haga visible
+    // Reposicionar al wallpaper actual cuando la pestaña se haga visible
     onVisibleChanged: {
         if (visible) {
-            if (GlobalStates.wallpaperManager) {
-                console.log("WallpapersTab became visible, updating subfolders");
-                GlobalStates.wallpaperManager.scanSubfolders();
-            }
+            showSettings = false;
+            GlobalStates.wallpapersTabShowSettings = false;
             // Reposicionar al wallpaper actual cuando se hace visible
             centerTimer.restart();
         }
     }
 
-    // Timer para asegurar que el centrado ocurre después de que el GridView esté listo
+    // Timer para asegurar que el centrado ocurre suavemente después de la animación de apertura
     Timer {
         id: centerTimer
-        interval: 50
+        interval: 220
         repeat: false
         onTriggered: {
             centerCurrentWallpaper();
@@ -244,6 +293,9 @@ FocusScope {
     ColumnLayout {
         anchors.fill: parent
         spacing: 8
+        // The settings view draws no background of its own
+        // (the notch's themed one shows through), so the grid steps aside.
+        visible: !wallpapersTabRoot.showSettings
 
         // Barra superior con OLED mode, búsqueda y scheme selector
         RowLayout {
@@ -769,13 +821,239 @@ FocusScope {
                 }
             }
 
-            // Spacer
-            // Item { Layout.fillWidth: true }
+            // Day / Night Mode Toggle
+            Item {
+                id: dayNightContainer
+                Layout.preferredWidth: 84
+                Layout.preferredHeight: 48
+
+                property bool keyboardNavigationActive: false
+
+                StyledRect {
+                    variant: (dayNightContainer.keyboardNavigationActive && dayNightBtn.activeFocus) || dayNightMa.containsMouse ? "focus" : "pane"
+                    anchors.fill: parent
+                    radius: Styling.radius(4)
+
+                    Item {
+                        id: dayNightBtn
+                        anchors.fill: parent
+
+                        onActiveFocusChanged: {
+                            if (!activeFocus) {
+                                dayNightContainer.keyboardNavigationActive = false;
+                            }
+                        }
+
+                        Keys.onPressed: event => {
+                            if (event.key === Qt.Key_Tab) {
+                                dayNightContainer.keyboardNavigationActive = false;
+                                if (event.modifiers & Qt.ShiftModifier) {
+                                    wallpapersTabRoot.focusPreviousElement();
+                                } else {
+                                    wallpapersTabRoot.focusNextElement();
+                                }
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                Config.theme.lightMode = !Config.theme.lightMode;
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Escape) {
+                                dayNightContainer.keyboardNavigationActive = false;
+                                focusSearch();
+                                event.accepted = true;
+                            }
+                        }
+
+                        MouseArea {
+                            id: dayNightMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                Config.theme.lightMode = !Config.theme.lightMode;
+                            }
+
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                spacing: 4
+
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    color: Colors.background
+                                    radius: Styling.radius(0)
+
+                                    Text {
+                                        anchors.fill: parent
+                                        text: Config.theme.lightMode ? "Day" : "Night"
+                                        color: Colors.overSurface
+                                        font.family: Config.theme.font
+                                        font.pixelSize: Config.theme.fontSize
+                                        font.weight: Font.Medium
+                                        verticalAlignment: Text.AlignVCenter
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                }
+
+                                Item {
+                                    Layout.preferredWidth: 36
+                                    Layout.preferredHeight: 36
+
+                                    StyledRect {
+                                        variant: Config.theme.lightMode ? "primary" : "pane"
+                                        anchors.fill: parent
+                                        radius: Styling.radius(0)
+
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: Config.theme.lightMode ? Icons.sun : Icons.moon
+                                            color: Config.theme.lightMode ? Styling.srItem("primary") : Colors.overSurface
+                                            font.family: Icons.font
+                                            font.pixelSize: 18
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Random Wallpaper Shuffle Button
+            Item {
+                id: randomBtnContainer
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
+
+                property bool keyboardNavigationActive: false
+
+                StyledRect {
+                    variant: (randomBtnContainer.keyboardNavigationActive && randomBtn.activeFocus) || randomMa.containsMouse ? "focus" : "pane"
+                    anchors.fill: parent
+                    radius: Styling.radius(4)
+
+                    Item {
+                        id: randomBtn
+                        anchors.fill: parent
+
+                        onActiveFocusChanged: {
+                            if (!activeFocus) {
+                                randomBtnContainer.keyboardNavigationActive = false;
+                            }
+                        }
+
+                        Keys.onPressed: event => {
+                            if (event.key === Qt.Key_Tab) {
+                                randomBtnContainer.keyboardNavigationActive = false;
+                                if (event.modifiers & Qt.ShiftModifier) {
+                                    wallpapersTabRoot.focusPreviousElement();
+                                } else {
+                                    wallpapersTabRoot.focusNextElement();
+                                }
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                randomBtnContainer.keyboardNavigationActive = false;
+                                GlobalStates.triggerRandomWallpaper();
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Escape) {
+                                randomBtnContainer.keyboardNavigationActive = false;
+                                focusSearch();
+                                event.accepted = true;
+                            }
+                        }
+
+                        MouseArea {
+                            id: randomMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                randomBtnContainer.keyboardNavigationActive = false;
+                                GlobalStates.triggerRandomWallpaper();
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: Icons.shuffle
+                                font.family: Icons.font
+                                font.pixelSize: 20
+                                color: (randomBtnContainer.keyboardNavigationActive && randomBtn.activeFocus) || randomMa.containsMouse ? Styling.srItem("focus") : Colors.overSurface
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Advanced Settings Button
+            Item {
+                id: settingsBtnContainer
+                Layout.preferredWidth: 48
+                Layout.preferredHeight: 48
+
+                property bool keyboardNavigationActive: false
+
+                StyledRect {
+                    variant: (settingsBtnContainer.keyboardNavigationActive && settingsBtn.activeFocus) || settingsMa.containsMouse ? "focus" : "pane"
+                    anchors.fill: parent
+                    radius: Styling.radius(4)
+
+                    Item {
+                        id: settingsBtn
+                        anchors.fill: parent
+
+                        onActiveFocusChanged: {
+                            if (!activeFocus) {
+                                settingsBtnContainer.keyboardNavigationActive = false;
+                            }
+                        }
+
+                        Keys.onPressed: event => {
+                            if (event.key === Qt.Key_Tab) {
+                                settingsBtnContainer.keyboardNavigationActive = false;
+                                if (event.modifiers & Qt.ShiftModifier) {
+                                    wallpapersTabRoot.focusPreviousElement();
+                                } else {
+                                    wallpapersTabRoot.focusNextElement();
+                                }
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                settingsBtnContainer.keyboardNavigationActive = false;
+                                wallpapersTabRoot.showSettings = true;
+                                event.accepted = true;
+                            } else if (event.key === Qt.Key_Escape) {
+                                settingsBtnContainer.keyboardNavigationActive = false;
+                                focusSearch();
+                                event.accepted = true;
+                            }
+                        }
+
+                        MouseArea {
+                            id: settingsMa
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                settingsBtnContainer.keyboardNavigationActive = false;
+                                wallpapersTabRoot.showSettings = true;
+                            }
+
+                            Text {
+                                anchors.centerIn: parent
+                                text: Icons.gear
+                                font.family: Icons.font
+                                font.pixelSize: 20
+                                color: (settingsBtnContainer.keyboardNavigationActive && settingsBtn.activeFocus) || settingsMa.containsMouse ? Styling.srItem("focus") : Colors.overSurface
+                            }
+                        }
+                    }
+                }
+            }
 
             // Scheme Selector a la derecha
             Item {
-                Layout.preferredWidth: 200
-                Layout.preferredHeight: 48
+                visible: false
+                Layout.preferredWidth: 0
+                Layout.preferredHeight: 0
 
                 SchemeSelector {
                     id: schemeSelector
@@ -864,9 +1142,9 @@ FocusScope {
                 highlightFollowsCurrentItem: !isScrolling
 
                 // Optimizaciones de rendimiento
-                cacheBuffer: cellHeight
-                displayMarginBeginning: cellHeight
-                displayMarginEnd: cellHeight
+                cacheBuffer: cellHeight * 3
+                displayMarginBeginning: cellHeight * 2
+                displayMarginEnd: cellHeight * 2
                 reuseItems: true
 
                 // Configuración de scroll optimizada
@@ -940,20 +1218,7 @@ FocusScope {
                                 clip: true
 
                                 property var currentItem: wallpaperGrid.currentItem
-                                property bool isCurrentWallpaper: {
-                                    if (!GlobalStates.wallpaperManager || wallpaperGrid.currentIndex < 0)
-                                        return false;
-                                        
-                                    let perScreen = GlobalStates.wallpaperManager.perScreenWallpapers || {};
-                                    let currentWall = "";
-                                    if (currentScreenName !== "" && perScreen[currentScreenName] !== undefined) {
-                                        currentWall = perScreen[currentScreenName];
-                                    } else {
-                                        currentWall = GlobalStates.wallpaperManager.currentWallpaper;
-                                    }
-                                        
-                                    return currentWall === filteredWallpapers[wallpaperGrid.currentIndex];
-                                }
+                                property bool isCurrentWallpaper: (wallpaperGrid.currentIndex >= 0 && wallpaperGrid.currentIndex < filteredWallpapers.length) ? (filteredWallpapers[wallpaperGrid.currentIndex] === wallpapersTabRoot.activeWallpaperPath) : false
                                 property bool showHoveredItem: currentItem && currentItem.isHovered && !visible
 
                                 visible: selectedIndex >= 0 || showHoveredItem
@@ -1056,32 +1321,20 @@ FocusScope {
                     height: wallpaperGrid.cellHeight
                     color: "transparent"
 
-                    property bool isCurrentWallpaper: {
-                        if (!GlobalStates.wallpaperManager)
-                            return false;
-                            
-                        let perScreen = GlobalStates.wallpaperManager.perScreenWallpapers || {};
-                        let currentWall = "";
-                        if (currentScreenName !== "" && perScreen[currentScreenName] !== undefined) {
-                            currentWall = perScreen[currentScreenName];
-                        } else {
-                            currentWall = GlobalStates.wallpaperManager.currentWallpaper;
-                        }
-                        return currentWall === modelData;
-                    }
+                    property bool isCurrentWallpaper: modelData === wallpapersTabRoot.activeWallpaperPath
 
                     property bool isHovered: false
                     property bool isSelected: selectedIndex === index
 
-                    // Calcular si el item está visible en el viewport (con buffer para precarga)
+                    // Calcular si el item está visible en el viewport (con buffer amplio para precarga suave)
                     readonly property bool isInViewport: {
                         var gridTop = wallpaperGrid.contentY;
                         var gridBottom = gridTop + wallpaperGrid.height;
                         var itemTop = y;
                         var itemBottom = itemTop + height;
 
-                        // Buffer de una fila arriba y abajo para precarga suave
-                        var buffer = wallpaperGrid.cellHeight;
+                        // Buffer de 3 filas arriba y abajo para precarga suave sin churn
+                        var buffer = wallpaperGrid.cellHeight * 3;
                         return itemBottom + buffer >= gridTop && itemTop - buffer <= gridBottom;
                     }
 
@@ -1097,6 +1350,7 @@ FocusScope {
 
                                 // Lazy loader que solo carga cuando el item está visible
                                 Loader {
+                                    id: thumbLoader
                                     anchors.fill: parent
                                     sourceComponent: staticImageComponent
                                     property string sourceFile: modelData
@@ -1107,7 +1361,7 @@ FocusScope {
                                 Rectangle {
                                     anchors.fill: parent
                                     color: Colors.surface
-                                    visible: !parent.active || parent.status !== Loader.Ready
+                                    visible: !thumbLoader.active || thumbLoader.status !== Loader.Ready
 
                                     Text {
                                         anchors.centerIn: parent
@@ -1122,7 +1376,7 @@ FocusScope {
                                             to: 360
                                             duration: 1000
                                             loops: Animation.Infinite
-                                            running: parent.visible
+                                            running: parent.visible && thumbLoader.status === Loader.Loading
                                         }
                                     }
                                 }
@@ -1225,6 +1479,22 @@ FocusScope {
                     // console.log("Thumbnail not ready yet for:", parent.sourceFile);
                 }
             }
+        }
+    }
+
+    WallpaperSettingsView {
+        id: wallpaperSettingsView
+        anchors.fill: parent
+        visible: wallpapersTabRoot.showSettings
+        z: 2000
+        onBackClicked: {
+            wallpapersTabRoot.showSettings = false;
+            wallpapersTabRoot.forceActiveFocus();
+            wallpapersTabRoot.focusSearch();
+            Qt.callLater(function() {
+                wallpapersTabRoot.forceActiveFocus();
+                wallpapersTabRoot.focusSearch();
+            });
         }
     }
 }
