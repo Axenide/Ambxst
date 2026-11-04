@@ -52,7 +52,7 @@ Item {
 
     // Monitor reference and reference to toplevels on monitor
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
-    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.visibleWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.id === compositorMonitor.visibleWorkspace.id && c.monitor === compositorMonitor.id)
+    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.visibleWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.name === compositorMonitor.visibleWorkspace.name && c.monitor === compositorMonitor.id)
 
     // Fullscreen detection - scoped to this monitor so the effect only
     // applies to the screen that actually has the fullscreen window

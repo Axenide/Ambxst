@@ -28,10 +28,10 @@ Singleton {
         if (!mon || !mon.activeWorkspace)
             return false;
         const ws = mon.visibleWorkspace || mon.activeWorkspace;
-        const wsId = ws.id;
+        const wsName = ws.name;
         const wins = root.windowList;
         for (let i = 0; i < wins.length; i++) {
-            if (wins[i].monitor === mon.id && wins[i].fullscreen && wins[i].workspace.id === wsId)
+            if (wins[i].monitor === mon.id && wins[i].fullscreen && wins[i].workspace.name === wsName)
                 return true;
         }
         return false;

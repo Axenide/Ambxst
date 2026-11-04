@@ -150,8 +150,8 @@ Singleton {
                 height: mon.height,
                 refreshRate: mon.refresh_rate,
                 scale: mon.scale,
-                activeWorkspace: { id: parseInt(mon.metadata ? mon.metadata.active_workspace : 0) || 0, name: mon.metadata ? mon.metadata.active_workspace : "" },
-                visibleWorkspace: { id: parseInt(mon.metadata ? (mon.metadata.visible_workspace !== undefined ? mon.metadata.visible_workspace : mon.metadata.active_workspace) : 0) || 0 }
+                activeWorkspace: { id: parseInt(mon.metadata ? mon.metadata.active_workspace : 0) || 0, name: mon.metadata ? mon.metadata.active_workspace || "" : "" },
+                visibleWorkspace: { id: parseInt(mon.metadata ? (mon.metadata.visible_workspace !== undefined ? mon.metadata.visible_workspace : mon.metadata.active_workspace) : 0) || 0, name: mon.metadata ? (mon.metadata.visible_workspace !== undefined ? mon.metadata.visible_workspace : mon.metadata.active_workspace) || "" : "" }
             }));
             root.monitors.values = mappedMonitors;
             const focused = mappedMonitors.find(mon => mon.focused) || null;
