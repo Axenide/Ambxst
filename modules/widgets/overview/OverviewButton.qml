@@ -10,6 +10,10 @@ ToggleButton {
     tooltipText: I18n.t("bar.tooltip.overview")
 
     onToggle: function () {
+        if (AxctlService.nativeOverviewSupported) {
+            AxctlService.dispatch("overview toggle");
+            return;
+        }
         if (GlobalStates.overviewOpen) {
             Visibilities.setActiveModule("");
         } else {

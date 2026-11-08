@@ -56,7 +56,7 @@ QtObject {
 
             // System
             case "overview":
-                if (AxctlService.compositorName === "niri") {
+                if (AxctlService.nativeOverviewSupported) {
                     AxctlService.dispatch("overview toggle");
                 } else {
                     toggleSimpleModule("overview");

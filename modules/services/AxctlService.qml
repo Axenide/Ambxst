@@ -10,10 +10,10 @@ Singleton {
     property var focusedWorkspace: null
     property var focusedClient: null
 
-    // Compositor-level overview state (niri's native overview). Sourced
-    // from `overview_open` in the compositor state dump; stays false on
-    // compositors that don't emit overview events.
+    // Compositor-level overview state from `overview_open` in the state dump.
     property bool overviewOpen: false
+
+    readonly property bool nativeOverviewSupported: compositorName === "niri" || compositorName === "mango"
 
     // Compositor backend name ("hyprland"/"niri"/"mango"), from
     // `axctl system get-compositor`. Empty until the daemon + axctl

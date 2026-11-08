@@ -520,7 +520,7 @@ Item {
                         }
 
                         onClicked: {
-                            if (AxctlService.compositorName === "niri") {
+                            if (AxctlService.nativeOverviewSupported) {
                                 AxctlService.dispatch("overview toggle");
                                 return;
                             }
@@ -658,7 +658,7 @@ Item {
                         }
 
                         onClicked: {
-                            if (AxctlService.compositorName === "niri") {
+                            if (AxctlService.nativeOverviewSupported) {
                                 AxctlService.dispatch("overview toggle");
                                 return;
                             }

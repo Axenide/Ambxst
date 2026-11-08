@@ -32,7 +32,11 @@ Item {
 
         onClicked: {
             if (Visibilities.currentActiveModule === "dashboard") {
-                Visibilities.setActiveModule("overview");
+                if (AxctlService.nativeOverviewSupported) {
+                    AxctlService.dispatch("overview toggle");
+                } else {
+                    Visibilities.setActiveModule("overview");
+                }
             } else if (Visibilities.currentActiveModule === "overview") {
                 GlobalStates.launcherCurrentTab = 0;
                 Visibilities.setActiveModule("launcher");
