@@ -99,6 +99,14 @@ Singleton {
         if (state.windows) {
             const existingClients = root.clients.values || [];
             const mappedClients = state.windows.map(win => {
+                const metadata = win.metadata || {};
+                const rawWorkspaceId = String(win.workspace_id || "");
+                const workspaceName = rawWorkspaceId.includes(":")
+                    ? rawWorkspaceId.slice(rawWorkspaceId.lastIndexOf(":") + 1)
+                    : rawWorkspaceId;
+                const parsedWorkspaceId = Number(workspaceName);
+                const workspaceId = Number.isFinite(parsedWorkspaceId) ? parsedWorkspaceId : (parseInt(workspaceName) || 0);
+                const monitorId = String(metadata.monitor_id ?? metadata.monitor ?? "");
                 const existing = existingClients.find(c => c.address === win.id);
                 const prevFocus = existing && existing.focusHistoryID !== undefined ? existing.focusHistoryID : 999999;
                 const newFocus = win.is_focused ? (existing && existing.is_focused ? prevFocus : --root.focusHistoryCounter) : prevFocus;
@@ -106,15 +114,15 @@ Singleton {
                     address: win.id,
                     class: win.app_id,
                     title: win.title,
-                    workspace: { id: parseInt(win.workspace_id) || 0, name: win.workspace_id },
-                    monitor: parseInt(win.metadata ? win.metadata.monitor_id : 0) || 0,
+                    workspace: { id: workspaceId, name: workspaceName },
+                    monitor: monitorId,
                     floating: win.is_floating,
                     fullscreen: win.is_fullscreen,
                     hidden: win.is_hidden,
                     mapped: true,
-                    at: [win.metadata ? (win.metadata.x || 0) : 0, win.metadata ? (win.metadata.y || 0) : 0],
-                    size: [win.metadata ? (win.metadata.width || 0) : 0, win.metadata ? (win.metadata.height || 0) : 0],
-                    xwayland: (win.metadata ? win.metadata.xwayland : false) || false,
+                    at: [metadata.x || 0, metadata.y || 0],
+                    size: [metadata.width || 0, metadata.height || 0],
+                    xwayland: metadata.xwayland || false,
                     is_focused: win.is_focused || false,
                     focusHistoryID: newFocus
                 };
@@ -127,32 +135,64 @@ Singleton {
         }
 
         if (state.workspaces) {
-            const mappedWorkspaces = state.workspaces.map(ws => ({
-                id: parseInt(ws.id) || 0,
-                name: ws.name,
-                monitor: ws.monitor_id,
-                active: ws.is_active,
-                windows: 0
-            }));
+            const mappedWorkspaces = state.workspaces.map(ws => {
+                const metadata = ws.metadata || {};
+                const rawWorkspaceId = String(ws.name || ws.id || "");
+                const name = rawWorkspaceId.includes(":")
+                    ? rawWorkspaceId.slice(rawWorkspaceId.lastIndexOf(":") + 1)
+                    : rawWorkspaceId;
+                const parsedIndex = Number(metadata.index ?? name);
+                const id = Number.isFinite(parsedIndex) ? parsedIndex : (parseInt(name) || 0);
+                return {
+                    id: id,
+                    name: name || String(id),
+                    monitor: String(ws.monitor_id ?? metadata.monitor_id ?? ""),
+                    active: ws.is_active,
+                    windows: 0
+                };
+            });
             root.workspaces.values = mappedWorkspaces;
-            const focused = mappedWorkspaces.find(ws => ws.active) || null;
+            const focusedMonitorState = (state.monitors || []).find(mon => mon.is_focused);
+            const focusedMonitorId = focusedMonitorState ? String(focusedMonitorState.id ?? focusedMonitorState.name ?? "") : "";
+            const focused = mappedWorkspaces.find(ws => ws.active && (!focusedMonitorId || ws.monitor === focusedMonitorId))
+                || mappedWorkspaces.find(ws => ws.active)
+                || null;
             if (focused !== root.focusedWorkspace) {
                 root.focusedWorkspace = focused;
             }
         }
 
         if (state.monitors) {
-            const mappedMonitors = state.monitors.map(mon => ({
-                id: parseInt(mon.id) || 0,
-                name: mon.name,
-                focused: mon.is_focused,
-                width: mon.width,
-                height: mon.height,
-                refreshRate: mon.refresh_rate,
-                scale: mon.scale,
-                activeWorkspace: { id: parseInt(mon.metadata ? mon.metadata.active_workspace : 0) || 0, name: mon.metadata ? mon.metadata.active_workspace || "" : "" },
-                visibleWorkspace: { id: parseInt(mon.metadata ? (mon.metadata.visible_workspace !== undefined ? mon.metadata.visible_workspace : mon.metadata.active_workspace) : 0) || 0, name: mon.metadata ? (mon.metadata.visible_workspace !== undefined ? mon.metadata.visible_workspace : mon.metadata.active_workspace) || "" : "" }
-            }));
+            const mappedWorkspaces = root.workspaces.values || [];
+            const mappedMonitors = state.monitors.map(mon => {
+                const metadata = mon.metadata || {};
+                const id = String(mon.id ?? mon.name ?? "");
+                const findWorkspace = value => mappedWorkspaces.find(ws =>
+                    ws.monitor === id && (ws.name === String(value) || String(ws.id) === String(value))
+                );
+                const activeWorkspace = findWorkspace(metadata.active_workspace)
+                    || mappedWorkspaces.find(ws => ws.monitor === id && ws.active)
+                    || null;
+                const visibleWorkspace = findWorkspace(metadata.visible_workspace)
+                    || activeWorkspace;
+                return {
+                    id: id,
+                    name: mon.name || id,
+                    focused: mon.is_focused,
+                    width: mon.width,
+                    height: mon.height,
+                    refreshRate: mon.refresh_rate,
+                    scale: mon.scale,
+                    x: metadata.x || 0,
+                    y: metadata.y || 0,
+                    activeWorkspace: activeWorkspace
+                        ? { id: activeWorkspace.id, name: activeWorkspace.name }
+                        : { id: Number(metadata.active_workspace) || 0, name: metadata.active_workspace || "" },
+                    visibleWorkspace: visibleWorkspace
+                        ? { id: visibleWorkspace.id, name: visibleWorkspace.name }
+                        : { id: Number(metadata.visible_workspace ?? metadata.active_workspace) || 0, name: metadata.visible_workspace ?? metadata.active_workspace ?? "" }
+                };
+            });
             root.monitors.values = mappedMonitors;
             const focused = mappedMonitors.find(mon => mon.focused) || null;
             if (focused !== root.focusedMonitor) {

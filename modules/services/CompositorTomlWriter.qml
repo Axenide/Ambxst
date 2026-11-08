@@ -198,6 +198,12 @@ Singleton {
                 position: Config.bar.position,
             },
             layout: GlobalStates.compositorLayout,
+            input: {
+                keyboard: {
+                    layouts: c.keyboardLayouts || "",
+                    variants: c.keyboardVariants || "",
+                },
+            },
             keybinds: gatherKeybinds(),
         };
     }
@@ -407,6 +413,8 @@ Singleton {
         function onRoundingChanged() { root.callWrite(); }
         function onGapsInChanged() { root.callWrite(); }
         function onGapsOutChanged() { root.callWrite(); }
+        function onKeyboardLayoutsChanged() { root.callWrite(); }
+        function onKeyboardVariantsChanged() { root.callWrite(); }
         function onActiveBorderColorChanged() { root.callWrite(); }
         function onInactiveBorderColorChanged() { root.callWrite(); }
         function onBorderAngleChanged() { root.callWrite(); }

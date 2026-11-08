@@ -9,7 +9,17 @@ type Input struct {
 	Theme      ThemeConfig      `json:"theme"`
 	Bar        BarConfig        `json:"bar"`
 	Layout     string           `json:"layout"`
+	Input      InputConfig      `json:"input"`
 	Keybinds   KeybindsConfig   `json:"keybinds"`
+}
+
+type InputConfig struct {
+	Keyboard KeyboardConfig `json:"keyboard"`
+}
+
+type KeyboardConfig struct {
+	Layouts  string `json:"layouts"`
+	Variants string `json:"variants"`
 }
 
 type CompositorConfig struct {

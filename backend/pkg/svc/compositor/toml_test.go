@@ -144,6 +144,17 @@ func TestRenderMangoTarget(t *testing.T) {
 	}
 }
 
+func TestRenderKeyboardLayout(t *testing.T) {
+	in := Input{Input: InputConfig{Keyboard: KeyboardConfig{
+		Layouts:  "us",
+		Variants: "altgr-intl",
+	}}}
+	out := Render(in, false)
+	if !strings.Contains(out, "[input.keyboard]\nlayouts = \"us\"\nvariants = \"altgr-intl\"\n") {
+		t.Fatalf("keyboard layout not rendered: %s", out)
+	}
+}
+
 func TestRenderAllTargetsCoexist(t *testing.T) {
 	out := Render(sampleInput(), false)
 	lines := []string{

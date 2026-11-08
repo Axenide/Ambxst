@@ -52,8 +52,8 @@ func Render(in Input, gameMode bool) string {
 	// [input]
 	b.WriteString("\n[input]\n")
 	b.WriteString("[input.keyboard]\n")
-	b.WriteString(`layouts = ""` + "\n")
-	b.WriteString(`variants = ""` + "\n")
+	fmt.Fprintf(&b, "layouts = %q\n", in.Input.Keyboard.Layouts)
+	fmt.Fprintf(&b, "variants = %q\n", in.Input.Keyboard.Variants)
 
 	return b.String()
 }

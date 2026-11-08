@@ -755,6 +755,8 @@ Singleton {
             property int gapsIn: 2
             property int gapsOut: 4
             property string layout: "dwindle"
+            property string keyboardLayouts: ""
+            property string keyboardVariants: ""
             property bool shadowEnabled: true
             property int shadowRange: 8
             property int shadowRenderPower: 3

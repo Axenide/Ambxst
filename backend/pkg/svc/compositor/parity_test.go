@@ -35,7 +35,7 @@ func TestRenderMatchesCurrentAxctlToml(t *testing.T) {
 		"namespace = \"quickshell\"\nno_anim = true",
 		"namespace = \"fabric\"\nblur = true\nignore_alpha_value = 0.4",
 		"namespace = \"^ambxst(:.*)?$\"\nblur = true\nblur_popups = true\nno_anim = true\nignore_alpha_value = 0.20",
-		"[input]\n[input.keyboard]\nlayouts = \"\"\nvariants = \"\"\n",
+		"[input]\n[input.keyboard]\nlayouts = \"us\"\nvariants = \"altgr-intl\"\n",
 	}
 	for _, want := range required {
 		if !strings.Contains(out, want) {
@@ -50,10 +50,10 @@ func TestRenderMatchesCurrentAxctlToml(t *testing.T) {
 func realishInput() Input {
 	return Input{
 		Compositor: CompositorConfig{
-			GapsIn:    2,
-			GapsOut:   4,
-			BorderSize: 2,
-			Rounding:  16,
+			GapsIn:              2,
+			GapsOut:             4,
+			BorderSize:          2,
+			Rounding:            16,
 			ActiveBorderColor:   []string{"primary"},
 			ActiveBorderAngle:   45,
 			InactiveBorderColor: []string{"surface"},
@@ -74,6 +74,10 @@ func realishInput() Input {
 		Theme:  ThemeConfig{SrBgOpacity: 1.0, SrBarBgOpacity: 0.0, ShadowColor: "#00000080", ShadowOpacity: 0.5},
 		Bar:    BarConfig{Position: "top"},
 		Layout: "scrolling",
+		Input: InputConfig{Keyboard: KeyboardConfig{
+			Layouts:  "us",
+			Variants: "altgr-intl",
+		}},
 		Keybinds: KeybindsConfig{
 			Ambxst: map[string]Keybind{
 				"launcher":  {Modifiers: []string{"SUPER"}, Key: "Super_L", Action: Action{ID: "ambxst.launcher"}},
@@ -84,8 +88,8 @@ func realishInput() Input {
 			},
 			Custom: []CustomBind{
 				{
-					Name: "Close Window",
-					Keys: []KeySpec{{Modifiers: []string{"SUPER"}, Key: "C"}},
+					Name:    "Close Window",
+					Keys:    []KeySpec{{Modifiers: []string{"SUPER"}, Key: "C"}},
 					Actions: []Action{{ID: "window.close"}},
 					Enabled: true,
 				},
