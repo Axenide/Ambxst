@@ -10,6 +10,7 @@ import qs.modules.theme
 import qs.modules.services
 import qs.modules.components
 import qs.modules.corners
+import qs.modules.bar.workspaces
 import qs.modules.globals
 import qs.config
 
@@ -81,7 +82,7 @@ Item {
 
     // Monitor reference and refrence to toplevels on monitor
     readonly property var compositorMonitor: AxctlService.monitorFor(screen)
-    readonly property var toplevels: (!compositorMonitor || !compositorMonitor.visibleWorkspace || !AxctlService.clients.values) ? [] : AxctlService.clients.values.filter(c => c.workspace.name === compositorMonitor.visibleWorkspace.name && c.monitor === compositorMonitor.id)
+    readonly property var toplevels: CompositorData.monitorWindows(compositorMonitor)
 
     // Check if there are any windows on the current monitor and workspace
     readonly property bool hasWindows: toplevels.length > 0

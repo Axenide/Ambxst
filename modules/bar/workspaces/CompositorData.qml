@@ -20,18 +20,32 @@ Singleton {
         // No-op: state is now pushed inline via axctl subscribe events
     }
 
-    // Monitor-scoped fullscreen check. Only windows on the workspace the
-    // user is actually seeing count (the special workspace overlays the
-    // regular one on Hyprland), so fullscreen state never propagates to
-    // other screens.
-    function monitorHasFullscreen(mon) {
-        if (!mon || !mon.activeWorkspace)
+    function workspaceMatches(first, second) {
+        if (!first || !second)
             return false;
-        const ws = mon.visibleWorkspace || mon.activeWorkspace;
-        const wsName = ws.name;
-        const wins = root.windowList;
-        for (let i = 0; i < wins.length; i++) {
-            if (wins[i].monitor === mon.id && wins[i].fullscreen && wins[i].workspace.name === wsName)
+        const firstIdentity = String(first.identity ?? "");
+        const secondIdentity = String(second.identity ?? "");
+        if (firstIdentity && secondIdentity)
+            return firstIdentity === secondIdentity;
+        return String(first.name ?? first.id ?? "") === String(second.name ?? second.id ?? "");
+    }
+
+    function monitorWindows(mon) {
+        if (!mon)
+            return [];
+        return root.windowList.filter(win => {
+            if (win.monitor !== mon.id || win.hidden)
+                return false;
+            if (win.visible !== undefined)
+                return win.visible;
+            return mon.visibleWorkspace && root.workspaceMatches(win.workspace, mon.visibleWorkspace);
+        });
+    }
+
+    function monitorHasFullscreen(mon) {
+        const windows = root.monitorWindows(mon);
+        for (let i = 0; i < windows.length; i++) {
+            if (windows[i].fullscreen)
                 return true;
         }
         return false;
