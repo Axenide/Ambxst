@@ -218,6 +218,9 @@ Singleton {
                     scale: mon.scale,
                     x: metadata.x || 0,
                     y: metadata.y || 0,
+                    overviewOpen: metadata.overview_open === undefined
+                        ? Array.isArray(metadata.active_tags) && metadata.active_tags.some(tag => Number(tag) === 0)
+                        : Boolean(metadata.overview_open),
                     activeWorkspace: activeWorkspace
                         ? { id: activeWorkspace.id, name: activeWorkspace.name, identity: activeWorkspace.identity }
                         : { id: 0, name: "", identity: "" },

@@ -43,13 +43,16 @@ PanelWindow {
 
     property var activeVideo: null
 
-    // Blurs the wallpaper while niri's native overview is open. The overview
-    // backdrop shows this surface (place-within-backdrop), so blurring it here
+    // The compositor overview backdrop shows this surface, so blurring it here
     // is what the user sees behind scaled workspace previews.
-    readonly property bool overviewBlurPossible: AxctlService.compositorName === "niri"
+    readonly property var compositorMonitor: AxctlService.monitorFor(currentScreenName)
+    readonly property bool overviewBlurPossible: AxctlService.nativeOverviewSupported
+    readonly property bool compositorOverviewOpen: AxctlService.compositorName === "mango"
+        ? (compositorMonitor ? compositorMonitor.overviewOpen : false)
+        : AxctlService.overviewOpen
     readonly property bool overviewBlurActive: Config.desktop.blurWallpaperOnOverview
         && overviewBlurPossible
-        && AxctlService.overviewOpen
+        && compositorOverviewOpen
 
     // Sync state from the primary wallpaper manager to secondary instances
     Binding {
