@@ -44,13 +44,25 @@ StyledRect {
     function getLayoutIcon(layout) {
         switch (layout) {
         case "dwindle":
+        case "tile":
+        case "vertical_tile":
             return Icons.dwindle;
         case "master":
+        case "deck":
+        case "center_tile":
+        case "vertical_deck":
             return Icons.master;
         case "scrolling":
+        case "scroller":
+        case "vertical_scroller":
             return Icons.scrolling;
+        case "monocle":
+            return Icons.monocle;
+        case "grid":
+        case "vertical_grid":
+            return Icons.squaresFour;
         default:
-            return Icons.dwindle;
+            return Icons.layout;
         }
     }
 
@@ -58,10 +70,32 @@ StyledRect {
         switch (layout) {
         case "dwindle":
             return "Dwindle";
+        case "tile":
+            return "Tile";
+        case "vertical_tile":
+            return "Vertical Tile";
         case "master":
             return "Master";
         case "scrolling":
             return "Scrolling";
+        case "scroller":
+            return "Scroller";
+        case "vertical_scroller":
+            return "Vertical Scroller";
+        case "monocle":
+            return "Monocle";
+        case "grid":
+            return "Grid";
+        case "vertical_grid":
+            return "Vertical Grid";
+        case "deck":
+            return "Deck";
+        case "vertical_deck":
+            return "Vertical Deck";
+        case "center_tile":
+            return "Center Tile";
+        case "right_tile":
+            return "Right Tile";
         default:
             return layout;
         }
