@@ -148,6 +148,7 @@ Singleton {
                     name: name || String(id),
                     monitor: String(ws.monitor_id ?? metadata.monitor_id ?? ""),
                     active: ws.is_active,
+                    layout: String(metadata.layout ?? ""),
                     windows: 0
                 };
             });

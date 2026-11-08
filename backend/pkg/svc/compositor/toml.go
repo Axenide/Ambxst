@@ -2,6 +2,7 @@ package compositor
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -38,9 +39,25 @@ func Render(in Input, gameMode bool) string {
 	writeAppearance(&b, in, gameMode)
 
 	// [general] (layout)
-	if in.Layout != "" {
+	if in.Layout != "" || in.WorkspaceLayouts != nil {
 		b.WriteString("\n[general]\n")
-		fmt.Fprintf(&b, `layout = %q`+"\n", in.Layout)
+		if in.Layout != "" {
+			fmt.Fprintf(&b, `layout = %q`+"\n", in.Layout)
+		}
+		if in.WorkspaceLayouts != nil {
+			b.WriteString("workspace_layouts_enabled = true\n")
+		}
+		if len(in.WorkspaceLayouts) > 0 {
+			b.WriteString("\n[general.workspace_layouts]\n")
+			keys := make([]string, 0, len(in.WorkspaceLayouts))
+			for key := range in.WorkspaceLayouts {
+				keys = append(keys, key)
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				fmt.Fprintf(&b, "%s = %q\n", tomlString(key), in.WorkspaceLayouts[key])
+			}
+		}
 	}
 
 	// [[keybinds]] — core ambxst, system, then user custom binds

@@ -60,6 +60,9 @@ Singleton {
     property bool compositorLayoutReady: false
     readonly property var fallbackLayouts: ["dwindle", "master", "scrolling", "monocle"]
     property var availableLayouts: fallbackLayouts
+    property string mangoDefaultLayout: ""
+    property var mangoWorkspaceLayouts: ({})
+    property bool mangoLayoutStateReady: false
 
     Timer {
         id: layoutFetchRetry
@@ -84,16 +87,20 @@ Singleton {
             root.availableLayouts = names;
         }
         const active = payload.active || ((payload.items || []).find(item => item.current) || {}).name || "";
+        if (payload.compositor) {
+            AxctlService.compositorName = payload.compositor;
+        }
         if (active) {
             root.compositorLayout = active;
         } else {
-            root.compositorLayout = StateService.get("compositorLayout", names[0] || "dwindle");
+            root.compositorLayout = payload.compositor === "mango"
+                ? StateService.get("mangoDefaultLayout", StateService.get("compositorLayout", names[0] || "tile"))
+                : StateService.get("compositorLayout", names[0] || "dwindle");
         }
-        // The payload carries the compositor name too; sync it so the
-        // overview/overview-button detection doesn't wait for the
-        // separate get-compositor probe.
-        if (payload.compositor) {
-            AxctlService.compositorName = payload.compositor;
+        if (payload.compositor === "mango") {
+            root.initializeMangoDefaultLayout(names, active);
+            root.restoreMangoLayoutState();
+            root.syncMangoActiveLayout();
         }
         root.compositorLayoutReady = true;
         layoutFetchRetry.running = false;
@@ -129,7 +136,17 @@ Singleton {
             return;
         }
         compositorLayout = layout;
-        StateService.set("compositorLayout", layout);
+        if (AxctlService.compositorName === "mango") {
+            const workspace = AxctlService.focusedWorkspace;
+            const workspaceIndex = Number(workspace ? workspace.id : NaN);
+            if (workspace && workspace.monitor && Number.isFinite(workspaceIndex) && workspaceIndex > 0) {
+                const layouts = Object.assign({}, root.mangoWorkspaceLayouts || {});
+                layouts[workspace.monitor + ":" + workspaceIndex] = layout;
+                root.saveMangoWorkspaceLayouts(layouts);
+            }
+        } else {
+            StateService.set("compositorLayout", layout);
+        }
         BackendService.call("compositor.dispatch", {args: ["layout", "set", layout]}, (result, error) => {
             if (error || !result || result.error || result.exit_code !== 0) {
                 console.warn("GlobalStates: axctl layout set failed (", layout, "):", error || (result && result.error));
@@ -146,11 +163,107 @@ Singleton {
         setCompositorLayout(availableLayouts[nextIndex]);
     }
 
+    function initializeMangoDefaultLayout(names, active) {
+        const saved = StateService.get("mangoDefaultLayout", "");
+        const previous = StateService.get("compositorLayout", "");
+        const layout = root.mangoDefaultLayout || saved || (names.includes(previous) ? previous : "") || active || names[0] || "tile";
+        if (root.mangoDefaultLayout !== layout) {
+            root.mangoDefaultLayout = layout;
+        }
+        if (StateService.initialized && !saved && layout) {
+            StateService.set("mangoDefaultLayout", layout);
+        }
+    }
+
+    function restoreMangoLayoutState() {
+        if (!StateService.initialized) {
+            return;
+        }
+        const storedLayouts = StateService.get("mangoWorkspaceLayouts", {});
+        root.mangoWorkspaceLayouts = storedLayouts && typeof storedLayouts === "object"
+            ? Object.assign({}, storedLayouts)
+            : {};
+        const savedDefault = StateService.get("mangoDefaultLayout", "");
+        if (savedDefault) {
+            root.mangoDefaultLayout = savedDefault;
+        } else if (root.mangoDefaultLayout) {
+            StateService.set("mangoDefaultLayout", root.mangoDefaultLayout);
+        }
+        root.mangoLayoutStateReady = true;
+        root.syncMangoWorkspaceLayouts();
+        root.syncMangoActiveLayout();
+    }
+
+    function saveMangoWorkspaceLayouts(layouts) {
+        root.mangoWorkspaceLayouts = layouts;
+        StateService.set("mangoWorkspaceLayouts", layouts);
+    }
+
+    function syncMangoWorkspaceLayouts() {
+        if (AxctlService.compositorName !== "mango" || !StateService.initialized) {
+            return;
+        }
+        const layouts = Object.assign({}, root.mangoWorkspaceLayouts || {});
+        let changed = false;
+        for (const workspace of AxctlService.workspaces.values || []) {
+            const index = Number(workspace.id);
+            if (!workspace.layout || !workspace.monitor || !Number.isFinite(index) || index <= 0) {
+                continue;
+            }
+            const key = workspace.monitor + ":" + index;
+            if (layouts[key] !== workspace.layout) {
+                layouts[key] = workspace.layout;
+                changed = true;
+            }
+        }
+        if (changed) {
+            root.saveMangoWorkspaceLayouts(layouts);
+        }
+    }
+
+    function syncMangoActiveLayout() {
+        if (AxctlService.compositorName !== "mango") {
+            return;
+        }
+        const workspace = AxctlService.focusedWorkspace;
+        if (workspace && workspace.layout && root.compositorLayout !== workspace.layout) {
+            root.compositorLayout = workspace.layout;
+        }
+    }
+
+    property Connections mangoWorkspaceConnections: Connections {
+        target: AxctlService
+        function onCompositorNameChanged() {
+            if (AxctlService.compositorName === "mango") {
+                root.restoreMangoLayoutState();
+                root.syncMangoActiveLayout();
+            }
+        }
+        function onFocusedWorkspaceChanged() {
+            root.syncMangoActiveLayout();
+        }
+    }
+
+    property Connections mangoWorkspaceValuesConnections: Connections {
+        target: AxctlService.workspaces
+        function onValuesChanged() {
+            root.syncMangoWorkspaceLayouts();
+        }
+    }
+
+    property Connections stateServiceConnections: Connections {
+        target: StateService
+        function onInitializedChanged() {
+            root.restoreMangoLayoutState();
+        }
+    }
+
 
     // Ensure LockscreenService singleton is loaded
     Component.onCompleted: {
         // Reference the singleton to ensure it loads
         LockscreenService.toString();
+        root.restoreMangoLayoutState();
         // Fetch the active layout from the compositor
         fetchLayoutList();
         layoutFetchRetry.running = true;

@@ -5,12 +5,13 @@ package compositor
 // deliberately flat (no nested JsonAdapter access) so the Go side can be
 // tested without depending on Quickshell.
 type Input struct {
-	Compositor CompositorConfig `json:"compositor"`
-	Theme      ThemeConfig      `json:"theme"`
-	Bar        BarConfig        `json:"bar"`
-	Layout     string           `json:"layout"`
-	Input      InputConfig      `json:"input"`
-	Keybinds   KeybindsConfig   `json:"keybinds"`
+	Compositor       CompositorConfig  `json:"compositor"`
+	Theme            ThemeConfig       `json:"theme"`
+	Bar              BarConfig         `json:"bar"`
+	Layout           string            `json:"layout"`
+	WorkspaceLayouts map[string]string `json:"workspaceLayouts"`
+	Input            InputConfig       `json:"input"`
+	Keybinds         KeybindsConfig    `json:"keybinds"`
 }
 
 type InputConfig struct {

@@ -185,6 +185,28 @@ func TestRenderSkipsLayoutWhenEmpty(t *testing.T) {
 	}
 }
 
+func TestRenderWorkspaceLayoutOverrides(t *testing.T) {
+	in := sampleInput()
+	in.WorkspaceLayouts = map[string]string{
+		"HDMI-A-1:2": "scroller",
+		"HDMI-A-1:1": "tile",
+	}
+	out := Render(in, false)
+	if !strings.Contains(out, "[general.workspace_layouts]\n\"HDMI-A-1:1\" = \"tile\"\n\"HDMI-A-1:2\" = \"scroller\"\n") {
+		t.Fatalf("workspace layout overrides missing or not stable-sorted:\n%s", out)
+	}
+}
+
+func TestRenderEmptyWorkspaceLayoutMap(t *testing.T) {
+	in := sampleInput()
+	in.Layout = ""
+	in.WorkspaceLayouts = map[string]string{}
+	out := Render(in, false)
+	if !strings.Contains(out, "[general]\nworkspace_layouts_enabled = true\n") || strings.Contains(out, "[general.workspace_layouts]") {
+		t.Fatalf("empty workspace layout table was not preserved:\n%s", out)
+	}
+}
+
 func TestRenderCoreBindsAppear(t *testing.T) {
 	out := Render(sampleInput(), false)
 	mustContain := []string{

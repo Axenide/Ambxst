@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.modules.globals
+import qs.modules.services
 
 /**
  * CompositorTomlWriter - Thin IPC client.
@@ -116,6 +117,12 @@ Singleton {
         );
         const shadowColor = resolveColorName(Config.compositorShadowColor, "rgba(00000080)");
         const shadowColorInactive = resolveColorName(c.shadowColorInactive || "shadow", "rgba(00000080)");
+        const mango = AxctlService.compositorName === "mango";
+        const workspaceLayouts = GlobalStates.mangoLayoutStateReady
+            ? Object.assign({}, GlobalStates.mangoWorkspaceLayouts || {})
+            : null;
+        const mangoDefaultLayout = GlobalStates.mangoDefaultLayout || (mango ? GlobalStates.compositorLayout : "");
+        if (workspaceLayouts && mangoDefaultLayout) workspaceLayouts["*"] = mangoDefaultLayout;
 
         // Debug breadcrumb so we can see what the QML is actually
         // resolving at runtime without needing a full Quickshell debug
@@ -198,6 +205,7 @@ Singleton {
                 position: Config.bar.position,
             },
             layout: GlobalStates.compositorLayout,
+            workspaceLayouts: workspaceLayouts,
             input: {
                 keyboard: {
                     layouts: c.keyboardLayouts || "",
@@ -288,6 +296,7 @@ Singleton {
     }
 
     function callWrite() {
+        if (!GlobalStates.mangoLayoutStateReady) return;
         const payload = JSON.stringify(gatherInput());
         // The daemon exposes a unix socket; Quickshell.Io.Process doesn't
         // speak the JSON-RPC framing directly, so we run the ambxst CLI
@@ -341,7 +350,7 @@ Singleton {
         // list<var> arrives as a QVariantList which fails Array.isArray(),
         // so check length-bearing iterability instead.
         const hasCustom = a.custom !== null && a.custom !== undefined && typeof a.custom.length === "number";
-        return !!(a.ambxst && hasCustom);
+        return !!(a.ambxst && hasCustom && GlobalStates.mangoLayoutStateReady);
     }
 
     function _onReady() {
@@ -469,6 +478,20 @@ Singleton {
 
     property Connections globalStatesConnections: Connections {
         target: GlobalStates
-        function onCompositorLayoutChanged() { root.callWrite(); }
+        function onCompositorLayoutChanged() {
+            if (AxctlService.compositorName !== "mango") root.callWrite();
+        }
+        function onMangoDefaultLayoutChanged() {
+            if (AxctlService.compositorName === "mango") root.callWrite();
+        }
+        function onMangoWorkspaceLayoutsChanged() {
+            if (AxctlService.compositorName === "mango") root.callWrite();
+        }
+        function onMangoLayoutStateReadyChanged() { root._onReady(); }
+    }
+
+    property Connections axctlConnections: Connections {
+        target: AxctlService
+        function onCompositorNameChanged() { root.callWrite(); }
     }
 }
