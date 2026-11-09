@@ -85,6 +85,10 @@ Item {
             return "Deck";
         case "vertical_deck":
             return "Vertical Deck";
+        case "fair":
+            return "Fair";
+        case "vertical_fair":
+            return "Vertical Fair";
         case "center_tile":
             return "Center Tile";
         case "right_tile":
