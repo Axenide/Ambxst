@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Services.Notifications
 import Quickshell.Services.UPower
+import qs.config
 import qs.modules.theme
 
 Singleton {
@@ -42,13 +43,18 @@ Singleton {
     }
 
     function evaluateBatteryAlert() {
+        if (!Config.performanceReady) {
+            return;
+        }
+
         if (!available || isPluggedIn) {
             lastBatteryAlertThreshold = 0;
             return;
         }
 
         const roundedPercentage = Math.floor(percentage);
-        const threshold = roundedPercentage <= 10 ? 10 : (roundedPercentage <= 20 ? 20 : 0);
+        const lowThreshold = Math.max(11, Math.min(50, Config.performance.batteryLowThreshold ?? 20));
+        const threshold = roundedPercentage <= 10 ? 10 : (roundedPercentage <= lowThreshold ? lowThreshold : 0);
         if (threshold === 0) {
             lastBatteryAlertThreshold = 0;
             return;
@@ -99,6 +105,24 @@ Singleton {
 
         function onIsPluggedInChanged() {
             root.evaluateBatteryAlert();
+        }
+    }
+
+    Connections {
+        target: Config.performance
+
+        function onBatteryLowThresholdChanged() {
+            root.evaluateBatteryAlert();
+        }
+    }
+
+    Connections {
+        target: Config
+
+        function onPerformanceReadyChanged() {
+            if (Config.performanceReady) {
+                root.evaluateBatteryAlert();
+            }
         }
     }
 

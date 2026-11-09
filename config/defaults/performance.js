@@ -7,5 +7,6 @@ var data = {
     "rotateCoverArt": true,
     "pauseWallpapersOnFullscreen": true,
     "dashboardPersistTabs": false,
-    "dashboardMaxPersistentTabs": 2
+    "dashboardMaxPersistentTabs": 2,
+    "batteryLowThreshold": 20
 }

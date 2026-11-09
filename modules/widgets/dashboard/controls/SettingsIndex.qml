@@ -104,6 +104,7 @@ QtObject {
         { label: I18n.t("settings.system.language"), keywords: "locale translation i18n localization lang", section: 6, subSection: "language", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.language"), icon: Icons.globe, isIcon: true },
 
         // System > Performance
+        { label: I18n.t("settings.system.battery_low_threshold"), keywords: "battery low alert notification percentage charge", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.batteryLow, isIcon: true },
         { label: I18n.t("settings.system.blur_transition"), keywords: "animation speed performance effect", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.lightning, isIcon: true },
         { label: I18n.t("settings.system.window_preview"), keywords: "thumbnail overview alt-tab", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.windowsLogo, isIcon: true },
         { label: I18n.t("settings.system.wavy_line"), keywords: "animated wave effect performance", section: 6, subSection: "performance", subLabel: I18n.t("settings.system") + " > " + I18n.t("settings.system.performance"), icon: Icons.lightning, isIcon: true },

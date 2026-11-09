@@ -495,6 +495,25 @@ Item {
                             opacity: 0.7
                         }
 
+                        NumberInputRow {
+                            label: I18n.t("performance.battery_low_threshold")
+                            value: Config.performance.batteryLowThreshold
+                            minValue: 11
+                            maxValue: 50
+                            suffix: "%"
+                            onValueEdited: newValue => {
+                                Config.performance.batteryLowThreshold = newValue;
+                            }
+                        }
+
+                        Text {
+                            text: I18n.t("system.performance.battery_low_threshold_desc")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.overSurfaceVariant
+                            opacity: 0.7
+                        }
+
                         // Blur Transition toggle
                         ToggleRow {
                             Layout.fillWidth: true
