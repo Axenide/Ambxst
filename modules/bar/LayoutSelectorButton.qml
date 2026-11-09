@@ -37,14 +37,18 @@ Item {
     function getLayoutIcon(layout) {
         switch (layout) {
         case "dwindle":
+            return Icons.dwindle;
         case "tile":
         case "vertical_tile":
-            return Icons.dwindle;
+        case "right_tile":
+            return Icons.tile;
         case "master":
-        case "deck":
-        case "center_tile":
-        case "vertical_deck":
             return Icons.master;
+        case "deck":
+        case "vertical_deck":
+            return Icons.deck;
+        case "center_tile":
+            return Icons.centertile;
         case "scrolling":
         case "scroller":
         case "vertical_scroller":
@@ -53,10 +57,18 @@ Item {
             return Icons.monocle;
         case "grid":
         case "vertical_grid":
-            return Icons.squaresFour;
+            return Icons.grid;
         default:
             return Icons.layout;
         }
+    }
+
+    function getLayoutIconRotation(layout) {
+        return layout.startsWith("vertical_") ? 90 : 0;
+    }
+
+    function getLayoutIconHorizontalScale(layout) {
+        return layout === "right_tile" ? -1 : 1;
     }
 
     function getLayoutDisplayName(layout) {
@@ -125,11 +137,19 @@ Item {
         }
 
         Text {
+            id: currentLayoutIcon
             anchors.centerIn: parent
             text: root.getLayoutIcon(GlobalStates.compositorLayout)
             font.family: Icons.font
             font.pixelSize: 18
             color: root.popupOpen ? buttonBg.item : Styling.srItem("overprimary")
+            rotation: root.getLayoutIconRotation(GlobalStates.compositorLayout)
+
+            transform: Scale {
+                origin.x: currentLayoutIcon.width / 2
+                origin.y: currentLayoutIcon.height / 2
+                xScale: root.getLayoutIconHorizontalScale(GlobalStates.compositorLayout)
+            }
         }
 
         MouseArea {
@@ -200,10 +220,18 @@ Item {
                         spacing: 8
 
                         Text {
+                            id: layoutOptionIcon
                             text: root.getLayoutIcon(layoutButton.modelData)
                             font.family: Icons.font
                             font.pixelSize: 14
                             color: layoutButton.item
+                            rotation: root.getLayoutIconRotation(layoutButton.modelData)
+
+                            transform: Scale {
+                                origin.x: layoutOptionIcon.width / 2
+                                origin.y: layoutOptionIcon.height / 2
+                                xScale: root.getLayoutIconHorizontalScale(layoutButton.modelData)
+                            }
                         }
 
                         Text {

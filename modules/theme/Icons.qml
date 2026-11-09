@@ -13,8 +13,12 @@ QtObject {
     readonly property string layout: ""
     readonly property string dwindle: ""
     readonly property string master: ""
+    readonly property string tile: ""
+    readonly property string deck: ""
+    readonly property string centertile: ""
+    readonly property string grid: ""
     readonly property string scrolling: ""
-    readonly property string monocle: ""
+    readonly property string monocle: ""
 
     // Powermenu
     readonly property string lock: ""

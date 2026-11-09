@@ -44,14 +44,18 @@ StyledRect {
     function getLayoutIcon(layout) {
         switch (layout) {
         case "dwindle":
+            return Icons.dwindle;
         case "tile":
         case "vertical_tile":
-            return Icons.dwindle;
+        case "right_tile":
+            return Icons.tile;
         case "master":
-        case "deck":
-        case "center_tile":
-        case "vertical_deck":
             return Icons.master;
+        case "deck":
+        case "vertical_deck":
+            return Icons.deck;
+        case "center_tile":
+            return Icons.centertile;
         case "scrolling":
         case "scroller":
         case "vertical_scroller":
@@ -60,10 +64,18 @@ StyledRect {
             return Icons.monocle;
         case "grid":
         case "vertical_grid":
-            return Icons.squaresFour;
+            return Icons.grid;
         default:
             return Icons.layout;
         }
+    }
+
+    function getLayoutIconRotation(layout) {
+        return layout.startsWith("vertical_") ? 90 : 0;
+    }
+
+    function getLayoutIconHorizontalScale(layout) {
+        return layout === "right_tile" ? -1 : 1;
     }
 
     function getLayoutDisplayName(layout) {
@@ -142,12 +154,20 @@ StyledRect {
                     }
 
                     contentItem: Text {
+                        id: layoutIcon
                         text: root.getLayoutIcon(modelData)
                         color: GlobalStates.compositorLayout === modelData ? Styling.srItem("primary") : Colors.overBackground
                         font.family: Icons.font
                         font.pixelSize: 18
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
+                        rotation: root.getLayoutIconRotation(modelData)
+
+                        transform: Scale {
+                            origin.x: layoutIcon.width / 2
+                            origin.y: layoutIcon.height / 2
+                            xScale: root.getLayoutIconHorizontalScale(modelData)
+                        }
 
                         Behavior on color {
                             enabled: Config.animDuration > 0
@@ -196,12 +216,20 @@ StyledRect {
                     }
 
                     contentItem: Text {
+                        id: layoutIcon
                         text: root.getLayoutIcon(modelData)
                         color: GlobalStates.compositorLayout === modelData ? Styling.srItem("primary") : Colors.overBackground
                         font.family: Icons.font
                         font.pixelSize: 18
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
+                        rotation: root.getLayoutIconRotation(modelData)
+
+                        transform: Scale {
+                            origin.x: layoutIcon.width / 2
+                            origin.y: layoutIcon.height / 2
+                            xScale: root.getLayoutIconHorizontalScale(modelData)
+                        }
 
                         Behavior on color {
                             enabled: Config.animDuration > 0
