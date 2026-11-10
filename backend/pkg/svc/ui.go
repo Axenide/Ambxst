@@ -5,7 +5,8 @@ import "ambxst/backend/pkg/ipc"
 // UIService bridges `ambxst run <cmd>` to the QML shell via a subscription stream.
 // QML subscribes to the "ui" service; commands pushed as ServiceEvent{Service:"ui.command", Data: cmd}.
 type UIService struct {
-	subs map[string]*ipc.Subscriber
+	subs    map[string]*ipc.Subscriber
+	pending []string // run commands for the next shell that subscribes
 }
 
 func NewUIService() *UIService {
@@ -50,4 +51,14 @@ func (u *UIService) toggle(params RawParams) (any, error) {
 
 func (u *UIService) subscribe(sub *ipc.Subscriber) {
 	u.subs[subID(sub)] = sub
+	for _, cmd := range u.pending {
+		sub.Send("ui.command", cmd)
+	}
+	u.pending = nil
+}
+
+// RunOnNextSubscribe queues a run command for the next shell instance,
+// e.g. re-locking after Quickshell was respawned.
+func (u *UIService) RunOnNextSubscribe(cmd string) {
+	u.pending = append(u.pending, cmd)
 }
