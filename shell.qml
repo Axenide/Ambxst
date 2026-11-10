@@ -205,6 +205,19 @@ ShellRoot {
         }
     }
 
+    // OCR confirmation, on the screen containing the selected region.
+    Variants {
+        model: Quickshell.screens
+        Loader {
+            id: ocrReviewLoader
+            required property ShellScreen modelData
+            active: SuspendManager.wakeReady && Screenshot.ocrReviewVisible && modelData.name === Screenshot.ocrReviewScreenName
+            sourceComponent: OCRTextReview {
+                targetScreen: ocrReviewLoader.modelData
+            }
+        }
+    }
+
     // Screen recording tool
     Loader {
         id: screenRecordLoader

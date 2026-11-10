@@ -18,6 +18,12 @@ QtObject {
     property string lensPath: "/tmp/image.png"
 
     property string captureMode: "normal"
+    property bool ocrReviewVisible: false
+    property bool ocrReviewBusy: false
+    property string ocrReviewText: ""
+    property string ocrReviewError: ""
+    property string ocrReviewScreenName: ""
+    property int ocrReviewRequest: 0
 
     property string screenshotsDir: ""
     property string finalPath: ""
@@ -261,11 +267,33 @@ QtObject {
         var params = { x: x, y: y, width: w, height: h };
         if (kind === "ocr") {
             params.langs = root.ocrLangs();
+            params.preview = true;
+            root.ocrReviewText = "";
+            root.ocrReviewError = "";
+            root.ocrReviewBusy = true;
+            root.ocrReviewScreenName = Quickshell.screens.length ? Quickshell.screens[0].name : "";
+            for (var i = 0; i < Quickshell.screens.length; i++) {
+                var screen = Quickshell.screens[i];
+                if (x + w / 2 >= screen.x && x + w / 2 < screen.x + screen.width && y + h / 2 >= screen.y && y + h / 2 < screen.y + screen.height) {
+                    root.ocrReviewScreenName = screen.name;
+                    break;
+                }
+            }
+            root.ocrReviewRequest++;
+            root.ocrReviewVisible = true;
         }
+        var request = root.ocrReviewRequest;
         BackendService.call(method, params, (result, error) => {
+            if (kind === "ocr") {
+                if (request !== root.ocrReviewRequest || !root.ocrReviewVisible) return;
+                root.ocrReviewText = result && result.text ? result.text : "";
+                root.ocrReviewError = error ? "" + error : (root.ocrReviewText ? "" : I18n.t("screenshot.no_text"));
+                root.ocrReviewBusy = false;
+                return;
+            }
             if (error) {
                 Notifications.notifyInternal({
-                    summary: kind === "qr" ? "QR Scan Error" : "OCR Error",
+                    summary: "QR Scan Error",
                     body: "" + error
                 });
                 return;
@@ -276,27 +304,42 @@ QtObject {
                     summary: "QR/Barcode Result",
                     body: found ? "Content copied to clipboard" : "No code detected"
                 });
-            } else {
-                var hasText = result && result.text && result.text !== "";
-                Notifications.notifyInternal({
-                    summary: "OCR Result",
-                    body: hasText ? "Text copied to clipboard" : "No text detected"
-                });
             }
         });
+    }
+
+    function closeOCRReview() {
+        root.ocrReviewVisible = false;
+        root.ocrReviewRequest++;
+        root.ocrReviewBusy = false;
+        root.ocrReviewText = "";
+        root.ocrReviewError = "";
+    }
+
+    function recognizeImage(path, callback) {
+        BackendService.call("ocr.file", {path: path, langs: root.ocrLangs()}, (result, error) => {
+            var success = root._notifyTextRecognition(result, error);
+            if (callback) callback(success);
+        });
+    }
+
+    function _notifyTextRecognition(result, error) {
+        var hasText = !error && result && result.text && result.text !== "";
+        Notifications.notifyInternal({
+            summary: I18n.t(error ? "screenshot.ocr_error" : "screenshot.ocr_result"),
+            body: error ? "" + error : I18n.t(hasText ? "screenshot.text_copied" : "screenshot.no_text")
+        });
+        return !!hasText;
     }
 
     function ocrLangs() {
         var cfg = Config.system.ocr;
         var langs = [];
         if (cfg) {
-            if (cfg.eng !== false) langs.push("eng");
-            if (cfg.spa !== false) langs.push("spa");
-            if (cfg.lat === true) langs.push("lat");
-            if (cfg.jpn === true) langs.push("jpn");
-            if (cfg.chi_sim === true) langs.push("chi_sim");
-            if (cfg.chi_tra === true) langs.push("chi_tra");
-            if (cfg.kor === true) langs.push("kor");
+            var keys = Object.keys(cfg);
+            for (var i = 0; i < keys.length; i++) {
+                if (cfg[keys[i]] === true) langs.push(keys[i]);
+            }
         } else {
             langs = ["eng", "spa"];
         }
