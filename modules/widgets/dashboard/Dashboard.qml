@@ -88,6 +88,11 @@ NotchAnimationBehavior {
 
         if (tabIndex === 0) return true; // Always load WidgetsTab (Tab 0)
 
+        // Always load current active tab when dashboard is open
+        if (root.state.currentTab === tabIndex || GlobalStates.dashboardCurrentTab === tabIndex) {
+            return true;
+        }
+
         if (Config.performance.dashboardPersistTabs) {
             return lruTabsLoaded[tabIndex] === true;
         } else {
@@ -104,11 +109,16 @@ NotchAnimationBehavior {
     // Navegar a la pestaña seleccionada cuando se abre el dashboard
     Component.onCompleted: {
         root.state.currentTab = GlobalStates.dashboardCurrentTab;
+        root.updateLRUAccess(GlobalStates.dashboardCurrentTab);
     }
 
     // Focus search input when dashboard opens to different tabs
     onIsVisibleChanged: {
         if (isVisible) {
+            root.updateLRUAccess(GlobalStates.dashboardCurrentTab);
+            if (root.state.currentTab !== GlobalStates.dashboardCurrentTab) {
+                stack.navigateToTab(GlobalStates.dashboardCurrentTab);
+            }
             // Check if current item supports focus, otherwise default logic for launcher
             if (stack.currentItem && stack.currentItem.focusSearchInput) {
                 focusUnifiedLauncherTimer.restart();
@@ -138,6 +148,7 @@ NotchAnimationBehavior {
     Connections {
         target: GlobalStates
         function onDashboardCurrentTabChanged() {
+            root.updateLRUAccess(GlobalStates.dashboardCurrentTab);
             if (GlobalStates.dashboardCurrentTab !== root.state.currentTab) {
                 stack.navigateToTab(GlobalStates.dashboardCurrentTab);
             }
