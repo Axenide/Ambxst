@@ -127,7 +127,7 @@ Item {
         function onVideoSyncTickChanged() {
             if (videoWallpaper.shouldPausePlayback)
                 return;
-            player.seek(0);
+            player.setPosition(0);
             if (player.playbackState !== MediaPlayer.PlayingState)
                 player.play();
         }

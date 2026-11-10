@@ -42,10 +42,11 @@ Singleton {
         // Inicializar valores cuando se asigna la notification
         onNotificationChanged: {
             if (notification) {
-                appIcon = notification.appIcon ?? "";
+                // Resolve before caching: an unknown theme icon would otherwise be cached as the missing-icon placeholder
+                appIcon = root.iconSource(notification.appIcon);
                 appName = notification.appName ?? "";
                 body = notification.body ?? "";
-                image = notification.image ?? "";
+                image = root.iconSource(notification.image);
                 summary = notification.summary ?? "";
                 urgency = notification.urgency.toString() ?? "normal";
 
@@ -141,6 +142,22 @@ Singleton {
     }
 
     property bool silent: false
+
+    // Resolves a notification icon (theme name, absolute path or URL) to an Image source.
+    // "image://icon/<name>" never errors: unknown names render Quickshell's magenta/black
+    // placeholder, so theme names are checked first and unknown ones return "" for a fallback.
+    function iconSource(icon) {
+        icon = icon ? icon.toString() : "";
+        if (!icon)
+            return "";
+        if (icon.startsWith("image://icon/"))
+            icon = icon.substring(13);
+        if (icon.startsWith("/"))
+            return "file://" + icon;
+        if (icon.startsWith("data:") || icon.includes("://"))
+            return icon;
+        return Quickshell.iconPath(icon, true);
+    }
     property list<Notif> list: []
     property var popupList: list.filter(notif => notif.popup)
     property bool popupInhibited: silent

@@ -25,7 +25,7 @@ Item {
             return;
         var status = player.mediaStatus;
         if (status >= MediaPlayer.LoadedMedia && status !== MediaPlayer.InvalidMedia) {
-            player.seek(pendingSeekMs);
+            player.setPosition(pendingSeekMs);
             pendingSeekMs = -1;
         }
     }
@@ -42,7 +42,7 @@ Item {
 
     function videoSeek(ms) {
         if (player)
-            player.seek(ms);
+            player.setPosition(ms);
     }
 
     function videoPlay() {

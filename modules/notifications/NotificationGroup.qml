@@ -207,7 +207,7 @@ Item {
                             id: groupSmallAppIcon
                             Layout.preferredWidth: 16
                             Layout.preferredHeight: 16
-                            source: (notificationGroup && notificationGroup.appIcon !== "") ? "image://icon/" + notificationGroup.appIcon : ""
+                            source: notificationGroup ? Notifications.iconSource(notificationGroup.appIcon) : ""
                             fillMode: Image.PreserveAspectFit
                             smooth: true
                             visible: notificationGroup && notificationGroup.appIcon !== "" && root.validNotifications.some(n => n.image !== "")

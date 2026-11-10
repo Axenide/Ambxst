@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Widgets
 import Quickshell.Services.Notifications
 import qs.modules.theme
+import qs.modules.services
 import qs.config
 
 Item {
@@ -20,7 +21,12 @@ Item {
     property real smallAppIconScale: 0.4
     property real appIconSize: size * appIconScale
     property real smallAppIconSize: size * smallAppIconScale
-    property bool usingAppIconFallback: false
+    // Image first, then app icon (or the icon of the app's desktop entry), then Icons.bell.
+    property bool imageFailed: false
+    onImageChanged: imageFailed = false
+    readonly property string imageSource: imageFailed ? "" : Notifications.iconSource(image)
+    readonly property string appIconSource: Notifications.iconSource(appIcon) || Notifications.iconSource(DesktopEntries.heuristicLookup(appName)?.icon ?? "")
+    readonly property string mainSource: imageSource || appIconSource
 
     implicitWidth: size
     implicitHeight: size
@@ -38,7 +44,7 @@ Item {
             border.width: root.urgency == NotificationUrgency.Critical ? 2 : 0
             border.color: root.urgency == NotificationUrgency.Critical ? Colors.criticalRed : "transparent"
             radius: root.radius
-            visible: (root.image == "" && root.appIcon == "") || (appIconLoader.active && appIconLoader.item && appIconLoader.item.status === Image.Error)
+            visible: root.mainSource == "" || mainImage.status === Image.Error
 
             Text {
                 anchors.centerIn: parent
@@ -70,50 +76,17 @@ Item {
             }
         }
 
-        Loader {
-            id: appIconLoader
-            active: root.image == "" && root.appIcon != ""
+        Image {
+            id: mainImage
+            mipmap: true
             anchors.fill: parent
-            visible: item && item.status !== Image.Error
-            sourceComponent: Image {
-                mipmap: true
-                id: appIconImage
-                anchors.fill: parent
-                source: root.appIcon ? "image://icon/" + root.appIcon : ""
-                fillMode: Image.PreserveAspectCrop
-                smooth: true
-            }
-        }
-
-        // Mostrar imagen de notificación si existe
-        Loader {
-            id: notifImageLoader
-            active: root.image != ""
-            anchors.fill: parent
-            sourceComponent: Item {
-                anchors.fill: parent
-                clip: true
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: root.radius
-                    color: "transparent"
-
-                    Image {
-                        mipmap: true
-                        id: notifImage
-                        anchors.fill: parent
-                        source: status === Image.Error && root.appIcon ? "image://icon/" + root.appIcon : root.image
-                        fillMode: Image.PreserveAspectCrop
-                        smooth: true
-                        onStatusChanged: {
-                            if (status === Image.Error && root.appIcon) {
-                                source = "image://icon/" + root.appIcon;
-                                root.usingAppIconFallback = true;
-                            }
-                        }
-                    }
-                }
+            source: root.mainSource
+            visible: status !== Image.Error
+            fillMode: Image.PreserveAspectCrop
+            smooth: true
+            onStatusChanged: {
+                if (status === Image.Error && root.imageSource !== "")
+                    root.imageFailed = true;
             }
         }
     }
@@ -121,7 +94,7 @@ Item {
     // App icon pequeño superpuesto si hay imagen
     Loader {
         id: notifImageAppIconLoader
-        active: root.image != "" && root.appIcon != "" && !root.usingAppIconFallback
+        active: root.imageSource != "" && root.appIconSource != ""
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         width: root.smallAppIconSize
@@ -131,7 +104,7 @@ Item {
             Image {
                 mipmap: true
                 anchors.fill: parent
-                source: root.appIcon ? "image://icon/" + root.appIcon : ""
+                source: root.appIconSource
                 fillMode: Image.PreserveAspectCrop
                 smooth: true
             }

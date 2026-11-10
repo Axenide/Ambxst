@@ -144,7 +144,7 @@ Item {
                 if (root.hasThumbnail) {
                     return "file://" + root.thumbnailPath;
                 }
-                return "image://icon/" + root.itemIcon;
+                return root.itemIcon ? "image://icon/" + root.itemIcon : "";
             }
             fillMode: Image.PreserveAspectFit
             asynchronous: true
@@ -188,7 +188,7 @@ Item {
                     if (root.hasThumbnail) {
                         return "file://" + root.thumbnailPath;
                     }
-                    return "image://icon/" + root.itemIcon;
+                    return root.itemIcon ? "image://icon/" + root.itemIcon : "";
                 }
                 fillMode: Image.PreserveAspectFit
                 asynchronous: true
