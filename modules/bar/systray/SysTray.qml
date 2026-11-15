@@ -172,15 +172,16 @@ StyledRect {
         }
 
         StyledRect {
+            id: chevronBg
             anchors.fill: parent
             variant: "pane"
             radius: Styling.radius(-6)
 
             Rectangle {
                 anchors.fill: parent
-                color: parent.item || "transparent"
+                color: chevronBg.item
                 opacity: chevron.hot ? 0.45 : (chevronMouse.containsMouse ? 0.25 : 0)
-                radius: parent.radius
+                radius: chevronBg.radius
 
                 Behavior on opacity {
                     enabled: Config.animDuration > 0
