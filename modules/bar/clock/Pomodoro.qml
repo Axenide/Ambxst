@@ -351,6 +351,7 @@ Item {
 
             // Inverse Progress Bar
             StyledRect {
+                id: progressTrack
                 variant: "common"
                 anchors.bottom: parent.bottom
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -362,7 +363,7 @@ Item {
                 Rectangle {
                     height: parent.height
                     width: root.visualProgress * parent.width
-                    radius: parent.radius
+                    radius: progressTrack.radius
                     color: Styling.srItem("overprimary")
                 }
             }
