@@ -350,12 +350,16 @@ func (m *Manager) selectPreparedUpdates(state State, original *preparedUpdate, s
 }
 
 // Package mutations wait for the startup trial so recovery cannot discard a
-// subsequent install, removal, or reordering.
+// subsequent install, removal, or reordering. Only the trial of the
+// generation the update produced is guarded: the committed journal stays on
+// disk after a healthy start (it backs rollback), and a later mutation's own
+// pending generation must not be blocked by it.
 func (m *Manager) guardUpdateTrial() error {
 	if err := m.recoverInterruptedUpdate(); err != nil {
 		return err
 	}
-	if _, pending := m.readPendingActivation(); !pending {
+	pending, ok := m.readPendingActivation()
+	if !ok {
 		return nil
 	}
 	j, err := m.readJournal()
@@ -365,7 +369,7 @@ func (m *Manager) guardUpdateTrial() error {
 	if err != nil {
 		return err
 	}
-	if j.Phase == "committed" {
+	if j.Phase == "committed" && j.Next.ActiveGeneration == pending.Generation {
 		return fmt.Errorf("restart or recover the pending update before changing mods")
 	}
 	return nil
