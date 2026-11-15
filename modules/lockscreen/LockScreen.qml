@@ -455,7 +455,7 @@ WlSessionLockSurface {
                         mipmap: true
                         id: userAvatar
                         anchors.fill: parent
-                        source: `file://${Quickshell.env("HOME")}/.face.icon`
+                        source: `file://${Quickshell.env("HOME")}/.face.icon?${GlobalStates.avatarCacheBuster}`
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
                         asynchronous: true
@@ -479,8 +479,10 @@ WlSessionLockSurface {
                     // Fallback icon if image not found
                     Text {
                         anchors.centerIn: parent
-                        text: "👤"
+                        text: Icons.user
+                        font.family: Icons.font
                         font.pixelSize: 32
+                        color: Colors.overBackground
                         visible: userAvatar.status !== Image.Ready
                     }
                 }

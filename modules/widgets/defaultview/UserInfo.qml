@@ -65,9 +65,26 @@ Item {
                     clip: true
 
                     Image {
+                        id: userAvatar
                         anchors.fill: parent
-                        source: `file://${Quickshell.env("HOME")}/.face.icon`
+                        source: `file://${Quickshell.env("HOME")}/.face.icon?${GlobalStates.avatarCacheBuster}`
                         fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                        visible: status === Image.Ready
+                    }
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: Colors.surfaceBright
+                        visible: userAvatar.status !== Image.Ready
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: Icons.user
+                            font.family: Icons.font
+                            font.pixelSize: 16
+                            color: Colors.overBackground
+                        }
                     }
                 }
             }
