@@ -9,6 +9,7 @@ import Quickshell.Services.Mpris
 import qs.modules.theme
 import qs.modules.bar.workspaces
 import qs.modules.services
+import qs.modules.globals
 import qs.modules.components
 import qs.config
 
