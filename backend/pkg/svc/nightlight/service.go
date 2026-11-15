@@ -40,7 +40,11 @@ var runFn = func(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }() // reap wlsunset when it exits (pkill on disable)
+	return nil
 }
 
 // stopFn is a package-level indirection used by tests. The Service holds
