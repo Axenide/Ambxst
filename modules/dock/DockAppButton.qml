@@ -90,17 +90,12 @@ Button {
                     width: root.iconSize
                     height: root.iconSize
 
-                    readonly property string iconName: {
-                        if (root.desktopEntry && root.desktopEntry.icon) {
-                            return AppSearch.getCachedIcon(root.desktopEntry.icon);
-                        }
-                        return AppSearch.guessIcon(root.appToplevel?.appId ?? "");
-                    }
+                    readonly property string iconSource: root.desktopEntry?.iconPath || AppSearch.guessIcon(root.appToplevel?.appId ?? "");
 
                     Image {
                         id: appIcon
                         anchors.fill: parent
-                        source: appIconContainer.iconName
+                        source: appIconContainer.iconSource
                         sourceSize.width: root.iconSize * 2
                         sourceSize.height: root.iconSize * 2
                         fillMode: Image.PreserveAspectFit
