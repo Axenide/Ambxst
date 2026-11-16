@@ -471,11 +471,23 @@ Item {
                         }, null);
                     }
                     readonly property var focusedDesktopEntry: focusedWindow ? AppSearch.getApplication(focusedWindow.class) : null
-                    property var mainAppIconSource: {
-                        if (focusedDesktopEntry && focusedDesktopEntry.icon) {
-                            return AppSearch.getCachedIcon(focusedDesktopEntry.icon);
+                    property string mainAppIconSource: ""
+
+                    function updateMainAppIconSource() {
+                        mainAppIconSource = focusedDesktopEntry?.iconPath || AppSearch.guessIcon(focusedWindow?.class ?? "");
+                    }
+
+                    Component.onCompleted: updateMainAppIconSource()
+                    onFocusedWindowChanged: updateMainAppIconSource()
+
+                    Connections {
+                        target: AxctlBackend
+                        function onApplicationsChanged() {
+                            workspaceButtonBackground.updateMainAppIconSource();
                         }
-                        return AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined);
+                        function onIconPathsChanged() {
+                            workspaceButtonBackground.updateMainAppIconSource();
+                        }
                     }
 
                     Text {
@@ -608,11 +620,23 @@ Item {
                         }, null);
                     }
                     readonly property var focusedDesktopEntry: focusedWindow ? AppSearch.getApplication(focusedWindow.class) : null
-                    property var mainAppIconSource: {
-                        if (focusedDesktopEntry && focusedDesktopEntry.icon) {
-                            return AppSearch.getCachedIcon(focusedDesktopEntry.icon);
+                    property string mainAppIconSource: ""
+
+                    function updateMainAppIconSource() {
+                        mainAppIconSource = focusedDesktopEntry?.iconPath || AppSearch.guessIcon(focusedWindow?.class ?? "");
+                    }
+
+                    Component.onCompleted: updateMainAppIconSource()
+                    onFocusedWindowChanged: updateMainAppIconSource()
+
+                    Connections {
+                        target: AxctlBackend
+                        function onApplicationsChanged() {
+                            workspaceButtonBackgroundVert.updateMainAppIconSource();
                         }
-                        return AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined);
+                        function onIconPathsChanged() {
+                            workspaceButtonBackgroundVert.updateMainAppIconSource();
+                        }
                     }
 
                     Text {
