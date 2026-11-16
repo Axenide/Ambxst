@@ -28,7 +28,7 @@ Button {
     readonly property bool isVertical: isLeft || isRight
 
     readonly property bool isSeparator: appToplevel?.appId === "SEPARATOR"
-    readonly property var desktopEntry: (isSeparator || !appToplevel) ? null : DesktopEntries.heuristicLookup(appToplevel.appId)
+    readonly property var desktopEntry: (isSeparator || !appToplevel) ? null : TaskbarApps.getDesktopEntry(appToplevel.appId)
     readonly property bool appIsActive: !isSeparator && (appToplevel?.toplevels?.some(t => t.activated === true) ?? false)
     readonly property bool appIsRunning: !isSeparator && (appToplevel?.toplevelCount ?? 0) > 0
 
@@ -92,7 +92,7 @@ Button {
 
                     readonly property string iconName: {
                         if (root.desktopEntry && root.desktopEntry.icon) {
-                            return root.desktopEntry.icon;
+                            return AppSearch.getCachedIcon(root.desktopEntry.icon);
                         }
                         return AppSearch.guessIcon(root.appToplevel?.appId ?? "");
                     }
@@ -100,7 +100,7 @@ Button {
                     Image {
                         id: appIcon
                         anchors.fill: parent
-                        source: "image://icon/" + appIconContainer.iconName
+                        source: appIconContainer.iconName
                         sourceSize.width: root.iconSize * 2
                         sourceSize.height: root.iconSize * 2
                         fillMode: Image.PreserveAspectFit

@@ -293,6 +293,9 @@ ShellRoot {
                 _ = GlobalShortcuts.appId; // Force init (IPC pipe listener)
                 _ = WallpaperCommandService; // Force init (IPC wallpaper.set subscriber)
                 _ = PresetCommandService;    // Force init (IPC preset.load subscriber)
+                _ = AxctlBackend.applicationsReady;
+                _ = AxctlSystemTray.items.length;
+                _ = Notifications.initialized;
                 // PresetsService.initialize() is normally triggered lazily
                 // when the user opens the Presets tab; the CLI preset
                 // command needs the list available at boot, so kick it off

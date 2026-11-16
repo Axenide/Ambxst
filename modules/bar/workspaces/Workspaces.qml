@@ -470,12 +470,12 @@ Item {
                             return winFocus < bestFocus ? win : best;
                         }, null);
                     }
-                    readonly property var focusedDesktopEntry: focusedWindow ? DesktopEntries.heuristicLookup(focusedWindow.class) : null
+                    readonly property var focusedDesktopEntry: focusedWindow ? AppSearch.getApplication(focusedWindow.class) : null
                     property var mainAppIconSource: {
                         if (focusedDesktopEntry && focusedDesktopEntry.icon) {
-                            return Quickshell.iconPath(focusedDesktopEntry.icon, "image-missing");
+                            return AppSearch.getCachedIcon(focusedDesktopEntry.icon);
                         }
-                        return Quickshell.iconPath(AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined), "image-missing");
+                        return AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined);
                     }
 
                     Text {
@@ -607,12 +607,12 @@ Item {
                             return winFocus < bestFocus ? win : best;
                         }, null);
                     }
-                    readonly property var focusedDesktopEntry: focusedWindow ? DesktopEntries.heuristicLookup(focusedWindow.class) : null
+                    readonly property var focusedDesktopEntry: focusedWindow ? AppSearch.getApplication(focusedWindow.class) : null
                     property var mainAppIconSource: {
                         if (focusedDesktopEntry && focusedDesktopEntry.icon) {
-                            return Quickshell.iconPath(focusedDesktopEntry.icon, "image-missing");
+                            return AppSearch.getCachedIcon(focusedDesktopEntry.icon);
                         }
-                        return Quickshell.iconPath(AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined), "image-missing");
+                        return AppSearch.getCachedIcon(focusedWindow ? focusedWindow.class : undefined);
                     }
 
                     Text {

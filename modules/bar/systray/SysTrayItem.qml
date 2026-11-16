@@ -1,8 +1,9 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 import Quickshell
-import Quickshell.Services.SystemTray
 import Quickshell.Widgets
 import qs.modules.theme
 import qs.modules.services
@@ -13,7 +14,7 @@ MouseArea {
     id: root
 
     required property var bar
-    required property SystemTrayItem item
+    required property var item
 
     // Overflow wiring — only set for instances living inside the popup
     property bool inOverflow: false
@@ -25,19 +26,14 @@ MouseArea {
     // True from the moment a press turns into a drag; blocks the
     // click activation until the next press
     property bool dragOccurred: false
+    property var menuItems: []
 
     property real pressOffsetX: 0
     property real pressOffsetY: 0
 
     readonly property int dragThreshold: Qt.styleHints?.startDragDistance ?? 10
 
-    readonly property string iconSource: {
-        const iconPath = root.item.icon.toString();
-        if (iconPath.includes("spotify")) {
-            return Quickshell.iconPath("spotify-client");
-        }
-        return root.item.icon;
-    }
+    readonly property string iconSource: root.item.iconPath || (root.item.iconName ? (root.item.iconName.startsWith("/") ? root.item.iconName : "image://icon/" + root.item.iconName) : "image-missing")
 
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     Layout.fillHeight: bar.orientation === "horizontal"
@@ -73,15 +69,25 @@ MouseArea {
         }
         switch (event.button) {
         case Qt.LeftButton:
-            item.activate();
+            if (root.item.itemIsMenu && root.item.menu) systrayPopup.toggle();
+            else if (root.item.itemIsMenu) AxctlSystemTray.contextMenu(root.item.id);
+            else AxctlSystemTray.activate(root.item.id);
             break;
         case Qt.RightButton:
-            if (item.hasMenu) {
-                systrayPopup.toggle();
+            if (root.item.hasMenu) {
+                if (root.item.menu) systrayPopup.toggle();
+                else AxctlSystemTray.contextMenu(root.item.id);
             }
             break;
         }
         event.accepted = true;
+    }
+
+    onWheel: wheel => {
+        const horizontal = bar.orientation === "vertical";
+        const delta = horizontal ? wheel.angleDelta.x : wheel.angleDelta.y;
+        if (delta !== 0) AxctlSystemTray.scroll(root.item.id, delta, horizontal ? "horizontal" : "vertical");
+        wheel.accepted = true;
     }
 
     function updateDrag(mouse) {
@@ -111,6 +117,67 @@ MouseArea {
         root.Drag.active = false;
     }
 
+    Component {
+        id: menuEntryComponent
+
+        ColumnLayout {
+            id: menuEntry
+            property var menuItem: null
+            property string trayID: ""
+            property int depth: 0
+            property bool submenuExpanded: false
+
+            spacing: 2
+
+            SystrayMenuItem {
+                Layout.fillWidth: true
+                textStr: menuEntry.menuItem?.label || ""
+                iconSource: menuEntry.menuItem?.iconPath || ""
+                isImageIcon: iconSource.indexOf("/") !== -1 || iconSource.indexOf(".") !== -1
+                isSeparator: menuEntry.menuItem?.type === "separator"
+                hasSubmenu: (menuEntry.menuItem?.children || []).length > 0
+                expanded: menuEntry.submenuExpanded
+                depth: menuEntry.depth
+                enabled: menuEntry.menuItem?.enabled !== false && !isSeparator
+                buttonType: menuEntry.menuItem?.toggleType === "checkmark" ? 1 : menuEntry.menuItem?.toggleType === "radio" ? 2 : 0
+                checkState: menuEntry.menuItem?.toggleState === 1 ? Qt.Checked : Qt.Unchecked
+
+                onClicked: {
+                    if ((menuEntry.menuItem?.children || []).length > 0) {
+                        menuEntry.submenuExpanded = !menuEntry.submenuExpanded;
+                    } else if (menuEntry.menuItem) {
+                        AxctlSystemTray.menuEvent(menuEntry.trayID, menuEntry.menuItem.id, "clicked");
+                        systrayPopup.close();
+                    }
+                }
+            }
+
+            ColumnLayout {
+                visible: menuEntry.submenuExpanded && (menuEntry.menuItem?.children || []).length > 0
+                Layout.fillWidth: true
+                spacing: 2
+
+                Repeater {
+                    model: menuEntry.menuItem?.children || []
+
+                    delegate: Loader {
+                        id: childEntryLoader
+                        required property var modelData
+                        property var node: modelData
+                        Layout.fillWidth: true
+                        sourceComponent: menuEntryComponent
+
+                        onLoaded: {
+                            childEntryLoader.item.menuItem = childEntryLoader.node;
+                            childEntryLoader.item.trayID = menuEntry.trayID;
+                            childEntryLoader.item.depth = menuEntry.depth + 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     BarPopup {
         id: systrayPopup
         anchorItem: root
@@ -130,15 +197,15 @@ MouseArea {
         visualMargin: 16
 
         onIsOpenChanged: {
+            if (isOpen && root.item.menu) {
+                AxctlSystemTray.loadMenu(root.item.id, (items, error) => {
+                    if (error) console.warn("SysTrayItem: failed to load menu:", error);
+                    root.menuItems = items || [];
+                });
+            }
             if (!root.inOverflow || !root.overflowPopupRef)
                 return;
             root.overflowPopupRef.activeChildMenu = isOpen ? systrayPopup : null;
-        }
-
-        // Using QsMenuOpener to access menu items
-        QsMenuOpener {
-            id: menuOpener
-            menu: root.item.menu
         }
 
         ScrollView {
@@ -154,79 +221,17 @@ MouseArea {
                 spacing: 2
 
                 Repeater {
-                    model: menuOpener.children ? menuOpener.children.values : []
+                    model: root.menuItems
 
-                    delegate: ColumnLayout {
+                    delegate: Loader {
+                        id: rootMenuEntryLoader
                         required property var modelData
-
                         Layout.fillWidth: true
-                        spacing: 2
+                        sourceComponent: menuEntryComponent
 
-                        property bool submenuExpanded: false
-
-                        SystrayMenuItem {
-                            Layout.fillWidth: true
-
-                            textStr: modelData.text || ""
-                            iconSource: modelData.icon || ""
-                            isImageIcon: iconSource.indexOf("/") !== -1 || iconSource.indexOf(".") !== -1
-                            isSeparator: modelData.isSeparator || false
-                            hasSubmenu: modelData.hasChildren || false
-                            expanded: parent.submenuExpanded
-                            buttonType: modelData.buttonType || 0
-                            checkState: modelData.checkState || 0
-
-                            onClicked: {
-                                if (modelData.hasChildren) {
-                                    parent.submenuExpanded = !parent.submenuExpanded;
-                                } else {
-                                    if (modelData.triggered) {
-                                        modelData.triggered();
-                                    } else if (modelData.activate) {
-                                        modelData.activate();
-                                    }
-                                    systrayPopup.close();
-                                }
-                            }
-                        }
-
-                        // Submenu children — uses its own QsMenuOpener to trigger lazy loading
-                        ColumnLayout {
-                            visible: submenuExpanded && modelData.hasChildren
-                            Layout.fillWidth: true
-                            spacing: 2
-
-                            QsMenuOpener {
-                                id: subMenuOpener
-                                menu: modelData.hasChildren ? modelData : null
-                            }
-
-                            Repeater {
-                                model: subMenuOpener.children ? subMenuOpener.children.values : []
-
-                                delegate: SystrayMenuItem {
-                                    required property var modelData
-
-                                    Layout.fillWidth: true
-                                    depth: 1
-
-                                    textStr: modelData.text || ""
-                                    iconSource: modelData.icon || ""
-                                    isImageIcon: iconSource.indexOf("/") !== -1 || iconSource.indexOf(".") !== -1
-                                    isSeparator: modelData.isSeparator || false
-                                    buttonType: modelData.buttonType || 0
-                                    checkState: modelData.checkState || 0
-
-                                    onClicked: {
-                                        if (modelData.triggered) {
-                                            modelData.triggered();
-                                        } else if (modelData.activate) {
-                                            modelData.activate();
-                                        }
-                                        systrayPopup.close();
-                                    }
-                                }
-                            }
+                        onLoaded: {
+                            rootMenuEntryLoader.item.menuItem = rootMenuEntryLoader.modelData;
+                            rootMenuEntryLoader.item.trayID = root.item.id;
                         }
                     }
                 }
@@ -258,8 +263,8 @@ MouseArea {
 
     StyledToolTip {
         show: root.isHovered && !root.dragging
-        tooltipText: root.item.tooltipTitle || root.item.title
-        desciription: root.item.tooltipDescription || ""
+        tooltipText: root.item.toolTipTitle || root.item.title
+        desciription: root.item.toolTip || ""
     }
 
     HoverHandler {

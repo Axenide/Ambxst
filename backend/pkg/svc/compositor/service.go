@@ -64,6 +64,15 @@ func (s *Service) Register(srv *ipc.Server) {
 		Methods:   methods,
 		Subscribe: s.subscribe,
 	})
+	if s.mgr != nil {
+		srv.Register(&ipc.Service{
+			Name: "axctl",
+			Methods: map[string]ipc.HandlerFunc{
+				"call": s.callAxctl,
+			},
+			Subscribe: s.subscribeAxctl,
+		})
+	}
 }
 
 // SetGameModeFn wires the GameMode state provider. Safe to leave unset;
@@ -170,16 +179,87 @@ func (s *Service) subscribe(sub *ipc.Subscriber) {
 		defer cancel()
 		for {
 			select {
-			case st, ok := <-ch:
+			case update, ok := <-ch:
 				if !ok {
 					return
 				}
+				if update.State == nil {
+					continue
+				}
+				st := update.State
 				sub.Send("compositor.state", map[string]any{
 					"windows":       st.Windows,
 					"workspaces":    st.Workspaces,
 					"monitors":      st.Monitors,
 					"overview_open": st.OverviewOpen,
 				})
+			case <-sub.StopCh():
+				return
+			}
+		}
+	}()
+}
+
+func (s *Service) callAxctl(params json.RawMessage) (any, error) {
+	var request struct {
+		Method string `json:"method"`
+		Params any    `json:"params"`
+	}
+	if err := json.Unmarshal(params, &request); err != nil {
+		return nil, fmt.Errorf("axctl.call: %w", err)
+	}
+	if request.Method == "" {
+		return nil, fmt.Errorf("axctl.call: method is required")
+	}
+	if request.Params == nil {
+		request.Params = map[string]any{}
+	}
+	return s.mgr.Call(request.Method, request.Params)
+}
+
+func (s *Service) subscribeAxctl(sub *ipc.Subscriber) {
+	ch, cancel := s.mgr.Subscribe()
+	go func() {
+		defer cancel()
+		for {
+			select {
+			case update, ok := <-ch:
+				if !ok {
+					return
+				}
+				if update.Method == "" {
+					continue
+				}
+				service := "axctl.event"
+				switch update.Method {
+				case "Event.ApplicationsChanged":
+					service = "applications.changed"
+				case "Event.NotificationReceived":
+					service = "notifications.received"
+				case "Event.NotificationActionInvoked":
+					service = "notifications.action"
+				case "Event.NotificationClosed":
+					service = "notifications.closed"
+				case "Event.NotificationDeleted":
+					service = "notifications.deleted"
+				case "Event.NotificationHistoryCleared":
+					service = "notifications.cleared"
+				case "Event.NotificationDNDChanged":
+					service = "notifications.dnd"
+				case "Event.TrayChanged":
+					service = "tray.changed"
+				case "Event.TrayItemRemoved":
+					service = "tray.removed"
+				case "Event.IconThemeChanged":
+					service = "icons.changed"
+				}
+				var data any
+				if len(update.Params) > 0 {
+					if err := json.Unmarshal(update.Params, &data); err != nil {
+						data = map[string]any{"raw": string(update.Params)}
+					}
+				}
+				sub.Send(service, data)
 			case <-sub.StopCh():
 				return
 			}

@@ -36,7 +36,7 @@ Singleton {
     // Get entry
     function getDesktopEntry(appId) {
         if (!appId) return null;
-        return DesktopEntries.heuristicLookup(appId) || null;
+        return AppSearch.getApplication(appId);
     }
 
     // Launch

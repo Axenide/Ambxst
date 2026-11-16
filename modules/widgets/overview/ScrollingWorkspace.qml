@@ -411,7 +411,7 @@ Item {
                         anchors.centerIn: parent
                         width: iconSize
                         height: iconSize
-                        source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
+                        source: windowDelegate.iconPath || Quickshell.iconPath("image-missing")
                         sourceSize: Qt.size(iconSize, iconSize)
                         asynchronous: true
                         visible: !Config.performance.windowPreview
@@ -439,7 +439,7 @@ Item {
                         anchors.margins: 4
                         width: 16
                         height: 16
-                        source: Quickshell.iconPath(windowDelegate.iconPath, "image-missing")
+                        source: windowDelegate.iconPath || Quickshell.iconPath("image-missing")
                         sourceSize: Qt.size(16, 16)
                         asynchronous: true
                         opacity: 0.8

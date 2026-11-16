@@ -1,7 +1,6 @@
 package compositor
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -24,14 +23,18 @@ type State struct {
 	OverviewOpen *bool             `json:"overview_open,omitempty"`
 }
 
+type Update struct {
+	State  *State
+	Method string
+	Params json.RawMessage
+}
+
 const subscribeRetryDelay = 500 * time.Millisecond
 const socketWaitStep = 100 * time.Millisecond
 const socketWaitTimeout = 5 * time.Second
 
-// Manager owns the long-running axctl children (axctl daemon, axctl subscribe)
-// and exposes their state to the rest of the compositor service. The Manager
-// is started once by the daemon and shut down on daemon exit; child processes
-// are placed in their own process group so a single SIGKILL cleans them up.
+// Manager connects Ambxst to axctl and exposes its compositor state. It may
+// start axctl when needed, but axctl outlives the shell process that started it.
 type Manager struct {
 	tomlPath  string
 	configDir string
@@ -42,14 +45,16 @@ type Manager struct {
 
 	daemonCmd *exec.Cmd
 	daemonMu  sync.Mutex
-	subCmdMu  sync.Mutex
-	subCmd    *exec.Cmd
+	subConnMu sync.Mutex
 
 	subsMu      sync.Mutex
-	subscribers map[chan State]struct{}
+	subscribers map[chan Update]struct{}
 
-	stopCh chan struct{}
-	wg     sync.WaitGroup
+	stopCh  chan struct{}
+	wg      sync.WaitGroup
+	subConn net.Conn
+	rpcMu   sync.Mutex
+	rpcConn net.Conn
 }
 
 // NewManager constructs a Manager. nil defaults to the same XDG layout the
@@ -57,7 +62,7 @@ type Manager struct {
 func NewManager(p PathResolver) *Manager {
 	m := &Manager{
 		stopCh:      make(chan struct{}),
-		subscribers: make(map[chan State]struct{}),
+		subscribers: make(map[chan Update]struct{}),
 	}
 	if p == nil {
 		m.tomlPath = defaultTomlPath()
@@ -68,9 +73,8 @@ func NewManager(p PathResolver) *Manager {
 	return m
 }
 
-// Start ensures the axctl config dir exists, then launches axctl daemon
-// followed by axctl subscribe. Both children run in their own process group
-// so Close() can SIGKILL the whole group in one shot.
+// Start ensures the axctl config dir exists, reuses a running daemon when
+// possible, and connects an event subscriber.
 func (m *Manager) Start() error {
 	if _, err := exec.LookPath("axctl"); err != nil {
 		return fmt.Errorf("axctl not found in PATH: %w", err)
@@ -86,12 +90,20 @@ func (m *Manager) Start() error {
 	}
 	m.mu.Unlock()
 
-	if err := m.startDaemon(); err != nil {
+	if socketAlive(axctlSocketPath()) {
+		fmt.Fprintln(os.Stderr, "[compositor] using existing axctl daemon")
+	} else if err := m.startDaemon(); err != nil {
 		return err
 	}
 
-	m.wg.Add(2)
-	go m.daemonLoop()
+	m.daemonMu.Lock()
+	ownsDaemon := m.daemonCmd != nil
+	m.daemonMu.Unlock()
+	if ownsDaemon {
+		m.wg.Add(1)
+		go m.daemonLoop()
+	}
+	m.wg.Add(1)
 	go m.subscribeLoop()
 
 	m.mu.Lock()
@@ -207,6 +219,12 @@ func (m *Manager) daemonLoop() {
 		case <-waitCh:
 		}
 
+		m.daemonMu.Lock()
+		if m.daemonCmd == cmd {
+			m.daemonCmd = nil
+		}
+		m.daemonMu.Unlock()
+
 		fmt.Fprintf(os.Stderr, "[compositor] axctl daemon exited; restarting in %v\n", backoff)
 		select {
 		case <-m.stopCh:
@@ -241,9 +259,24 @@ func waitForSocket(path string, timeout time.Duration) error {
 	return fmt.Errorf("axctl socket %s did not appear", path)
 }
 
-// subscribeLoop keeps an axctl subscribe process alive. It waits for the
-// daemon socket before launching, and re-launches on premature exit (e.g.
-// the daemon being restarted, a transient disconnect).
+func (m *Manager) waitForSocket() error {
+	deadline := time.Now().Add(socketWaitTimeout)
+	for time.Now().Before(deadline) {
+		select {
+		case <-m.stopCh:
+			return fmt.Errorf("axctl subscription stopped")
+		default:
+		}
+		if info, err := os.Stat(axctlSocketPath()); err == nil && info.Mode()&os.ModeSocket != 0 {
+			return nil
+		}
+		time.Sleep(socketWaitStep)
+	}
+	return fmt.Errorf("axctl socket %s did not appear", axctlSocketPath())
+}
+
+// subscribeLoop keeps one direct JSON-RPC subscription alive and reconnects
+// when axctl restarts.
 func (m *Manager) subscribeLoop() {
 	defer m.wg.Done()
 	for {
@@ -253,68 +286,98 @@ func (m *Manager) subscribeLoop() {
 		default:
 		}
 
-		if err := waitForSocket(axctlSocketPath(), socketWaitTimeout); err != nil {
+		if err := m.waitForSocket(); err != nil {
+			select {
+			case <-m.stopCh:
+				return
+			default:
+			}
 			fmt.Fprintf(os.Stderr, "[compositor] %v\n", err)
-			return
+			continue
 		}
 
-		cmd := exec.Command("axctl", "subscribe")
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-		cmd.Env = hyprlandChildEnv()
-		stdout, err := cmd.StdoutPipe()
+		conn, err := net.DialTimeout("unix", axctlSocketPath(), socketWaitTimeout)
 		if err != nil {
-			time.Sleep(subscribeRetryDelay)
+			if !m.waitRetry() {
+				return
+			}
 			continue
 		}
-		cmd.Stderr = io.Discard
-		if err := cmd.Start(); err != nil {
-			time.Sleep(subscribeRetryDelay)
+		m.subConnMu.Lock()
+		m.subConn = conn
+		m.subConnMu.Unlock()
+		request := map[string]any{"id": 1, "method": "System.Subscribe", "params": map[string]any{}}
+		if err := json.NewEncoder(conn).Encode(request); err != nil {
+			conn.Close()
+			m.clearSubscribeConn(conn)
+			if !m.waitRetry() {
+				return
+			}
 			continue
 		}
-
-		m.subCmdMu.Lock()
-		m.subCmd = cmd
-		m.subCmdMu.Unlock()
-
-		m.readSubscribe(stdout)
-
-		m.subCmdMu.Lock()
-		m.subCmd = nil
-		m.subCmdMu.Unlock()
-
-		_ = cmd.Wait()
-
-		select {
-		case <-m.stopCh:
+		decoder := json.NewDecoder(conn)
+		var response struct {
+			Error string `json:"error"`
+		}
+		if err := decoder.Decode(&response); err != nil || response.Error != "" {
+			conn.Close()
+			m.clearSubscribeConn(conn)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "[compositor] axctl subscribe: %v\n", err)
+			} else {
+				fmt.Fprintf(os.Stderr, "[compositor] axctl subscribe: %s\n", response.Error)
+			}
+			if !m.waitRetry() {
+				return
+			}
+			continue
+		}
+		m.readSubscribe(decoder)
+		conn.Close()
+		m.clearSubscribeConn(conn)
+		if !m.waitRetry() {
 			return
-		case <-time.After(subscribeRetryDelay):
 		}
 	}
 }
 
-func (m *Manager) readSubscribe(r io.Reader) {
-	sc := bufio.NewScanner(r)
-	sc.Buffer(make([]byte, 0, 64*1024), 8*1024*1024)
-	for sc.Scan() {
-		line := sc.Bytes()
-		if len(line) == 0 {
-			continue
-		}
+func (m *Manager) readSubscribe(decoder *json.Decoder) {
+	for {
 		var payload struct {
-			State json.RawMessage `json:"state"`
+			Method string          `json:"method"`
+			Params json.RawMessage `json:"params"`
+			State  json.RawMessage `json:"state"`
 		}
-		if err := json.Unmarshal(line, &payload); err != nil {
-			continue
+		if err := decoder.Decode(&payload); err != nil {
+			return
 		}
-		if len(payload.State) == 0 {
-			continue
+		if len(payload.State) > 0 {
+			var state State
+			if json.Unmarshal(payload.State, &state) == nil {
+				m.setState(state)
+				m.broadcast(Update{State: &state})
+			}
 		}
-		var st State
-		if err := json.Unmarshal(payload.State, &st); err != nil {
-			continue
+		if payload.Method != "" && payload.Method != "State.Dump" {
+			m.broadcast(Update{Method: payload.Method, Params: payload.Params})
 		}
-		m.setState(st)
-		m.broadcast(st)
+	}
+}
+
+func (m *Manager) clearSubscribeConn(conn net.Conn) {
+	m.subConnMu.Lock()
+	if m.subConn == conn {
+		m.subConn = nil
+	}
+	m.subConnMu.Unlock()
+}
+
+func (m *Manager) waitRetry() bool {
+	select {
+	case <-m.stopCh:
+		return false
+	case <-time.After(subscribeRetryDelay):
+		return true
 	}
 }
 
@@ -331,29 +394,27 @@ func (m *Manager) State() State {
 	return m.state
 }
 
-func (m *Manager) broadcast(st State) {
+func (m *Manager) broadcast(update Update) {
 	m.subsMu.Lock()
-	subs := make([]chan State, 0, len(m.subscribers))
+	defer m.subsMu.Unlock()
 	for c := range m.subscribers {
-		subs = append(subs, c)
-	}
-	m.subsMu.Unlock()
-	for _, c := range subs {
 		select {
-		case c <- st:
+		case c <- update:
 		default:
+			close(c)
+			delete(m.subscribers, c)
 		}
 	}
 }
 
-// Subscribe returns a channel that receives every state update and a cancel
-// function that removes the subscription. The channel is closed when the
-// Manager shuts down.
-func (m *Manager) Subscribe() (<-chan State, func()) {
-	ch := make(chan State, 16)
+// Subscribe returns state and axctl event updates until cancelled.
+func (m *Manager) Subscribe() (<-chan Update, func()) {
+	ch := make(chan Update, 256)
 	m.subsMu.Lock()
 	m.subscribers[ch] = struct{}{}
 	m.subsMu.Unlock()
+	state := m.State()
+	ch <- Update{State: &state}
 	cancel := func() {
 		m.subsMu.Lock()
 		if _, ok := m.subscribers[ch]; ok {
@@ -400,8 +461,64 @@ func (m *Manager) Eval(expression string) (string, int, error) {
 	return m.Dispatch([]string{"config", "raw-batch", "eval " + expression})
 }
 
-// Close kills the axctl process group, then waits for the read goroutine to
-// drain. Safe to call multiple times.
+func (m *Manager) dialRPC() (net.Conn, error) {
+	deadline := time.Now().Add(socketWaitTimeout)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		conn, err := net.DialTimeout("unix", axctlSocketPath(), socketWaitStep)
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+		select {
+		case <-m.stopCh:
+			return nil, fmt.Errorf("connect to axctl: manager stopped")
+		case <-time.After(socketWaitStep):
+		}
+	}
+	return nil, fmt.Errorf("connect to axctl socket %s: %w", axctlSocketPath(), lastErr)
+}
+
+func (m *Manager) Call(method string, params any) (json.RawMessage, error) {
+	m.rpcMu.Lock()
+	defer m.rpcMu.Unlock()
+	if m.rpcConn == nil {
+		conn, err := m.dialRPC()
+		if err != nil {
+			return nil, err
+		}
+		m.rpcConn = conn
+	}
+	conn := m.rpcConn
+	if err := conn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		conn.Close()
+		m.rpcConn = nil
+		return nil, err
+	}
+	request := map[string]any{"id": 1, "method": method, "params": params}
+	if err := json.NewEncoder(conn).Encode(request); err != nil {
+		conn.Close()
+		m.rpcConn = nil
+		return nil, err
+	}
+	var response struct {
+		Result json.RawMessage `json:"result"`
+		Error  string          `json:"error"`
+	}
+	if err := json.NewDecoder(conn).Decode(&response); err != nil {
+		conn.Close()
+		m.rpcConn = nil
+		return nil, err
+	}
+	_ = conn.SetDeadline(time.Time{})
+	if response.Error != "" {
+		return nil, fmt.Errorf("axctl %s: %s", method, response.Error)
+	}
+	return response.Result, nil
+}
+
+// Close stops Ambxst's subscription without terminating the shared axctl
+// daemon. Safe to call multiple times.
 func (m *Manager) Close() {
 	m.mu.Lock()
 	started := m.started
@@ -413,17 +530,18 @@ func (m *Manager) Close() {
 
 	close(m.stopCh)
 
-	m.subCmdMu.Lock()
-	sub := m.subCmd
-	m.subCmd = nil
-	m.subCmdMu.Unlock()
-
-	m.killGroup(sub)
-
-	m.daemonMu.Lock()
-	daemon := m.daemonCmd
-	m.daemonMu.Unlock()
-	m.killGroup(daemon)
+	m.subConnMu.Lock()
+	if m.subConn != nil {
+		_ = m.subConn.Close()
+		m.subConn = nil
+	}
+	m.subConnMu.Unlock()
+	m.rpcMu.Lock()
+	if m.rpcConn != nil {
+		_ = m.rpcConn.Close()
+		m.rpcConn = nil
+	}
+	m.rpcMu.Unlock()
 
 	done := make(chan struct{})
 	go func() { m.wg.Wait(); close(done) }()
@@ -438,16 +556,4 @@ func (m *Manager) Close() {
 		delete(m.subscribers, c)
 	}
 	m.subsMu.Unlock()
-}
-
-func (m *Manager) killGroup(cmd *exec.Cmd) {
-	if cmd == nil || cmd.Process == nil {
-		return
-	}
-	pgid, err := syscall.Getpgid(cmd.Process.Pid)
-	if err != nil || pgid <= 0 {
-		pgid = cmd.Process.Pid
-	}
-	_ = syscall.Kill(-pgid, syscall.SIGKILL)
-	_, _ = cmd.Process.Wait()
 }

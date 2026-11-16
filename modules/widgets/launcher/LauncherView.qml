@@ -160,6 +160,7 @@ Rectangle {
         // Animated model for smooth filtering
         property var filteredApps: []
         property var appsById: ({})
+        property int searchRequestId: 0
 
         // Incremental loading state
         property var pendingApps: []
@@ -184,6 +185,7 @@ Rectangle {
                         appId: app.id,
                         appName: app.name,
                         appIcon: app.icon,
+                        appIconPath: app.iconPath,
                         appComment: app.comment,
                         appExecString: app.execString,
                         appCategories: app.categories,
@@ -195,11 +197,14 @@ Rectangle {
         }
 
         function updateFilteredApps() {
-            if (searchText.length > 0) {
-                filteredApps = AppSearch.fuzzyQuery(searchText);
-            } else {
-                filteredApps = AppSearch.getAllApps();
-            }
+            const requestId = ++searchRequestId;
+            const query = searchText;
+            const onResults = apps => {
+                if (requestId === searchRequestId && query === searchText)
+                    filteredApps = apps;
+            };
+            if (query.length > 0) AppSearch.fuzzyQuery(query, onResults);
+            else AppSearch.getAllApps(onResults);
         }
 
         onFilteredAppsChanged: {
@@ -234,6 +239,7 @@ Rectangle {
                     appId: app.id,
                     appName: app.name,
                     appIcon: app.icon,
+                    appIconPath: app.iconPath,
                     appComment: app.comment,
                     appExecString: app.execString,
                     appCategories: app.categories,
@@ -253,8 +259,6 @@ Rectangle {
             let app = appsById[appId];
             if (app && app.execute) {
                 app.execute();
-                // Record usage for sorting priority
-                UsageTracker.recordUsage(appId);
             }
         }
 
@@ -662,6 +666,7 @@ Rectangle {
                     required property string appId
                     required property string appName
                     required property string appIcon
+                    required property string appIconPath
                     required property string appComment
                     required property string appExecString
                     required property var appCategories
@@ -755,12 +760,12 @@ Rectangle {
                                 mipmap: true
                                 id: appIconImage
                                 anchors.fill: parent
-                                source: "image://icon/" + appIcon
+                                source: appIconPath
                                 fillMode: Image.PreserveAspectFit
                                 
                                 onStatusChanged: {
                                     if (status === Image.Error) {
-                                        source = "image://icon/image-missing";
+                                        source = AppSearch.getCachedIcon("application-x-executable");
                                     }
                                 }
                             }

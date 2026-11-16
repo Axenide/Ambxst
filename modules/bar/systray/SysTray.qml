@@ -1,6 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.Services.SystemTray
 import qs.modules.services
 import qs.modules.theme
 import qs.modules.components
@@ -19,7 +18,7 @@ StyledRect {
     // Orientación derivada de la barra
     property bool vertical: bar.orientation === "vertical"
 
-    readonly property var allItems: SystemTray.items?.values ?? []
+    readonly property var allItems: AxctlSystemTray.items
     readonly property var hiddenIds: StateService.systrayHidden
     readonly property var visibleItems: allItems.filter(item => !hiddenIds.includes(item.id))
     readonly property var overflowItems: allItems.filter(item => hiddenIds.includes(item.id))
@@ -112,7 +111,7 @@ StyledRect {
             model: root.visibleItems
 
             SysTrayItem {
-                required property SystemTrayItem modelData
+                required property var modelData
                 bar: root.bar
                 item: modelData
                 overflowPopupRef: overflowPopup
@@ -137,7 +136,7 @@ StyledRect {
             model: root.visibleItems
 
             SysTrayItem {
-                required property SystemTrayItem modelData
+                required property var modelData
                 bar: root.bar
                 item: modelData
                 overflowPopupRef: overflowPopup
@@ -275,7 +274,7 @@ StyledRect {
                     model: root.overflowItems
 
                     SysTrayItem {
-                        required property SystemTrayItem modelData
+                        required property var modelData
                         bar: root.bar
                         item: modelData
                         inOverflow: true
