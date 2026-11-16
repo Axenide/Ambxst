@@ -9,6 +9,7 @@ import Quickshell.Services.Mpris
 import qs.modules.theme
 import qs.modules.bar.workspaces
 import qs.modules.services
+import qs.modules.globals
 import qs.modules.components
 import qs.config
 
@@ -266,7 +267,7 @@ Item {
                         anchors.fill: parent
                         variant: "internalbg"
                         opacity: ((hasArtwork || wallpaperPath !== "") && compactPlayer.notchHovered) ? 0.5 : 0.0
-                        radius: parent.radius
+                        radius: parent.radius ?? Styling.radius(0)
                         Behavior on opacity {
                             enabled: Config.animDuration > 0
                             NumberAnimation {

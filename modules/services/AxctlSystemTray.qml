@@ -34,7 +34,7 @@ Singleton {
             call("Icon.ResolveMany", {names: names, size: 48, scale: 1}, (paths, iconError) => {
                 if (iconError) console.warn("AxctlSystemTray: failed to resolve tray icons:", iconError);
                 root.items = (entries || []).map(item => Object.assign({}, item, {
-                    iconPath: item.iconPath || (paths || {})[item.iconName] || "",
+                    iconPath: AxctlBackend.imageUrl(item.iconPath || (paths || {})[item.iconName] || ""),
                     hasMenu: !!item.menu || item.itemIsMenu
                 }));
                 root.ready = true;
@@ -78,7 +78,7 @@ Singleton {
             call("Icon.ResolveMany", {names: names, size: 32, scale: 1}, (paths, iconError) => {
                 if (iconError) console.warn("AxctlSystemTray: failed to resolve menu icons:", iconError);
                 const mapIcons = nodes => nodes.map(item => Object.assign({}, item, {
-                    iconPath: item.iconData || (paths || {})[item.iconName] || (item.iconName ? "image://icon/" + item.iconName : ""),
+                    iconPath: AxctlBackend.imageUrl(item.iconData || (paths || {})[item.iconName] || (item.iconName ? "image://icon/" + item.iconName : "")),
                     children: mapIcons(item.children || [])
                 }));
                 if (callback) callback(mapIcons(items), "");

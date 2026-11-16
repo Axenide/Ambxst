@@ -186,9 +186,9 @@ Rectangle {
                         appName: app.name,
                         appIcon: app.icon,
                         appIconPath: app.iconPath,
-                        appComment: app.comment,
+                        appComment: app.comment || "",
                         appExecString: app.execString,
-                        appCategories: app.categories,
+                        appCategories: app.categories || [],
                         appRunInTerminal: app.runInTerminal
                     });
                 }
@@ -240,9 +240,9 @@ Rectangle {
                     appName: app.name,
                     appIcon: app.icon,
                     appIconPath: app.iconPath,
-                    appComment: app.comment,
+                    appComment: app.comment || "",
                     appExecString: app.execString,
-                    appCategories: app.categories,
+                    appCategories: app.categories || [],
                     appRunInTerminal: app.runInTerminal
                 });
             }

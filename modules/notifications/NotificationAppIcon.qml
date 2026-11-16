@@ -24,7 +24,8 @@ Item {
 
     function iconSource(icon) {
         if (!icon) return "";
-        if (icon.startsWith("/") || icon.startsWith("file://") || icon.startsWith("image://") || icon.startsWith("data:")) return icon;
+        if (icon.startsWith("/")) return "file://" + icon;
+        if (icon.startsWith("file://") || icon.startsWith("image://") || icon.startsWith("data:")) return icon;
         return "image://icon/" + icon;
     }
 
@@ -109,7 +110,7 @@ Item {
                         mipmap: true
                         id: notifImage
                         anchors.fill: parent
-                        source: status === Image.Error && root.appIcon ? root.iconSource(root.appIcon) : root.image
+                        source: status === Image.Error && root.appIcon ? root.iconSource(root.appIcon) : root.iconSource(root.image)
                         fillMode: Image.PreserveAspectCrop
                         smooth: true
                         onStatusChanged: {

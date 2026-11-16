@@ -179,7 +179,7 @@ StyledRect {
                 anchors.fill: parent
                 color: parent.item || "transparent"
                 opacity: chevron.hot ? 0.45 : (chevronMouse.containsMouse ? 0.25 : 0)
-                radius: parent.radius
+                radius: parent.radius ?? Styling.radius(-6)
 
                 Behavior on opacity {
                     enabled: Config.animDuration > 0

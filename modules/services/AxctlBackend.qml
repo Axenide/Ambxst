@@ -24,6 +24,19 @@ Singleton {
         }, callback);
     }
 
+    function imageUrl(path) {
+        if (!path) return "";
+        const value = String(path);
+        return value.startsWith("/") ? "file://" + value : value;
+    }
+
+    function mergeIconPaths(paths) {
+        const normalized = {};
+        for (const name in paths || {})
+            normalized[name] = root.imageUrl(paths[name]);
+        root.iconPaths = Object.assign({}, root.iconPaths, normalized);
+    }
+
     function loadApplications(callback) {
         const serial = ++root.applicationLoadSerial;
         call("Application.Top", {limit: 0}, (entries, error) => {
@@ -41,7 +54,7 @@ Singleton {
             }, (paths, iconError) => {
                 if (serial !== root.applicationLoadSerial) return;
                 if (iconError) console.warn("AxctlBackend: failed to resolve application icons:", iconError);
-                root.iconPaths = Object.assign({}, root.iconPaths, paths || {});
+                root.mergeIconPaths(paths);
                 const mapped = (entries || []).map(entry => root.mapApplication(entry));
                 root.applications = mapped;
                 root.applicationsReady = true;
@@ -66,7 +79,7 @@ Singleton {
             call("Icon.ResolveMany", {names: names, size: 48, scale: 1}, (paths, iconError) => {
                 if (serial !== root.requestSerial) return;
                 if (iconError) console.warn("AxctlBackend: failed to resolve search icons:", iconError);
-                root.iconPaths = Object.assign({}, root.iconPaths, paths || {});
+                root.mergeIconPaths(paths);
                 if (callback) callback((entries || []).map(entry => root.mapApplication(entry)), "");
             });
         });
@@ -76,7 +89,9 @@ Singleton {
         const icon = entry.icon || "application-x-executable";
         return Object.assign({}, entry, {
             icon: icon,
-            iconPath: root.iconPaths[icon] || "image://icon/" + icon,
+            iconPath: root.imageUrl(root.iconPaths[icon] || entry.iconPath) || "image://icon/" + icon,
+            comment: entry.comment || "",
+            categories: entry.categories || [],
             execString: entry.exec || "",
             runInTerminal: entry.terminal === true,
             execute: function () { root.launchApplication(entry.id); }
@@ -97,7 +112,7 @@ Singleton {
                 if (callback) callback("");
                 return;
             }
-            const path = result?.path || "";
+            const path = root.imageUrl(result?.path || "");
             root.iconPaths[name] = path;
             root.iconPaths = Object.assign({}, root.iconPaths);
             if (callback) callback(path);

@@ -142,7 +142,7 @@ Singleton {
 
     function appIconPath(icon, callback) {
         if (!icon || icon.startsWith("/") || icon.startsWith("file://") || icon.startsWith("image://") || icon.startsWith("data:")) {
-            if (callback) callback(icon || "");
+            if (callback) callback(AxctlBackend.imageUrl(icon || ""));
             return;
         }
         AxctlBackend.resolveIcon(icon, 64, path => callback && callback(path || icon));

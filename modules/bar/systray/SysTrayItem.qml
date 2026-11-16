@@ -33,7 +33,7 @@ MouseArea {
 
     readonly property int dragThreshold: Qt.styleHints?.startDragDistance ?? 10
 
-    readonly property string iconSource: root.item.iconPath || (root.item.iconName ? (root.item.iconName.startsWith("/") ? root.item.iconName : "image://icon/" + root.item.iconName) : "image-missing")
+    readonly property string iconSource: root.item.iconPath || (root.item.iconName ? (root.item.iconName.startsWith("/") ? AxctlBackend.imageUrl(root.item.iconName) : "image://icon/" + root.item.iconName) : "image-missing")
 
     acceptedButtons: Qt.LeftButton | Qt.RightButton
     Layout.fillHeight: bar.orientation === "horizontal"

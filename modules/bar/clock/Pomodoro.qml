@@ -19,17 +19,8 @@ Item {
     property bool isWorkSession: true
     property bool alarmActive: false
     
-    // --- IPC & Notifications ---
-    IpcHandler {
-        target: "pomodoro"
-        function check() {
-            root.requestPopupOpen();
-        }
-        function stop() {
-            root.stopAlarm();
-            root.isRunning = false;
-        }
-    }
+    Component.onCompleted: PomodoroIpc.registerWidget(root)
+    Component.onDestruction: PomodoroIpc.unregisterWidget(root)
 
     signal requestPopupOpen()
 
@@ -362,7 +353,7 @@ Item {
                 Rectangle {
                     height: parent.height
                     width: root.visualProgress * parent.width
-                    radius: parent.radius
+                    radius: parent.radius ?? Styling.radius(0)
                     color: Styling.srItem("overprimary")
                 }
             }
