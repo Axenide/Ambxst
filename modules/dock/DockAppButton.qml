@@ -90,7 +90,30 @@ Button {
                     width: root.iconSize
                     height: root.iconSize
 
-                    readonly property string iconSource: root.desktopEntry?.iconPath || AppSearch.guessIcon(root.appToplevel?.appId ?? "");
+                    property string iconSource: ""
+
+                    function updateIconSource() {
+                        iconSource = root.desktopEntry?.iconPath || AppSearch.guessIcon(root.appToplevel?.appId ?? "");
+                    }
+
+                    Component.onCompleted: updateIconSource()
+
+                    Connections {
+                        target: root
+                        function onDesktopEntryChanged() {
+                            appIconContainer.updateIconSource();
+                        }
+                    }
+
+                    Connections {
+                        target: AxctlBackend
+                        function onApplicationsChanged() {
+                            appIconContainer.updateIconSource();
+                        }
+                        function onIconPathsChanged() {
+                            appIconContainer.updateIconSource();
+                        }
+                    }
 
                     Image {
                         id: appIcon
