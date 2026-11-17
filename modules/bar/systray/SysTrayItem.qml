@@ -256,6 +256,11 @@ MouseArea {
         }
     }
 
+    Tinted {
+        sourceItem: trayIcon
+        anchors.fill: trayIcon
+    }
+
     StyledToolTip {
         show: root.isHovered && !root.dragging
         tooltipText: root.item.toolTipTitle || root.item.title
