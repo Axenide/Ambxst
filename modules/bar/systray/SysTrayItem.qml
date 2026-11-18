@@ -199,7 +199,15 @@ MouseArea {
         onIsOpenChanged: {
             if (isOpen && root.item.menu) {
                 AxctlSystemTray.loadMenu(root.item.id, (items, error) => {
-                    if (error) console.warn("SysTrayItem: failed to load menu:", error);
+                    if (error) {
+                        console.warn("SysTrayItem: failed to load menu:", error);
+                        if (!systrayPopup.isOpen) return;
+                        systrayPopup.close();
+                        AxctlSystemTray.contextMenu(root.item.id, 0, 0, (_, contextError) => {
+                            if (contextError) console.warn("SysTrayItem: failed to open fallback context menu:", contextError);
+                        });
+                        return;
+                    }
                     root.menuItems = items || [];
                 });
             }
