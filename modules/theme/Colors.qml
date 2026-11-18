@@ -49,6 +49,18 @@ FileView {
         id: ghosttyGenerator
     }
 
+    property WezTermGenerator wezTermGenerator: WezTermGenerator {
+        id: wezTermGenerator
+    }
+
+    property FootGenerator footGenerator: FootGenerator {
+        id: footGenerator
+    }
+
+    property AlacrittyGenerator alacrittyGenerator: AlacrittyGenerator {
+        id: alacrittyGenerator
+    }
+
     property NvChadGenerator nvChadGenerator: NvChadGenerator {
         id: nvChadGenerator
     }
@@ -71,6 +83,9 @@ FileView {
             pywalGenerator.generate(colors);
             kittyGenerator.generate(colors);
             ghosttyGenerator.generate(colors);
+            wezTermGenerator.generate(colors);
+            footGenerator.generate(colors);
+            alacrittyGenerator.generate(colors);
             nvChadGenerator.generate(colors);
             discordGenerator.generate(colors);
             pywalZenGenerator.generate(colors);

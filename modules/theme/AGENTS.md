@@ -15,6 +15,9 @@ Dynamic theming layer providing colors, icons, and style utilities as singletons
 - `GtkGenerator.qml` — GTK3/4 CSS theme
 - `KittyGenerator.qml` — Kitty terminal colors
 - `GhosttyGenerator.qml` — Ghostty terminal colors
+- `WezTermGenerator.qml` — WezTerm terminal colors
+- `FootGenerator.qml` — Foot terminal colors
+- `AlacrittyGenerator.qml` — Alacritty terminal colors
 - `DiscordGenerator.qml` — Discord CSS injection
 - `NvChadGenerator.qml` — NvChad/Neovim theme
 - `PywalGenerator.qml` — Pywal color export
