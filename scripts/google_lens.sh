@@ -36,10 +36,14 @@ echo "Uploading image to uguu.se..." >&2
 
 # Temporarily disable set -e to handle curl errors gracefully
 set +e
-uploadResponse=$(curl -sS -f -F "files[]=@$IMAGE_PATH" 'https://uguu.se/upload' 2>&1)
+uploadResponse=$(curl -sS -f --connect-timeout 10 --max-time 30 -F "files[]=@$IMAGE_PATH" 'https://uguu.se/upload' 2>&1)
 curlExit=$?
 set -e
 
+if [[ $curlExit -eq 28 ]]; then
+    notify-send -u critical "Google Lens" "Upload timed out"
+    echo "ERROR: Upload timed out after 30 seconds" >&2
+    exit 1
 if [[ $curlExit -ne 0 ]]; then
 	notify-send -u critical "Google Lens" "Upload failed (curl error $curlExit)" >&2
 	echo "ERROR: Upload failed with curl exit code $curlExit" >&2
