@@ -359,5 +359,10 @@ func SendFallback(summary, body, urgency string) error {
 	if urgency != "" {
 		args = append(args, "-u", urgency)
 	}
-	return exec.Command("notify-send", args...).Start()
+	cmd := exec.Command("notify-send", args...)
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	go func() { _ = cmd.Wait() }() // reap the child; callers never wait
+	return nil
 }

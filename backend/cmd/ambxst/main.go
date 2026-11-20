@@ -304,7 +304,22 @@ func defaultPresetDir() string {
 }
 
 func runDetached(cmd string) {
-	exec.Command("sh", "-c", cmd).Start()
+	_, _ = startReaped(exec.Command("sh", "-c", cmd))
+}
+
+// startReaped starts cmd and waits for it in the background so the exited
+// child is reaped instead of lingering as a zombie. The returned channel is
+// closed once the child has been reaped.
+func startReaped(cmd *exec.Cmd) (<-chan struct{}, error) {
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	done := make(chan struct{})
+	go func() {
+		_ = cmd.Wait()
+		close(done)
+	}()
+	return done, nil
 }
 
 func execCommand(name string, args ...string) {
