@@ -22,7 +22,7 @@ func Frame(outputName string, cursor bool) (*screenshot.CaptureResult, func(), e
 		return nil, func() {}, err
 	}
 
-	result, err := screenshot.Upright(raw)
+	result, err := uprightFrame(raw, outputName)
 	if err != nil {
 		raw.Buffer.Close()
 		engine.Close()
@@ -51,7 +51,7 @@ func FrameRetained(outputName string, cursor bool) (*screenshot.CaptureResult, f
 		return nil, func() {}, err
 	}
 
-	result, err := screenshot.Upright(raw)
+	result, err := uprightFrame(raw, outputName)
 	if err != nil {
 		raw.Buffer.Close()
 		engine.Close()
@@ -172,6 +172,18 @@ func cursorMode(on bool) screenshot.CursorMode {
 		return screenshot.CursorOn
 	}
 	return screenshot.CursorOff
+}
+
+func uprightFrame(raw *screenshot.CaptureResult, outputName string) (*screenshot.CaptureResult, error) {
+	monitors, err := axmon.List()
+	if err == nil {
+		if monitor, ok := axmon.FindByName(monitors, outputName); ok {
+			if monitor.LogicalW > 0 && monitor.LogicalH > 0 {
+				return screenshot.UprightForSize(raw, monitor.LogicalW, monitor.LogicalH)
+			}
+		}
+	}
+	return screenshot.Upright(raw)
 }
 
 // RegionPNG captures a logical global rect as PNG bytes. 10-bit captures

@@ -6,6 +6,7 @@ package screenshot
 import (
 	"fmt"
 	stdlog "log"
+	"math"
 	"sync"
 
 	"ambxst/backend/internal/proto/wlr_screencopy"
@@ -282,16 +283,45 @@ func (e *Engine) CaptureOutputFrame(outputName string) (*CaptureResult, error) {
 // top-to-bottom in logical orientation. Closes the source buffer if a new
 // one was allocated.
 func Upright(result *CaptureResult) (*CaptureResult, error) {
+	return upright(result, result.Transform)
+}
+
+// UprightForSize avoids applying a quarter-turn when the buffer already matches the output orientation.
+func UprightForSize(result *CaptureResult, width, height int) (*CaptureResult, error) {
+	transform := result.Transform
+	if width > 0 && height > 0 && swapsAxes(transform) {
+		actualAspect := math.Log(float64(result.Buffer.Width) / float64(result.Buffer.Height))
+		expectedAspect := math.Log(float64(width) / float64(height))
+		rotatedAspect := math.Log(float64(height) / float64(width))
+		if math.Abs(actualAspect-expectedAspect) < math.Abs(actualAspect-rotatedAspect) {
+			transform = TransformNormal
+		}
+	}
+	return upright(result, transform)
+}
+
+func swapsAxes(transform int32) bool {
+	switch transform {
+	case Transform90, Transform270, TransformFlipped90, TransformFlipped270:
+		return true
+	default:
+		return false
+	}
+}
+
+func upright(result *CaptureResult, transform int32) (*CaptureResult, error) {
 	if result.YInverted {
 		result.Buffer.FlipVertical()
 		result.YInverted = false
 	}
 
-	if result.Transform == TransformNormal {
+	if transform == TransformNormal {
+		result.Region.Width = int32(result.Buffer.Width)
+		result.Region.Height = int32(result.Buffer.Height)
 		return result, nil
 	}
 
-	transformed, err := result.Buffer.ApplyTransform(InverseTransform(result.Transform))
+	transformed, err := result.Buffer.ApplyTransform(InverseTransform(transform))
 	if err != nil {
 		return nil, fmt.Errorf("apply transform: %w", err)
 	}

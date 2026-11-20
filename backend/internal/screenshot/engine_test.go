@@ -107,6 +107,46 @@ func TestUprightFlipsInverted(t *testing.T) {
 	}
 }
 
+func TestUprightForSizeSkipsAlreadyOrientedQuarterTurn(t *testing.T) {
+	result := &CaptureResult{
+		Buffer:    newTestBuffer(t, 9, 16),
+		Transform: Transform90,
+	}
+
+	upright, err := UprightForSize(result, 540, 960)
+	if err != nil {
+		t.Fatalf("upright: %v", err)
+	}
+	defer upright.Buffer.Close()
+
+	if upright.Buffer.Width != 9 || upright.Buffer.Height != 16 {
+		t.Fatalf("expected already-oriented 9x16 buffer, got %dx%d", upright.Buffer.Width, upright.Buffer.Height)
+	}
+	if got := upright.Buffer.Data()[1]; got != 0 {
+		t.Fatalf("top-left pixel changed orientation: got y=%d want 0", got)
+	}
+}
+
+func TestUprightForSizeRotatesRawQuarterTurn(t *testing.T) {
+	result := &CaptureResult{
+		Buffer:    newTestBuffer(t, 16, 9),
+		Transform: Transform90,
+	}
+
+	upright, err := UprightForSize(result, 540, 960)
+	if err != nil {
+		t.Fatalf("upright: %v", err)
+	}
+	defer upright.Buffer.Close()
+
+	if upright.Buffer.Width != 9 || upright.Buffer.Height != 16 {
+		t.Fatalf("expected rotated 9x16 buffer, got %dx%d", upright.Buffer.Width, upright.Buffer.Height)
+	}
+	if got := upright.Buffer.Data()[1]; got != 8 {
+		t.Fatalf("top-left pixel has y=%d, want 8 after rotation", got)
+	}
+}
+
 func TestEncodeDecodePNGRoundTrip(t *testing.T) {
 	src := &CaptureResult{Buffer: newTestBuffer(t, 9, 7)}
 	defer src.Buffer.Close()
