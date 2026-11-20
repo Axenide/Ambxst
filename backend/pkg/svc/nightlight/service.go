@@ -12,6 +12,7 @@ package nightlight
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"sync"
@@ -21,7 +22,7 @@ import (
 )
 
 type Service struct {
-	paths *paths.Paths
+	paths  *paths.Paths
 	mu     sync.Mutex
 	active bool
 	temp   uint32 // Kelvin
@@ -130,9 +131,10 @@ func (s *Service) Register(srv *ipc.Server) {
 	srv.Register(&ipc.Service{
 		Name: "nightlight",
 		Methods: map[string]ipc.HandlerFunc{
-			"toggle": s.toggle,
-			"set":    s.set,
-			"get":    s.get,
+			"toggle":      s.toggle,
+			"set":         s.set,
+			"temperature": s.temperature,
+			"get":         s.get,
 		},
 		Subscribe: s.subscribe,
 	})
@@ -266,27 +268,73 @@ func (s *Service) toggle(_ json.RawMessage) (any, error) {
 	return s.get(nil)
 }
 
+// set applies a partial update: fields omitted from the request are left
+// unchanged. In particular `{"temp": 3500}` no longer disables night light.
 func (s *Service) set(params json.RawMessage) (any, error) {
 	var p struct {
-		Enabled bool   `json:"enabled"`
-		Temp    uint32 `json:"temp"`
+		Enabled *bool   `json:"enabled"`
+		Temp    *uint32 `json:"temp"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
 		return nil, err
 	}
-	if p.Temp != 0 {
-		s.mu.Lock()
-		s.temp = p.Temp
-		s.mu.Unlock()
+	s.mu.Lock()
+	wasActive := s.active
+	temp := s.temp
+	s.mu.Unlock()
+	if p.Temp != nil && *p.Temp != 0 {
+		temp = *p.Temp
 	}
-	if p.Enabled {
-		if err := s.enable(s.temp); err != nil {
+	enabled := wasActive
+	if p.Enabled != nil {
+		enabled = *p.Enabled
+	}
+	switch {
+	case enabled && (!wasActive || temp != s.currentTemp()):
+		if wasActive {
+			s.stopFn()
+		}
+		if err := s.enable(temp); err != nil {
 			return nil, err
 		}
-	} else {
+	case !enabled && wasActive:
 		s.disable()
+	case !enabled && temp != s.currentTemp():
+		s.storeTemp(temp)
 	}
 	return s.get(nil)
+}
+
+// temperature retargets the colour temperature without changing whether
+// night light is on. wlsunset has no runtime control channel, so when active
+// the process is replaced (old instance stopped first, so they never stack).
+func (s *Service) temperature(params json.RawMessage) (any, error) {
+	var p struct {
+		Temp uint32 `json:"temp"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, err
+	}
+	if p.Temp == 0 {
+		return nil, errors.New("nightlight.temperature: temp is required")
+	}
+	b, _ := json.Marshal(map[string]any{"temp": p.Temp})
+	return s.set(b)
+}
+
+func (s *Service) currentTemp() uint32 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.temp
+}
+
+// storeTemp records a new target while night light is off.
+func (s *Service) storeTemp(temp uint32) {
+	s.mu.Lock()
+	s.temp = temp
+	s.persist()
+	s.mu.Unlock()
+	s.broadcast()
 }
 
 func (s *Service) get(_ json.RawMessage) (any, error) {
