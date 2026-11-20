@@ -36,13 +36,15 @@ Singleton {
     function getKey(provider) {
         if (!provider) return "";
         let entry = keyCache[provider];
-        return entry ? entry.api_key : "";
+        // Keys saved by older tooling may carry a trailing newline, which breaks
+        // both the models fetch URL and the Authorization header.
+        return entry ? (entry.api_key || "").trim() : "";
     }
 
     function getEndpoint(provider) {
         if (!provider) return "";
         let entry = keyCache[provider];
-        return entry ? entry.endpoint : "";
+        return entry ? (entry.endpoint || "").trim() : "";
     }
 
     function getCustomCurl(provider) {
