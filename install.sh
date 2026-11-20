@@ -474,6 +474,15 @@ configure_services() {
     [[ -d "/etc/sv/NetworkManager" && ! -L "$SV_DIR/NetworkManager" ]] && sudo ln -s /etc/sv/NetworkManager "$SV_DIR/"
     [[ -d "/etc/sv/bluetooth" && ! -L "$SV_DIR/bluetooth" ]] && sudo ln -s /etc/sv/bluetooth "$SV_DIR/"
 
+  elif has_cmd dinitctl; then
+    log_info "Configuring dinit services..."
+    if [[ -L "/etc/dinit.d/boot.d/iwd" ]]; then
+      sudo dinitctl stop iwd
+      sudo dinitctl disable iwd
+    fi
+    sudo dinitctl enable NetworkManager
+    sudo dinitctl enable bluetoothd
+
   else
     log_warn "Unknown init system. Please enable NetworkManager and Bluetooth manually."
   fi
