@@ -22,6 +22,7 @@ Item {
 
     readonly property bool frameEnabled: (Config.bar?.frameEnabled ?? false)
     readonly property bool frameWrapped: frameEnabled && GlobalStates.assistantPinned
+    readonly property string modelLabel: Config.ai.backend === "hermes" ? "Hermes" : (Ai.currentModel ? Ai.currentModel.name : "")
     readonly property int sidebarMargin: frameWrapped ? 0 : 4
     property bool wantsFocus: false
     property bool menuExpanded: false
@@ -645,7 +646,7 @@ Item {
                                 height: 40
 
                                 Text {
-                                    text: Ai.currentModel ? Ai.currentModel.name : ""
+                                    text: root.modelLabel
                                     color: Colors.overBackground
                                     font.family: Config.theme.font
                                     font.pixelSize: 16
@@ -1517,7 +1518,7 @@ Item {
                             anchors.topMargin: 8
                             anchors.horizontalCenter: inputContainer.horizontalCenter
 
-                            text: Ai.currentModel ? Ai.currentModel.name : ""
+                            text: root.modelLabel
                             color: Colors.outline
                             font.family: Config.theme.font
                             font.pixelSize: Styling.fontSize(-2)

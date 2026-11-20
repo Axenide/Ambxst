@@ -153,6 +153,33 @@ Singleton {
     property bool isLoading: false
     property string lastError: ""
     property string responseBuffer: ""
+    property string rawOutputBuffer: ""
+    property string hermesSessionId: ""
+    property string hermesStderrBuffer: ""
+
+    readonly property string noModelMessage: "No model selected. Add an API key in Settings > AI, or switch the backend to Hermes"
+
+    function showError(text) {
+        lastError = text;
+        isLoading = false;
+
+        let newChat = Array.from(currentChat);
+        // Reuse the empty assistant placeholder when there is one (streaming paths).
+        if (newChat.length > 0 && newChat[newChat.length - 1].role === "assistant" && newChat[newChat.length - 1].content === "") {
+            newChat[newChat.length - 1].content = "Error: " + text;
+        } else {
+            newChat.push({
+                role: "assistant",
+                content: "Error: " + text
+            });
+        }
+        currentChat = newChat;
+        saveCurrentChat();
+    }
+
+    function stripAnsi(text) {
+        return (text || "").replace(/\u001b\[[0-9;?]*[A-Za-z]/g, "").replace(/\u001b\][^\u0007]*(\u0007|\u001b\\)/g, "");
+    }
 
     // Current Chat
     property var currentChat: []
@@ -169,6 +196,8 @@ Singleton {
     FileView {
         id: bodyFileView
         printErrors: false
+        // Writes must be on disk before curl reads the body (no async write race).
+        blockWrites: true
     }
 
     // ============================================
@@ -357,21 +386,29 @@ Singleton {
         newChat.push(userMsg);
         currentChat = newChat;
         saveCurrentChat();
+
+        if (Config.ai.backend !== "hermes" && !currentModel) {
+            showError(noModelMessage);
+            return;
+        }
+
         makeRequest();
     }
 
     function makeRequest() {
+        if (Config.ai.backend === "hermes") {
+            makeHermesRequest();
+            return;
+        }
+
+        if (!currentModel) {
+            showError(noModelMessage);
+            return;
+        }
+
         let apiKey = getApiKey(currentModel);
         if (!apiKey && currentModel.requires_key) {
-            lastError = I18n.t("ai.api_key_missing").replace("%1", currentModel.name).replace("%2", currentModel.key_id || I18n.t("ai.env_variable"));
-            isLoading = false;
-
-            let errChat = Array.from(currentChat);
-            errChat.push({
-                role: "assistant",
-                content: "Error: " + lastError
-            });
-            currentChat = errChat;
+            showError(I18n.t("ai.api_key_missing").replace("%1", currentModel.name).replace("%2", currentModel.key_id || I18n.t("ai.env_variable")));
             return;
         }
 
@@ -412,11 +449,13 @@ Singleton {
             messages.push(apiMsg);
         }
 
-        // Build body — always use streaming
-        let body = currentStrategy.getStreamBody(messages, currentModel, systemTools);
+        // Build body — always use streaming.
+        // Tool calling is not implemented: send no tools (some providers 400 on them).
+        let body = currentStrategy.getStreamBody(messages, currentModel, []);
 
-        // Reset streaming buffer
+        // Reset streaming buffers
         responseBuffer = "";
+        rawOutputBuffer = "";
 
         // Add placeholder assistant message for streaming
         let streamChat = Array.from(currentChat);
@@ -517,10 +556,23 @@ Singleton {
         // Use SplitParser for streaming — emits onRead per line
         stdout: SplitParser {
             onRead: data => {
+                let line = (data || "").trim();
+                // Non-SSE output (provider error bodies) is kept for the exit handler.
+                if (line !== "" && !line.startsWith("data:") && !line.startsWith("event:"))
+                    root.rawOutputBuffer += line + "\n";
+
                 let result = root.currentStrategy.parseStreamChunk(data);
 
                 if (result.error) {
                     root.lastError = result.error;
+                    root.isLoading = false;
+                    root.responseBuffer += (root.responseBuffer ? "\n\n" : "") + "Error: " + result.error;
+
+                    let errChat = Array.from(root.currentChat);
+                    if (errChat.length > 0) {
+                        errChat[errChat.length - 1].content = root.responseBuffer;
+                        root.currentChat = errChat;
+                    }
                     return;
                 }
 
@@ -546,16 +598,27 @@ Singleton {
             root.isLoading = false;
 
             if (exitCode === 0) {
-                // Check if we got any content during streaming
+                // Nothing was streamed: providers that reject the request (401/404/429)
+                // answer with a plain JSON body that the SSE parsers drop.
                 if (root.responseBuffer === "" && root.currentChat.length > 0) {
-                    // No streaming data received — might be non-streaming response or error
-                    // The last message is our placeholder, leave as is
-                    let lastMsg = root.currentChat[root.currentChat.length - 1];
-                    if (!lastMsg.content) {
-                        let newChat = Array.from(root.currentChat);
-                        newChat[newChat.length - 1].content = I18n.t("ai.no_response");
-                        root.currentChat = newChat;
+                    let text = "";
+                    let raw = root.rawOutputBuffer.trim();
+
+                    if (raw !== "") {
+                        try {
+                            let parsed = JSON.parse(raw);
+                            let errObj = parsed.error !== undefined ? parsed.error : parsed;
+                            text = typeof errObj === "string" ? errObj : (errObj.message || JSON.stringify(errObj));
+                        } catch (e) {
+                            text = raw.substring(0, 300);
+                        }
+                        if (!text)
+                            text = raw.substring(0, 300);
                     }
+
+                    let newChat = Array.from(root.currentChat);
+                    newChat[newChat.length - 1].content = text !== "" ? "Error: " + text : I18n.t("ai.no_response");
+                    root.currentChat = newChat;
                 }
 
                 root.saveCurrentChat();
@@ -568,9 +631,141 @@ Singleton {
                     errChat[errChat.length - 1].content = "Error: " + root.lastError;
                 }
                 root.currentChat = errChat;
+                root.saveCurrentChat();
             }
 
             root.responseBuffer = "";
+            root.rawOutputBuffer = "";
+        }
+    }
+
+    // ============================================
+    // HERMES BACKEND
+    // ============================================
+
+    function makeHermesRequest() {
+        let lastUserMessage = "";
+        for (let i = currentChat.length - 1; i >= 0; i--) {
+            if (currentChat[i].role === "user") {
+                lastUserMessage = currentChat[i].content || "";
+                break;
+            }
+        }
+
+        if (lastUserMessage === "") {
+            showError("Nothing to send to Hermes.");
+            return;
+        }
+
+        if (hermesProcess.running)
+            hermesProcess.running = false;
+
+        let cmd = [Config.ai.hermesCommand || "hermes", "chat", "-q", lastUserMessage, "-Q"];
+        if (hermesSessionId !== "")
+            cmd.push("--resume", hermesSessionId);
+
+        responseBuffer = "";
+        hermesStderrBuffer = "";
+        lastError = "";
+        isLoading = true;
+
+        let streamChat = Array.from(currentChat);
+        streamChat.push({
+            role: "assistant",
+            content: "",
+            model: "Hermes"
+        });
+        currentChat = streamChat;
+
+        // Resolve the command first so a bad hermesCommand reports cleanly instead
+        // of leaving the placeholder empty (bare names need a PATH lookup).
+        hermesWhichProcess.command = ["/usr/bin/which", cmd[0]];
+        hermesWhichProcess.startCommand = cmd;
+        hermesWhichProcess.running = true;
+    }
+
+    Process {
+        id: hermesWhichProcess
+        property var startCommand: []
+
+        stdout: StdioCollector {
+            id: hermesWhichOut
+        }
+
+        onExited: exitCode => {
+            if (exitCode !== 0 || hermesWhichOut.text.trim() === "") {
+                root.showError("Hermes command not found: " + (startCommand.length > 0 ? startCommand[0] : "") + ". Set hermesCommand to its full path in Settings > AI.");
+                return;
+            }
+            hermesProcess.command = startCommand;
+            hermesProcess.running = true;
+        }
+    }
+
+    Process {
+        id: hermesProcess
+
+        stdout: SplitParser {
+            onRead: data => {
+                let line = root.stripAnsi(data);
+                if (line.trim() === "")
+                    return;
+                root.responseBuffer += (root.responseBuffer === "" ? "" : "\n") + line;
+
+                let newChat = Array.from(root.currentChat);
+                if (newChat.length > 0) {
+                    newChat[newChat.length - 1].content = root.responseBuffer;
+                    root.currentChat = newChat;
+                }
+            }
+        }
+
+        stderr: SplitParser {
+            onRead: data => {
+                let line = root.stripAnsi(data).trim();
+                if (line === "")
+                    return;
+                let match = line.match(/^session_id:\s*(\S+)/);
+                if (match) {
+                    root.hermesSessionId = match[1];
+                    return;
+                }
+                root.hermesStderrBuffer += line + "\n";
+            }
+        }
+
+        onExited: exitCode => {
+            root.isLoading = false;
+
+            let newChat = Array.from(root.currentChat);
+            let hasPlaceholder = newChat.length > 0;
+
+            if (exitCode === 0) {
+                if (root.responseBuffer.trim() === "" && hasPlaceholder) {
+                    let detail = root.hermesStderrBuffer.trim();
+                    newChat[newChat.length - 1].content = "Error: Hermes returned no output." + (detail !== "" ? "\n\n" + detail : "");
+                    root.currentChat = newChat;
+                }
+                root.saveCurrentChat();
+            } else {
+                let detail = root.hermesStderrBuffer.trim();
+                let message = "Hermes failed (exit code " + exitCode + ").";
+                // Hermes reports some failures on stdout, so keep what it said.
+                if (root.responseBuffer.trim() !== "")
+                    message += "\n\n" + root.responseBuffer.trim();
+                if (detail !== "")
+                    message += "\n\n" + detail;
+                root.lastError = message;
+
+                if (hasPlaceholder) {
+                    newChat[newChat.length - 1].content = "Error: " + message;
+                    root.currentChat = newChat;
+                }
+                root.saveCurrentChat();
+            }
+
+            root.responseBuffer = "";
+            root.hermesStderrBuffer = "";
         }
     }
 
@@ -610,6 +805,15 @@ Singleton {
     // ============================================
 
     function createNewChat() {
+        // A new chat always starts a fresh Hermes session.
+        if (hermesProcess.running) {
+            hermesProcess.running = false;
+            isLoading = false;
+            responseBuffer = "";
+            hermesStderrBuffer = "";
+        }
+        hermesSessionId = "";
+
         currentChat = [];
         currentChatId = Date.now().toString();
         chatModelChanged();
@@ -701,6 +905,7 @@ Singleton {
                 try {
                     root.currentChat = JSON.parse(loadChatStdout.text);
                     root.currentChatId = targetId;
+                    root.hermesSessionId = "";
                     root.chatModelChanged();
                 } catch (e) {
                     console.log("Error loading chat: " + e);
