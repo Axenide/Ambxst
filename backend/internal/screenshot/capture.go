@@ -6,7 +6,6 @@ package screenshot
 import (
 	"fmt"
 	stdlog "log"
-	"math"
 	"sync"
 
 	"ambxst/backend/internal/proto/wlr_screencopy"
@@ -286,27 +285,25 @@ func Upright(result *CaptureResult) (*CaptureResult, error) {
 	return upright(result, result.Transform)
 }
 
-// UprightForSize avoids applying a quarter-turn when the buffer already matches the output orientation.
-func UprightForSize(result *CaptureResult, width, height int) (*CaptureResult, error) {
+// UprightForOutput avoids applying a transform when screencopy already returned logical orientation.
+func UprightForOutput(result *CaptureResult, hyprlandLogical func() bool) (*CaptureResult, error) {
 	transform := result.Transform
-	if width > 0 && height > 0 && swapsAxes(transform) {
-		actualAspect := math.Log(float64(result.Buffer.Width) / float64(result.Buffer.Height))
-		expectedAspect := math.Log(float64(width) / float64(height))
-		rotatedAspect := math.Log(float64(height) / float64(width))
-		if math.Abs(actualAspect-expectedAspect) < math.Abs(actualAspect-rotatedAspect) {
-			transform = TransformNormal
-		}
+	if frameInLogicalOrientation(transform, result.Region.Width, result.Region.Height, result.Buffer.Width, result.Buffer.Height, hyprlandLogical) {
+		transform = TransformNormal
 	}
 	return upright(result, transform)
 }
 
-func swapsAxes(transform int32) bool {
+func frameInLogicalOrientation(transform, outputWidth, outputHeight int32, frameWidth, frameHeight int, hyprlandLogical func() bool) bool {
 	switch transform {
-	case Transform90, Transform270, TransformFlipped90, TransformFlipped270:
+	case TransformNormal:
 		return true
-	default:
-		return false
+	case Transform90, Transform270, TransformFlipped90, TransformFlipped270:
+		if outputWidth != outputHeight {
+			return frameWidth == int(outputHeight) && frameHeight == int(outputWidth)
+		}
 	}
+	return hyprlandLogical != nil && hyprlandLogical()
 }
 
 func upright(result *CaptureResult, transform int32) (*CaptureResult, error) {

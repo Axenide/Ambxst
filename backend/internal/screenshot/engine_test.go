@@ -107,13 +107,14 @@ func TestUprightFlipsInverted(t *testing.T) {
 	}
 }
 
-func TestUprightForSizeSkipsAlreadyOrientedQuarterTurn(t *testing.T) {
+func TestUprightForOutputSkipsAlreadyOrientedQuarterTurn(t *testing.T) {
 	result := &CaptureResult{
 		Buffer:    newTestBuffer(t, 9, 16),
+		Region:    Region{Width: 16, Height: 9},
 		Transform: Transform90,
 	}
 
-	upright, err := UprightForSize(result, 540, 960)
+	upright, err := UprightForOutput(result, nil)
 	if err != nil {
 		t.Fatalf("upright: %v", err)
 	}
@@ -127,13 +128,14 @@ func TestUprightForSizeSkipsAlreadyOrientedQuarterTurn(t *testing.T) {
 	}
 }
 
-func TestUprightForSizeRotatesRawQuarterTurn(t *testing.T) {
+func TestUprightForOutputRotatesRawQuarterTurn(t *testing.T) {
 	result := &CaptureResult{
 		Buffer:    newTestBuffer(t, 16, 9),
+		Region:    Region{Width: 16, Height: 9},
 		Transform: Transform90,
 	}
 
-	upright, err := UprightForSize(result, 540, 960)
+	upright, err := UprightForOutput(result, nil)
 	if err != nil {
 		t.Fatalf("upright: %v", err)
 	}
@@ -144,6 +146,51 @@ func TestUprightForSizeRotatesRawQuarterTurn(t *testing.T) {
 	}
 	if got := upright.Buffer.Data()[1]; got != 8 {
 		t.Fatalf("top-left pixel has y=%d, want 8 after rotation", got)
+	}
+}
+
+func TestFrameInLogicalOrientation(t *testing.T) {
+	tests := []struct {
+		name            string
+		transform       int32
+		outputWidth     int32
+		outputHeight    int32
+		frameWidth      int
+		frameHeight     int
+		hyprlandLogical bool
+		want            bool
+	}{
+		{name: "normal", transform: TransformNormal, outputWidth: 16, outputHeight: 9, frameWidth: 16, frameHeight: 9, want: true},
+		{name: "rotated frame is logical", transform: Transform90, outputWidth: 16, outputHeight: 9, frameWidth: 9, frameHeight: 16, want: true},
+		{name: "native frame needs rotation", transform: Transform90, outputWidth: 16, outputHeight: 9, frameWidth: 16, frameHeight: 9, want: false},
+		{name: "270 rotated frame is logical", transform: Transform270, outputWidth: 16, outputHeight: 9, frameWidth: 9, frameHeight: 16, want: true},
+		{name: "square uses compositor fallback", transform: Transform90, outputWidth: 10, outputHeight: 10, frameWidth: 10, frameHeight: 10, hyprlandLogical: true, want: true},
+		{name: "nonlogical square uses transform", transform: Transform90, outputWidth: 10, outputHeight: 10, frameWidth: 10, frameHeight: 10, want: false},
+		{name: "180 uses compositor fallback", transform: Transform180, outputWidth: 16, outputHeight: 9, frameWidth: 16, frameHeight: 9, hyprlandLogical: true, want: true},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			fallback := func() bool { return test.hyprlandLogical }
+			got := frameInLogicalOrientation(test.transform, test.outputWidth, test.outputHeight, test.frameWidth, test.frameHeight, fallback)
+			if got != test.want {
+				t.Fatalf("frameInLogicalOrientation() = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+func TestFrameInLogicalOrientationDoesNotQueryCompositorForNormalTransform(t *testing.T) {
+	called := false
+	logical := frameInLogicalOrientation(TransformNormal, 16, 9, 16, 9, func() bool {
+		called = true
+		return false
+	})
+	if !logical {
+		t.Fatal("normal transform should already be logical")
+	}
+	if called {
+		t.Fatal("compositor fallback should not be queried for normal transform")
 	}
 }
 
