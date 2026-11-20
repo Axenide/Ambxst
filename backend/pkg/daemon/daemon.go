@@ -278,6 +278,10 @@ func (d *Daemon) Run(qsBin, shellQML string) error {
 		}
 	}()
 
+	var crashes []time.Time
+	crashTick := time.NewTicker(10 * time.Second)
+	defer crashTick.Stop()
+
 	for {
 		select {
 		case s := <-sigCh:
@@ -314,8 +318,24 @@ func (d *Daemon) Run(qsBin, shellQML string) error {
 					continue
 				}
 			}
+			// Quickshell crashed (not a quit/reload: those go through shutdown).
+			// Respawn it and re-lock, otherwise a crash while locked leaves the
+			// compositor stuck on its "lock client died" screen.
+			if err != nil && len(crashes) < 3 {
+				crashes = append(crashes, time.Now())
+				log.Printf("[ambxst] respawning qs after crash (%d/3 per minute)", len(crashes))
+				d.ui.RunOnNextSubscribe("lockscreen")
+				if spawnErr := d.spawnQS(qsBin, shellQML); spawnErr == nil {
+					d.qsDone = waitForProcess(d.qsCmd)
+					continue
+				}
+			}
 			d.shutdown()
 			return nil
+		case <-crashTick.C:
+			for len(crashes) > 0 && time.Since(crashes[0]) > time.Minute {
+				crashes = crashes[1:]
+			}
 		}
 	}
 }
