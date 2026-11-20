@@ -415,3 +415,29 @@ func TestCandidateCompatibilityExpandsHomePath(t *testing.T) {
 		t.Fatalf("home-relative candidate was not checked: %#v", report)
 	}
 }
+
+func TestHealthyUpdateDoesNotBlockLaterChanges(t *testing.T) {
+	m, _, writeVersion := updateFixture(t, true)
+	writeVersion("1.1.0")
+	preview, err := m.CheckUpdates(nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.ApplyUpdates(preview.Updates.PlanID, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.SetEnabled("example.update", false); err == nil {
+		t.Fatal("a change during the update's own startup trial was allowed")
+	}
+	if err := m.MarkHealthy(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := m.SetEnabled("example.update", false); err != nil {
+		t.Fatal(err)
+	}
+	// The first change left its own generation pending; the committed journal
+	// of the earlier, healthy update must not block the next change.
+	if _, err := m.SetEnabled("example.update", true); err != nil {
+		t.Fatalf("second change after a healthy update was blocked: %v", err)
+	}
+}
