@@ -230,7 +230,7 @@ QtObject {
                pad(d.getSeconds());
     }
 
-    function processRegion(x, y, w, h, outputName = "") {
+    function processRegion(x, y, w, h, outputName = "", originX = null, originY = null) {
         if (root.captureMode === "ocr" || root.captureMode === "qr") {
             root._runRecognition(root.captureMode, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
             return;
@@ -245,6 +245,11 @@ QtObject {
             height: Math.round(h),
             clipboard: !isLens
         };
+        if (originX !== null && originY !== null) {
+            params.hasOrigin = true;
+            params.originX = Math.round(originX);
+            params.originY = Math.round(originY);
+        }
         if (isLens) {
             params.outPath = root.lensPath;
         }

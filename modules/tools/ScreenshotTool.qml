@@ -123,7 +123,7 @@ PanelWindow {
             close();
         } else if (screenshotPopup.currentMode === "region") {
             if (Screenshot.selectionW > 0) {
-                Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name);
+                Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name, screenshotPopup.screen.x, screenshotPopup.screen.y);
                 close();
             }
         } else if (screenshotPopup.currentMode === "window") {
@@ -246,7 +246,7 @@ PanelWindow {
                     TapHandler {
                         onTapped: {
                             // Pass global coords
-                            Screenshot.processRegion(modelData.at[0], modelData.at[1], modelData.size[0], modelData.size[1]);
+                            Screenshot.processRegion(modelData.at[0], modelData.at[1], modelData.size[0], modelData.size[1], screenshotPopup.targetScreen.name, screenshotPopup.screen.x, screenshotPopup.screen.y);
                             close();
                         }
                     }
@@ -310,7 +310,7 @@ PanelWindow {
                 selecting = false;
                 
                 if (Screenshot.selectionW > 5 && Screenshot.selectionH > 5) {
-                    Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name);
+                    Screenshot.processRegion(Screenshot.selectionX, Screenshot.selectionY, Screenshot.selectionW, Screenshot.selectionH, screenshotPopup.targetScreen.name, screenshotPopup.screen.x, screenshotPopup.screen.y);
                     close();
                 }
             }

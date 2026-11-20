@@ -105,6 +105,20 @@ func regionScale(mon axmon.Monitor, output string) float64 {
 // to a live capture when no freeze session is active. When outputName is
 // empty the monitor is resolved from the rect center.
 func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.CaptureResult, func(), error) {
+	return region(outputName, x, y, w, h, cursor, nil)
+}
+
+// RegionWithOrigin crops logical global coordinates relative to the supplied output origin.
+func RegionWithOrigin(outputName string, x, y, w, h, originX, originY int, cursor bool) (*screenshot.CaptureResult, func(), error) {
+	return region(outputName, x, y, w, h, cursor, &regionOrigin{x: originX, y: originY})
+}
+
+type regionOrigin struct {
+	x int
+	y int
+}
+
+func region(outputName string, x, y, w, h int, cursor bool, origin *regionOrigin) (*screenshot.CaptureResult, func(), error) {
 	rect := screenshot.Region{
 		X:      int32(x),
 		Y:      int32(y),
@@ -137,10 +151,11 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 	}
 
 	scale := regionScale(*mon, name)
-	localX := int(float64(int(rect.X)-mon.X())*scale + 0.5)
-	localY := int(float64(int(rect.Y)-mon.Y())*scale + 0.5)
-	cw := int(float64(rect.Width)*scale + 0.5)
-	ch := int(float64(rect.Height)*scale + 0.5)
+	originX, originY := mon.X(), mon.Y()
+	if origin != nil {
+		originX, originY = origin.x, origin.y
+	}
+	localX, localY, cw, ch := scaledRegionRect(x, y, w, h, originX, originY, scale)
 
 	// A compositor can report a frozen frame whose physical dimensions
 	// differ from the current output after a scale/layout change. Fall
@@ -165,6 +180,14 @@ func Region(outputName string, x, y, w, h int, cursor bool) (*screenshot.Capture
 		closer()
 	}
 	return cropped, combinedCloser, nil
+}
+
+func scaledRegionRect(x, y, w, h, originX, originY int, scale float64) (int, int, int, int) {
+	localX := int(float64(x-originX)*scale + 0.5)
+	localY := int(float64(y-originY)*scale + 0.5)
+	captureWidth := int(float64(w)*scale + 0.5)
+	captureHeight := int(float64(h)*scale + 0.5)
+	return localX, localY, captureWidth, captureHeight
 }
 
 func cursorMode(on bool) screenshot.CursorMode {

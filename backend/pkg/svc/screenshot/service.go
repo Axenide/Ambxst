@@ -94,15 +94,15 @@ type captureParams struct {
 	Y         int    `json:"y"`
 	Width     int    `json:"width"`
 	Height    int    `json:"height"`
+	OriginX   int    `json:"originX"`
+	OriginY   int    `json:"originY"`
+	HasOrigin bool   `json:"hasOrigin"`
 	Clipboard bool   `json:"clipboard"`
 	Filename  string `json:"filename"`
 	OutPath   string `json:"outPath"`
 }
 
-// capture saves a screenshot. Region coordinates are logical global pixels;
-// mode "output"/"screen"/"fullscreen" capture whole outputs. Both prefer
-// the frozen session buffers captured by frame, so the saved image matches
-// the freeze preview the user confirmed on.
+// capture saves screenshots using logical global coordinates, with an optional selector origin.
 func (s *Service) capture(params json.RawMessage) (any, error) {
 	var p captureParams
 	if err := json.Unmarshal(params, &p); err != nil {
@@ -115,7 +115,11 @@ func (s *Service) capture(params json.RawMessage) (any, error) {
 
 	switch p.Mode {
 	case "region":
-		result, closer, err = capture.Region(p.Output, p.X, p.Y, p.Width, p.Height, false)
+		if p.HasOrigin {
+			result, closer, err = capture.RegionWithOrigin(p.Output, p.X, p.Y, p.Width, p.Height, p.OriginX, p.OriginY, false)
+		} else {
+			result, closer, err = capture.Region(p.Output, p.X, p.Y, p.Width, p.Height, false)
+		}
 	case "output", "screen", "fullscreen":
 		name := p.Output
 		if name == "" && (p.Mode == "screen" || p.Mode == "fullscreen") {
