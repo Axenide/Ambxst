@@ -1,7 +1,8 @@
 {
     "customText": "Ambxst",
     "disableHoverExpansion": true,
-    "hoverRegionHeight": 16,
+    "hoverRegionHeight": 2,
+    "hoverToReveal": true,
     "keepHidden": false,
     "noMediaDisplay": "userHost",
     "position": "top",

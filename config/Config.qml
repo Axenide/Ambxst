@@ -699,6 +699,7 @@ Singleton {
             property string theme: "default"
             property string position: "top"
             property int hoverRegionHeight: 8
+            property bool hoverToReveal: true
             property bool keepHidden: false
             property string noMediaDisplay: "userHost"
             property string customText: "Ambxst"

@@ -1041,6 +1041,17 @@ Item {
                             }
                         }
 
+                        ToggleRow {
+                            label: I18n.t("shell.hover_to_reveal")
+                            checked: Config.notch.hoverToReveal ?? true
+                            onToggled: value => {
+                                if (value !== Config.notch.hoverToReveal) {
+                                    GlobalStates.markShellChanged();
+                                    Config.notch.hoverToReveal = value;
+                                }
+                            }
+                        }
+
                         NumberInputRow {
                             label: I18n.t("shell.hover_region_height")
                             value: Config.notch.hoverRegionHeight ?? 8

@@ -1,7 +1,7 @@
 {
     "enabled": true,
     "height": 48,
-    "hoverRegionHeight": 16,
+    "hoverRegionHeight": 2,
     "hoverToReveal": true,
     "iconSize": 24,
     "ignoredAppRegexes": [

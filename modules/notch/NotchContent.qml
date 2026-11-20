@@ -92,7 +92,7 @@ Item {
         // If keepHidden is true, ONLY show on interaction
         // UNLESS notch and bar are on same side (e.g. both top), then keepHidden is IGNORED for sync consistency
         if (((Config.notch && Config.notch.keepHidden !== undefined) ? Config.notch.keepHidden : false) && barPosition !== notchPosition) {
-            return (screenNotchOpen || hasActiveNotifications || hoverActive || barHoverActive);
+            return (screenNotchOpen || hasActiveNotifications || ((Config.notch?.hoverToReveal ?? true) && hoverActive) || barHoverActive);
         }
 
         // If fullscreen and bar is NOT available on fullscreen, hard-hide the notch too
@@ -106,7 +106,7 @@ Item {
         
         // Show on interaction (hover, open, notifications)
         // This works even in fullscreen, ensuring hover always works
-        if (screenNotchOpen || hasActiveNotifications || hoverActive || barHoverActive) {
+        if (screenNotchOpen || hasActiveNotifications || ((Config.notch?.hoverToReveal ?? true) && hoverActive) || barHoverActive) {
             return true;
         }
         
@@ -201,7 +201,7 @@ Item {
 
         // Width follows the notch, height is small hover region when hidden
         width: notchRegionContainer.width + 20
-        height: root.reveal ? notchRegionContainer.height : Math.max((Config.notch && Config.notch.hoverRegionHeight !== undefined) ? Config.notch.hoverRegionHeight : 8, 8)
+        height: root.reveal ? notchRegionContainer.height : Math.max((Config.notch && Config.notch.hoverRegionHeight !== undefined) ? Config.notch.hoverRegionHeight : 8, 0)
 
         x: (parent.width - width) / 2
         y: root.notchPosition === "top" ? 0 : parent.height - height

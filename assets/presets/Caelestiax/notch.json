@@ -1,6 +1,7 @@
 {
     "theme": "default",
     "position": "top",
-    "hoverRegionHeight": 16,
+    "hoverRegionHeight": 2,
+    "hoverToReveal": true,
     "keepHidden": false
 }

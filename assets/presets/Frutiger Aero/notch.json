@@ -1,4 +1,5 @@
 {
-    "hoverRegionHeight": 16,
+    "hoverRegionHeight": 2,
+    "hoverToReveal": true,
     "theme": "island"
 }
