@@ -32,12 +32,9 @@ function getNextMonthDays(month, year) {
 }
 
 function getPrevMonthDays(month, year) {
-    const leapYear = checkLeapYear(year);
-    if (month == 3 && leapYear) return 29;
-    if (month == 3 && !leapYear) return 28;
-    if (month == 1) return 31;
-    if ((month <= 7 && month % 2 == 1) || (month >= 8 && month % 2 == 0)) return 30;
-    return 31;
+    // Ask the calendar itself for the last day of the previous month; the old
+    // parity table answered 30 for July, drawing August's leading days early.
+    return new Date(year, month - 1, 0).getDate();
 }
 
 function getDateInXMonthsTime(x, baseDate) {
