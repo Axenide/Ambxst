@@ -21,11 +21,9 @@ Item {
         const clients = AxctlService.clients.values || [];
         return clients.some(client => client.fullscreen === true && client.monitor === screenMonitor.id);
     }
+    // Game mode pauses every video wallpaper, on every screen.
     readonly property bool gameModeOnScreen: GameModeClient.toggled
-        && screenMonitor !== null
-        && AxctlService.focusedMonitor
-        && AxctlService.focusedMonitor.id === screenMonitor.id
-    readonly property bool shouldPausePlayback: Config.performance.pauseWallpapersOnFullscreen && (screenHasFullscreen || gameModeOnScreen)
+    readonly property bool shouldPausePlayback: gameModeOnScreen || (Config.performance.pauseWallpapersOnFullscreen && screenHasFullscreen)
 
     readonly property var optimizedPalette: ["background", "overBackground", "shadow", "surface", "surfaceBright", "surfaceDim", "surfaceContainer", "surfaceContainerHigh", "surfaceContainerHighest", "surfaceContainerLow", "surfaceContainerLowest", "primary", "secondary", "tertiary", "red", "lightRed", "green", "lightGreen", "blue", "lightBlue", "yellow", "lightYellow", "cyan", "lightCyan", "magenta", "lightMagenta"]
 
@@ -39,11 +37,17 @@ Item {
         player.stop();
         player.source = "file://" + sourceFile;
         syncDebounce.restart();
+        // skwd-wall plays this one; leave the player empty.
+        if (skwdHandOff())
+            return;
         updatePlayback();
     }
 
     function updatePlayback() {
         if (!sourceFile)
+            return;
+        // skwd-wall pauses it itself (SkwdWall.pauses).
+        if (skwdOffloaded)
             return;
         if (shouldPausePlayback) {
             if (player.playbackState === MediaPlayer.PlayingState)
@@ -127,9 +131,33 @@ Item {
         function onVideoSyncTickChanged() {
             if (videoWallpaper.shouldPausePlayback)
                 return;
+            // Nothing to realign, skwd-wall plays it.
+            if (videoWallpaper.skwdOffloaded)
+                return;
             player.seek(0);
             if (player.playbackState !== MediaPlayer.PlayingState)
                 player.play();
         }
+    }
+
+    // ── skwd-wall ─────────────────────────────────────────────────────
+    // skwd-wall renders this video (SkwdWall) instead of the QtMultimedia
+    // player above, so the player is left empty.
+    readonly property bool skwdOffloaded: SkwdWall.offloads(sourceFile)
+    // Handed over, or handed back (skwd stopped or failed): start over.
+    onSkwdOffloadedChanged: restartPlayback()
+
+    function skwdHandOff() {
+        if (!skwdOffloaded)
+            return false;
+        player.stop();
+        player.source = "";
+        // Renderers that wait for the first decoded frame count a handed-off
+        // video as shown.
+        if ("hasFirstFrame" in videoWallpaper && !videoWallpaper.hasFirstFrame) {
+            videoWallpaper.hasFirstFrame = true;
+            videoWallpaper.firstFrameReady();
+        }
+        return true;
     }
 }
