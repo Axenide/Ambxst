@@ -56,6 +56,10 @@ Rectangle {
                         id: controlButtonsContainer
                     }
 
+                    BatteryWidget {
+                        Layout.fillWidth: true
+                    }
+
                     Calendar {
                         Layout.fillWidth: true
                         Layout.preferredHeight: width
