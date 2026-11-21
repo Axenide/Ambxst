@@ -287,6 +287,28 @@ Singleton {
             root.submitHermesPrompt(text);
         }
 
+        // An attach failure or a missing QtWebSockets module used to leave the
+        // spinner running and an empty bubble in the chat.
+        function onStatusChanged() {
+            if (HermesGateway.status !== "error")
+                return;
+
+            // Session ids belong to the connection that created them.
+            root.hermesSessionId = "";
+            root.hermesSubscriptionId = "";
+            root.hermesCatalogPending = false;
+            root.fetchingHermesModels = false;
+            root.hermesNotedPrompts = [];
+
+            if (!root.hermesGatewayPending && !root.isLoading)
+                return;
+
+            let message = HermesGateway.lastError !== "" ? HermesGateway.lastError : "Hermes gateway connection failed.";
+            root.hermesPendingText = "";
+            root.hermesGatewayPending = false;
+            root.hermesFail(message);
+        }
+
         function onGatewayEvent(type, sessionId, payload) {
             if (!root.hermesActive)
                 return;
@@ -359,6 +381,16 @@ Singleton {
     property var hermesNotedPrompts: []
 
     readonly property string noModelMessage: "No model selected. Add an API key in Settings > AI, or switch the backend to Hermes"
+
+    // Drops the empty assistant bubble a request pushed, then reports the error
+    // in its place, so a failed turn reads as one answer instead of two bubbles.
+    function hermesFail(text) {
+        let chat = Array.from(currentChat);
+        while (chat.length > 0 && chat[chat.length - 1].role === "assistant" && chat[chat.length - 1].content === "")
+            chat.pop();
+        currentChat = chat;
+        showError(text);
+    }
 
     function showError(text) {
         lastError = text;
@@ -969,14 +1001,14 @@ Singleton {
 
         HermesGateway.request("session.create", params, (err, result) => {
             if (err) {
-                showError("Hermes could not start a session: " + (err.message || "unknown error"));
+                hermesFail("Hermes could not start a session: " + (err.message || "unknown error"));
                 return;
             }
 
             hermesSessionId = result && result.session_id ? result.session_id : "";
             hermesSubscriptionId = result && result.subscription_id ? result.subscription_id : "";
             if (hermesSessionId === "") {
-                showError("Hermes did not return a session id.");
+                hermesFail("Hermes did not return a session id.");
                 return;
             }
 
@@ -1005,7 +1037,7 @@ Singleton {
             "submission_id": hermesSubmissionId()
         }, (err, result) => {
             if (err)
-                showError("Hermes could not accept the message: " + (err.message || "unknown error"));
+                hermesFail("Hermes could not accept the message: " + (err.message || "unknown error"));
         });
     }
 
@@ -1206,6 +1238,9 @@ Singleton {
     }
 
     function loadChat(id) {
+        // A saved chat gets a fresh session; the old one is detached, not left
+        // bound to the transcript.
+        detachHermesSession();
         let filename = chatDir + "/" + id + ".json";
         loadChatProcess.targetId = id;
         loadChatProcess.command = ["cat", filename];
@@ -1274,6 +1309,7 @@ Singleton {
                     root.currentChat = JSON.parse(loadChatStdout.text);
                     root.currentChatId = targetId;
                     root.hermesSessionId = "";
+                    root.hermesSubscriptionId = "";
                     root.chatModelChanged();
                 } catch (e) {
                     console.log("Error loading chat: " + e);

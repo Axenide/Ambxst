@@ -100,6 +100,7 @@ Singleton {
         _handshaking = false;
         _reconnectAttempt = 0;
         reconnectTimer.stop();
+        attachTimer.stop();
 
         if (attachProcess.running)
             attachProcess.running = false;
@@ -163,6 +164,7 @@ Singleton {
         else if (recover)
             flags.push("--recover");
 
+        attachTimer.restart();
         attachProcess.recovering = recover;
         attachProcess.command = ["/usr/bin/env", command(), "gateway", "attach", "--json"].concat(flags);
         attachProcess.running = true;
@@ -216,10 +218,31 @@ Singleton {
             _socket.close();
     }
 
+    // QML's JS engine has no setTimeout, so request deadlines use real timers.
+    Component {
+        id: requestTimeoutComponent
+
+        Timer {
+            repeat: false
+        }
+    }
+
     Timer {
         id: reconnectTimer
         repeat: false
         onTriggered: root._connect(false, true)
+    }
+
+    // attach has to answer too, or the first message waits forever.
+    Timer {
+        id: attachTimer
+        repeat: false
+        interval: 30000
+        onTriggered: {
+            if (attachProcess.running)
+                attachProcess.running = false;
+            root._fail("Hermes gateway did not answer the attach request in time.");
+        }
     }
 
     // Exit 0 with a path on stdout means found; 1 means not installed. A failed
@@ -265,6 +288,8 @@ Singleton {
         // Only ever reads url/protocols from the payload; the ticket inside
         // `protocols` (and the payload's own ticket field) stays in memory.
         onExited: exitCode => {
+            attachTimer.stop();
+
             if (!root._wanted)
                 return;
 
@@ -344,6 +369,10 @@ Singleton {
             if (!entry)
                 return;
             delete _pending[key];
+            if (entry.timer) {
+                entry.timer.stop();
+                entry.timer.destroy();
+            }
             if (typeof entry.callback === "function")
                 entry.callback(frame.error || null, frame.result === undefined ? null : frame.result);
         }
@@ -407,7 +436,8 @@ Singleton {
     // REQUESTS
     // ============================================
 
-    function request(method, params, callback) {
+    // timeouts cover acknowledgements only; streamed replies arrive as events.
+    function request(method, params, callback, timeoutMs) {
         // Handshake requests go out while still connecting, before status is "ready".
         if (!_socket || (status !== "ready" && status !== "connecting")) {
             if (typeof callback === "function")
@@ -419,10 +449,35 @@ Singleton {
         }
 
         let id = _nextId++;
-        _pending[String(id)] = {
+        let key = String(id);
+        let limit = timeoutMs > 0 ? timeoutMs : 30000;
+        let entry = {
             "callback": typeof callback === "function" ? callback : null,
-            "method": method
+            "method": method,
+            "timer": null
         };
+
+        // Without this a lost acknowledgement leaves the UI spinning forever.
+        let timer = requestTimeoutComponent.createObject(root);
+        if (timer) {
+            timer.interval = limit;
+            timer.triggered.connect(function () {
+                let pending = _pending[key];
+                if (!pending)
+                    return;
+                delete _pending[key];
+                timer.destroy();
+                if (typeof pending.callback === "function")
+                    pending.callback({
+                        "code": -32001,
+                        "message": "Hermes did not answer " + method + " in time."
+                    }, null);
+            });
+            timer.start();
+        }
+        entry.timer = timer;
+
+        _pending[key] = entry;
         _send({
             "jsonrpc": "2.0",
             "id": id,
@@ -435,7 +490,13 @@ Singleton {
     function _rejectPending(message) {
         for (let key in _pending) {
             let entry = _pending[key];
-            if (entry && typeof entry.callback === "function")
+            if (!entry)
+                continue;
+            if (entry.timer) {
+                entry.timer.stop();
+                entry.timer.destroy();
+            }
+            if (typeof entry.callback === "function")
                 entry.callback({
                     "code": -32000,
                     "message": message
