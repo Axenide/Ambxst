@@ -32,9 +32,8 @@ Singleton {
     property bool fetchingHermesModels: false
     property bool hermesRestored: false
     property string hermesDefaultId: ""
-    property string hermesBaseUrl: ""
-    property string hermesProvider: ""
-    property string hermesEnvText: ""
+    // The catalog arrives from model.options once the gateway is ready.
+    property bool hermesCatalogPending: false
 
     readonly property bool hermesActive: Config.ai.backend === "hermes"
     // "unknown" until the resolver answers, then true/false.
@@ -278,6 +277,9 @@ Singleton {
         target: HermesGateway
 
         function onReady() {
+            if (root.hermesCatalogPending)
+                root.requestHermesCatalog();
+
             if (!root.hermesGatewayPending)
                 return;
 
@@ -1336,104 +1338,87 @@ Singleton {
     // HERMES MODEL CATALOG
     // ============================================
 
+    // The gateway owns the provider/model inventory. Nothing here reads Hermes'
+    // env files, keys or caches; model.options is the only source.
     function fetchHermesModels() {
         if (fetchingHermesModels || HermesGateway.installed === false)
             return;
 
         fetchingHermesModels = true;
-        // env reports a missing binary as exit 127; Process would otherwise
-        // fail to start and never emit exited, leaving the refresh spinning.
-        hermesConfigProcess.command = ["/usr/bin/env", HermesGateway.command(), "config", "get", "model", "--json"];
-        hermesConfigProcess.running = true;
+
+        if (HermesGateway.connected) {
+            requestHermesCatalog();
+            return;
+        }
+
+        // The transport attaches on demand; model.options is asked once ready.
+        hermesCatalogPending = true;
+        HermesGateway.ensureStarted();
     }
 
-    function createHermesModel(id) {
+    function requestHermesCatalog() {
+        hermesCatalogPending = false;
+        HermesGateway.request("model.options", {}, (err, result) => {
+            root.fetchingHermesModels = false;
+
+            if (err || !result) {
+                root.lastError = "Hermes could not list models: " + (err && err.message ? err.message : "unknown error");
+                root.finishHermesFetch([]);
+                return;
+            }
+
+            root.applyHermesCatalog(result);
+        });
+    }
+
+    // model.options: { providers: [{ slug, name, is_current, models: [id|{}] }], model, provider }
+    function applyHermesCatalog(result) {
+        let providers = result.providers || [];
+        let currentProvider = result.provider || "";
+        let newModels = [];
+        let seen = {};
+
+        // The active provider comes first so its models read as the default set.
+        let ordered = [];
+        for (let i = 0; i < providers.length; i++) {
+            let provider = providers[i];
+            if (provider && (provider.is_current === true || (currentProvider !== "" && provider.slug === currentProvider)))
+                ordered.push(provider);
+        }
+        for (let i = 0; i < providers.length; i++) {
+            if (providers[i] && ordered.indexOf(providers[i]) === -1)
+                ordered.push(providers[i]);
+        }
+
+        for (let i = 0; i < ordered.length; i++) {
+            let provider = ordered[i];
+            let label = provider.name || provider.slug || "Hermes";
+            let items = provider.models || [];
+            for (let j = 0; j < items.length; j++) {
+                let item = items[j];
+                let id = typeof item === "string" ? item : (item.id || item.model || item.name || "");
+                if (id === "" || seen[id])
+                    continue;
+                seen[id] = true;
+                newModels.push(createHermesModel(id, label));
+            }
+        }
+
+        hermesDefaultId = result.model || "";
+        finishHermesFetch(newModels);
+    }
+
+    function createHermesModel(id, providerName) {
         return aiModelFactory.createObject(root, {
             name: id,
             icon: "",
-            description: "Hermes",
+            description: providerName || "Hermes",
             endpoint: "",
             model: id,
             provider: "hermes",
             requires_key: false,
             api_format: "hermes"
         });
-    }
-
-    function hermesKeyVarName() {
-        if (hermesProvider === "")
-            return "";
-
-        // custom:<name> providers store their key as HERMES_CUSTOM_<NAME>_API_KEY
-        if (hermesProvider.indexOf("custom:") === 0)
-            return "HERMES_CUSTOM_" + hermesProvider.substring(7).toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_API_KEY";
-
-        return hermesProvider.toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_API_KEY";
-    }
-
-    function envValue(text, name) {
-        let lines = (text || "").split("\n");
-
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i].trim();
-            if (line.indexOf("#") === 0)
-                continue;
-            if (line.indexOf("export ") === 0)
-                line = line.substring(7).trim();
-            if (line.indexOf(name + "=") === 0)
-                return line.substring(name.length + 1).replace(/^["']|["']$/g, "").trim();
-        }
-
-        return "";
-    }
-
-    function hermesApiKey() {
-        let name = hermesKeyVarName();
-        if (name === "")
-            return "";
-
-        let fromEnv = Quickshell.env(name);
-        if (fromEnv)
-            return fromEnv;
-
-        return envValue(hermesEnvText, name);
-    }
-
-    function startHermesModelFetch() {
-        if (hermesBaseUrl === "") {
-            loadHermesModelCache();
-            return;
-        }
-
-        let key = hermesApiKey();
-        if (key !== "") {
-            requestHermesModels(key);
-            return;
-        }
-
-        // Hermes keeps provider keys in its own .env; read it once per fetch.
-        hermesEnvProcess.running = true;
-    }
-
-    function requestHermesModels(key) {
-        let url = hermesBaseUrl.replace(/\/+$/, "") + "/models";
-        hermesModelsProcess.command = ["curl", "-s", "--max-time", "10", "-H", "Authorization: Bearer " + key, url];
-        hermesModelsProcess.running = true;
-    }
-
-    function loadHermesModelCache() {
-        hermesCacheProcess.command = ["cat", Quickshell.env("HOME") + "/.hermes/provider_models_cache.json"];
-        hermesCacheProcess.running = true;
-    }
-
-    function hermesCacheModels(cache) {
-        // Keys look like "custom:<base_url>#<hash>".
-        for (let key in cache) {
-            if (hermesBaseUrl !== "" && key.indexOf(":" + hermesBaseUrl + "#") !== -1)
-                return cache[key].models || [];
-        }
-
-        return cache[hermesProvider] ? cache[hermesProvider].models || [] : [];
     }
 
     function pickHermesModel() {
@@ -1449,108 +1434,12 @@ Singleton {
 
     function finishHermesFetch(newModels) {
         if (newModels.length === 0 && hermesDefaultId !== "")
-            newModels.push(createHermesModel(hermesDefaultId));
+            newModels.push(createHermesModel(hermesDefaultId, "Hermes"));
 
         hermesModels = newModels;
         hermesRestored = true;
         currentHermesModel = pickHermesModel();
         fetchingHermesModels = false;
-    }
-
-    Process {
-        id: hermesConfigProcess
-        stdout: StdioCollector {
-            id: hermesConfigOut
-        }
-        onExited: exitCode => {
-            hermesDefaultId = "";
-            hermesBaseUrl = "";
-            hermesProvider = "";
-
-            if (exitCode === 0) {
-                try {
-                    let cfg = JSON.parse(hermesConfigOut.text);
-                    hermesDefaultId = cfg.default || "";
-                    hermesBaseUrl = cfg.base_url || "";
-                    hermesProvider = cfg.provider || "";
-                } catch (e) {
-                    console.log("Hermes config parse error: " + e);
-                }
-            }
-
-            root.startHermesModelFetch();
-        }
-    }
-
-    Process {
-        id: hermesEnvProcess
-        command: ["cat", Quickshell.env("HOME") + "/.hermes/.env"]
-        stdout: StdioCollector {
-            id: hermesEnvOut
-        }
-        onExited: exitCode => {
-            root.hermesEnvText = exitCode === 0 ? hermesEnvOut.text : "";
-
-            let key = root.hermesApiKey();
-            if (key !== "")
-                root.requestHermesModels(key);
-            else
-                root.loadHermesModelCache();
-        }
-    }
-
-    Process {
-        id: hermesModelsProcess
-        stdout: StdioCollector {
-            id: hermesModelsOut
-        }
-        onExited: exitCode => {
-            let newModels = [];
-
-            if (exitCode === 0) {
-                try {
-                    let data = JSON.parse(hermesModelsOut.text);
-                    let items = data.data || data.models || [];
-                    for (let i = 0; i < items.length; i++) {
-                        let item = items[i];
-                        let id = typeof item === "string" ? item : (item.id || item.name || "");
-                        if (id !== "")
-                            newModels.push(root.createHermesModel(id));
-                    }
-                } catch (e) {
-                    console.log("Hermes models parse error: " + e);
-                }
-            }
-
-            if (newModels.length === 0)
-                root.loadHermesModelCache();
-            else
-                root.finishHermesFetch(newModels);
-        }
-    }
-
-    Process {
-        id: hermesCacheProcess
-        stdout: StdioCollector {
-            id: hermesCacheOut
-        }
-        onExited: exitCode => {
-            let newModels = [];
-
-            if (exitCode === 0) {
-                try {
-                    let ids = root.hermesCacheModels(JSON.parse(hermesCacheOut.text));
-                    for (let i = 0; i < ids.length; i++) {
-                        if (typeof ids[i] === "string" && ids[i] !== "")
-                            newModels.push(root.createHermesModel(ids[i]));
-                    }
-                } catch (e) {
-                    console.log("Hermes cache parse error: " + e);
-                }
-            }
-
-            root.finishHermesFetch(newModels);
-        }
     }
 
     function fetchAvailableModels() {
