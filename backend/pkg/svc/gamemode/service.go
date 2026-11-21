@@ -96,10 +96,13 @@ func (s *Service) IsEnabled() bool {
 }
 
 func (s *Service) toggle(_ json.RawMessage) (any, error) {
+	// Read and write in one critical section, like set: handlers run on
+	// independent connection goroutines, so an unlocked write lets two
+	// overlapping toggles observe the same state and lose a flip.
 	s.mu.Lock()
 	next := !s.cur
-	s.mu.Unlock()
 	s.cur = next
+	s.mu.Unlock()
 	s.save(next)
 	s.broadcast()
 	return map[string]any{"enabled": next}, nil
