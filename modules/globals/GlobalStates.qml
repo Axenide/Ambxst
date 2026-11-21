@@ -368,6 +368,8 @@ Singleton {
     property bool settingsWindowVisible: false
     property int settingsTargetWorkspaceId: 0
     property string settingsTargetScreenName: ""
+    // Section the settings window should open on, -1 for its default
+    property int settingsTargetSection: -1
 
     // Theme editor state - persists across tab switches
     property bool themeHasChanges: false

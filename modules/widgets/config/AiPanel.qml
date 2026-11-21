@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.theme
 import qs.modules.components
-import qs.modules.sidebar
+import "../../sidebar"
 import qs.modules.services
 import qs.config
 
@@ -214,7 +214,10 @@ Item {
                             rightPadding: 6
                             topPadding: 4
                             bottomPadding: 4
-                            onClicked: defaultModelPopup.open()
+                            onClicked: {
+                                if (defaultModelPopup.item)
+                                    defaultModelPopup.item.open();
+                            }
                             background: StyledRect {
                                 variant: defaultSetButton.down ? "overprimary" : (defaultSetButton.hovered ? "primaryfocus" : "primary")
                                 radius: Styling.radius(4)
@@ -643,8 +646,15 @@ Item {
         }
     }
 
-    ModelSelectorPopup {
+    // Loaded by path: the sidebar module is not always in the module path.
+    Loader {
         id: defaultModelPopup
-        pickDefault: true
+        source: "../../sidebar/ModelSelectorPopup.qml"
+        asynchronous: false
+
+        onLoaded: {
+            if (item)
+                item.pickDefault = true;
+        }
     }
 }

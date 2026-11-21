@@ -279,6 +279,42 @@ Item {
                             }
                         }
 
+                        Button {
+                            Layout.preferredWidth: 32
+                            Layout.preferredHeight: 32
+                            flat: true
+                            padding: 0
+
+                            contentItem: Text {
+                                text: Icons.gear
+                                font.family: Icons.font
+                                font.pixelSize: 16
+                                color: Colors.overSurface
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            background: StyledRect {
+                                variant: parent.hovered ? "focus" : "common"
+                                radius: Styling.radius(4)
+                                opacity: parent.hovered ? 1 : 0
+
+                                Behavior on opacity {
+                                    NumberAnimation {
+                                        duration: Config.animDuration / 4
+                                    }
+                                }
+                            }
+
+                            // 3 is the AI section of the settings window
+                            onClicked: {
+                                GlobalStates.settingsTargetSection = 3;
+                                GlobalStates.hideAssistant();
+                                if (!GlobalStates.settingsWindowVisible)
+                                    GlobalShortcuts.toggleSettings(root.targetScreen.name);
+                            }
+                        }
+
                         Item {
                             Layout.fillWidth: true
                         }
