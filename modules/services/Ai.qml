@@ -331,6 +331,8 @@ Singleton {
         }
     }
 
+    // A dropped socket never ends the session: the gateway keeps executing and
+    // the next attach can resume it with its open prompts and in-flight text.
     Connections {
         target: HermesGateway
 
@@ -338,13 +340,22 @@ Singleton {
             if (root.hermesCatalogPending)
                 root.requestHermesCatalog();
 
+            // Reattach before sending anything queued, or the prompt would race
+            // the subscription and the restored turn state.
+            if (root.hermesRecovering) {
+                root.resumeHermesSession();
+                return;
+            }
+
             if (!root.hermesGatewayPending)
                 return;
+            root.flushHermesPending();
+        }
 
-            let text = root.hermesPendingText;
-            root.hermesPendingText = "";
-            root.hermesGatewayPending = false;
-            root.submitHermesPrompt(text);
+        function onDisconnected(reason) {
+            if (!root.hermesActive)
+                return;
+            root.hermesBeginRecovery();
         }
 
         // An attach failure or a missing QtWebSockets module used to leave the
@@ -352,6 +363,17 @@ Singleton {
         function onStatusChanged() {
             if (HermesGateway.status !== "error")
                 return;
+
+            if (root.hermesRecovering) {
+                // Between attempts the transport is still working; give it the
+                // full recovery window before declaring the turn lost.
+                if (HermesGateway.retrying)
+                    return;
+                root.hermesRecoveryFail(HermesGateway.lastError !== "" ? root.hermesErrorMessage({
+                    "message": HermesGateway.lastError
+                }) : "Hermes gateway connection failed.");
+                return;
+            }
 
             // Session ids belong to the connection that created them.
             root.hermesSessionId = "";
@@ -372,25 +394,24 @@ Singleton {
             root.hermesFail(message);
         }
 
-        function onGatewayEvent(type, sessionId, payload) {
+        function onGatewayEvent(type, sessionId, payload, epoch) {
             if (!root.hermesActive)
                 return;
-
-            // Events may arrive after the chat was reset; ignore stale sessions.
-            if (root.hermesSessionId !== "" && sessionId !== "" && sessionId !== root.hermesSessionId)
-                return;
-
-            if (type === "message.delta") {
-                root.hermesAppendDelta(payload.text);
-            } else if (type === "message.complete") {
-                root.hermesFinishTurn(payload);
-            } else if (type === "error") {
-                root.showError(payload.message || "Hermes reported an error.");
-            }
+            root.hermesHandleEvent(type, sessionId, payload, epoch);
         }
 
         function onPromptsChanged() {
             root.syncHermesPrompts();
+        }
+    }
+
+    Timer {
+        id: hermesRecoveryTimer
+        interval: 90000
+        repeat: false
+        onTriggered: {
+            if (root.hermesRecovering)
+                root.hermesRecoveryFail("Hermes did not reconnect in time.");
         }
     }
 
@@ -442,12 +463,24 @@ Singleton {
     property string hermesPendingText: ""
     property bool hermesGatewayPending: false
     property var hermesNotedPrompts: []
+    // Kept until the reattached gateway answers session.resume.
+    property bool hermesRecovering: false
+    property int hermesRecoverySeq: 0
+    // Which assistant message the current turn owns; a message queued during
+    // recovery must not steal the turn still being restored.
+    property int hermesTurnReplyIndex: -1
+    property bool hermesInflightStreaming: false
+    property bool hermesFlushAfterTurn: false
 
     readonly property string noModelMessage: "No model selected. Add an API key in Settings > AI, or switch the backend to Hermes"
 
     // Drops the empty assistant bubble a request pushed, then reports the error
     // in its place, so a failed turn reads as one answer instead of two bubbles.
     function hermesFail(text) {
+        hermesTurnReplyIndex = -1;
+        hermesFlushAfterTurn = false;
+        hermesInflightStreaming = false;
+
         let chat = Array.from(currentChat);
         while (chat.length > 0 && chat[chat.length - 1].role === "assistant" && chat[chat.length - 1].content === "")
             chat.pop();
@@ -655,12 +688,20 @@ Singleton {
         // renderer, so the pending request survives a closed sidebar.
         if (msg.approvalId) {
             let picked = choice || "once";
-            HermesGateway.respond(msg.approvalId, {
+            let delivered = HermesGateway.respond(msg.approvalId, {
                 "choice": picked
-            });
+            }, msg.approvalEpoch);
 
             let answered = Array.from(currentChat);
             answered[index] = hermesCopyObject(answered[index]);
+            if (!delivered) {
+                // The request this card pointed at is gone (old connection).
+                answered[index].functionPending = false;
+                answered[index].approvalExpired = true;
+                currentChat = answered;
+                saveCurrentChat();
+                return;
+            }
             answered[index].functionPending = false;
             answered[index].functionApproved = picked !== "deny";
             answered[index].approvalExpired = false;
@@ -692,12 +733,19 @@ Singleton {
             return;
 
         if (msg.approvalId) {
-            HermesGateway.respond(msg.approvalId, {
+            let delivered = HermesGateway.respond(msg.approvalId, {
                 "choice": "deny"
-            });
+            }, msg.approvalEpoch);
 
             let denied = Array.from(currentChat);
             denied[index] = hermesCopyObject(denied[index]);
+            if (!delivered) {
+                denied[index].functionPending = false;
+                denied[index].approvalExpired = true;
+                currentChat = denied;
+                saveCurrentChat();
+                return;
+            }
             denied[index].functionPending = false;
             denied[index].functionApproved = false;
             denied[index].approvalExpired = false;
@@ -848,9 +896,21 @@ Singleton {
         Qt.callLater(() => runCurl(payload));
     }
 
+    // argv only: the endpoint, headers and API key never become shell source.
+    function curlArgsFor(endpoint, headers) {
+        let args = ["curl", "-s", "--no-buffer", "-N", "-X", "POST", String(endpoint)];
+        let list = Array.isArray(headers) ? headers : [];
+        for (let i = 0; i < list.length; i++) {
+            args.push("-H");
+            args.push(String(list[i]));
+        }
+        args.push("-d");
+        args.push("@" + tmpDir + "/body.json");
+        return args;
+    }
+
     function runCurl(payload) {
         let bodyPath = tmpDir + "/body.json";
-        let headerArgs = payload.headers.map(h => "-H \"" + h + "\"").join(" ");
 
         // Check for custom curl template
         let customCurl = "";
@@ -860,18 +920,19 @@ Singleton {
             customCurl = KeyStore.getCustomCurl(currentModel.provider);
         }
 
-        let curlCmd;
         if (customCurl) {
-            // Replace placeholders in custom curl
-            curlCmd = customCurl
+            // Advanced, explicitly user-authored setting: a template is shell
+            // source (pipes, redirects, env vars), so it is the one place where
+            // bash -c is intentional. The default path below never uses a shell.
+            let curlCmd = customCurl
                 .replace("{{BODY_PATH}}", bodyPath)
                 .replace("{{ENDPOINT}}", payload.endpoint)
-                .replace("{{API_KEY}}", getApiKey(currentModel));
+                .replace("{{API_KEY}}", getApiKey(currentModel) || "");
+            curlProcess.command = ["/usr/bin/bash", "-c", curlCmd];
         } else {
-            curlCmd = "curl -s --no-buffer -N -X POST \"" + payload.endpoint + "\" " + headerArgs + " -d @" + bodyPath;
+            curlProcess.command = curlArgsFor(payload.endpoint, payload.headers);
         }
 
-        curlProcess.command = ["/usr/bin/bash", "-c", curlCmd];
         curlProcess.running = true;
     }
 
@@ -1054,7 +1115,10 @@ Singleton {
             return;
         }
 
-        responseBuffer = "";
+        // A queued send during recovery must not wipe the buffer that belongs
+        // to the turn session.resume is restoring.
+        if (!hermesRecovering)
+            responseBuffer = "";
         lastError = "";
         isLoading = true;
 
@@ -1065,6 +1129,8 @@ Singleton {
             model: currentHermesModel ? currentHermesModel.name : "Hermes"
         });
         currentChat = streamChat;
+        if (!hermesRecovering || hermesTurnReplyIndex < 0)
+            hermesTurnReplyIndex = streamChat.length - 1;
 
         // The transport attaches on demand; the prompt goes out once the
         // gateway is ready (the first attach can take a few seconds).
@@ -1123,22 +1189,247 @@ Singleton {
             "text": text,
             "submission_id": hermesSubmissionId()
         }, (err, result) => {
-            if (err)
+            if (err) {
+                // A dropped socket is being recovered; session.resume reports
+                // whether the turn was accepted, so do not fail it here.
+                if (root.hermesRecovering)
+                    return;
                 hermesFail("Hermes could not accept the message: " + hermesErrorMessage(err));
+            }
         });
     }
 
     function detachHermesSession() {
-        if (hermesSessionId === "")
+        // A deliberate new chat/load abandons recovery for the old session.
+        if (hermesRecovering) {
+            hermesRecovering = false;
+            hermesRecoverySeq++;
+            hermesRecoveryTimer.stop();
+        }
+
+        if (hermesSessionId === "") {
+            hermesSubscriptionId = "";
             return;
+        }
 
         // The shared gateway refuses session.close; detach needs the subscription.
-        HermesGateway.request("session.detach", {
-            "session_id": hermesSessionId,
-            "subscription_id": hermesSubscriptionId
-        }, null);
+        // A dropped socket already removed the subscriber, so there is nothing
+        // to send until a new connection exists.
+        if (HermesGateway.connected) {
+            HermesGateway.request("session.detach", {
+                "session_id": hermesSessionId,
+                "subscription_id": hermesSubscriptionId
+            }, null);
+        }
         hermesSessionId = "";
         hermesSubscriptionId = "";
+    }
+
+    // Starts the recovery window, but only while a session still exists.
+    function hermesBeginRecovery() {
+        if (hermesSessionId === "")
+            return false;
+        hermesRecovering = true;
+        hermesRecoverySeq++;
+        hermesRecoveryTimer.restart();
+        return true;
+    }
+
+    // Attaches a fresh socket to the session the dropped one was viewing.
+    function resumeHermesSession() {
+        if (!hermesRecovering || hermesSessionId === "")
+            return;
+
+        let seq = hermesRecoverySeq;
+        let sessionId = hermesSessionId;
+
+        HermesGateway.request("session.resume", {
+            "session_id": sessionId
+        }, (err, result) => {
+            // A newer drop or a new chat superseded this answer.
+            if (seq !== root.hermesRecoverySeq)
+                return;
+
+            if (err || !result) {
+                root.hermesRecoveryFail("Hermes could not resume the session: " + root.hermesErrorMessage(err));
+                return;
+            }
+
+            let problem = root.hermesApplyRecovery(result);
+            if (problem !== "") {
+                root.hermesRecoveryFail(problem);
+                return;
+            }
+
+            // Only after the subscription is back can queued text be sent; a
+            // still-streaming restored turn finishes first.
+            if (root.hermesGatewayPending && !root.hermesFlushAfterTurn)
+                root.flushHermesPending();
+        });
+    }
+
+    // Sends the prompt queued while the socket was down. Its placeholder was
+    // created when the user sent it; recreate one only if a failure removed it.
+    function flushHermesPending() {
+        if (!hermesGatewayPending || !HermesGateway.connected)
+            return;
+
+        let text = hermesPendingText;
+        hermesPendingText = "";
+        hermesGatewayPending = false;
+        hermesFlushAfterTurn = false;
+
+        let index = hermesReplyIndex();
+        if (index === -1 || (currentChat[index].content || "") !== "") {
+            let chat = Array.from(currentChat);
+            chat.push({
+                role: "assistant",
+                content: "",
+                model: currentHermesModel ? currentHermesModel.name : "Hermes"
+            });
+            currentChat = chat;
+            index = chat.length - 1;
+        }
+
+        hermesTurnReplyIndex = index;
+        responseBuffer = "";
+        isLoading = true;
+        submitHermesPrompt(text);
+    }
+
+    // session.resume: { session_id, subscription_id?, open_requests?, inflight? }
+    // Returns "" on success, otherwise a user-facing reason.
+    function hermesApplyRecovery(result) {
+        if (!result || typeof result !== "object")
+            return "Hermes returned no session to resume.";
+
+        let sessionId = result.session_id === undefined || result.session_id === null ? "" : String(result.session_id);
+        if (sessionId === "" || (hermesSessionId !== "" && sessionId !== hermesSessionId))
+            return "Hermes resumed a different session; recovery was cancelled.";
+
+        hermesSessionId = sessionId;
+        if (typeof result.subscription_id === "string" && result.subscription_id !== "")
+            hermesSubscriptionId = result.subscription_id;
+
+        // Open approval/clarify/sudo/secret frames replay with the new epoch.
+        HermesGateway.restoreOpenRequests(result.open_requests);
+
+        let inflight = result.inflight && typeof result.inflight === "object" ? result.inflight : null;
+        // Clear the old connection error first; the inflight snapshot may carry
+        // the turn's own error, which must survive.
+        lastError = "";
+        hermesInflightStreaming = false;
+        hermesRestoreInflight(inflight);
+        hermesFlushAfterTurn = hermesGatewayPending && hermesInflightStreaming;
+
+        hermesRecovering = false;
+        hermesRecoverySeq++;
+        hermesRecoveryTimer.stop();
+
+        // A turn that ended while detached has no inflight snapshot. Say so
+        // instead of leaving the spinner running forever.
+        if (!inflight && isLoading) {
+            if (hermesGatewayPending) {
+                // A queued message keeps the chat alive; drop only the empty
+                // placeholder left by the unrecoverable turn.
+                let chat = Array.from(currentChat);
+                for (let i = chat.length - 3; i >= 0; i--) {
+                    if (chat[i].role === "assistant" && (chat[i].content || "") === "" && chat[i + 1].role === "user") {
+                        chat.splice(i, 1);
+                        if (hermesTurnReplyIndex > i)
+                            hermesTurnReplyIndex--;
+                        currentChat = chat;
+                        break;
+                    }
+                }
+            } else {
+                let index = hermesActiveReplyIndex();
+                if (index === -1 || (currentChat[index].content || "") === "")
+                    hermesFail("Hermes reconnected, but the in-flight reply was no longer available.");
+                else {
+                    isLoading = false;
+                    hermesTurnReplyIndex = -1;
+                }
+            }
+        }
+
+        if (!hermesInflightStreaming && !hermesGatewayPending)
+            hermesTurnReplyIndex = -1;
+
+        syncHermesPrompts();
+        saveCurrentChat();
+        return "";
+    }
+
+    // inflight.assistant is authoritative: it already contains everything the
+    // gateway streamed before the socket dropped.
+    function hermesRestoreInflight(inflight) {
+        if (!inflight) {
+            // Keep any text already streamed locally; there is nothing better.
+            return;
+        }
+
+        let text = typeof inflight.assistant === "string" ? inflight.assistant : "";
+        let index = hermesActiveReplyIndex();
+        if (index !== -1)
+            hermesTurnReplyIndex = index;
+
+        // An empty snapshot means nothing arrived yet; an existing local buffer
+        // may be ahead of it and must not be thrown away.
+        if (text !== "")
+            responseBuffer = text;
+
+        if (index !== -1) {
+            let newChat = Array.from(currentChat);
+            newChat[index] = hermesCopyObject(newChat[index]);
+            if (responseBuffer !== "")
+                newChat[index].content = responseBuffer;
+            currentChat = newChat;
+        }
+
+        if (inflight.streaming === true) {
+            isLoading = true;
+            hermesInflightStreaming = true;
+        } else {
+            isLoading = false;
+            hermesInflightStreaming = false;
+            if (typeof inflight.error === "string" && inflight.error !== "")
+                lastError = hermesErrorMessage({
+                    "message": inflight.error
+                });
+        }
+    }
+
+    function hermesRecoveryFail(text) {
+        hermesRecovering = false;
+        hermesRecoverySeq++;
+        hermesRecoveryTimer.stop();
+        hermesTurnReplyIndex = -1;
+        hermesInflightStreaming = false;
+        hermesFlushAfterTurn = false;
+        hermesSessionId = "";
+        hermesSubscriptionId = "";
+        hermesPendingText = "";
+        hermesGatewayPending = false;
+        hermesFail(text);
+    }
+
+    // Events carry the connection that produced them; older sockets are mute.
+    function hermesHandleEvent(type, sessionId, payload, epoch) {
+        if (epoch !== undefined && Number(epoch) !== HermesGateway.connectionEpoch)
+            return;
+
+        // Events may arrive after the chat was reset; ignore stale sessions.
+        if (hermesSessionId !== "" && sessionId !== "" && sessionId !== hermesSessionId)
+            return;
+
+        if (type === "message.delta") {
+            hermesAppendDelta(payload.text);
+        } else if (type === "message.complete") {
+            hermesFinishTurn(payload);
+        } else if (type === "error") {
+            showError(payload.message || "Hermes reported an error.");
+        }
     }
 
     function hermesReplyIndex() {
@@ -1149,11 +1440,19 @@ Singleton {
         return -1;
     }
 
+    // The turn's own assistant message, which can differ from the last one
+    // when a new message was queued during recovery.
+    function hermesActiveReplyIndex() {
+        if (hermesTurnReplyIndex >= 0 && hermesTurnReplyIndex < currentChat.length && currentChat[hermesTurnReplyIndex].role === "assistant")
+            return hermesTurnReplyIndex;
+        return hermesReplyIndex();
+    }
+
     function hermesAppendDelta(text) {
         if (typeof text !== "string" || text === "")
             return;
 
-        let index = hermesReplyIndex();
+        let index = hermesActiveReplyIndex();
         if (index === -1)
             return;
 
@@ -1165,7 +1464,7 @@ Singleton {
     }
 
     function hermesFinishTurn(payload) {
-        let index = hermesReplyIndex();
+        let index = hermesActiveReplyIndex();
         let finalText = payload && typeof payload.text === "string" ? payload.text : "";
 
         if (index !== -1) {
@@ -1182,7 +1481,14 @@ Singleton {
 
         responseBuffer = "";
         isLoading = false;
+        hermesTurnReplyIndex = -1;
+        hermesInflightStreaming = false;
         saveCurrentChat();
+
+        if (hermesFlushAfterTurn) {
+            hermesFlushAfterTurn = false;
+            flushHermesPending();
+        }
     }
 
     // Approval cards live in the chat, but the pending request lives in the
@@ -1196,18 +1502,36 @@ Singleton {
             let prompt = prompts[i];
 
             if (prompt.method === "approval") {
-                let known = false;
+                let existing = -1;
                 for (let j = 0; j < newChat.length; j++) {
                     // The same id on an older connection is a different request.
-                    if (newChat[j].approvalId === prompt.id && newChat[j].approvalEpoch === prompt.epoch && newChat[j].functionPending === true) {
-                        known = true;
-                        break;
+                    if (String(newChat[j].approvalId) === String(prompt.id)) {
+                        existing = j;
+                        if (newChat[j].approvalEpoch === prompt.epoch && newChat[j].functionPending === true)
+                            break;
                     }
                 }
-                if (known)
-                    continue;
 
                 let params = prompt.params || {};
+
+                // A resumed request reuses the frame id; revive its card instead
+                // of adding a second one for the same approval.
+                if (existing !== -1) {
+                    let card = newChat[existing];
+                    if (card.approvalEpoch !== prompt.epoch || card.functionPending !== true || card.approvalExpired === true) {
+                        newChat[existing] = hermesCopyObject(card);
+                        newChat[existing].approvalEpoch = prompt.epoch;
+                        newChat[existing].approvalMethod = prompt.method;
+                        newChat[existing].approvalDescription = params.description || "";
+                        newChat[existing].approvalChoices = params.choices || ["once", "deny"];
+                        newChat[existing].functionPending = true;
+                        newChat[existing].approvalExpired = false;
+                        delete newChat[existing].functionApproved;
+                        changed = true;
+                    }
+                    continue;
+                }
+
                 newChat.push({
                     role: "system",
                     content: "",
@@ -1219,6 +1543,7 @@ Singleton {
                     },
                     approvalId: prompt.id,
                     approvalEpoch: prompt.epoch,
+                    approvalMethod: prompt.method,
                     approvalDescription: params.description || "",
                     approvalChoices: params.choices || ["once", "deny"],
                     functionPending: true
@@ -1227,8 +1552,9 @@ Singleton {
                 continue;
             }
 
-            // Only record that a secret was requested, never its value.
-            let noteKey = String(prompt.epoch) + ":" + String(prompt.id);
+            // Only record that a secret was requested, never its value. The
+            // key ignores the epoch so a resumed request does not add a note.
+            let noteKey = String(prompt.id) + ":" + prompt.method;
             if ((prompt.method === "sudo" || prompt.method === "secret") && hermesNotedPrompts.indexOf(noteKey) === -1) {
                 let note = Array.from(hermesNotedPrompts);
                 note.push(noteKey);
@@ -1301,6 +1627,10 @@ Singleton {
         detachHermesSession();
         hermesPendingText = "";
         hermesGatewayPending = false;
+        hermesNotedPrompts = [];
+        hermesTurnReplyIndex = -1;
+        hermesInflightStreaming = false;
+        hermesFlushAfterTurn = false;
         responseBuffer = "";
         isLoading = false;
 
@@ -1400,6 +1730,15 @@ Singleton {
                     root.currentChatId = targetId;
                     root.hermesSessionId = "";
                     root.hermesSubscriptionId = "";
+                    root.hermesTurnReplyIndex = -1;
+                    root.hermesInflightStreaming = false;
+                    root.hermesFlushAfterTurn = false;
+                    // A prompt queued for the previous chat must not land here.
+                    root.hermesPendingText = "";
+                    root.hermesGatewayPending = false;
+                    root.responseBuffer = "";
+                    root.isLoading = false;
+                    root.hermesNotedPrompts = [];
                     root.chatModelChanged();
                 } catch (e) {
                     console.log("Error loading chat: " + e);
@@ -1615,7 +1954,7 @@ Singleton {
         let geminiKey = KeyStore.getKey("gemini");
         if (geminiKey) {
             pendingFetches++;
-            fetchProcessGemini.command = ["bash", "-c", "curl -s 'https://generativelanguage.googleapis.com/v1beta/models?key=" + geminiKey + "'"];
+            fetchProcessGemini.command = ["curl", "-s", "https://generativelanguage.googleapis.com/v1beta/models?key=" + geminiKey];
             fetchProcessGemini.running = true;
         }
 
@@ -1623,7 +1962,7 @@ Singleton {
         let openaiKey = KeyStore.getKey("openai");
         if (openaiKey) {
             pendingFetches++;
-            fetchProcessOpenAI.command = ["bash", "-c", "curl -s https://api.openai.com/v1/models -H 'Authorization: Bearer " + openaiKey + "'"];
+            fetchProcessOpenAI.command = ["curl", "-s", "https://api.openai.com/v1/models", "-H", "Authorization: Bearer " + openaiKey];
             fetchProcessOpenAI.running = true;
         }
 
@@ -1631,7 +1970,7 @@ Singleton {
         let anthropicKey = KeyStore.getKey("anthropic");
         if (anthropicKey) {
             pendingFetches++;
-            fetchProcessAnthropic.command = ["bash", "-c", "curl -s https://api.anthropic.com/v1/models -H 'x-api-key: " + anthropicKey + "' -H 'anthropic-version: 2023-06-01'"];
+            fetchProcessAnthropic.command = ["curl", "-s", "https://api.anthropic.com/v1/models", "-H", "x-api-key: " + anthropicKey, "-H", "anthropic-version: 2023-06-01"];
             fetchProcessAnthropic.running = true;
         }
 
@@ -1639,7 +1978,7 @@ Singleton {
         let mistralKey = KeyStore.getKey("mistral");
         if (mistralKey) {
             pendingFetches++;
-            fetchProcessMistral.command = ["bash", "-c", "curl -s https://api.mistral.ai/v1/models -H 'Authorization: Bearer " + mistralKey + "'"];
+            fetchProcessMistral.command = ["curl", "-s", "https://api.mistral.ai/v1/models", "-H", "Authorization: Bearer " + mistralKey];
             fetchProcessMistral.running = true;
         }
 
@@ -1647,7 +1986,7 @@ Singleton {
         let groqKey = KeyStore.getKey("groq");
         if (groqKey) {
             pendingFetches++;
-            fetchProcessGroq.command = ["bash", "-c", "curl -s https://api.groq.com/openai/v1/models -H 'Authorization: Bearer " + groqKey + "'"];
+            fetchProcessGroq.command = ["curl", "-s", "https://api.groq.com/openai/v1/models", "-H", "Authorization: Bearer " + groqKey];
             fetchProcessGroq.running = true;
         }
 
@@ -1655,7 +1994,7 @@ Singleton {
         let ollamaEnabled = KeyStore.hasKey("ollama");
         if (ollamaEnabled) {
             pendingFetches++;
-            fetchProcessOllama.command = ["bash", "-c", "curl -s http://127.0.0.1:11434/api/tags"];
+            fetchProcessOllama.command = ["curl", "-s", "http://127.0.0.1:11434/api/tags"];
             fetchProcessOllama.running = true;
         }
 
@@ -1663,7 +2002,7 @@ Singleton {
         let minimaxKey = KeyStore.getKey("minimax");
         if (minimaxKey) {
             pendingFetches++;
-            fetchProcessMiniMax.command = ["bash", "-c", "echo 'done'"];
+            fetchProcessMiniMax.command = ["/usr/bin/env", "printf", "done"];
             fetchProcessMiniMax.running = true;
         }
 

@@ -1323,7 +1323,7 @@ Item {
                                         }
                                         HermesGateway.respond(prompt.id, {
                                             "answers": out
-                                        });
+                                        }, prompt.epoch);
                                     }
 
                                     ColumnLayout {
@@ -1493,11 +1493,11 @@ Item {
                                                 onClicked: {
                                                     // "" declines a one-string prompt; {} cancels clarify.
                                                     if (prompt.method === "clarify")
-                                                        HermesGateway.respond(prompt.id, {});
+                                                        HermesGateway.respond(prompt.id, {}, prompt.epoch);
                                                     else
                                                         HermesGateway.respond(prompt.id, {
                                                             "value": ""
-                                                        });
+                                                        }, prompt.epoch);
                                                 }
                                             }
 
@@ -1527,7 +1527,7 @@ Item {
                                                     } else {
                                                         HermesGateway.respond(prompt.id, {
                                                             "value": promptCard.secretValue
-                                                        });
+                                                        }, prompt.epoch);
                                                     }
                                                     // The value is memory-only, gone with the field.
                                                     promptCard.secretValue = "";

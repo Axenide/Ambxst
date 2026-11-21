@@ -38,6 +38,9 @@ Singleton {
     // Bumped for every WebSocket connection. Prompt ids are only unique within
     // one connection, so cards must compare the epoch as well.
     property int connectionEpoch: 0
+    // True while the transport is between reconnect attempts. Ai.qml uses it to
+    // tell a retry apart from a session that cannot be recovered.
+    property bool retrying: false
     property bool _handshaking: false
     property bool _socketUnavailable: false
 
@@ -45,8 +48,10 @@ Singleton {
     readonly property var _supportedMethods: ["approval", "sudo", "secret", "clarify"]
 
     // Named gatewayEvent: a plain `event` signal collides with QObject::event.
-    signal gatewayEvent(string type, string sessionId, var payload)
+    signal gatewayEvent(string type, string sessionId, var payload, int epoch)
     signal ready()
+    // The socket dropped; the session it was viewing may still be recoverable.
+    signal disconnected(string reason)
 
     function packageHint() {
         return "Install qt6-websockets (Arch), qt6-qtwebsockets (Fedora) or qt6.qtwebsockets (Nix), then restart the shell.";
@@ -88,7 +93,7 @@ Singleton {
             return;
 
         _wanted = true;
-        if (status === "ready" || status === "attaching" || status === "connecting")
+        if (status === "ready" || status === "attaching" || status === "connecting" || retrying)
             return;
         if (_socketUnavailable) {
             status = "error";
@@ -99,6 +104,7 @@ Singleton {
 
     function stop() {
         _wanted = false;
+        retrying = false;
         _socketUnavailable = false;
         _handshaking = false;
         _reconnectAttempt = 0;
@@ -133,6 +139,7 @@ Singleton {
         let component = Qt.createComponent(Qt.resolvedUrl("HermesSocket.qml"));
         if (!component || component.status !== Component.Ready) {
             _socketUnavailable = true;
+            retrying = false;
             status = "error";
             lastError = "The Hermes backend needs the QtWebSockets QML module. " + packageHint();
             return null;
@@ -141,6 +148,7 @@ Singleton {
         _socket = component.createObject(root);
         if (!_socket) {
             _socketUnavailable = true;
+            retrying = false;
             status = "error";
             lastError = "The Hermes backend needs the QtWebSockets QML module. " + packageHint();
             return null;
@@ -187,21 +195,34 @@ Singleton {
         }
 
         _handshaking = false;
-        _rejectPending("Hermes gateway connection closed.");
-        _pending = ({});
         _clearPrompts();
         runtimeInfo = null;
 
         if (!_wanted) {
+            retrying = false;
+            _rejectPending("Hermes gateway connection closed.");
+            _pending = ({});
             status = "idle";
             return;
         }
 
+        // Set before status changes: Ai.qml must not mistake a retry for a
+        // permanent failure and clear the session while recovery is possible.
+        retrying = true;
+
+        let reason = lastError !== "" ? lastError : "Hermes gateway connection closed.";
+
+        // Before status changes or pending callbacks are rejected, so the
+        // session is still known and an in-flight submit is recoverable.
+        disconnected(reason);
+        _rejectPending("Hermes gateway connection closed.");
+        _pending = ({});
+
         // Keep the attach error that caused the close instead of replacing it.
-        if (status !== "error" || lastError === "") {
+        if (status !== "error")
             status = "error";
+        if (lastError === "")
             lastError = "Hermes gateway connection closed.";
-        }
         _scheduleReconnect();
     }
 
@@ -216,11 +237,25 @@ Singleton {
     }
 
     function _fail(message) {
-        status = "error";
         lastError = message;
-        // The socket's closed handler owns destroying it and scheduling the retry.
-        if (_socket)
-            _socket.close();
+
+        // With a live socket, the close handler owns status, disconnection and
+        // reconnecting. Setting status here first would make a retry look like
+        // a permanent failure to Ai.qml before the recovery path can start.
+        if (_socket) {
+            let socket = _socket;
+            _socket = null;
+            retrying = true;
+            socket.closed.disconnect(_onSocketClosed);
+            socket.close();
+            socket.destroy();
+            _onSocketClosed();
+            return;
+        }
+
+        // No socket (attach refused): this failure cannot retry itself.
+        status = "error";
+        retrying = false;
     }
 
     // QML's JS engine has no setTimeout, so request deadlines use real timers.
@@ -393,12 +428,12 @@ Singleton {
         }
 
         if (type === "request.cancel") {
-            // Withdraws exactly one prompt; others stay answerable.
-            _dropPrompt(payload.id);
+            // Withdraws exactly one request; a reused id on another method stays.
+            _dropPrompt(payload.id, payload.method);
             return;
         }
 
-        gatewayEvent(type, params.session_id || "", payload);
+        gatewayEvent(type, params.session_id || "", payload, connectionEpoch);
     }
 
     function _handshake() {
@@ -431,6 +466,7 @@ Singleton {
             }, () => {
                 status = "ready";
                 lastError = "";
+                retrying = false;
                 _reconnectAttempt = 0;
                 ready();
             });
@@ -516,9 +552,14 @@ Singleton {
     function _onServerRequest(id, method, params) {
         if (_supportedMethods.indexOf(method) === -1) {
             // Answer fast so the agent does not wait out its deadline.
+            console.warn("Hermes requested an unsupported method: " + method);
             respondError(id, -32601, "not supported by ambxst: " + method);
             return;
         }
+
+        // A retransmitted frame is the same request, not a second card.
+        if (findPrompt(id, connectionEpoch) !== null)
+            return;
 
         let list = prompts.slice();
         list.push({
@@ -529,6 +570,56 @@ Singleton {
             "params": params
         });
         prompts = list;
+    }
+
+    // session.resume replays requests that were still open when the socket
+    // dropped. They belong to this connection just like live ones.
+    function restoreOpenRequests(requests) {
+        if (!Array.isArray(requests))
+            return 0;
+
+        let list = prompts.slice();
+        let added = 0;
+
+        for (let i = 0; i < requests.length; i++) {
+            let request = requests[i];
+            if (!request || request.id === undefined || typeof request.method !== "string")
+                continue;
+            if (String(request.id) === "" || request.method === "")
+                continue;
+
+            let known = false;
+            for (let j = 0; j < list.length; j++) {
+                if (String(list[j].id) === String(request.id) && Number(list[j].epoch) === connectionEpoch) {
+                    known = true;
+                    break;
+                }
+            }
+            if (known)
+                continue;
+
+            let params = request.params && typeof request.params === "object" ? request.params : {};
+
+            if (_supportedMethods.indexOf(request.method) === -1) {
+                // Replayed unsupported work must still be settled.
+                console.warn("Hermes replayed an unsupported method: " + request.method);
+                respondError(request.id, -32601, "not supported by ambxst: " + request.method);
+                continue;
+            }
+
+            list.push({
+                "id": request.id,
+                "method": request.method,
+                "sessionId": params.session_id || "",
+                "epoch": connectionEpoch,
+                "params": params
+            });
+            added++;
+        }
+
+        if (added > 0)
+            prompts = list;
+        return added;
     }
 
     // epoch is optional: omitted, any connection's prompt with that id matches.
@@ -543,16 +634,26 @@ Singleton {
         return null;
     }
 
-    function respond(id, result) {
+    // A stale click (old epoch) must not answer a newer request with the same id.
+    function respond(id, result, epoch) {
+        let prompt = epoch === undefined ? null : findPrompt(id, epoch);
+        if (epoch !== undefined && prompt === null)
+            return false;
+
         _send({
             "jsonrpc": "2.0",
             "id": id,
             "result": result === undefined ? {} : result
         });
-        _dropPrompt(id);
+        _dropPrompt(id, prompt ? prompt.method : undefined);
+        return true;
     }
 
-    function respondError(id, code, message) {
+    function respondError(id, code, message, epoch) {
+        let prompt = epoch === undefined ? null : findPrompt(id, epoch);
+        if (epoch !== undefined && prompt === null)
+            return false;
+
         _send({
             "jsonrpc": "2.0",
             "id": id,
@@ -561,14 +662,23 @@ Singleton {
                 "message": message
             }
         });
-        _dropPrompt(id);
+        _dropPrompt(id, prompt ? prompt.method : undefined);
+        return true;
     }
 
-    function _dropPrompt(id) {
+    function _dropPrompt(id, method) {
         let list = [];
         for (let i = 0; i < prompts.length; i++) {
-            if (String(prompts[i].id) !== String(id))
+            if (String(prompts[i].id) !== String(id)) {
                 list.push(prompts[i]);
+                continue;
+            }
+            // request.cancel names the method too; don't drop another request
+            // that happens to reuse the id.
+            if (method !== undefined && method !== "" && prompts[i].method !== method) {
+                list.push(prompts[i]);
+                continue;
+            }
         }
         if (list.length !== prompts.length)
             prompts = list;
