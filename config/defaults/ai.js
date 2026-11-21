@@ -4,6 +4,7 @@ var data = {
     "extraModels": [],
     "defaultModel": "",
     "hermesDefaultModel": "",
+    "hermesDefaultProvider": "",
     "favoriteModels": [],
     "sidebarWidth": 400,
     "sidebarPosition": "right",

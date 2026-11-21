@@ -30,6 +30,8 @@ Singleton {
     property list<AiModel> hermesModels: []
     property AiModel currentHermesModel: hermesModels.length > 0 ? hermesModels[0] : null
     property bool fetchingHermesModels: false
+    // Invalidates catalog answers that a newer refresh has superseded.
+    property int hermesCatalogSeq: 0
     property bool hermesRestored: false
     property string hermesDefaultId: ""
     // The catalog arrives from model.options once the gateway is ready.
@@ -52,7 +54,8 @@ Singleton {
         if (defaultModelId === "")
             return "";
 
-        let found = findModel(activeModels, defaultModelId);
+        // Hermes ids repeat across providers, so the default remembers which one.
+        let found = hermesActive ? findHermesModel(activeModels, Config.ai.hermesDefaultProvider || "", defaultModelId) : findModel(activeModels, defaultModelId);
         return found ? found.name : defaultModelId;
     }
 
@@ -102,6 +105,43 @@ Singleton {
 
         for (let i = 0; i < list.length; i++) {
             if (list[i].model.endsWith(id) || list[i].model.endsWith("/" + id))
+                return list[i];
+        }
+
+        return null;
+    }
+
+    // The same id can exist under two providers; compare the pair, not the label.
+    function sameModel(a, b) {
+        if (!a || !b)
+            return false;
+        return a.model === b.model && a.provider === b.provider;
+    }
+
+    function hermesModelKey(m) {
+        return m ? (m.provider || "") + "\u0000" + (m.model || "") : "";
+    }
+
+    function findHermesModel(list, provider, id) {
+        if (!id || !list)
+            return null;
+
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].model !== id)
+                continue;
+            if (provider === "" || provider === undefined || list[i].provider === provider)
+                return list[i];
+        }
+
+        return null;
+    }
+
+    function findHermesModelByKey(list, key) {
+        if (!key || !list)
+            return null;
+
+        for (let i = 0; i < list.length; i++) {
+            if (hermesModelKey(list[i]) === key)
                 return list[i];
         }
 
@@ -183,7 +223,16 @@ Singleton {
         if (!m)
             return false;
 
-        let id = m.provider === "hermes" ? (Config.ai.hermesDefaultModel || "") : (Config.ai.defaultModel || "");
+        if (m.api_format === "hermes") {
+            let id = Config.ai.hermesDefaultModel || "";
+            if (id === "" || id !== m.model)
+                return false;
+            // An empty provider is an older config that only stored the id.
+            let provider = Config.ai.hermesDefaultProvider || "";
+            return provider === "" || provider === m.provider;
+        }
+
+        let id = Config.ai.defaultModel || "";
         return id !== "" && id === m.model;
     }
 
@@ -191,17 +240,23 @@ Singleton {
         if (!m)
             return;
 
-        if (m.provider === "hermes")
+        if (m.api_format === "hermes") {
             Config.ai.hermesDefaultModel = m.model;
-        else
+            Config.ai.hermesDefaultProvider = m.provider || "";
+        } else {
             Config.ai.defaultModel = m.model;
+        }
     }
 
-    function clearDefault() {
-        if (hermesActive)
+    // The model decides the backend: a popup opened before a backend switch
+    // must not clear the other backend's default.
+    function clearDefault(m) {
+        if (m ? m.api_format === "hermes" : hermesActive) {
             Config.ai.hermesDefaultModel = "";
-        else
+            Config.ai.hermesDefaultProvider = "";
+        } else {
             Config.ai.defaultModel = "";
+        }
     }
 
     property bool _restored: false
@@ -227,7 +282,10 @@ Singleton {
             root.tryRestore();
 
             if (root.hermesModels.length > 0) {
-                let target = root.findModel(root.hermesModels, Config.ai.hermesDefaultModel || "");
+                let id = Config.ai.hermesDefaultModel || "";
+                let target = root.findHermesModel(root.hermesModels, Config.ai.hermesDefaultProvider || "", id);
+                if (!target && id !== "")
+                    target = root.findHermesModel(root.hermesModels, "", id);
                 if (target)
                     root.currentHermesModel = target;
             }
@@ -300,12 +358,15 @@ Singleton {
             root.hermesSubscriptionId = "";
             root.hermesCatalogPending = false;
             root.fetchingHermesModels = false;
+            root.hermesCatalogSeq++;
             root.hermesNotedPrompts = [];
 
             if (!root.hermesGatewayPending && !root.isLoading)
                 return;
 
-            let message = HermesGateway.lastError !== "" ? HermesGateway.lastError : "Hermes gateway connection failed.";
+            let message = HermesGateway.lastError !== "" ? root.hermesErrorMessage({
+                "message": HermesGateway.lastError
+            }) : "Hermes gateway connection failed.";
             root.hermesPendingText = "";
             root.hermesGatewayPending = false;
             root.hermesFail(message);
@@ -498,23 +559,28 @@ Singleton {
     // LOGIC
     // ============================================
 
-    function setModel(modelName) {
+    function setModel(modelName, providerSlug) {
         let list = activeModels;
 
         for (let i = 0; i < list.length; i++) {
-            if (list[i].name === modelName) {
-                if (hermesActive) {
-                    let previous = currentHermesModel;
-                    currentHermesModel = list[i];
-                    hermesRestored = true;
-                    // Hermes refuses -m on a resume, so a switch starts a fresh session.
-                    if (previous && previous.model !== list[i].model && hermesSessionId !== "")
-                        createNewChat();
-                } else {
-                    currentModel = list[i];
-                }
-                return;
+            if (list[i].name !== modelName)
+                continue;
+            // Hermes can list the same id under several providers.
+            if (providerSlug !== undefined && providerSlug !== "" && list[i].provider !== providerSlug)
+                continue;
+
+            if (hermesActive) {
+                let previous = currentHermesModel;
+                currentHermesModel = list[i];
+                hermesRestored = true;
+                // Hermes refuses -m on a resume, so a switch starts a fresh session.
+                // A same-id model from another provider is a different selection.
+                if (previous && (previous.model !== list[i].model || previous.provider !== list[i].provider) && hermesSessionId !== "")
+                    createNewChat();
+            } else {
+                currentModel = list[i];
             }
+            return;
         }
     }
 
@@ -938,6 +1004,38 @@ Singleton {
     // HERMES BACKEND
     // ============================================
 
+    // Gateway errors can echo request data; keep credentials out of the UI.
+    function hermesErrorMessage(err) {
+        let text = err && err.message ? String(err.message) : "unknown error";
+        text = text.replace(/sk-[A-Za-z0-9_-]{8,}/g, "sk-***").replace(/Bearer\s+[^\s"',;]+/gi, "Bearer ***").replace(/(api[_-]?key|access[_-]?token|secret)\s*[:=]\s*[^\s,;"']+/gi, "$1: ***");
+        return text.length > 300 ? text.substring(0, 300) + "…" : text;
+    }
+
+    // session.create's accepted fields come from runtime.describe; a field the
+    // gateway does not advertise is never sent.
+    function hermesSessionParams() {
+        let params = {
+            "source": "tui"
+        };
+        let model = currentHermesModel;
+        if (model && model.model !== "")
+            params.model = model.model;
+
+        let info = HermesGateway.runtimeInfo;
+        let parameters = info && info.parameters ? info.parameters : [];
+        if (model && model.provider !== "" && parameters.indexOf("provider") !== -1)
+            params.provider = model.provider;
+
+        // Older owners do not take a client label; sending it unasked is refused.
+        if (parameters.indexOf("client") !== -1)
+            params.client = {
+                "name": "ambxst",
+                "version": "1"
+            };
+
+        return params;
+    }
+
     function makeHermesRequest() {
         // The sidebar explains a missing binary instead of posting an error.
         if (HermesGateway.installed === false)
@@ -986,24 +1084,11 @@ Singleton {
             return;
         }
 
-        let params = {
-            "source": "tui"
-        };
-        let modelId = currentHermesModel && currentHermesModel.model ? currentHermesModel.model : "";
-        if (modelId !== "" && modelId !== hermesDefaultId)
-            params.model = modelId;
-
-        // Older owners do not take a client label; sending it unasked is refused.
-        let info = HermesGateway.runtimeInfo;
-        if (info && info.parameters.indexOf("client") !== -1)
-            params.client = {
-                "name": "ambxst",
-                "version": "1"
-            };
+        let params = hermesSessionParams();
 
         HermesGateway.request("session.create", params, (err, result) => {
             if (err) {
-                hermesFail("Hermes could not start a session: " + (err.message || "unknown error"));
+                hermesFail("Hermes could not start a session: " + hermesErrorMessage(err));
                 return;
             }
 
@@ -1039,7 +1124,7 @@ Singleton {
             "submission_id": hermesSubmissionId()
         }, (err, result) => {
             if (err)
-                hermesFail("Hermes could not accept the message: " + (err.message || "unknown error"));
+                hermesFail("Hermes could not accept the message: " + hermesErrorMessage(err));
         });
     }
 
@@ -1361,23 +1446,31 @@ Singleton {
 
     function requestHermesCatalog() {
         hermesCatalogPending = false;
+        let seq = ++hermesCatalogSeq;
         HermesGateway.request("model.options", {}, (err, result) => {
+            // A newer refresh already answered; this list would be stale.
+            if (seq !== root.hermesCatalogSeq)
+                return;
+
             root.fetchingHermesModels = false;
 
             if (err || !result) {
-                root.lastError = "Hermes could not list models: " + (err && err.message ? err.message : "unknown error");
-                root.finishHermesFetch([]);
+                root.lastError = "Hermes could not list models: " + root.hermesErrorMessage(err);
+                // Keep the last good catalog; only the first load needs a stand-in.
+                if (root.hermesModels.length === 0)
+                    root.finishHermesFetch([]);
                 return;
             }
 
+            root.lastError = "";
             root.applyHermesCatalog(result);
         });
     }
 
     // model.options: { providers: [{ slug, name, is_current, models: [id|{}] }], model, provider }
     function applyHermesCatalog(result) {
-        let providers = result.providers || [];
-        let currentProvider = result.provider || "";
+        let providers = result && Array.isArray(result.providers) ? result.providers : [];
+        let currentProvider = result ? (result.provider || "") : "";
         let newModels = [];
         let seen = {};
 
@@ -1385,64 +1478,129 @@ Singleton {
         let ordered = [];
         for (let i = 0; i < providers.length; i++) {
             let provider = providers[i];
-            if (provider && (provider.is_current === true || (currentProvider !== "" && provider.slug === currentProvider)))
+            if (!provider || isExplicitlyUnusable(provider))
+                continue;
+            if (provider.is_current === true || (currentProvider !== "" && provider.slug === currentProvider))
                 ordered.push(provider);
         }
         for (let i = 0; i < providers.length; i++) {
-            if (providers[i] && ordered.indexOf(providers[i]) === -1)
-                ordered.push(providers[i]);
+            let provider = providers[i];
+            if (!provider || isExplicitlyUnusable(provider))
+                continue;
+            if (ordered.indexOf(provider) === -1)
+                ordered.push(provider);
         }
 
         for (let i = 0; i < ordered.length; i++) {
             let provider = ordered[i];
-            let label = provider.name || provider.slug || "Hermes";
-            let items = provider.models || [];
+            let slug = provider.slug || provider.id || "";
+            let label = provider.name || slug || "Hermes";
+            if (slug === "")
+                slug = label;
+
+            let items = Array.isArray(provider.models) ? provider.models : [];
             for (let j = 0; j < items.length; j++) {
                 let item = items[j];
-                let id = typeof item === "string" ? item : (item.id || item.model || item.name || "");
-                if (id === "" || seen[id])
+                let id = typeof item === "string" ? item : (item && (item.id || item.model || item.name) ? (item.id || item.model || item.name) : "");
+                if (id === "")
                     continue;
-                seen[id] = true;
-                newModels.push(createHermesModel(id, label));
+                if (item && typeof item === "object" && isExplicitlyUnusable(item))
+                    continue;
+
+                // Two providers can expose the same id; the identity is the pair.
+                let key = slug + "\u0000" + id;
+                if (seen[key])
+                    continue;
+                seen[key] = true;
+                newModels.push(createHermesModel(id, slug, label));
             }
         }
 
-        hermesDefaultId = result.model || "";
+        hermesDefaultId = result && result.model ? result.model : "";
         finishHermesFetch(newModels);
     }
 
-    function createHermesModel(id, providerName) {
+    // Only flags the gateway actually sends matter; nothing here assumes a
+    // provider has the same metadata as the next one.
+    function isExplicitlyUnusable(entry) {
+        if (!entry || typeof entry !== "object")
+            return false;
+        if (entry.available === false || entry.enabled === false || entry.usable === false || entry.disabled === true)
+            return true;
+        return ["unavailable", "disabled", "unconfigured", "unauthenticated"].indexOf(entry.status) !== -1;
+    }
+
+    function createHermesModel(id, providerSlug, providerName) {
+        let slug = providerSlug !== undefined && providerSlug !== "" ? providerSlug : "hermes";
         return aiModelFactory.createObject(root, {
             name: id,
             icon: "",
-            description: providerName || "Hermes",
+            description: providerName || slug,
             endpoint: "",
             model: id,
-            provider: "hermes",
+            // The slug, not "hermes": the same id can come from two providers.
+            provider: slug,
             requires_key: false,
             api_format: "hermes"
         });
     }
 
-    function pickHermesModel() {
+    // Keeps the current selection across a refresh, then the configured
+    // default, then the last used id, then the first usable model.
+    function pickHermesModel(previous) {
         if (hermesModels.length === 0)
             return null;
 
-        let target = findModel(hermesModels, Config.ai.hermesDefaultModel || "");
+        if (previous) {
+            let kept = findHermesModelByKey(hermesModels, hermesModelKey(previous));
+            if (kept)
+                return kept;
+        }
+
+        let defaultId = Config.ai.hermesDefaultModel || "";
+        let target = findHermesModel(hermesModels, Config.ai.hermesDefaultProvider || "", defaultId);
+        if (!target && defaultId !== "")
+            target = findHermesModel(hermesModels, "", defaultId);
         if (!target)
-            target = findModel(hermesModels, StateService.get("lastHermesModel", ""));
+            target = findHermesModel(hermesModels, "", StateService.get("lastHermesModel", ""));
 
         return target ? target : hermesModels[0];
     }
 
     function finishHermesFetch(newModels) {
         if (newModels.length === 0 && hermesDefaultId !== "")
-            newModels.push(createHermesModel(hermesDefaultId, "Hermes"));
+            newModels.push(createHermesModel(hermesDefaultId, "hermes", "Hermes"));
+
+        let previous = currentHermesModel;
+        let oldModels = hermesModels;
 
         hermesModels = newModels;
         hermesRestored = true;
-        currentHermesModel = pickHermesModel();
+        currentHermesModel = pickHermesModel(previous);
         fetchingHermesModels = false;
+
+        disposeHermesModels(oldModels);
+    }
+
+    // Models created here are children of this singleton, so replacing the
+    // list without destroying them leaks a full catalog per refresh.
+    function disposeHermesModels(oldModels) {
+        if (!oldModels || oldModels.length === 0)
+            return;
+
+        // Let delegates rebind to the new list before the old objects go.
+        Qt.callLater(function () {
+            for (let i = 0; i < oldModels.length; i++) {
+                let model = oldModels[i];
+                if (!model)
+                    continue;
+                if (model === currentHermesModel || model === currentModel)
+                    continue;
+                if (hermesModels.indexOf(model) !== -1)
+                    continue;
+                model.destroy();
+            }
+        });
     }
 
     function fetchAvailableModels() {

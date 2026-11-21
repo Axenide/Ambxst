@@ -1219,6 +1219,7 @@ Singleton {
             property list<var> extraModels: []
             property string defaultModel: ""
             property string hermesDefaultModel: ""
+            property string hermesDefaultProvider: ""
             property list<var> favoriteModels: []
             property int sidebarWidth: 400
             property string sidebarPosition: "right"

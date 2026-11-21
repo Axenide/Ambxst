@@ -36,6 +36,16 @@ Popup {
             Ai.fetchActiveModels();
     }
 
+    // A refresh swaps the catalog while the popup is open; rebuild the rows so
+    // they point at the new objects.
+    Connections {
+        target: Ai
+        function onActiveModelsChanged() {
+            if (root.visible)
+                root.updateFilteredModels();
+        }
+    }
+
     // Initialize fetching if empty (e.g. first run)
     Component.onCompleted: {
         if (Ai.activeModels.length === 0) {
@@ -50,12 +60,21 @@ Popup {
         if (!m)
             return;
 
-        if (pickDefault)
-            Ai.setDefault(m);
-        else
-            Ai.setModel(m.name);
+        // A refresh replaces the model objects; rows built before it would
+        // otherwise act on a destroyed one. Re-resolve by provider + id.
+        let resolved = m;
+        if (m.api_format === "hermes") {
+            let found = Ai.findHermesModel(Ai.activeModels, m.provider, m.model);
+            if (found)
+                resolved = found;
+        }
 
-        root.modelSelected(m.name);
+        if (pickDefault)
+            Ai.setDefault(resolved);
+        else
+            Ai.setModel(resolved.name, resolved.provider);
+
+        root.modelSelected(resolved.name);
         root.close();
     }
 
@@ -95,6 +114,15 @@ Popup {
         return "";
     }
 
+    // Hermes lists the provider in description; API models keep their format.
+    function modelSubtitle(m) {
+        if (!m)
+            return "";
+        if (m.api_format === "hermes")
+            return (m.description || m.provider) + " • " + m.model;
+        return (m.api_format ? m.api_format.toUpperCase() + " • " : "") + m.model;
+    }
+
     function updateFilteredModels() {
         let text = searchInput.text.toLowerCase();
         let allModels = [];
@@ -105,7 +133,7 @@ Popup {
         if (text.trim() === "") {
             filteredModels = Ai.withFavorites(allModels);
         } else {
-            let matches = allModels.filter(m => m.name.toLowerCase().includes(text) || (m.api_format || "").toLowerCase().includes(text) || m.model.toLowerCase().includes(text));
+            let matches = allModels.filter(m => m.name.toLowerCase().includes(text) || m.model.toLowerCase().includes(text) || (m.api_format || "").toLowerCase().includes(text) || (m.description || "").toLowerCase().includes(text) || (m.provider || "").toLowerCase().includes(text));
             filteredModels = Ai.withFavorites(matches);
         }
 
@@ -299,6 +327,17 @@ Popup {
             }
         }
 
+        // A failed catalog must be visible, not just stored on the service.
+        Text {
+            Layout.fillWidth: true
+            visible: !Ai.fetchingActiveModels && Ai.lastError !== "" && root.filteredModels.length === 0
+            text: Ai.lastError
+            font.family: Config.theme.font
+            font.pixelSize: 11
+            color: Colors.error
+            wrapMode: Text.Wrap
+        }
+
         // Model List
         ListView {
             id: modelList
@@ -372,7 +411,7 @@ Popup {
 
                 // Controlled by ListView's currentIndex via root.selectedIndex
                 property bool isSelected: ListView.isCurrentItem
-                property bool isActiveModel: Ai.activeModel !== null && Ai.activeModel.name === modelData.name
+                property bool isActiveModel: Ai.sameModel(Ai.activeModel, modelData)
 
                 contentItem: RowLayout {
                     anchors.fill: parent
@@ -480,8 +519,9 @@ Popup {
                         }
 
                         Text {
-                            // Show provider and model ID
-                            text: (modelData.api_format ? modelData.api_format.toUpperCase() + " • " : "") + modelData.model
+                            // Show provider and model ID; identical ids from two
+                            // providers stay distinguishable here.
+                            text: root.modelSubtitle(modelData)
                             color: delegateBtn.isSelected ? Styling.srItem("primary") : Colors.outline
                             font.family: Config.theme.font
                             font.pixelSize: 11
@@ -553,7 +593,7 @@ Popup {
                         background: null
                         onClicked: {
                             if (Ai.isDefault(modelData))
-                                Ai.clearDefault();
+                                Ai.clearDefault(modelData);
                             else
                                 Ai.setDefault(modelData);
                         }
