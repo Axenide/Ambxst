@@ -37,6 +37,14 @@ Singleton {
     property string hermesEnvText: ""
 
     readonly property bool hermesActive: Config.ai.backend === "hermes"
+    // "unknown" until the resolver answers, then true/false.
+    readonly property var hermesInstalled: HermesGateway.installed
+    readonly property string hermesPath: HermesGateway.resolvedPath
+
+    function checkHermes(force) {
+        HermesGateway.detectInstalled(force === true);
+    }
+
     readonly property var activeModels: hermesActive ? hermesModels : models
     readonly property AiModel activeModel: hermesActive ? currentHermesModel : currentModel
     readonly property bool fetchingActiveModels: hermesActive ? fetchingHermesModels : fetchingModels
@@ -62,8 +70,26 @@ Singleton {
     }
 
     onHermesActiveChanged: {
-        if (hermesActive && Config.initialLoadComplete && hermesModels.length === 0)
+        if (!hermesActive)
+            return;
+
+        checkHermes(false);
+        if (Config.initialLoadComplete && hermesModels.length === 0)
             fetchHermesModels();
+    }
+
+    // Re-resolve when the command changes or the backend is switched back in.
+    Connections {
+        target: Config.ai
+
+        function onHermesCommandChanged() {
+            root.checkHermes(true);
+        }
+
+        function onBackendChanged() {
+            if ((Config.ai.backend ?? "api") === "hermes")
+                root.checkHermes(true);
+        }
     }
 
     function findModel(list, id) {
@@ -238,8 +264,13 @@ Singleton {
     Connections {
         target: GlobalStates
         function onAssistantVisibleChanged() {
-            if (GlobalStates.assistantVisible)
-                root._ensureInit();
+            if (!GlobalStates.assistantVisible)
+                return;
+
+            root._ensureInit();
+            // Opening the sidebar is a good moment to retry a missing install.
+            if (root.hermesActive && root.hermesInstalled !== true)
+                root.checkHermes(true);
         }
     }
 
@@ -602,6 +633,8 @@ Singleton {
             return;
         if (processCommand(text))
             return;
+        if (Config.ai.backend === "hermes" && HermesGateway.installed === false)
+            return;
         isLoading = true;
         lastError = "";
         let userMsg = {
@@ -872,6 +905,10 @@ Singleton {
     // ============================================
 
     function makeHermesRequest() {
+        // The sidebar explains a missing binary instead of posting an error.
+        if (HermesGateway.installed === false)
+            return;
+
         let lastUserMessage = "";
         for (let i = currentChat.length - 1; i >= 0; i--) {
             if (currentChat[i].role === "user") {
@@ -953,6 +990,9 @@ Singleton {
     }
 
     function submitHermesText(text) {
+        if (HermesGateway.installed === false)
+            return;
+
         if (!HermesGateway.connected) {
             hermesPendingText = text;
             hermesGatewayPending = true;
@@ -1261,13 +1301,13 @@ Singleton {
     // ============================================
 
     function fetchHermesModels() {
-        if (fetchingHermesModels)
+        if (fetchingHermesModels || HermesGateway.installed === false)
             return;
 
         fetchingHermesModels = true;
         // env reports a missing binary as exit 127; Process would otherwise
         // fail to start and never emit exited, leaving the refresh spinning.
-        hermesConfigProcess.command = ["/usr/bin/env", Config.ai.hermesCommand || "hermes", "config", "get", "model", "--json"];
+        hermesConfigProcess.command = ["/usr/bin/env", HermesGateway.command(), "config", "get", "model", "--json"];
         hermesConfigProcess.running = true;
     }
 

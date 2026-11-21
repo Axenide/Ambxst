@@ -143,6 +143,11 @@ Item {
                         }
                     }
 
+                    HermesMissingNotice {
+                        Layout.fillWidth: true
+                        visible: (Config.ai.backend ?? "api") === "hermes" && Ai.hermesInstalled === false
+                    }
+
                     ColumnLayout {
                         Layout.fillWidth: true
                         visible: (Config.ai.backend ?? "api") === "hermes"
@@ -181,6 +186,15 @@ Item {
                                 anchors.topMargin: -parent.padding
                                 anchors.bottomMargin: -parent.padding
                             }
+                        }
+
+                        Text {
+                            text: I18n.t("ai.hermes_command_hint")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
                         }
                     }
 
@@ -644,6 +658,13 @@ Item {
                 }
             }
         }
+    }
+
+    // A selected Hermes backend should explain itself even if the sidebar
+    // never opened on this run.
+    Component.onCompleted: {
+        if ((Config.ai.backend ?? "api") === "hermes")
+            Ai.checkHermes(false);
     }
 
     // Loaded by path: the sidebar module is not always in the module path.

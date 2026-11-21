@@ -15,6 +15,14 @@ Singleton {
     property string lastError: ""
     readonly property bool connected: status === "ready"
 
+    // "unknown" while the resolver runs, true/false once it answers. A missing
+    // binary must never start attach or look like a gateway failure.
+    property var installed: "unknown"
+    property string resolvedPath: ""
+
+    property string _detectedCommand: ""
+    property bool _detectQueued: false
+
     // Sanitized runtime.describe result, never the attach payload.
     property var runtimeInfo: null
 
@@ -41,7 +49,41 @@ Singleton {
         return "Install qt6-websockets (Arch), qt6-qtwebsockets (Fedora) or qt6.qtwebsockets (Nix), then restart the shell.";
     }
 
+    // The absolute path every later call uses, so nothing depends on the
+    // PATH Quickshell inherited from the compositor.
+    function command() {
+        if (resolvedPath !== "")
+            return resolvedPath;
+        let configured = (Config.ai.hermesCommand || "").trim();
+        return configured !== "" ? configured : "hermes";
+    }
+
+    // The compositor often starts Quickshell with a minimal PATH, so resolve
+    // through a login shell. The command travels as $1, never as shell text.
+    function detectInstalled(force) {
+        let configured = (Config.ai.hermesCommand || "").trim();
+        if (configured === "")
+            configured = "hermes";
+
+        if (!force && installed !== "unknown" && configured === _detectedCommand)
+            return;
+
+        if (detectProcess.running) {
+            _detectQueued = true;
+            return;
+        }
+
+        installed = "unknown";
+        _detectedCommand = configured;
+        _detectQueued = false;
+        detectProcess.command = ["/usr/bin/env", "bash", "-lc", "if [ -x \"$1\" ]; then printf '%s\\n' \"$1\"; exit 0; fi; " + "found=\"$(command -v -- \"$1\" 2>/dev/null)\" || found=\"\"; " + "if [ -n \"$found\" ]; then printf '%s\\n' \"$found\"; exit 0; fi; " + "if [ -x \"$HOME/.local/bin/$1\" ]; then printf '%s\\n' \"$HOME/.local/bin/$1\"; exit 0; fi; " + "exit 1", "bash", configured];
+        detectProcess.running = true;
+    }
+
     function ensureStarted() {
+        if (installed === false)
+            return;
+
         _wanted = true;
         if (status === "ready" || status === "attaching" || status === "connecting")
             return;
@@ -122,7 +164,7 @@ Singleton {
             flags.push("--recover");
 
         attachProcess.recovering = recover;
-        attachProcess.command = ["/usr/bin/env", Config.ai.hermesCommand || "hermes", "gateway", "attach", "--json"].concat(flags);
+        attachProcess.command = ["/usr/bin/env", command(), "gateway", "attach", "--json"].concat(flags);
         attachProcess.running = true;
     }
 
@@ -180,6 +222,34 @@ Singleton {
         onTriggered: root._connect(false, true)
     }
 
+    // Exit 0 with a path on stdout means found; 1 means not installed. A failed
+    // spawn leaves the state unknown, which the UI renders as "still checking".
+    Process {
+        id: detectProcess
+
+        stdout: StdioCollector {
+            id: detectOut
+        }
+
+        stderr: StdioCollector {
+            id: detectErr
+        }
+
+        onExited: exitCode => {
+            let found = detectOut.text.trim();
+            if (exitCode === 0 && found !== "") {
+                root.resolvedPath = found;
+                root.installed = true;
+            } else {
+                root.resolvedPath = "";
+                root.installed = false;
+            }
+
+            if (root._detectQueued)
+                Qt.callLater(() => root.detectInstalled(true));
+        }
+    }
+
     Process {
         id: attachProcess
         property bool recovering: false
@@ -212,7 +282,7 @@ Singleton {
                 if (detail.length > 300)
                     detail = detail.substring(0, 300);
 
-                root._fail("Could not reach the Hermes gateway." + (detail !== "" ? " " + detail : " Run `" + (Config.ai.hermesCommand || "hermes") + " gateway status` to check it."));
+                root._fail("Could not reach the Hermes gateway." + (detail !== "" ? " " + detail : " Run `" + root.command() + " gateway status` to check it."));
                 return;
             }
 

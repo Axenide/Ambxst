@@ -20,6 +20,8 @@ Item {
     property alias hitbox: sidebarContainer
     property alias hasActiveFocus: inputField.activeFocus
 
+    // A missing Hermes binary replaces the composer with an explanation.
+    readonly property bool hermesBlocked: (Config.ai.backend ?? "api") === "hermes" && Ai.hermesInstalled === false
     readonly property bool frameEnabled: (Config.bar?.frameEnabled ?? false)
     readonly property bool frameWrapped: frameEnabled && GlobalStates.assistantPinned
     readonly property string modelLabel: Config.ai.backend === "hermes" ? (Ai.currentHermesModel ? Ai.currentHermesModel.name : "Hermes") : (Ai.currentModel ? Ai.currentModel.name : "")
@@ -79,6 +81,8 @@ Item {
 
     onActiveChanged: {
         if (active) {
+            if ((Config.ai.backend ?? "api") === "hermes" && Ai.hermesInstalled !== true)
+                Ai.checkHermes(true);
             root.wantsFocus = true;
             Qt.callLater(() => {
                 focusSearchInput();
@@ -1535,8 +1539,18 @@ Item {
                             }
                         }
 
+                        HermesMissingNotice {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: 20
+                            width: Math.min(600, parent.width - 40)
+                            compact: true
+                            visible: root.hermesBlocked
+                        }
+
                         Item {
                             id: inputContainer
+                            visible: !root.hermesBlocked
                             property int attachmentPreviewHeight: attachmentPreview.visible ? Math.min(attachmentPreview.contentHeight, 120) + 8 : 0
                             height: attachmentPreviewHeight + Math.min(150, Math.max(48, inputField.contentHeight + 24))
 
