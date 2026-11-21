@@ -36,6 +36,19 @@ Rectangle {
         onTriggered: searchInput.focusInput()
     }
 
+    // Jump to a section requested by another view (e.g. the assistant sidebar)
+    function applyTargetSection() {
+        if (GlobalStates.settingsTargetSection < 0)
+            return;
+
+        const index = getFilteredIndex(GlobalStates.settingsTargetSection);
+        GlobalStates.settingsTargetSection = -1;
+        if (index >= 0)
+            selectedIndex = index;
+    }
+
+    Component.onCompleted: applyTargetSection()
+
     onSelectedIndexChanged: {
         GlobalStates.settingsCurrentTab = selectedIndex;
         if (filteredSections && selectedIndex >= 0 && selectedIndex < filteredSections.length) {
@@ -55,6 +68,10 @@ Rectangle {
             if (root.selectedIndex !== GlobalStates.settingsCurrentTab) {
                 root.selectedIndex = GlobalStates.settingsCurrentTab;
             }
+        }
+
+        function onSettingsTargetSectionChanged() {
+            root.applyTargetSection();
         }
     }
 

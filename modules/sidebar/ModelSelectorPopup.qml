@@ -13,6 +13,9 @@ Popup {
 
     signal modelSelected(string modelName)
 
+    // When true, picking a row only sets it as the default for the current backend.
+    property bool pickDefault: false
+
     width: 400
     // Height: Header (48) + Spacing (12) + List (5 * 48 = 240) + Padding (8*2)
     height: contentItem.implicitHeight + padding * 2
@@ -29,17 +32,51 @@ Popup {
     onOpened: {
         searchInput.focusInput();
         updateFilteredModels();
+        if (Ai.activeModels.length === 0)
+            Ai.fetchActiveModels();
+    }
+
+    // A refresh swaps the catalog while the popup is open; rebuild the rows so
+    // they point at the new objects.
+    Connections {
+        target: Ai
+        function onActiveModelsChanged() {
+            if (root.visible)
+                root.updateFilteredModels();
+        }
     }
 
     // Initialize fetching if empty (e.g. first run)
     Component.onCompleted: {
-        if (Ai.models.length === 0) {
-            Ai.fetchAvailableModels();
+        if (Ai.activeModels.length === 0) {
+            Ai.fetchActiveModels();
         }
     }
 
     property int selectedIndex: -1  // Start with no selection like App Launcher
     property var filteredModels: []
+
+    function choose(m) {
+        if (!m)
+            return;
+
+        // A refresh replaces the model objects; rows built before it would
+        // otherwise act on a destroyed one. Re-resolve by provider + id.
+        let resolved = m;
+        if (m.api_format === "hermes") {
+            let found = Ai.findHermesModel(Ai.activeModels, m.provider, m.model);
+            if (found)
+                resolved = found;
+        }
+
+        if (pickDefault)
+            Ai.setDefault(resolved);
+        else
+            Ai.setModel(resolved.name, resolved.provider);
+
+        root.modelSelected(resolved.name);
+        root.close();
+    }
 
     function getProviderIcon(provider) {
         if (!provider)
@@ -71,21 +108,33 @@ Popup {
             return path + "xai.svg";
         if (p.includes("lmstudio") || p.includes("lm_studio"))
             return path + "lmstudio.svg";
+        if (p.includes("minimax"))
+            return path + "minimax.svg";
 
         return "";
+    }
+
+    // Hermes lists the provider in description; API models keep their format.
+    function modelSubtitle(m) {
+        if (!m)
+            return "";
+        if (m.api_format === "hermes")
+            return (m.description || m.provider) + " • " + m.model;
+        return (m.api_format ? m.api_format.toUpperCase() + " • " : "") + m.model;
     }
 
     function updateFilteredModels() {
         let text = searchInput.text.toLowerCase();
         let allModels = [];
-        for (let i = 0; i < Ai.models.length; i++) {
-            allModels.push(Ai.models[i]);
+        for (let i = 0; i < Ai.activeModels.length; i++) {
+            allModels.push(Ai.activeModels[i]);
         }
 
         if (text.trim() === "") {
-            filteredModels = allModels;
+            filteredModels = Ai.withFavorites(allModels);
         } else {
-            filteredModels = allModels.filter(m => m.name.toLowerCase().includes(text) || m.api_format.toLowerCase().includes(text) || m.model.toLowerCase().includes(text));
+            let matches = allModels.filter(m => m.name.toLowerCase().includes(text) || m.model.toLowerCase().includes(text) || (m.api_format || "").toLowerCase().includes(text) || (m.description || "").toLowerCase().includes(text) || (m.provider || "").toLowerCase().includes(text));
+            filteredModels = Ai.withFavorites(matches);
         }
 
         // Reset selection if out of bounds
@@ -144,12 +193,8 @@ Popup {
                 }
 
                 onAccepted: {
-                    if (root.filteredModels.length > 0 && root.selectedIndex >= 0) {
-                        let m = root.filteredModels[root.selectedIndex];
-                        Ai.setModel(m.name);
-                        root.modelSelected(m.name);
-                        root.close();
-                    }
+                    if (root.filteredModels.length > 0 && root.selectedIndex >= 0)
+                        root.choose(root.filteredModels[root.selectedIndex]);
                 }
 
                 onEscapePressed: {
@@ -201,7 +246,7 @@ Popup {
                         Text {
                             id: refreshIcon
                             anchors.centerIn: parent
-                            text: Ai.fetchingModels ? Icons.circleNotch : (refreshBtn.confirming ? Icons.sync : Icons.arrowCounterClockwise)
+                            text: Ai.fetchingActiveModels ? Icons.circleNotch : (refreshBtn.confirming ? Icons.sync : Icons.arrowCounterClockwise)
                             font.family: Icons.font
                             font.pixelSize: 20
                             color: refreshBtn.confirming ? Styling.srItem("primary") : Styling.srItem("overprimary")
@@ -211,7 +256,7 @@ Popup {
                                 from: 0
                                 to: 360
                                 duration: 1000
-                                running: Ai.fetchingModels
+                                running: Ai.fetchingActiveModels
                                 onRunningChanged: {
                                     if (!running) {
                                         refreshIcon.rotation = 0;
@@ -267,7 +312,7 @@ Popup {
                     if (!confirming) {
                         confirming = true;
                     } else {
-                        Ai.fetchAvailableModels();
+                        Ai.fetchActiveModels();
                         confirming = false;
                     }
                 }
@@ -280,6 +325,17 @@ Popup {
                     searchInput.focusInput();
                 }
             }
+        }
+
+        // A failed catalog must be visible, not just stored on the service.
+        Text {
+            Layout.fillWidth: true
+            visible: !Ai.fetchingActiveModels && Ai.lastError !== "" && root.filteredModels.length === 0
+            text: Ai.lastError
+            font.family: Config.theme.font
+            font.pixelSize: 11
+            color: Colors.error
+            wrapMode: Text.Wrap
         }
 
         // Model List
@@ -355,7 +411,7 @@ Popup {
 
                 // Controlled by ListView's currentIndex via root.selectedIndex
                 property bool isSelected: ListView.isCurrentItem
-                property bool isActiveModel: Ai.currentModel.name === modelData.name
+                property bool isActiveModel: Ai.sameModel(Ai.activeModel, modelData)
 
                 contentItem: RowLayout {
                     anchors.fill: parent
@@ -373,28 +429,17 @@ Popup {
                         variant: delegateBtn.isSelected ? "overprimary" : "common"
                         radius: Styling.radius(-4)
 
-                        property string finalIconSource: {
-                            var src = "";
-                            if (typeof modelData !== "undefined" && modelData !== null) {
-                                // Check explicit icon first
-                                if (modelData.icon && typeof modelData.icon === "string" && modelData.icon.indexOf(".svg") !== -1) {
-                                    src = modelData.icon;
-                                } else
-                                // Fallback to provider icon
-                                if (modelData.api_format) {
-                                    src = root.getProviderIcon(modelData.api_format);
-                                }
-                            }
-                            return src;
-                        }
+                        // Brand SVGs keep a file-relative path: URLs resolved
+                        // from qs:// components do not load in an Image.
+                        readonly property string iconSource: typeof modelData === "undefined" || modelData === null ? "" : root.getProviderIcon(modelData.provider || modelData.api_format)
 
-                        // SVG Icon (if available)
                         Image {
+                            id: providerIcon
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            source: iconRect.finalIconSource
-                            visible: iconRect.finalIconSource.length > 0
+                            source: iconRect.iconSource
+                            visible: iconRect.iconSource !== "" && status !== Image.Error
                             fillMode: Image.PreserveAspectFit
                             mipmap: true
                             asynchronous: true
@@ -408,29 +453,14 @@ Popup {
                             }
                         }
 
-                        // Font Icon (fallback)
+                        // Same robot glyph the rest of the UI uses for a model
+                        // without a provider icon.
                         Text {
                             anchors.centerIn: parent
-                            text: {
-                                if (iconRect.finalIconSource.length > 0)
-                                    return "";
-                                if (typeof modelData === "undefined" || modelData === null)
-                                    return Icons.robot;
-
-                                switch (modelData.icon) {
-                                case "sparkles":
-                                    return Icons.sparkle;
-                                case "openai":
-                                    return Icons.lightning;
-                                case "wind":
-                                    return Icons.sparkle;
-                                default:
-                                    return Icons.robot;
-                                }
-                            }
+                            text: Icons.robot
                             font.family: Icons.font
                             font.pixelSize: 18
-                            visible: iconRect.finalIconSource.length === 0
+                            visible: iconRect.iconSource === "" || providerIcon.status === Image.Error
                             color: iconRect.item
 
                             Behavior on color {
@@ -456,27 +486,42 @@ Popup {
                         Layout.alignment: Qt.AlignVCenter
                         spacing: 2
 
-                        Text {
-                            text: modelData.name
-                            color: delegateBtn.isSelected ? Styling.srItem("primary") : (delegateBtn.isActiveModel ? Styling.srItem("overprimary") : Colors.overBackground)
-                            font.family: Config.theme.font
-                            font.pixelSize: 14
-                            font.weight: Font.Medium
+                        RowLayout {
                             Layout.fillWidth: true
-                            elide: Text.ElideRight
+                            spacing: 6
 
-                            Behavior on color {
-                                enabled: Config.animDuration > 0
-                                ColorAnimation {
-                                    duration: Config.animDuration / 2
-                                    easing.type: Easing.OutCubic
+                            Text {
+                                text: modelData.name
+                                color: delegateBtn.isSelected ? Styling.srItem("primary") : (delegateBtn.isActiveModel ? Styling.srItem("overprimary") : Colors.overBackground)
+                                font.family: Config.theme.font
+                                font.pixelSize: 14
+                                font.weight: Font.Medium
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+
+                                Behavior on color {
+                                    enabled: Config.animDuration > 0
+                                    ColorAnimation {
+                                        duration: Config.animDuration / 2
+                                        easing.type: Easing.OutCubic
+                                    }
                                 }
+                            }
+
+                            Text {
+                                text: I18n.t("ai.default_badge")
+                                visible: Ai.isDefault(modelData)
+                                font.family: Config.theme.font
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                color: delegateBtn.isSelected ? Styling.srItem("primary") : Styling.srItem("overprimary")
                             }
                         }
 
                         Text {
-                            // Show provider and model ID
-                            text: modelData.api_format.toUpperCase() + " • " + modelData.model
+                            // Show provider and model ID; identical ids from two
+                            // providers stay distinguishable here.
+                            text: root.modelSubtitle(modelData)
                             color: delegateBtn.isSelected ? Styling.srItem("primary") : Colors.outline
                             font.family: Config.theme.font
                             font.pixelSize: 11
@@ -490,6 +535,67 @@ Popup {
                                     easing.type: Easing.OutCubic
                                 }
                             }
+                        }
+                    }
+
+                    // Favorite toggle.
+                    Button {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        Layout.alignment: Qt.AlignVCenter
+                        flat: true
+                        padding: 0
+
+                        contentItem: Text {
+                            text: Ai.isFavorite(modelData) ? Icons.pin : Icons.unpin
+                            font.family: Icons.font
+                            font.pixelSize: 14
+                            color: delegateBtn.isSelected ? Styling.srItem("primary") : (Ai.isFavorite(modelData) ? Colors.primary : Colors.overBackground)
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+
+                            Behavior on color {
+                                enabled: Config.animDuration > 0
+                                ColorAnimation {
+                                    duration: Config.animDuration / 2
+                                }
+                            }
+                        }
+
+                        background: null
+                        onClicked: Ai.toggleFavorite(modelData)
+                    }
+
+                    // Default toggle: clicking the current default clears it.
+                    Button {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        Layout.alignment: Qt.AlignVCenter
+                        flat: true
+                        padding: 0
+
+                        contentItem: Text {
+                            text: Icons.seal
+                            font.family: Icons.font
+                            font.pixelSize: 14
+                            color: delegateBtn.isSelected ? Styling.srItem("primary") : (Ai.isDefault(modelData) ? Colors.primary : Colors.overBackground)
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+
+                            Behavior on color {
+                                enabled: Config.animDuration > 0
+                                ColorAnimation {
+                                    duration: Config.animDuration / 2
+                                }
+                            }
+                        }
+
+                        background: null
+                        onClicked: {
+                            if (Ai.isDefault(modelData))
+                                Ai.clearDefault(modelData);
+                            else
+                                Ai.setDefault(modelData);
                         }
                     }
 
@@ -524,11 +630,7 @@ Popup {
                 // We keep this empty or transparent
                 Item {}
 
-                onClicked: {
-                    Ai.setModel(modelData.name);
-                    root.modelSelected(modelData.name);
-                    root.close();
-                }
+                onClicked: root.choose(modelData)
 
                 onHoveredChanged: {
                     if (hovered) {
@@ -536,6 +638,18 @@ Popup {
                         modelList.currentIndex = index;
                     }
                 }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                visible: root.filteredModels.length === 0
+                text: I18n.t("ai.no_models")
+                font.family: Config.theme.font
+                font.pixelSize: 13
+                color: Colors.outline
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
         }
     }

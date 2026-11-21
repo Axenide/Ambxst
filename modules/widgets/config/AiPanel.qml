@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.theme
 import qs.modules.components
+import "../../sidebar"
 import qs.modules.services
 import qs.config
 
@@ -13,6 +14,79 @@ Item {
     property int maxContentWidth: 480
     readonly property int contentWidth: Math.min(width, maxContentWidth)
     readonly property real sideMargin: Math.max(0, (width - contentWidth) / 2)
+
+    // Inline component for segmented selector rows (same style as ShellPanel)
+    component SelectorRow: ColumnLayout {
+        id: selectorRowRoot
+        property string label: ""
+        property var options: []
+        property string value: ""
+        signal valueSelected(string newValue)
+
+        function getIndexFromValue(val: string): int {
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].value === val)
+                    return i;
+            }
+            return 0;
+        }
+
+        Layout.fillWidth: true
+        spacing: 4
+
+        Text {
+            text: selectorRowRoot.label
+            font.family: Config.theme.font
+            font.pixelSize: Styling.fontSize(-1)
+            font.weight: Font.Medium
+            color: Colors.overSurfaceVariant
+            visible: selectorRowRoot.label !== ""
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 4
+
+            Repeater {
+                model: selectorRowRoot.options
+
+                delegate: StyledRect {
+                    id: optionButton
+                    required property var modelData
+                    required property int index
+
+                    readonly property bool isSelected: selectorRowRoot.getIndexFromValue(selectorRowRoot.value) === index
+                    property bool isHovered: false
+
+                    variant: isSelected ? "primary" : (isHovered ? "focus" : "common")
+                    enableShadow: true
+                    Layout.fillWidth: true
+                    height: 36
+                    radius: isSelected ? Styling.radius(0) / 2 : Styling.radius(0)
+
+                    Text {
+                        anchors.centerIn: parent
+                        text: optionButton.modelData.label
+                        font.family: Config.theme.font
+                        font.pixelSize: Styling.fontSize(0)
+                        font.bold: true
+                        color: optionButton.item
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+
+                        onEntered: optionButton.isHovered = true
+                        onExited: optionButton.isHovered = false
+
+                        onClicked: selectorRowRoot.valueSelected(optionButton.modelData.value)
+                    }
+                }
+            }
+        }
+    }
 
     Flickable {
         anchors.fill: parent
@@ -35,6 +109,187 @@ Item {
                 color: Colors.overSurface
                 Layout.fillWidth: true
                 Layout.bottomMargin: 8
+            }
+
+            // Backend
+            StyledRect {
+                Layout.fillWidth: true
+                variant: "surface"
+                radius: Styling.radius(8)
+                implicitHeight: backendCol.implicitHeight + 32
+
+                ColumnLayout {
+                    id: backendCol
+                    anchors.fill: parent
+                    anchors.margins: 16
+                    spacing: 12
+
+                    SelectorRow {
+                        label: "Backend"
+                        options: [
+                            {
+                                label: "API",
+                                value: "api"
+                            },
+                            {
+                                label: "Hermes",
+                                value: "hermes"
+                            }
+                        ]
+                        value: Config.ai.backend ?? "api"
+                        onValueSelected: newValue => {
+                            if (newValue !== Config.ai.backend)
+                                Config.ai.backend = newValue;
+                        }
+                    }
+
+                    HermesMissingNotice {
+                        Layout.fillWidth: true
+                        visible: (Config.ai.backend ?? "api") === "hermes" && Ai.hermesInstalled === false
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        visible: (Config.ai.backend ?? "api") === "hermes"
+                        spacing: 4
+
+                        Text {
+                            text: "Hermes command"
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                        }
+
+                        TextField {
+                            id: hermesCommandInput
+                            Layout.fillWidth: true
+                            text: Config.ai.hermesCommand ?? "hermes"
+                            placeholderText: "hermes (or an absolute path)"
+                            font.family: Config.theme.font
+                            color: Colors.overSurface
+                            padding: 6
+
+                            onEditingFinished: {
+                                let value = text.trim();
+                                Config.ai.hermesCommand = value !== "" ? value : "hermes";
+                            }
+
+                            background: StyledRect {
+                                variant: "internalbg"
+                                radius: Styling.radius(4)
+                                border.width: hermesCommandInput.activeFocus ? 2 : 0
+                                border.color: Styling.srItem("primary")
+                                anchors.fill: parent
+                                anchors.leftMargin: -parent.padding
+                                anchors.rightMargin: -parent.padding
+                                anchors.topMargin: -parent.padding
+                                anchors.bottomMargin: -parent.padding
+                            }
+                        }
+
+                        Text {
+                            text: I18n.t("ai.hermes_command_hint")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-2)
+                            color: Colors.outline
+                            wrapMode: Text.WordWrap
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        Text {
+                            text: I18n.t("ai.default_model")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: Ai.defaultModelName !== "" ? Ai.defaultModelName : I18n.t("ai.none")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            color: Colors.overSurface
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 180
+                            horizontalAlignment: Text.AlignRight
+                        }
+
+                        Button {
+                            id: defaultSetButton
+                            text: I18n.t("ai.set_default")
+                            leftPadding: 6
+                            rightPadding: 6
+                            topPadding: 4
+                            bottomPadding: 4
+                            onClicked: {
+                                if (defaultModelPopup.item)
+                                    defaultModelPopup.item.open();
+                            }
+                            background: StyledRect {
+                                variant: defaultSetButton.down ? "overprimary" : (defaultSetButton.hovered ? "primaryfocus" : "primary")
+                                radius: Styling.radius(4)
+                            }
+                            contentItem: Item {
+                                implicitWidth: defaultSetLabel.implicitWidth + defaultSetButton.leftPadding + defaultSetButton.rightPadding
+                                implicitHeight: defaultSetLabel.implicitHeight + defaultSetButton.topPadding + defaultSetButton.bottomPadding
+
+                                Text {
+                                    id: defaultSetLabel
+                                    text: defaultSetButton.text
+                                    color: Colors.overPrimary
+                                    font.family: Config.theme.font
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    anchors.fill: parent
+                                    anchors.leftMargin: defaultSetButton.leftPadding
+                                    anchors.rightMargin: defaultSetButton.rightPadding
+                                    anchors.topMargin: defaultSetButton.topPadding
+                                    anchors.bottomMargin: defaultSetButton.bottomPadding
+                                }
+                            }
+                        }
+
+                        Button {
+                            id: defaultClearButton
+                            visible: ((Config.ai.backend ?? "api") === "hermes" ? (Config.ai.hermesDefaultModel ?? "") : (Config.ai.defaultModel ?? "")) !== ""
+                            text: I18n.t("common.clear")
+                            leftPadding: 6
+                            rightPadding: 6
+                            topPadding: 4
+                            bottomPadding: 4
+                            onClicked: Ai.clearDefault()
+                            background: StyledRect {
+                                variant: "error"
+                                radius: Styling.radius(4)
+                            }
+                            contentItem: Item {
+                                implicitWidth: defaultClearLabel.implicitWidth + defaultClearButton.leftPadding + defaultClearButton.rightPadding
+                                implicitHeight: defaultClearLabel.implicitHeight + defaultClearButton.topPadding + defaultClearButton.bottomPadding
+
+                                Text {
+                                    id: defaultClearLabel
+                                    text: defaultClearButton.text
+                                    color: Colors.overError
+                                    font.family: Config.theme.font
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    anchors.fill: parent
+                                    anchors.leftMargin: defaultClearButton.leftPadding
+                                    anchors.rightMargin: defaultClearButton.rightPadding
+                                    anchors.topMargin: defaultClearButton.topPadding
+                                    anchors.bottomMargin: defaultClearButton.bottomPadding
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // Providers
@@ -402,6 +657,25 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    // A selected Hermes backend should explain itself even if the sidebar
+    // never opened on this run.
+    Component.onCompleted: {
+        if ((Config.ai.backend ?? "api") === "hermes")
+            Ai.checkHermes(false);
+    }
+
+    // Loaded by path: the sidebar module is not always in the module path.
+    Loader {
+        id: defaultModelPopup
+        source: "../../sidebar/ModelSelectorPopup.qml"
+        asynchronous: false
+
+        onLoaded: {
+            if (item)
+                item.pickDefault = true;
         }
     }
 }

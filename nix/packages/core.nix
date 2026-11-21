@@ -17,6 +17,7 @@ with pkgs; [
   qt6.qtwayland
   qt6.qtdeclarative
   qt6.qtimageformats
+  qt6.qtwebsockets
   kdePackages.qtmultimedia
   kdePackages.qtshadertools
   kdePackages.syntax-highlighting

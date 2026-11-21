@@ -368,6 +368,8 @@ Singleton {
     property bool settingsWindowVisible: false
     property int settingsTargetWorkspaceId: 0
     property string settingsTargetScreenName: ""
+    // Section the settings window should open on, -1 for its default
+    property int settingsTargetSection: -1
 
     // Theme editor state - persists across tab switches
     property bool themeHasChanges: false
@@ -731,16 +733,17 @@ Singleton {
 
     function toggleAssistant() {
         if (assistantVisible) {
-            assistantFocusRequested(true);
-        } else {
-            assistantVisible = true;
-            if (AxctlService.focusedMonitor && AxctlService.focusedMonitor.name) {
-                assistantScreenName = AxctlService.focusedMonitor.name;
-            } else if (Quickshell.screens.length > 0) {
-                assistantScreenName = Quickshell.screens[0].name;
-            }
-            assistantFocusRequested(false);
+            hideAssistant();
+            return;
         }
+
+        assistantVisible = true;
+        if (AxctlService.focusedMonitor && AxctlService.focusedMonitor.name) {
+            assistantScreenName = AxctlService.focusedMonitor.name;
+        } else if (Quickshell.screens.length > 0) {
+            assistantScreenName = Quickshell.screens[0].name;
+        }
+        assistantFocusRequested(false);
     }
 
     function hideAssistant() {
