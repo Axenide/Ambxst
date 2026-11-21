@@ -243,6 +243,41 @@ Singleton {
         }
     }
 
+    Connections {
+        target: HermesGateway
+
+        function onReady() {
+            if (!root.hermesGatewayPending)
+                return;
+
+            let text = root.hermesPendingText;
+            root.hermesPendingText = "";
+            root.hermesGatewayPending = false;
+            root.submitHermesPrompt(text);
+        }
+
+        function onGatewayEvent(type, sessionId, payload) {
+            if (!root.hermesActive)
+                return;
+
+            // Events may arrive after the chat was reset; ignore stale sessions.
+            if (root.hermesSessionId !== "" && sessionId !== "" && sessionId !== root.hermesSessionId)
+                return;
+
+            if (type === "message.delta") {
+                root.hermesAppendDelta(payload.text);
+            } else if (type === "message.complete") {
+                root.hermesFinishTurn(payload);
+            } else if (type === "error") {
+                root.showError(payload.message || "Hermes reported an error.");
+            }
+        }
+
+        function onPromptsChanged() {
+            root.syncHermesPrompts();
+        }
+    }
+
     // ============================================
     // STRATEGIES
     // ============================================
@@ -287,7 +322,10 @@ Singleton {
     property string responseBuffer: ""
     property string rawOutputBuffer: ""
     property string hermesSessionId: ""
-    property string hermesStderrBuffer: ""
+    property string hermesSubscriptionId: ""
+    property string hermesPendingText: ""
+    property bool hermesGatewayPending: false
+    property var hermesNotedPrompts: []
 
     readonly property string noModelMessage: "No model selected. Add an API key in Settings > AI, or switch the backend to Hermes"
 
@@ -477,8 +515,29 @@ Singleton {
     }
 
     // Function Call Handling
-    function approveCommand(index) {
+    function approveCommand(index, choice) {
         let msg = currentChat[index];
+        if (!msg)
+            return;
+
+        // Hermes approvals are answered on the gateway; the card is only the
+        // renderer, so the pending request survives a closed sidebar.
+        if (msg.approvalId) {
+            let picked = choice || "once";
+            HermesGateway.respond(msg.approvalId, {
+                "choice": picked
+            });
+
+            let answered = Array.from(currentChat);
+            answered[index] = hermesCopyObject(answered[index]);
+            answered[index].functionPending = false;
+            answered[index].functionApproved = picked !== "deny";
+            answered[index].approvalExpired = false;
+            currentChat = answered;
+            saveCurrentChat();
+            return;
+        }
+
         if (!msg.functionCall)
             return;
 
@@ -497,6 +556,25 @@ Singleton {
     }
 
     function rejectCommand(index) {
+        let msg = currentChat[index];
+        if (!msg)
+            return;
+
+        if (msg.approvalId) {
+            HermesGateway.respond(msg.approvalId, {
+                "choice": "deny"
+            });
+
+            let denied = Array.from(currentChat);
+            denied[index] = hermesCopyObject(denied[index]);
+            denied[index].functionPending = false;
+            denied[index].functionApproved = false;
+            denied[index].approvalExpired = false;
+            currentChat = denied;
+            saveCurrentChat();
+            return;
+        }
+
         let newChat = Array.from(currentChat);
         newChat[index].functionPending = false;
         newChat[index].functionApproved = false;
@@ -510,6 +588,13 @@ Singleton {
         currentChat = newChat;
         saveCurrentChat();
         makeRequest();
+    }
+
+    function hermesCopyObject(source) {
+        let copy = {};
+        for (let key in source)
+            copy[key] = source[key];
+        return copy;
     }
 
     function sendMessage(text, attachments) {
@@ -800,21 +885,7 @@ Singleton {
             return;
         }
 
-        if (hermesProcess.running)
-            hermesProcess.running = false;
-
-        let cmd = [Config.ai.hermesCommand || "hermes", "chat", "-q", lastUserMessage, "-Q"];
-        if (hermesSessionId !== "")
-            cmd.push("--resume", hermesSessionId);
-
-        // Hermes' own default needs no flag, and a resumed session cannot
-        // change model (hermes rejects -m on resume).
-        let modelId = currentHermesModel && currentHermesModel.model ? currentHermesModel.model : "";
-        if (modelId !== "" && modelId !== hermesDefaultId && hermesSessionId === "")
-            cmd.push("-m", modelId);
-
         responseBuffer = "";
-        hermesStderrBuffer = "";
         lastError = "";
         isLoading = true;
 
@@ -826,95 +897,204 @@ Singleton {
         });
         currentChat = streamChat;
 
-        // Resolve the command first so a bad hermesCommand reports cleanly instead
-        // of leaving the placeholder empty (bare names need a PATH lookup).
-        hermesWhichProcess.command = ["/usr/bin/which", cmd[0]];
-        hermesWhichProcess.startCommand = cmd;
-        hermesWhichProcess.running = true;
-    }
-
-    Process {
-        id: hermesWhichProcess
-        property var startCommand: []
-
-        stdout: StdioCollector {
-            id: hermesWhichOut
+        // The transport attaches on demand; the prompt goes out once the
+        // gateway is ready (the first attach can take a few seconds).
+        if (HermesGateway.connected) {
+            submitHermesPrompt(lastUserMessage);
+            return;
         }
 
-        onExited: exitCode => {
-            if (exitCode !== 0 || hermesWhichOut.text.trim() === "") {
-                root.showError("Hermes command not found: " + (startCommand.length > 0 ? startCommand[0] : "") + ". Set hermesCommand to its full path in Settings > AI.");
+        hermesPendingText = lastUserMessage;
+        hermesGatewayPending = true;
+        HermesGateway.ensureStarted();
+    }
+
+    function submitHermesPrompt(text) {
+        if (hermesSessionId !== "") {
+            submitHermesText(text);
+            return;
+        }
+
+        let params = {
+            "source": "tui"
+        };
+        let modelId = currentHermesModel && currentHermesModel.model ? currentHermesModel.model : "";
+        if (modelId !== "" && modelId !== hermesDefaultId)
+            params.model = modelId;
+
+        // Older owners do not take a client label; sending it unasked is refused.
+        let info = HermesGateway.runtimeInfo;
+        if (info && info.parameters.indexOf("client") !== -1)
+            params.client = {
+                "name": "ambxst",
+                "version": "1"
+            };
+
+        HermesGateway.request("session.create", params, (err, result) => {
+            if (err) {
+                showError("Hermes could not start a session: " + (err.message || "unknown error"));
                 return;
             }
-            hermesProcess.command = startCommand;
-            hermesProcess.running = true;
-        }
+
+            hermesSessionId = result && result.session_id ? result.session_id : "";
+            hermesSubscriptionId = result && result.subscription_id ? result.subscription_id : "";
+            if (hermesSessionId === "") {
+                showError("Hermes did not return a session id.");
+                return;
+            }
+
+            submitHermesText(text);
+        });
     }
 
-    Process {
-        id: hermesProcess
+    function hermesSubmissionId() {
+        // prompt.submit wants a client-generated request identity.
+        return "ambxst-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 10);
+    }
 
-        stdout: SplitParser {
-            onRead: data => {
-                let line = root.stripAnsi(data);
-                if (line.trim() === "")
-                    return;
-                root.responseBuffer += (root.responseBuffer === "" ? "" : "\n") + line;
+    function submitHermesText(text) {
+        if (!HermesGateway.connected) {
+            hermesPendingText = text;
+            hermesGatewayPending = true;
+            return;
+        }
 
-                let newChat = Array.from(root.currentChat);
-                if (newChat.length > 0) {
-                    newChat[newChat.length - 1].content = root.responseBuffer;
-                    root.currentChat = newChat;
+        HermesGateway.request("prompt.submit", {
+            "session_id": hermesSessionId,
+            "text": text,
+            "submission_id": hermesSubmissionId()
+        }, (err, result) => {
+            if (err)
+                showError("Hermes could not accept the message: " + (err.message || "unknown error"));
+        });
+    }
+
+    function detachHermesSession() {
+        if (hermesSessionId === "")
+            return;
+
+        // The shared gateway refuses session.close; detach needs the subscription.
+        HermesGateway.request("session.detach", {
+            "session_id": hermesSessionId,
+            "subscription_id": hermesSubscriptionId
+        }, null);
+        hermesSessionId = "";
+        hermesSubscriptionId = "";
+    }
+
+    function hermesReplyIndex() {
+        for (let i = currentChat.length - 1; i >= 0; i--) {
+            if (currentChat[i].role === "assistant")
+                return i;
+        }
+        return -1;
+    }
+
+    function hermesAppendDelta(text) {
+        if (typeof text !== "string" || text === "")
+            return;
+
+        let index = hermesReplyIndex();
+        if (index === -1)
+            return;
+
+        responseBuffer += text;
+        let newChat = Array.from(currentChat);
+        newChat[index] = hermesCopyObject(newChat[index]);
+        newChat[index].content = responseBuffer;
+        currentChat = newChat;
+    }
+
+    function hermesFinishTurn(payload) {
+        let index = hermesReplyIndex();
+        let finalText = payload && typeof payload.text === "string" ? payload.text : "";
+
+        if (index !== -1) {
+            let newChat = Array.from(currentChat);
+            newChat[index] = hermesCopyObject(newChat[index]);
+            // message.complete carries the authoritative text; an empty one
+            // means the streamed text stands.
+            if (finalText !== "")
+                newChat[index].content = finalText;
+            if (newChat[index].content === "")
+                newChat[index].content = I18n.t("ai.no_response");
+            currentChat = newChat;
+        }
+
+        responseBuffer = "";
+        isLoading = false;
+        saveCurrentChat();
+    }
+
+    // Approval cards live in the chat, but the pending request lives in the
+    // gateway service so a reopened sidebar still shows it.
+    function syncHermesPrompts() {
+        let prompts = HermesGateway.prompts;
+        let newChat = Array.from(currentChat);
+        let changed = false;
+
+        for (let i = 0; i < prompts.length; i++) {
+            let prompt = prompts[i];
+
+            if (prompt.method === "approval") {
+                let known = false;
+                for (let j = 0; j < newChat.length; j++) {
+                    if (newChat[j].approvalId === prompt.id) {
+                        known = true;
+                        break;
+                    }
                 }
+                if (known)
+                    continue;
+
+                let params = prompt.params || {};
+                newChat.push({
+                    role: "system",
+                    content: "",
+                    functionCall: {
+                        name: "run_shell_command",
+                        args: {
+                            "command": params.command || ""
+                        }
+                    },
+                    approvalId: prompt.id,
+                    approvalDescription: params.description || "",
+                    approvalChoices: params.choices || ["once", "deny"],
+                    functionPending: true
+                });
+                changed = true;
+                continue;
+            }
+
+            // Only record that a secret was requested, never its value.
+            if ((prompt.method === "sudo" || prompt.method === "secret") && hermesNotedPrompts.indexOf(prompt.id) === -1) {
+                let note = Array.from(hermesNotedPrompts);
+                note.push(prompt.id);
+                hermesNotedPrompts = note;
+                newChat.push({
+                    role: "system",
+                    content: I18n.t(prompt.method === "sudo" ? "ai.sudo_requested" : "ai.secret_requested")
+                });
+                changed = true;
             }
         }
 
-        stderr: SplitParser {
-            onRead: data => {
-                let line = root.stripAnsi(data).trim();
-                if (line === "")
-                    return;
-                let match = line.match(/^session_id:\s*(\S+)/);
-                if (match) {
-                    root.hermesSessionId = match[1];
-                    return;
-                }
-                root.hermesStderrBuffer += line + "\n";
-            }
+        for (let i = 0; i < newChat.length; i++) {
+            let msg = newChat[i];
+            if (!msg.approvalId || !msg.functionPending)
+                continue;
+            if (HermesGateway.findPrompt(msg.approvalId) !== null)
+                continue;
+
+            newChat[i] = hermesCopyObject(msg);
+            newChat[i].functionPending = false;
+            newChat[i].approvalExpired = true;
+            changed = true;
         }
 
-        onExited: exitCode => {
-            root.isLoading = false;
-
-            let newChat = Array.from(root.currentChat);
-            let hasPlaceholder = newChat.length > 0;
-
-            if (exitCode === 0) {
-                if (root.responseBuffer.trim() === "" && hasPlaceholder) {
-                    let detail = root.hermesStderrBuffer.trim();
-                    newChat[newChat.length - 1].content = "Error: Hermes returned no output." + (detail !== "" ? "\n\n" + detail : "");
-                    root.currentChat = newChat;
-                }
-                root.saveCurrentChat();
-            } else {
-                let detail = root.hermesStderrBuffer.trim();
-                let message = "Hermes failed (exit code " + exitCode + ").";
-                // Hermes reports some failures on stdout, so keep what it said.
-                if (root.responseBuffer.trim() !== "")
-                    message += "\n\n" + root.responseBuffer.trim();
-                if (detail !== "")
-                    message += "\n\n" + detail;
-                root.lastError = message;
-
-                if (hasPlaceholder) {
-                    newChat[newChat.length - 1].content = "Error: " + message;
-                    root.currentChat = newChat;
-                }
-                root.saveCurrentChat();
-            }
-
-            root.responseBuffer = "";
-            root.hermesStderrBuffer = "";
+        if (changed) {
+            currentChat = newChat;
+            saveCurrentChat();
         }
     }
 
@@ -954,14 +1134,13 @@ Singleton {
     // ============================================
 
     function createNewChat() {
-        // A new chat always starts a fresh Hermes session.
-        if (hermesProcess.running) {
-            hermesProcess.running = false;
-            isLoading = false;
-            responseBuffer = "";
-            hermesStderrBuffer = "";
-        }
-        hermesSessionId = "";
+        // A new chat always starts a fresh Hermes session; the old one is
+        // detached, not closed (the shared gateway refuses session.close).
+        detachHermesSession();
+        hermesPendingText = "";
+        hermesGatewayPending = false;
+        responseBuffer = "";
+        isLoading = false;
 
         currentChat = [];
         currentChatId = Date.now().toString();

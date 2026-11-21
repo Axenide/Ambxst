@@ -725,6 +725,8 @@ Item {
                                     property bool isSystem: modelData.role === "system" || modelData.role === "function"
                                     property bool isEditing: false
                                     property bool retryMode: false
+                                    // Hermes offers a subset of once/session/always/deny.
+                                    property var approvalChoices: modelData.approvalChoices !== undefined ? modelData.approvalChoices : ["once", "deny"]
 
                                     width: ListView.view.width
                                     height: bubbleArea.height + 8
@@ -1013,6 +1015,17 @@ Item {
                                                             font.pixelSize: 12
                                                         }
 
+                                                        Text {
+                                                            visible: modelData.approvalDescription !== undefined && modelData.approvalDescription !== ""
+                                                            Layout.fillWidth: true
+                                                            text: modelData.approvalDescription || ""
+                                                            color: Colors.overSurface
+                                                            font.family: Config.theme.font
+                                                            font.pixelSize: 12
+                                                            wrapMode: Text.Wrap
+                                                            opacity: 0.8
+                                                        }
+
                                                         StyledRect {
                                                             Layout.fillWidth: true
                                                             variant: "surface"
@@ -1057,10 +1070,55 @@ Item {
                                                             }
 
                                                             Button {
+                                                                visible: approvalChoices.indexOf("session") !== -1
+                                                                text: I18n.t("ai.approve_session")
+                                                                highlighted: true
+                                                                flat: true
+                                                                onClicked: Ai.approveCommand(index, "session")
+
+                                                                background: StyledRect {
+                                                                    variant: "primary"
+                                                                    opacity: parent.hovered ? 0.8 : 0.5
+                                                                    radius: Styling.radius(4)
+                                                                }
+
+                                                                contentItem: Text {
+                                                                    text: parent.text
+                                                                    color: Colors.overPrimary
+                                                                    font.family: Config.theme.font
+                                                                    horizontalAlignment: Text.AlignHCenter
+                                                                    verticalAlignment: Text.AlignVCenter
+                                                                }
+                                                            }
+
+                                                            Button {
+                                                                visible: approvalChoices.indexOf("always") !== -1
+                                                                text: I18n.t("ai.approve_always")
+                                                                highlighted: true
+                                                                flat: true
+                                                                onClicked: Ai.approveCommand(index, "always")
+
+                                                                background: StyledRect {
+                                                                    variant: "primary"
+                                                                    opacity: parent.hovered ? 0.8 : 0.5
+                                                                    radius: Styling.radius(4)
+                                                                }
+
+                                                                contentItem: Text {
+                                                                    text: parent.text
+                                                                    color: Colors.overPrimary
+                                                                    font.family: Config.theme.font
+                                                                    horizontalAlignment: Text.AlignHCenter
+                                                                    verticalAlignment: Text.AlignVCenter
+                                                                }
+                                                            }
+
+                                                            Button {
+                                                                visible: approvalChoices.indexOf("once") !== -1
                                                                 text: I18n.t("ai.approve")
                                                                 highlighted: true
                                                                 flat: true
-                                                                onClicked: Ai.approveCommand(index)
+                                                                onClicked: Ai.approveCommand(index, "once")
 
                                                                 background: StyledRect {
                                                                     variant: "primary"
@@ -1086,7 +1144,14 @@ Item {
                                                         }
 
                                                         Text {
-                                                            visible: modelData.functionApproved === false && !modelData.functionPending
+                                                            visible: modelData.approvalExpired === true
+                                                            text: I18n.t("ai.approval_expired")
+                                                            color: Colors.outline
+                                                            font.pixelSize: 12
+                                                        }
+
+                                                        Text {
+                                                            visible: modelData.functionApproved === false && !modelData.functionPending && modelData.approvalExpired !== true
                                                             text: I18n.t("ai.command_rejected")
                                                             color: Colors.error
                                                             font.pixelSize: 12
@@ -1200,6 +1265,273 @@ Item {
 
                             function onModelSelectionRequested() {
                                 modelSelector.open();
+                            }
+                        }
+
+                        // Pending gateway questions (sudo, secret, clarify).
+                        // Their answers never touch the chat history.
+                        Column {
+                            id: promptCards
+                            anchors.bottom: inputContainer.top
+                            anchors.bottomMargin: 8
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: Math.min(600, parent.width - 40)
+                            spacing: 8
+                            visible: HermesGateway.prompts.length > 0
+
+                            Repeater {
+                                model: HermesGateway.prompts
+
+                                delegate: StyledRect {
+                                    id: promptCard
+                                    required property var modelData
+                                    property var prompt: modelData
+                                    property var promptParams: modelData.params || ({})
+                                    property string secretValue: ""
+                                    property var answers: ({})
+
+                                    visible: modelData.method !== "approval"
+                                    width: promptCards.width
+                                    height: visible ? cardLayout.implicitHeight + 24 : 0
+                                    variant: "popup"
+                                    radius: Styling.radius(8)
+                                    enableShadow: true
+
+                                    function setAnswer(qid, value) {
+                                        let next = {};
+                                        for (let key in answers)
+                                            next[key] = answers[key];
+                                        next[qid] = value;
+                                        answers = next;
+                                    }
+
+                                    function answerFor(qid) {
+                                        let value = answers[qid];
+                                        return value === undefined ? null : value;
+                                    }
+
+                                    function submitClarify() {
+                                        let out = {};
+                                        let questions = promptParams.questions || [];
+                                        for (let i = 0; i < questions.length; i++) {
+                                            let qid = questions[i].qid;
+                                            out[qid] = answerFor(qid);
+                                        }
+                                        HermesGateway.respond(prompt.id, {
+                                            "answers": out
+                                        });
+                                    }
+
+                                    ColumnLayout {
+                                        id: cardLayout
+                                        anchors.fill: parent
+                                        anchors.margins: 12
+                                        spacing: 8
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            text: {
+                                                if (prompt.method === "sudo")
+                                                    return I18n.t("ai.sudo_requested");
+                                                if (prompt.method === "secret")
+                                                    return promptParams.prompt || I18n.t("ai.secret_requested");
+                                                return I18n.t("ai.clarify_title");
+                                            }
+                                            color: Colors.overSurface
+                                            font.family: Config.theme.font
+                                            font.weight: Font.Bold
+                                            font.pixelSize: 12
+                                            wrapMode: Text.Wrap
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: prompt.method === "sudo" && (promptParams.command || "") !== ""
+                                            text: promptParams.command || ""
+                                            color: Colors.overSurface
+                                            font.family: "Monospace"
+                                            font.pixelSize: 08
+                                            opacity: 0.8
+                                            wrapMode: Text.WrapAnywhere
+                                        }
+
+                                        Text {
+                                            Layout.fillWidth: true
+                                            visible: prompt.method === "secret" && (promptParams.env_var || "") !== ""
+                                            text: promptParams.env_var || ""
+                                            color: Colors.outline
+                                            font.family: "Monospace"
+                                            font.pixelSize: 08
+                                        }
+
+                                        // One masked field for sudo/secret.
+                                        StyledRect {
+                                            Layout.fillWidth: true
+                                            visible: prompt.method === "sudo" || prompt.method === "secret"
+                                            variant: "surface"
+                                            radius: Styling.radius(4)
+                                            height: 32
+
+                                            TextInput {
+                                                id: secretInput
+                                                anchors.fill: parent
+                                                anchors.leftMargin: 8
+                                                anchors.rightMargin: 8
+                                                verticalAlignment: TextInput.AlignVCenter
+                                                echoMode: TextInput.Password
+                                                color: Colors.overSurface
+                                                font.family: Config.theme.font
+                                                font.pixelSize: 12
+                                                selectByMouse: true
+                                                onTextChanged: promptCard.secretValue = text
+                                                onAccepted: submitSecret.clicked()
+                                            }
+                                        }
+
+                                        // Clarify: a choice row or a free-text field per question.
+                                        Repeater {
+                                            model: prompt.method === "clarify" ? (promptParams.questions || []) : []
+
+                                            delegate: ColumnLayout {
+                                                id: questionBlock
+                                                required property var modelData
+                                                Layout.fillWidth: true
+                                                spacing: 4
+
+                                                Text {
+                                                    Layout.fillWidth: true
+                                                    text: modelData.question
+                                                    color: Colors.overSurface
+                                                    font.family: Config.theme.font
+                                                    font.pixelSize: 12
+                                                    wrapMode: Text.Wrap
+                                                }
+
+                                                Flow {
+                                                    Layout.fillWidth: true
+                                                    spacing: 4
+                                                    visible: modelData.choices !== null && modelData.choices !== undefined
+
+                                                    Repeater {
+                                                        model: modelData.choices || []
+
+                                                        delegate: Button {
+                                                            required property var modelData
+                                                            flat: true
+                                                            highlighted: promptCard.answerFor(questionBlock.modelData.qid) === modelData
+                                                            text: modelData
+
+                                                            background: StyledRect {
+                                                                variant: parent.highlighted ? "primary" : "common"
+                                                                radius: Styling.radius(4)
+                                                            }
+
+                                                            contentItem: Text {
+                                                                text: parent.text
+                                                                color: parent.highlighted ? Colors.overPrimary : Colors.overSurface
+                                                                font.family: Config.theme.font
+                                                                font.pixelSize: 11
+                                                            }
+
+                                                            onClicked: promptCard.setAnswer(questionBlock.modelData.qid, modelData)
+                                                        }
+                                                    }
+                                                }
+
+                                                StyledRect {
+                                                    Layout.fillWidth: true
+                                                    visible: modelData.choices === null || modelData.choices === undefined
+                                                    variant: "surface"
+                                                    radius: Styling.radius(4)
+                                                    height: 32
+
+                                                    TextInput {
+                                                        anchors.fill: parent
+                                                        anchors.leftMargin: 8
+                                                        anchors.rightMargin: 8
+                                                        verticalAlignment: TextInput.AlignVCenter
+                                                        color: Colors.overSurface
+                                                        font.family: Config.theme.font
+                                                        font.pixelSize: 12
+                                                        selectByMouse: true
+                                                        onTextChanged: promptCard.setAnswer(questionBlock.modelData.qid, text)
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        RowLayout {
+                                            Layout.fillWidth: true
+                                            spacing: 8
+
+                                            Item {
+                                                Layout.fillWidth: true
+                                            }
+
+                                            Button {
+                                                text: I18n.t("common.cancel")
+                                                flat: true
+
+                                                background: StyledRect {
+                                                    variant: "common"
+                                                    opacity: parent.hovered ? 0.8 : 0.5
+                                                    radius: Styling.radius(4)
+                                                }
+
+                                                contentItem: Text {
+                                                    text: parent.text
+                                                    color: Colors.overSurface
+                                                    font.family: Config.theme.font
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    verticalAlignment: Text.AlignVCenter
+                                                }
+
+                                                onClicked: {
+                                                    // "" declines a one-string prompt; {} cancels clarify.
+                                                    if (prompt.method === "clarify")
+                                                        HermesGateway.respond(prompt.id, {});
+                                                    else
+                                                        HermesGateway.respond(prompt.id, {
+                                                            "value": ""
+                                                        });
+                                                }
+                                            }
+
+                                            Button {
+                                                id: submitSecret
+                                                text: I18n.t("ai.submit")
+                                                highlighted: true
+                                                flat: true
+
+                                                background: StyledRect {
+                                                    variant: "primary"
+                                                    opacity: parent.hovered ? 1 : 0.8
+                                                    radius: Styling.radius(4)
+                                                }
+
+                                                contentItem: Text {
+                                                    text: parent.text
+                                                    color: Colors.overPrimary
+                                                    font.family: Config.theme.font
+                                                    horizontalAlignment: Text.AlignHCenter
+                                                    verticalAlignment: Text.AlignVCenter
+                                                }
+
+                                                onClicked: {
+                                                    if (prompt.method === "clarify") {
+                                                        promptCard.submitClarify();
+                                                    } else {
+                                                        HermesGateway.respond(prompt.id, {
+                                                            "value": promptCard.secretValue
+                                                        });
+                                                    }
+                                                    // The value is memory-only, gone with the field.
+                                                    promptCard.secretValue = "";
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
 
