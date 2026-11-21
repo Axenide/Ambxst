@@ -81,8 +81,11 @@ Item {
     }
 
     readonly property string displayedTitle: {
-        if (player) {
-            return (player.trackArtist ? player.trackArtist + " - " : "") + (player.trackTitle || I18n.t("player.unknown"));
+        // An idle registered player (e.g. a browser keeping its MPRIS name
+        // with no track) has no metadata to show; fall back to the same
+        // content used when no player exists instead of "Unknown".
+        if (player && (isPlaying || player.trackTitle || player.trackArtist)) {
+            return (player.trackArtist ? player.trackArtist + " - " : "") + (player.trackTitle || player.identity || I18n.t("player.unknown"));
         }
         return focusedTitle || noMediaText;
     }
