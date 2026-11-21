@@ -38,3 +38,24 @@ func TestUserDirFallsBack(t *testing.T) {
 		t.Fatalf("PicturesDir fallback = %q", got)
 	}
 }
+
+func TestRuntimeDirUsesXdgRuntimeDir(t *testing.T) {
+	runtime := t.TempDir()
+	t.Setenv("XDG_RUNTIME_DIR", runtime)
+
+	if got := New().RuntimeDir(); got != filepath.Join(runtime, "ambxst") {
+		t.Fatalf("RuntimeDir = %q, want %q", got, filepath.Join(runtime, "ambxst"))
+	}
+}
+
+func TestRuntimeDirFallsBackToCacheDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", "")
+
+	want := filepath.Join(home, ".cache", "ambxst", "runtime")
+	if got := New().RuntimeDir(); got != want {
+		t.Fatalf("RuntimeDir = %q, want %q", got, want)
+	}
+}

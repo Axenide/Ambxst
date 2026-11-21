@@ -51,6 +51,18 @@ func (p *Paths) QsPidFile() string {
 	return filepath.Join(os.Getenv("XDG_RUNTIME_DIR"), "ambxst-qs.pid")
 }
 
+// RuntimeDir returns a private per-user directory for runtime files that
+// must not be exposed to other local users, such as screen captures.
+// XDG_RUNTIME_DIR is per-user and 0700 by the XDG basedir specification
+// and is cleaned up on logout; without it the per-user cache directory is
+// used, which also stays out of the world-shared temp directory.
+func (p *Paths) RuntimeDir() string {
+	if d := os.Getenv("XDG_RUNTIME_DIR"); d != "" {
+		return filepath.Join(d, "ambxst")
+	}
+	return filepath.Join(p.CacheDir, "runtime")
+}
+
 func (p *Paths) AxctlToml() string {
 	return filepath.Join(p.DataDir, "axctl.toml")
 }

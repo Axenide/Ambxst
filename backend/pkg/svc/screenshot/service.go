@@ -13,6 +13,8 @@ import (
 	"ambxst/backend/pkg/capture"
 	"ambxst/backend/pkg/ipc"
 	"ambxst/backend/pkg/paths"
+
+	"golang.org/x/sys/unix"
 )
 
 type Service struct {
@@ -50,9 +52,9 @@ type frameParams struct {
 	Cursor bool   `json:"cursor"`
 }
 
-// frame captures a full output, writes it to /tmp for the QML freeze
-// overlay and retains the buffer in the freeze session so later captures
-// crop from it instead of the live screen.
+// frame captures a full output, writes it to a private per-user directory
+// for the QML freeze overlay and retains the buffer in the freeze session
+// so later captures crop from it instead of the live screen.
 func (s *Service) frame(params json.RawMessage) (any, error) {
 	var p frameParams
 	if err := json.Unmarshal(params, &p); err != nil {
@@ -67,8 +69,13 @@ func (s *Service) frame(params json.RawMessage) (any, error) {
 		return nil, err
 	}
 
-	outPath := filepath.Join(os.TempDir(), fmt.Sprintf("ambxst_frame_%s.png", p.Output))
-	if err := writePNG(result, outPath); err != nil {
+	dir, err := s.frameDir()
+	if err != nil {
+		closer()
+		return nil, err
+	}
+	outPath := filepath.Join(dir, fmt.Sprintf("ambxst_frame_%s.png", p.Output))
+	if err := writeFramePNG(result, outPath); err != nil {
 		closer()
 		return nil, err
 	}
@@ -85,6 +92,23 @@ func (s *Service) frame(params json.RawMessage) (any, error) {
 func (s *Service) release(_ json.RawMessage) (any, error) {
 	capture.ReleaseSession()
 	return map[string]any{"released": true}, nil
+}
+
+// frameDir returns the private per-user directory that hosts freeze
+// frames. A freeze frame is a full screen capture, so it must not sit in
+// the world-shared temp directory under a predictable name: there it is
+// readable by every local user, and a symlink planted at the predictable
+// path makes the write follow it. The directory is created owner-only and
+// tightened again in case it already exists with looser permissions.
+func (s *Service) frameDir() (string, error) {
+	dir := s.paths.RuntimeDir()
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	if err := os.Chmod(dir, 0o700); err != nil {
+		return "", err
+	}
+	return dir, nil
 }
 
 type captureParams struct {
@@ -193,6 +217,20 @@ func writePNG(result *screenshot.CaptureResult, outPath string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
+	return screenshot.EncodeBufferPNG(f, result.Buffer, result.Format, nil)
+}
+
+// writeFramePNG writes a freeze frame with owner-only permissions and
+// refuses to follow a symlink at the destination. writePNG stays the
+// writer for user-chosen save destinations, where following a user's own
+// symlink is expected.
+func writeFramePNG(result *screenshot.CaptureResult, path string) error {
+	fd, err := unix.Open(path, unix.O_WRONLY|unix.O_CREAT|unix.O_TRUNC|unix.O_NOFOLLOW, 0o600)
+	if err != nil {
+		return err
+	}
+	f := os.NewFile(uintptr(fd), path)
 	defer f.Close()
 	return screenshot.EncodeBufferPNG(f, result.Buffer, result.Format, nil)
 }
