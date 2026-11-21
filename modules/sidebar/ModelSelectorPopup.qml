@@ -29,12 +29,14 @@ Popup {
     onOpened: {
         searchInput.focusInput();
         updateFilteredModels();
+        if (Ai.activeModels.length === 0)
+            Ai.fetchActiveModels();
     }
 
     // Initialize fetching if empty (e.g. first run)
     Component.onCompleted: {
-        if (Ai.models.length === 0) {
-            Ai.fetchAvailableModels();
+        if (Ai.activeModels.length === 0) {
+            Ai.fetchActiveModels();
         }
     }
 
@@ -78,14 +80,15 @@ Popup {
     function updateFilteredModels() {
         let text = searchInput.text.toLowerCase();
         let allModels = [];
-        for (let i = 0; i < Ai.models.length; i++) {
-            allModels.push(Ai.models[i]);
+        for (let i = 0; i < Ai.activeModels.length; i++) {
+            allModels.push(Ai.activeModels[i]);
         }
 
         if (text.trim() === "") {
-            filteredModels = allModels;
+            filteredModels = Ai.withFavorites(allModels);
         } else {
-            filteredModels = allModels.filter(m => m.name.toLowerCase().includes(text) || m.api_format.toLowerCase().includes(text) || m.model.toLowerCase().includes(text));
+            let matches = allModels.filter(m => m.name.toLowerCase().includes(text) || (m.api_format || "").toLowerCase().includes(text) || m.model.toLowerCase().includes(text));
+            filteredModels = Ai.withFavorites(matches);
         }
 
         // Reset selection if out of bounds
@@ -201,7 +204,7 @@ Popup {
                         Text {
                             id: refreshIcon
                             anchors.centerIn: parent
-                            text: Ai.fetchingModels ? Icons.circleNotch : (refreshBtn.confirming ? Icons.sync : Icons.arrowCounterClockwise)
+                            text: Ai.fetchingActiveModels ? Icons.circleNotch : (refreshBtn.confirming ? Icons.sync : Icons.arrowCounterClockwise)
                             font.family: Icons.font
                             font.pixelSize: 20
                             color: refreshBtn.confirming ? Styling.srItem("primary") : Styling.srItem("overprimary")
@@ -211,7 +214,7 @@ Popup {
                                 from: 0
                                 to: 360
                                 duration: 1000
-                                running: Ai.fetchingModels
+                                running: Ai.fetchingActiveModels
                                 onRunningChanged: {
                                     if (!running) {
                                         refreshIcon.rotation = 0;
@@ -267,7 +270,7 @@ Popup {
                     if (!confirming) {
                         confirming = true;
                     } else {
-                        Ai.fetchAvailableModels();
+                        Ai.fetchActiveModels();
                         confirming = false;
                     }
                 }
@@ -355,7 +358,7 @@ Popup {
 
                 // Controlled by ListView's currentIndex via root.selectedIndex
                 property bool isSelected: ListView.isCurrentItem
-                property bool isActiveModel: Ai.currentModel.name === modelData.name
+                property bool isActiveModel: Ai.activeModel !== null && Ai.activeModel.name === modelData.name
 
                 contentItem: RowLayout {
                     anchors.fill: parent
@@ -456,27 +459,41 @@ Popup {
                         Layout.alignment: Qt.AlignVCenter
                         spacing: 2
 
-                        Text {
-                            text: modelData.name
-                            color: delegateBtn.isSelected ? Styling.srItem("primary") : (delegateBtn.isActiveModel ? Styling.srItem("overprimary") : Colors.overBackground)
-                            font.family: Config.theme.font
-                            font.pixelSize: 14
-                            font.weight: Font.Medium
+                        RowLayout {
                             Layout.fillWidth: true
-                            elide: Text.ElideRight
+                            spacing: 6
 
-                            Behavior on color {
-                                enabled: Config.animDuration > 0
-                                ColorAnimation {
-                                    duration: Config.animDuration / 2
-                                    easing.type: Easing.OutCubic
+                            Text {
+                                text: modelData.name
+                                color: delegateBtn.isSelected ? Styling.srItem("primary") : (delegateBtn.isActiveModel ? Styling.srItem("overprimary") : Colors.overBackground)
+                                font.family: Config.theme.font
+                                font.pixelSize: 14
+                                font.weight: Font.Medium
+                                Layout.fillWidth: true
+                                elide: Text.ElideRight
+
+                                Behavior on color {
+                                    enabled: Config.animDuration > 0
+                                    ColorAnimation {
+                                        duration: Config.animDuration / 2
+                                        easing.type: Easing.OutCubic
+                                    }
                                 }
+                            }
+
+                            Text {
+                                text: I18n.t("ai.default_badge")
+                                visible: Ai.isDefault(modelData)
+                                font.family: Config.theme.font
+                                font.pixelSize: 10
+                                font.weight: Font.Bold
+                                color: delegateBtn.isSelected ? Styling.srItem("primary") : Styling.srItem("overprimary")
                             }
                         }
 
                         Text {
                             // Show provider and model ID
-                            text: modelData.api_format.toUpperCase() + " • " + modelData.model
+                            text: (modelData.api_format ? modelData.api_format.toUpperCase() + " • " : "") + modelData.model
                             color: delegateBtn.isSelected ? Styling.srItem("primary") : Colors.outline
                             font.family: Config.theme.font
                             font.pixelSize: 11
@@ -490,6 +507,85 @@ Popup {
                                     easing.type: Easing.OutCubic
                                 }
                             }
+                        }
+                    }
+
+                    // Favorite toggle: pinned rows stay visible, others show on hover.
+                    Button {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        Layout.alignment: Qt.AlignVCenter
+                        flat: true
+                        padding: 0
+                        enabled: opacity > 0
+                        opacity: (Ai.isFavorite(modelData) || delegateBtn.hovered) ? 1 : 0
+
+                        Behavior on opacity {
+                            enabled: Config.animDuration > 0
+                            NumberAnimation {
+                                duration: Config.animDuration / 2
+                            }
+                        }
+
+                        contentItem: Text {
+                            text: Ai.isFavorite(modelData) ? Icons.pin : Icons.unpin
+                            font.family: Icons.font
+                            font.pixelSize: 14
+                            color: parent.hovered ? Styling.srItem("overprimary") : (delegateBtn.isSelected ? Styling.srItem("primary") : Colors.outline)
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+
+                            Behavior on color {
+                                enabled: Config.animDuration > 0
+                                ColorAnimation {
+                                    duration: Config.animDuration / 2
+                                }
+                            }
+                        }
+
+                        background: null
+                        onClicked: Ai.toggleFavorite(modelData)
+                    }
+
+                    // Default toggle: clicking the current default clears it.
+                    Button {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        Layout.alignment: Qt.AlignVCenter
+                        flat: true
+                        padding: 0
+                        enabled: opacity > 0
+                        opacity: (Ai.isDefault(modelData) || delegateBtn.hovered) ? 1 : 0
+
+                        Behavior on opacity {
+                            enabled: Config.animDuration > 0
+                            NumberAnimation {
+                                duration: Config.animDuration / 2
+                            }
+                        }
+
+                        contentItem: Text {
+                            text: Icons.seal
+                            font.family: Icons.font
+                            font.pixelSize: 14
+                            color: Ai.isDefault(modelData) ? Styling.srItem("overprimary") : (delegateBtn.isSelected ? Styling.srItem("primary") : Colors.outline)
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+
+                            Behavior on color {
+                                enabled: Config.animDuration > 0
+                                ColorAnimation {
+                                    duration: Config.animDuration / 2
+                                }
+                            }
+                        }
+
+                        background: null
+                        onClicked: {
+                            if (Ai.isDefault(modelData))
+                                Ai.clearDefault();
+                            else
+                                Ai.setDefault(modelData);
                         }
                     }
 
@@ -536,6 +632,18 @@ Popup {
                         modelList.currentIndex = index;
                     }
                 }
+            }
+
+            Text {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 48
+                visible: root.filteredModels.length === 0
+                text: I18n.t("ai.no_models")
+                font.family: Config.theme.font
+                font.pixelSize: 13
+                color: Colors.outline
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
         }
     }

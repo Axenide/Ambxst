@@ -182,6 +182,63 @@ Item {
                             }
                         }
                     }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        Text {
+                            text: I18n.t("ai.default_model")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(-1)
+                            font.weight: Font.Medium
+                            color: Colors.overSurfaceVariant
+                            Layout.fillWidth: true
+                        }
+
+                        Text {
+                            text: Ai.defaultModelName !== "" ? Ai.defaultModelName : I18n.t("ai.none")
+                            font.family: Config.theme.font
+                            font.pixelSize: Styling.fontSize(0)
+                            color: Colors.overSurface
+                            elide: Text.ElideRight
+                            Layout.maximumWidth: 220
+                            horizontalAlignment: Text.AlignRight
+                        }
+
+                        Button {
+                            id: defaultClearButton
+                            visible: ((Config.ai.backend ?? "api") === "hermes" ? (Config.ai.hermesDefaultModel ?? "") : (Config.ai.defaultModel ?? "")) !== ""
+                            text: I18n.t("common.clear")
+                            leftPadding: 6
+                            rightPadding: 6
+                            topPadding: 4
+                            bottomPadding: 4
+                            onClicked: Ai.clearDefault()
+                            background: StyledRect {
+                                variant: "error"
+                                radius: Styling.radius(4)
+                            }
+                            contentItem: Item {
+                                implicitWidth: defaultClearLabel.implicitWidth + defaultClearButton.leftPadding + defaultClearButton.rightPadding
+                                implicitHeight: defaultClearLabel.implicitHeight + defaultClearButton.topPadding + defaultClearButton.bottomPadding
+
+                                Text {
+                                    id: defaultClearLabel
+                                    text: defaultClearButton.text
+                                    color: Colors.overError
+                                    font.family: Config.theme.font
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    anchors.fill: parent
+                                    anchors.leftMargin: defaultClearButton.leftPadding
+                                    anchors.rightMargin: defaultClearButton.rightPadding
+                                    anchors.topMargin: defaultClearButton.topPadding
+                                    anchors.bottomMargin: defaultClearButton.bottomPadding
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
