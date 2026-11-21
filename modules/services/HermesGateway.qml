@@ -380,9 +380,14 @@ Singleton {
     // FRAMES
     // ============================================
 
+    // Returns false when the frame never reached the socket. Callers that
+    // settle a server request must not drop its prompt in that case: the
+    // reconnect replay is what makes the card answerable again.
     function _send(frame) {
-        if (_socket)
-            _socket.send(JSON.stringify(frame));
+        if (!_socket || _socket.isOpen !== true)
+            return false;
+        _socket.send(JSON.stringify(frame));
+        return true;
     }
 
     function _onFrame(text) {
@@ -640,11 +645,13 @@ Singleton {
         if (epoch !== undefined && prompt === null)
             return false;
 
-        _send({
+        if (!_send({
             "jsonrpc": "2.0",
             "id": id,
             "result": result === undefined ? {} : result
-        });
+        }))
+            return false;
+
         _dropPrompt(id, prompt ? prompt.method : undefined);
         return true;
     }
@@ -654,14 +661,16 @@ Singleton {
         if (epoch !== undefined && prompt === null)
             return false;
 
-        _send({
+        if (!_send({
             "jsonrpc": "2.0",
             "id": id,
             "error": {
                 "code": code,
                 "message": message
             }
-        });
+        }))
+            return false;
+
         _dropPrompt(id, prompt ? prompt.method : undefined);
         return true;
     }

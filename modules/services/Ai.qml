@@ -695,9 +695,11 @@ Singleton {
             let answered = Array.from(currentChat);
             answered[index] = hermesCopyObject(answered[index]);
             if (!delivered) {
-                // The request this card pointed at is gone (old connection).
-                answered[index].functionPending = false;
-                answered[index].approvalExpired = true;
+                // Keep the card answerable if the request is still open but the
+                // frame could not be sent; only a gone prompt is expired.
+                let stillOpen = HermesGateway.findPrompt(msg.approvalId, msg.approvalEpoch) !== null;
+                answered[index].functionPending = stillOpen;
+                answered[index].approvalExpired = !stillOpen;
                 currentChat = answered;
                 saveCurrentChat();
                 return;
@@ -740,8 +742,9 @@ Singleton {
             let denied = Array.from(currentChat);
             denied[index] = hermesCopyObject(denied[index]);
             if (!delivered) {
-                denied[index].functionPending = false;
-                denied[index].approvalExpired = true;
+                let stillOpen = HermesGateway.findPrompt(msg.approvalId, msg.approvalEpoch) !== null;
+                denied[index].functionPending = stillOpen;
+                denied[index].approvalExpired = !stillOpen;
                 currentChat = denied;
                 saveCurrentChat();
                 return;

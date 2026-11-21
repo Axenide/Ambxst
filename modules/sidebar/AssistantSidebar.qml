@@ -1295,6 +1295,16 @@ Item {
                                     property var answers: ({})
 
                                     visible: modelData.method !== "approval"
+
+                                    // A restored prompt must never inherit text typed
+                                    // for the previous connection's prompt.
+                                    onPromptChanged: clearSecret()
+
+                                    function clearSecret() {
+                                        secretValue = "";
+                                        if (typeof secretInput !== "undefined" && secretInput !== null)
+                                            secretInput.text = "";
+                                    }
                                     width: promptCards.width
                                     height: visible ? cardLayout.implicitHeight + 24 : 0
                                     variant: "popup"
@@ -1491,6 +1501,9 @@ Item {
                                                 }
 
                                                 onClicked: {
+                                                    // Clear before answering so a rejected stale
+                                                    // response cannot leave a password on screen.
+                                                    promptCard.clearSecret();
                                                     // "" declines a one-string prompt; {} cancels clarify.
                                                     if (prompt.method === "clarify")
                                                         HermesGateway.respond(prompt.id, {}, prompt.epoch);
@@ -1525,12 +1538,12 @@ Item {
                                                     if (prompt.method === "clarify") {
                                                         promptCard.submitClarify();
                                                     } else {
+                                                        let value = promptCard.secretValue;
+                                                        promptCard.clearSecret();
                                                         HermesGateway.respond(prompt.id, {
-                                                            "value": promptCard.secretValue
+                                                            "value": value
                                                         }, prompt.epoch);
                                                     }
-                                                    // The value is memory-only, gone with the field.
-                                                    promptCard.secretValue = "";
                                                 }
                                             }
                                         }

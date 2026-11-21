@@ -9,6 +9,8 @@ QtObject {
 
     // Empty until the handshake completes; never logged.
     readonly property string negotiatedProtocol: socket.negotiatedSubprotocol
+    // A response is only worth dropping its prompt for if the socket can send it.
+    readonly property bool isOpen: socket.status === WebSocket.Open
 
     signal opened()
     signal closed()
