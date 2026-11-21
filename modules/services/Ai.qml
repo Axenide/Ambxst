@@ -25,6 +25,30 @@ Singleton {
     property string savedModelId: ""
     property bool isRestored: false
 
+    // Hermes keeps its own catalog and selection so switching backends never
+    // overwrites the API selection.
+    property list<AiModel> hermesModels: []
+    property AiModel currentHermesModel: hermesModels.length > 0 ? hermesModels[0] : null
+    property bool fetchingHermesModels: false
+    property bool hermesRestored: false
+    property string hermesDefaultId: ""
+    property string hermesBaseUrl: ""
+    property string hermesProvider: ""
+    property string hermesEnvText: ""
+
+    readonly property bool hermesActive: Config.ai.backend === "hermes"
+    readonly property var activeModels: hermesActive ? hermesModels : models
+    readonly property AiModel activeModel: hermesActive ? currentHermesModel : currentModel
+    readonly property bool fetchingActiveModels: hermesActive ? fetchingHermesModels : fetchingModels
+    readonly property string defaultModelId: hermesActive ? (Config.ai.hermesDefaultModel || "") : (Config.ai.defaultModel || "")
+    readonly property string defaultModelName: {
+        if (defaultModelId === "")
+            return "";
+
+        let found = findModel(activeModels, defaultModelId);
+        return found ? found.name : defaultModelId;
+    }
+
     onCurrentModelChanged: {
         if (persistenceReady && currentModel && isRestored) {
             StateService.set("lastAiModel", currentModel.model);
@@ -32,9 +56,35 @@ Singleton {
         updateStrategy();
     }
 
+    onCurrentHermesModelChanged: {
+        if (persistenceReady && hermesRestored && currentHermesModel)
+            StateService.set("lastHermesModel", currentHermesModel.model);
+    }
+
+    onHermesActiveChanged: {
+        if (hermesActive && Config.initialLoadComplete && hermesModels.length === 0)
+            fetchHermesModels();
+    }
+
+    function findModel(list, id) {
+        if (!id || id === "" || !list)
+            return null;
+
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].model === id)
+                return list[i];
+        }
+
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].model.endsWith(id) || list[i].model.endsWith("/" + id))
+                return list[i];
+        }
+
+        return null;
+    }
+
     function restoreModel() {
-        const lastModelId = StateService.get("lastAiModel", "gemini-2.0-flash");
-        savedModelId = lastModelId;
+        savedModelId = StateService.get("lastAiModel", "");
         tryRestore();
         persistenceReady = true;
     }
@@ -43,28 +93,83 @@ Singleton {
         if (isRestored || models.length === 0)
             return;
 
-        let found = false;
+        // The configured default wins, then the model used last.
+        let target = findModel(models, Config.ai.defaultModel || "");
+        if (!target)
+            target = findModel(models, savedModelId);
 
-        for (let i = 0; i < models.length; i++) {
-            if (models[i].model === savedModelId) {
-                currentModel = models[i];
-                found = true;
-                break;
-            }
-        }
-
-        if (!found && savedModelId) {
-            for (let i = 0; i < models.length; i++) {
-                if (models[i].model.endsWith(savedModelId) || models[i].model.endsWith("/" + savedModelId)) {
-                    currentModel = models[i];
-                    found = true;
-                    break;
-                }
-            }
-        }
-
-        if (found)
+        if (target) {
+            currentModel = target;
             isRestored = true;
+        }
+    }
+
+    // ============================================
+    // MODEL PREFERENCES
+    // ============================================
+
+    function modelKey(m) {
+        return m ? (m.provider + ":" + m.model) : "";
+    }
+
+    function isFavorite(m) {
+        if (!m)
+            return false;
+
+        let favorites = Config.ai.favoriteModels || [];
+        return favorites.indexOf(modelKey(m)) !== -1;
+    }
+
+    function toggleFavorite(m) {
+        if (!m)
+            return;
+
+        let favorites = Array.from(Config.ai.favoriteModels || []);
+        let key = modelKey(m);
+        let index = favorites.indexOf(key);
+
+        if (index === -1)
+            favorites.push(key);
+        else
+            favorites.splice(index, 1);
+
+        // Assign a new array so the adapter sees a changed list.
+        Config.ai.favoriteModels = favorites;
+    }
+
+    function withFavorites(list) {
+        let favorites = [];
+        let rest = [];
+
+        for (let i = 0; i < list.length; i++)
+            (isFavorite(list[i]) ? favorites : rest).push(list[i]);
+
+        return favorites.concat(rest);
+    }
+
+    function isDefault(m) {
+        if (!m)
+            return false;
+
+        let id = m.provider === "hermes" ? (Config.ai.hermesDefaultModel || "") : (Config.ai.defaultModel || "");
+        return id !== "" && id === m.model;
+    }
+
+    function setDefault(m) {
+        if (!m)
+            return;
+
+        if (m.provider === "hermes")
+            Config.ai.hermesDefaultModel = m.model;
+        else
+            Config.ai.defaultModel = m.model;
+    }
+
+    function clearDefault() {
+        if (hermesActive)
+            Config.ai.hermesDefaultModel = "";
+        else
+            Config.ai.defaultModel = "";
     }
 
     property bool _restored: false
@@ -96,8 +201,12 @@ Singleton {
     function _ensureInit() {
         if (_aiInitialized) return;
         _aiInitialized = true;
-        if (models.length === 0)
+        if (hermesActive) {
+            if (hermesModels.length === 0)
+                fetchHermesModels();
+        } else if (models.length === 0) {
             fetchAvailableModels();
+        }
         reloadHistory();
         createNewChat();
     }
@@ -264,9 +373,20 @@ Singleton {
     // ============================================
 
     function setModel(modelName) {
-        for (let i = 0; i < models.length; i++) {
-            if (models[i].name === modelName) {
-                currentModel = models[i];
+        let list = activeModels;
+
+        for (let i = 0; i < list.length; i++) {
+            if (list[i].name === modelName) {
+                if (hermesActive) {
+                    let previous = currentHermesModel;
+                    currentHermesModel = list[i];
+                    hermesRestored = true;
+                    // Hermes refuses -m on a resume, so a switch starts a fresh session.
+                    if (previous && previous.model !== list[i].model && hermesSessionId !== "")
+                        createNewChat();
+                } else {
+                    currentModel = list[i];
+                }
                 return;
             }
         }
@@ -300,9 +420,9 @@ Singleton {
         case "/model":
             if (args) {
                 let found = false;
-                for (let i = 0; i < models.length; i++) {
-                    if (models[i].name.toLowerCase().includes(args.toLowerCase()) || models[i].model.toLowerCase() === args.toLowerCase()) {
-                        setModel(models[i].name);
+                for (let i = 0; i < activeModels.length; i++) {
+                    if (activeModels[i].name.toLowerCase().includes(args.toLowerCase()) || activeModels[i].model.toLowerCase() === args.toLowerCase()) {
+                        setModel(activeModels[i].name);
                         found = true;
                         break;
                     }
@@ -310,7 +430,7 @@ Singleton {
                 if (!found) {
                     pushSystemMessage(I18n.t("ai.model_not_found").replace("%1", args));
                 } else {
-                    pushSystemMessage(I18n.t("ai.switched_to_model").replace("%1", currentModel.name));
+                    pushSystemMessage(I18n.t("ai.switched_to_model").replace("%1", activeModel ? activeModel.name : args));
                 }
             } else {
                 modelSelectionRequested();
@@ -664,6 +784,12 @@ Singleton {
         if (hermesSessionId !== "")
             cmd.push("--resume", hermesSessionId);
 
+        // Hermes' own default needs no flag, and a resumed session cannot
+        // change model (hermes rejects -m on resume).
+        let modelId = currentHermesModel && currentHermesModel.model ? currentHermesModel.model : "";
+        if (modelId !== "" && modelId !== hermesDefaultId && hermesSessionId === "")
+            cmd.push("-m", modelId);
+
         responseBuffer = "";
         hermesStderrBuffer = "";
         lastError = "";
@@ -673,7 +799,7 @@ Singleton {
         streamChat.push({
             role: "assistant",
             content: "",
-            model: "Hermes"
+            model: currentHermesModel ? currentHermesModel.name : "Hermes"
         });
         currentChat = streamChat;
 
@@ -920,6 +1046,234 @@ Singleton {
 
     property bool fetchingModels: false
     property int pendingFetches: 0
+
+    function fetchActiveModels() {
+        if (hermesActive)
+            fetchHermesModels();
+        else
+            fetchAvailableModels();
+    }
+
+    // ============================================
+    // HERMES MODEL CATALOG
+    // ============================================
+
+    function fetchHermesModels() {
+        if (fetchingHermesModels)
+            return;
+
+        fetchingHermesModels = true;
+        // env reports a missing binary as exit 127; Process would otherwise
+        // fail to start and never emit exited, leaving the refresh spinning.
+        hermesConfigProcess.command = ["/usr/bin/env", Config.ai.hermesCommand || "hermes", "config", "get", "model", "--json"];
+        hermesConfigProcess.running = true;
+    }
+
+    function createHermesModel(id) {
+        return aiModelFactory.createObject(root, {
+            name: id,
+            icon: "",
+            description: "Hermes",
+            endpoint: "",
+            model: id,
+            provider: "hermes",
+            requires_key: false,
+            api_format: "hermes"
+        });
+    }
+
+    function hermesKeyVarName() {
+        if (hermesProvider === "")
+            return "";
+
+        // custom:<name> providers store their key as HERMES_CUSTOM_<NAME>_API_KEY
+        if (hermesProvider.indexOf("custom:") === 0)
+            return "HERMES_CUSTOM_" + hermesProvider.substring(7).toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_API_KEY";
+
+        return hermesProvider.toUpperCase().replace(/[^A-Z0-9]/g, "_") + "_API_KEY";
+    }
+
+    function envValue(text, name) {
+        let lines = (text || "").split("\n");
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.indexOf("#") === 0)
+                continue;
+            if (line.indexOf("export ") === 0)
+                line = line.substring(7).trim();
+            if (line.indexOf(name + "=") === 0)
+                return line.substring(name.length + 1).replace(/^["']|["']$/g, "").trim();
+        }
+
+        return "";
+    }
+
+    function hermesApiKey() {
+        let name = hermesKeyVarName();
+        if (name === "")
+            return "";
+
+        let fromEnv = Quickshell.env(name);
+        if (fromEnv)
+            return fromEnv;
+
+        return envValue(hermesEnvText, name);
+    }
+
+    function startHermesModelFetch() {
+        if (hermesBaseUrl === "") {
+            loadHermesModelCache();
+            return;
+        }
+
+        let key = hermesApiKey();
+        if (key !== "") {
+            requestHermesModels(key);
+            return;
+        }
+
+        // Hermes keeps provider keys in its own .env; read it once per fetch.
+        hermesEnvProcess.running = true;
+    }
+
+    function requestHermesModels(key) {
+        let url = hermesBaseUrl.replace(/\/+$/, "") + "/models";
+        hermesModelsProcess.command = ["curl", "-s", "--max-time", "10", "-H", "Authorization: Bearer " + key, url];
+        hermesModelsProcess.running = true;
+    }
+
+    function loadHermesModelCache() {
+        hermesCacheProcess.command = ["cat", Quickshell.env("HOME") + "/.hermes/provider_models_cache.json"];
+        hermesCacheProcess.running = true;
+    }
+
+    function hermesCacheModels(cache) {
+        // Keys look like "custom:<base_url>#<hash>".
+        for (let key in cache) {
+            if (hermesBaseUrl !== "" && key.indexOf(":" + hermesBaseUrl + "#") !== -1)
+                return cache[key].models || [];
+        }
+
+        return cache[hermesProvider] ? cache[hermesProvider].models || [] : [];
+    }
+
+    function pickHermesModel() {
+        if (hermesModels.length === 0)
+            return null;
+
+        let target = findModel(hermesModels, Config.ai.hermesDefaultModel || "");
+        if (!target)
+            target = findModel(hermesModels, StateService.get("lastHermesModel", ""));
+
+        return target ? target : hermesModels[0];
+    }
+
+    function finishHermesFetch(newModels) {
+        if (newModels.length === 0 && hermesDefaultId !== "")
+            newModels.push(createHermesModel(hermesDefaultId));
+
+        hermesModels = newModels;
+        hermesRestored = true;
+        currentHermesModel = pickHermesModel();
+        fetchingHermesModels = false;
+    }
+
+    Process {
+        id: hermesConfigProcess
+        stdout: StdioCollector {
+            id: hermesConfigOut
+        }
+        onExited: exitCode => {
+            hermesDefaultId = "";
+            hermesBaseUrl = "";
+            hermesProvider = "";
+
+            if (exitCode === 0) {
+                try {
+                    let cfg = JSON.parse(hermesConfigOut.text);
+                    hermesDefaultId = cfg.default || "";
+                    hermesBaseUrl = cfg.base_url || "";
+                    hermesProvider = cfg.provider || "";
+                } catch (e) {
+                    console.log("Hermes config parse error: " + e);
+                }
+            }
+
+            root.startHermesModelFetch();
+        }
+    }
+
+    Process {
+        id: hermesEnvProcess
+        command: ["cat", Quickshell.env("HOME") + "/.hermes/.env"]
+        stdout: StdioCollector {
+            id: hermesEnvOut
+        }
+        onExited: exitCode => {
+            root.hermesEnvText = exitCode === 0 ? hermesEnvOut.text : "";
+
+            let key = root.hermesApiKey();
+            if (key !== "")
+                root.requestHermesModels(key);
+            else
+                root.loadHermesModelCache();
+        }
+    }
+
+    Process {
+        id: hermesModelsProcess
+        stdout: StdioCollector {
+            id: hermesModelsOut
+        }
+        onExited: exitCode => {
+            let newModels = [];
+
+            if (exitCode === 0) {
+                try {
+                    let data = JSON.parse(hermesModelsOut.text);
+                    let items = data.data || data.models || [];
+                    for (let i = 0; i < items.length; i++) {
+                        let item = items[i];
+                        let id = typeof item === "string" ? item : (item.id || item.name || "");
+                        if (id !== "")
+                            newModels.push(root.createHermesModel(id));
+                    }
+                } catch (e) {
+                    console.log("Hermes models parse error: " + e);
+                }
+            }
+
+            if (newModels.length === 0)
+                root.loadHermesModelCache();
+            else
+                root.finishHermesFetch(newModels);
+        }
+    }
+
+    Process {
+        id: hermesCacheProcess
+        stdout: StdioCollector {
+            id: hermesCacheOut
+        }
+        onExited: exitCode => {
+            let newModels = [];
+
+            if (exitCode === 0) {
+                try {
+                    let ids = root.hermesCacheModels(JSON.parse(hermesCacheOut.text));
+                    for (let i = 0; i < ids.length; i++) {
+                        if (typeof ids[i] === "string" && ids[i] !== "")
+                            newModels.push(root.createHermesModel(ids[i]));
+                    }
+                } catch (e) {
+                    console.log("Hermes cache parse error: " + e);
+                }
+            }
+
+            root.finishHermesFetch(newModels);
+        }
+    }
 
     function fetchAvailableModels() {
         fetchingModels = false; // Force refresh
@@ -1263,7 +1617,7 @@ Singleton {
 
             tryRestore();
 
-            if (!currentModel && models.length > 0) {
+            if (!isRestored && models.length > 0) {
                 currentModel = models[0];
                 isRestored = true;
             } else if (!isRestored && currentModel) {

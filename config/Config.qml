@@ -1217,7 +1217,9 @@ Singleton {
             property string systemPrompt: "You are a helpful assistant running on a Linux system."
             property string tool: "none"
             property list<var> extraModels: []
-            property string defaultModel: "gemini-2.0-flash"
+            property string defaultModel: ""
+            property string hermesDefaultModel: ""
+            property list<var> favoriteModels: []
             property int sidebarWidth: 400
             property string sidebarPosition: "right"
             property bool sidebarPinnedOnStartup: false

@@ -22,7 +22,7 @@ Item {
 
     readonly property bool frameEnabled: (Config.bar?.frameEnabled ?? false)
     readonly property bool frameWrapped: frameEnabled && GlobalStates.assistantPinned
-    readonly property string modelLabel: Config.ai.backend === "hermes" ? "Hermes" : (Ai.currentModel ? Ai.currentModel.name : "")
+    readonly property string modelLabel: Config.ai.backend === "hermes" ? (Ai.currentHermesModel ? Ai.currentHermesModel.name : "Hermes") : (Ai.currentModel ? Ai.currentModel.name : "")
     readonly property int sidebarMargin: frameWrapped ? 0 : 4
     property bool wantsFocus: false
     property bool menuExpanded: false
