@@ -35,6 +35,9 @@ Singleton {
     property int _nextId: 1
     property var _pending: ({})
     property int _reconnectAttempt: 0
+    // Bumped for every WebSocket connection. Prompt ids are only unique within
+    // one connection, so cards must compare the epoch as well.
+    property int connectionEpoch: 0
     property bool _handshaking: false
     property bool _socketUnavailable: false
 
@@ -171,6 +174,8 @@ Singleton {
     }
 
     function _onSocketOpened() {
+        attachTimer.stop();
+        connectionEpoch++;
         status = "connecting";
     }
 
@@ -520,15 +525,20 @@ Singleton {
             "id": id,
             "method": method,
             "sessionId": params.session_id || "",
+            "epoch": connectionEpoch,
             "params": params
         });
         prompts = list;
     }
 
-    function findPrompt(id) {
+    // epoch is optional: omitted, any connection's prompt with that id matches.
+    function findPrompt(id, epoch) {
         for (let i = 0; i < prompts.length; i++) {
-            if (String(prompts[i].id) === String(id))
-                return prompts[i];
+            if (String(prompts[i].id) !== String(id))
+                continue;
+            if (epoch !== undefined && Number(prompts[i].epoch) !== Number(epoch))
+                continue;
+            return prompts[i];
         }
         return null;
     }

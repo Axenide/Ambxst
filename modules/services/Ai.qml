@@ -1113,7 +1113,8 @@ Singleton {
             if (prompt.method === "approval") {
                 let known = false;
                 for (let j = 0; j < newChat.length; j++) {
-                    if (newChat[j].approvalId === prompt.id) {
+                    // The same id on an older connection is a different request.
+                    if (newChat[j].approvalId === prompt.id && newChat[j].approvalEpoch === prompt.epoch && newChat[j].functionPending === true) {
                         known = true;
                         break;
                     }
@@ -1132,6 +1133,7 @@ Singleton {
                         }
                     },
                     approvalId: prompt.id,
+                    approvalEpoch: prompt.epoch,
                     approvalDescription: params.description || "",
                     approvalChoices: params.choices || ["once", "deny"],
                     functionPending: true
@@ -1141,9 +1143,10 @@ Singleton {
             }
 
             // Only record that a secret was requested, never its value.
-            if ((prompt.method === "sudo" || prompt.method === "secret") && hermesNotedPrompts.indexOf(prompt.id) === -1) {
+            let noteKey = String(prompt.epoch) + ":" + String(prompt.id);
+            if ((prompt.method === "sudo" || prompt.method === "secret") && hermesNotedPrompts.indexOf(noteKey) === -1) {
                 let note = Array.from(hermesNotedPrompts);
-                note.push(prompt.id);
+                note.push(noteKey);
                 hermesNotedPrompts = note;
                 newChat.push({
                     role: "system",
@@ -1157,7 +1160,7 @@ Singleton {
             let msg = newChat[i];
             if (!msg.approvalId || !msg.functionPending)
                 continue;
-            if (HermesGateway.findPrompt(msg.approvalId) !== null)
+            if (HermesGateway.findPrompt(msg.approvalId, msg.approvalEpoch) !== null)
                 continue;
 
             newChat[i] = hermesCopyObject(msg);
