@@ -731,16 +731,17 @@ Singleton {
 
     function toggleAssistant() {
         if (assistantVisible) {
-            assistantFocusRequested(true);
-        } else {
-            assistantVisible = true;
-            if (AxctlService.focusedMonitor && AxctlService.focusedMonitor.name) {
-                assistantScreenName = AxctlService.focusedMonitor.name;
-            } else if (Quickshell.screens.length > 0) {
-                assistantScreenName = Quickshell.screens[0].name;
-            }
-            assistantFocusRequested(false);
+            hideAssistant();
+            return;
         }
+
+        assistantVisible = true;
+        if (AxctlService.focusedMonitor && AxctlService.focusedMonitor.name) {
+            assistantScreenName = AxctlService.focusedMonitor.name;
+        } else if (Quickshell.screens.length > 0) {
+            assistantScreenName = Quickshell.screens[0].name;
+        }
+        assistantFocusRequested(false);
     }
 
     function hideAssistant() {

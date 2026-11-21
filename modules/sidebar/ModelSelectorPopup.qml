@@ -89,6 +89,8 @@ Popup {
             return path + "xai.svg";
         if (p.includes("lmstudio") || p.includes("lm_studio"))
             return path + "lmstudio.svg";
+        if (p.includes("minimax"))
+            return path + "minimax.svg";
 
         return "";
     }
@@ -388,28 +390,17 @@ Popup {
                         variant: delegateBtn.isSelected ? "overprimary" : "common"
                         radius: Styling.radius(-4)
 
-                        property string finalIconSource: {
-                            var src = "";
-                            if (typeof modelData !== "undefined" && modelData !== null) {
-                                // Check explicit icon first
-                                if (modelData.icon && typeof modelData.icon === "string" && modelData.icon.indexOf(".svg") !== -1) {
-                                    src = modelData.icon;
-                                } else
-                                // Fallback to provider icon
-                                if (modelData.api_format) {
-                                    src = root.getProviderIcon(modelData.api_format);
-                                }
-                            }
-                            return src;
-                        }
+                        // Brand SVGs keep a file-relative path: URLs resolved
+                        // from qs:// components do not load in an Image.
+                        readonly property string iconSource: typeof modelData === "undefined" || modelData === null ? "" : root.getProviderIcon(modelData.provider || modelData.api_format)
 
-                        // SVG Icon (if available)
                         Image {
+                            id: providerIcon
                             anchors.centerIn: parent
                             width: 18
                             height: 18
-                            source: iconRect.finalIconSource
-                            visible: iconRect.finalIconSource.length > 0
+                            source: iconRect.iconSource
+                            visible: iconRect.iconSource !== "" && status !== Image.Error
                             fillMode: Image.PreserveAspectFit
                             mipmap: true
                             asynchronous: true
@@ -423,29 +414,14 @@ Popup {
                             }
                         }
 
-                        // Font Icon (fallback)
+                        // Same robot glyph the rest of the UI uses for a model
+                        // without a provider icon.
                         Text {
                             anchors.centerIn: parent
-                            text: {
-                                if (iconRect.finalIconSource.length > 0)
-                                    return "";
-                                if (typeof modelData === "undefined" || modelData === null)
-                                    return Icons.robot;
-
-                                switch (modelData.icon) {
-                                case "sparkles":
-                                    return Icons.sparkle;
-                                case "openai":
-                                    return Icons.lightning;
-                                case "wind":
-                                    return Icons.sparkle;
-                                default:
-                                    return Icons.robot;
-                                }
-                            }
+                            text: Icons.robot
                             font.family: Icons.font
                             font.pixelSize: 18
-                            visible: iconRect.finalIconSource.length === 0
+                            visible: iconRect.iconSource === "" || providerIcon.status === Image.Error
                             color: iconRect.item
 
                             Behavior on color {
@@ -522,28 +498,19 @@ Popup {
                         }
                     }
 
-                    // Favorite toggle: pinned rows stay visible, others show on hover.
+                    // Favorite toggle.
                     Button {
                         Layout.preferredWidth: 28
                         Layout.preferredHeight: 28
                         Layout.alignment: Qt.AlignVCenter
                         flat: true
                         padding: 0
-                        enabled: opacity > 0
-                        opacity: (Ai.isFavorite(modelData) || delegateBtn.hovered) ? 1 : 0
-
-                        Behavior on opacity {
-                            enabled: Config.animDuration > 0
-                            NumberAnimation {
-                                duration: Config.animDuration / 2
-                            }
-                        }
 
                         contentItem: Text {
                             text: Ai.isFavorite(modelData) ? Icons.pin : Icons.unpin
                             font.family: Icons.font
                             font.pixelSize: 14
-                            color: parent.hovered ? Styling.srItem("overprimary") : (delegateBtn.isSelected ? Styling.srItem("primary") : Colors.outline)
+                            color: delegateBtn.isSelected ? Styling.srItem("primary") : (Ai.isFavorite(modelData) ? Colors.primary : Colors.overBackground)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
 
@@ -566,21 +533,12 @@ Popup {
                         Layout.alignment: Qt.AlignVCenter
                         flat: true
                         padding: 0
-                        enabled: opacity > 0
-                        opacity: (Ai.isDefault(modelData) || delegateBtn.hovered) ? 1 : 0
-
-                        Behavior on opacity {
-                            enabled: Config.animDuration > 0
-                            NumberAnimation {
-                                duration: Config.animDuration / 2
-                            }
-                        }
 
                         contentItem: Text {
                             text: Icons.seal
                             font.family: Icons.font
                             font.pixelSize: 14
-                            color: Ai.isDefault(modelData) ? Styling.srItem("overprimary") : (delegateBtn.isSelected ? Styling.srItem("primary") : Colors.outline)
+                            color: delegateBtn.isSelected ? Styling.srItem("primary") : (Ai.isDefault(modelData) ? Colors.primary : Colors.overBackground)
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
 

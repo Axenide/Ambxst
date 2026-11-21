@@ -90,11 +90,18 @@ Singleton {
     }
 
     function tryRestore() {
-        if (isRestored || models.length === 0)
+        if (isRestored || models.length === 0 || !Config.aiReady)
             return;
 
         // The configured default wins, then the model used last.
-        let target = findModel(models, Config.ai.defaultModel || "");
+        let configured = Config.ai.defaultModel || "";
+        let target = findModel(models, configured);
+
+        // Providers answer at different times: wait for the complete list
+        // instead of locking in the last used model without the default.
+        if (!target && configured !== "" && fetchingModels)
+            return;
+
         if (!target)
             target = findModel(models, savedModelId);
 
@@ -183,6 +190,22 @@ Singleton {
         target: KeyStore
         function onKeysChanged() {
             fetchAvailableModels();
+        }
+    }
+
+    Connections {
+        target: Config
+
+        // Restoring before the config is read would fall back to the last used
+        // model and ignore the configured default.
+        function onAiReadyChanged() {
+            root.tryRestore();
+
+            if (root.hermesModels.length > 0) {
+                let target = root.findModel(root.hermesModels, Config.ai.hermesDefaultModel || "");
+                if (target)
+                    root.currentHermesModel = target;
+            }
         }
     }
 
@@ -1614,6 +1637,11 @@ Singleton {
         if (pendingFetches <= 0) {
             fetchingModels = false;
             pendingFetches = 0;
+
+            // Wait for the config: restoring against the defaults in
+            // Config.qml would ignore the configured default model.
+            if (!Config.aiReady)
+                return;
 
             tryRestore();
 
