@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"ambxst/backend/pkg/paths"
@@ -62,5 +63,34 @@ func TestToggleFlipsState(t *testing.T) {
 	m = second.(map[string]any)
 	if m["enabled"] == initial {
 		t.Fatalf("toggle did not flip: initial=%v after=%v", initial, m["enabled"])
+	}
+}
+// Two rapid toggles (double-click, keybind bounce) arrive on independent
+// IPC connection goroutines. toggle must be an atomic read-modify-write:
+// with the state write outside the lock, two overlapping toggles read the
+// same value, write the same result, and one flip is lost. Run with -race
+// to also catch the unsynchronized s.cur access.
+func TestToggleConcurrentIsAtomicFlip(t *testing.T) {
+	svc, _ := newTestService(t)
+	const goroutines = 8
+	const perGoroutine = 25
+
+	var wg sync.WaitGroup
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < perGoroutine; j++ {
+				if _, err := svc.toggle(nil); err != nil {
+					t.Errorf("toggle: %v", err)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	if got := svc.IsEnabled(); got {
+		t.Fatalf("%d toggles from false ended enabled: a flip was lost", goroutines*perGoroutine)
 	}
 }
