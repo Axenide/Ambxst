@@ -244,8 +244,15 @@ func detectGPUs() []GPUInfo {
 
 // Sample computes one delta.
 func (m *Monitor) Sample() Delta {
+	// The CPU baselines are shared mutable state: each subscriber samples
+	// from its own ticker goroutine and getState samples from its handler,
+	// so the baseline read-modify-write must hold the monitor lock. An
+	// unlocked update lets two samples interleave and compute deltas from
+	// mixed snapshots.
+	m.mu.Lock()
 	cpuUsage, newTotal, newIdle := m.sampleCPU()
 	m.prevTotal, m.prevIdle = newTotal, newIdle
+	m.mu.Unlock()
 	ramUsage, ramTotal, ramUsed, ramAvail := m.sampleMem()
 	diskUsage := m.sampleDisks()
 	gpuUsages, gpuTemps := m.sampleGPU()
