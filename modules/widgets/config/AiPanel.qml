@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Quickshell
 import qs.modules.theme
 import qs.modules.components
+import qs.modules.sidebar
 import qs.modules.services
 import qs.config
 
@@ -202,8 +203,40 @@ Item {
                             font.pixelSize: Styling.fontSize(0)
                             color: Colors.overSurface
                             elide: Text.ElideRight
-                            Layout.maximumWidth: 220
+                            Layout.maximumWidth: 180
                             horizontalAlignment: Text.AlignRight
+                        }
+
+                        Button {
+                            id: defaultSetButton
+                            text: I18n.t("ai.set_default")
+                            leftPadding: 6
+                            rightPadding: 6
+                            topPadding: 4
+                            bottomPadding: 4
+                            onClicked: defaultModelPopup.open()
+                            background: StyledRect {
+                                variant: defaultSetButton.down ? "overprimary" : (defaultSetButton.hovered ? "primaryfocus" : "primary")
+                                radius: Styling.radius(4)
+                            }
+                            contentItem: Item {
+                                implicitWidth: defaultSetLabel.implicitWidth + defaultSetButton.leftPadding + defaultSetButton.rightPadding
+                                implicitHeight: defaultSetLabel.implicitHeight + defaultSetButton.topPadding + defaultSetButton.bottomPadding
+
+                                Text {
+                                    id: defaultSetLabel
+                                    text: defaultSetButton.text
+                                    color: Colors.overPrimary
+                                    font.family: Config.theme.font
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    anchors.fill: parent
+                                    anchors.leftMargin: defaultSetButton.leftPadding
+                                    anchors.rightMargin: defaultSetButton.rightPadding
+                                    anchors.topMargin: defaultSetButton.topPadding
+                                    anchors.bottomMargin: defaultSetButton.bottomPadding
+                                }
+                            }
                         }
 
                         Button {
@@ -608,5 +641,10 @@ Item {
                 }
             }
         }
+    }
+
+    ModelSelectorPopup {
+        id: defaultModelPopup
+        pickDefault: true
     }
 }

@@ -13,6 +13,9 @@ Popup {
 
     signal modelSelected(string modelName)
 
+    // When true, picking a row only sets it as the default for the current backend.
+    property bool pickDefault: false
+
     width: 400
     // Height: Header (48) + Spacing (12) + List (5 * 48 = 240) + Padding (8*2)
     height: contentItem.implicitHeight + padding * 2
@@ -42,6 +45,19 @@ Popup {
 
     property int selectedIndex: -1  // Start with no selection like App Launcher
     property var filteredModels: []
+
+    function choose(m) {
+        if (!m)
+            return;
+
+        if (pickDefault)
+            Ai.setDefault(m);
+        else
+            Ai.setModel(m.name);
+
+        root.modelSelected(m.name);
+        root.close();
+    }
 
     function getProviderIcon(provider) {
         if (!provider)
@@ -147,12 +163,8 @@ Popup {
                 }
 
                 onAccepted: {
-                    if (root.filteredModels.length > 0 && root.selectedIndex >= 0) {
-                        let m = root.filteredModels[root.selectedIndex];
-                        Ai.setModel(m.name);
-                        root.modelSelected(m.name);
-                        root.close();
-                    }
+                    if (root.filteredModels.length > 0 && root.selectedIndex >= 0)
+                        root.choose(root.filteredModels[root.selectedIndex]);
                 }
 
                 onEscapePressed: {
@@ -620,11 +632,7 @@ Popup {
                 // We keep this empty or transparent
                 Item {}
 
-                onClicked: {
-                    Ai.setModel(modelData.name);
-                    root.modelSelected(modelData.name);
-                    root.close();
-                }
+                onClicked: root.choose(modelData)
 
                 onHoveredChanged: {
                     if (hovered) {
