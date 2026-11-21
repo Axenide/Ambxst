@@ -1,15 +1,20 @@
 package svc
 
-import "ambxst/backend/pkg/ipc"
+import (
+	"sync"
+
+	"ambxst/backend/pkg/ipc"
+)
 
 // UIService bridges `ambxst run <cmd>` to the QML shell via a subscription stream.
 // QML subscribes to the "ui" service; commands pushed as ServiceEvent{Service:"ui.command", Data: cmd}.
 type UIService struct {
-	subs map[string]*ipc.Subscriber
+	mu   sync.RWMutex
+	subs map[*ipc.Subscriber]struct{}
 }
 
 func NewUIService() *UIService {
-	return &UIService{subs: make(map[string]*ipc.Subscriber)}
+	return &UIService{subs: make(map[*ipc.Subscriber]struct{})}
 }
 
 // Register wires the service into the server.
@@ -29,7 +34,9 @@ func (u *UIService) run(params RawParams) (any, error) {
 	if cmd == "" {
 		return nil, errorsNew("ui.run: missing command")
 	}
-	for _, sub := range u.subs {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+	for sub := range u.subs {
 		sub.Send("ui.command", cmd)
 	}
 	return "ok", nil
@@ -42,12 +49,26 @@ func (u *UIService) toggle(params RawParams) (any, error) {
 	if cmd == "" {
 		return nil, errorsNew("ui.toggle: missing command")
 	}
-	for _, sub := range u.subs {
+	u.mu.RLock()
+	defer u.mu.RUnlock()
+	for sub := range u.subs {
 		sub.Send("ui.toggle", cmd)
 	}
 	return "ok", nil
 }
 
+// subscribe registers the subscriber, blocks until it disconnects, then
+// removes it. Blocking mirrors the notify service so the server's stream
+// goroutine keeps pumping while the subscriber is live, and so every
+// disconnect frees the subscriber instead of leaking it.
 func (u *UIService) subscribe(sub *ipc.Subscriber) {
-	u.subs[subID(sub)] = sub
+	u.mu.Lock()
+	u.subs[sub] = struct{}{}
+	u.mu.Unlock()
+
+	<-sub.StopCh()
+
+	u.mu.Lock()
+	delete(u.subs, sub)
+	u.mu.Unlock()
 }
