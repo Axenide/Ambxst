@@ -212,6 +212,9 @@ func (s *Service) delete(params json.RawMessage) (any, error) {
 	if err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
+	// The row is gone; its cached data url must not pin the base64
+	// blob in memory.
+	s.dropImageCacheIDs(p.ID)
 	if hash != "" {
 		s.clearLiveIfHash(hash)
 	}
@@ -236,6 +239,7 @@ func (s *Service) clear(_ json.RawMessage) (any, error) {
 	if err := st.clearUnpinned(); err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
+	s.dropUnpinnedImageCache()
 	go st.VacuumIfBloated()
 	s.watchMu.Lock()
 	wl := s.wl
@@ -262,7 +266,32 @@ func (s *Service) togglePin(params json.RawMessage) (any, error) {
 	if err := st.togglePin(id); err != nil {
 		return map[string]any{"error": err.Error()}, nil
 	}
+	// The item moves to a new id in the other store, so the data url
+	// cached under the old id must not survive the move.
+	s.dropImageCacheIDs(p.ID)
 	return map[string]any{"ok": true}, nil
+}
+
+// dropImageCacheIDs forgets the cached data urls of the given item ids,
+// called when an item is removed or changes id.
+func (s *Service) dropImageCacheIDs(ids ...string) {
+	s.cacheMu.Lock()
+	for _, id := range ids {
+		delete(s.imageCache, id)
+	}
+	s.cacheMu.Unlock()
+}
+
+// dropUnpinnedImageCache forgets the data urls of every unpinned item,
+// which clear() just removed from the store.
+func (s *Service) dropUnpinnedImageCache() {
+	s.cacheMu.Lock()
+	for id := range s.imageCache {
+		if strings.HasPrefix(id, "u:") {
+			delete(s.imageCache, id)
+		}
+	}
+	s.cacheMu.Unlock()
 }
 
 func (s *Service) setAlias(params json.RawMessage) (any, error) {
