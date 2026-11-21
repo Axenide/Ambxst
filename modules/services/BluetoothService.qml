@@ -181,9 +181,12 @@ Singleton {
         }).catch(e => {});
     }
 
-    function connectDevice(address: string): void {
+    // Returns the runAsync chain so callers can chain on the outcome;
+    // BluetoothDevice.connect() builds its .catch/.finally bookkeeping on
+    // this promise for trusted devices.
+    function connectDevice(address: string): var {
         isUpdating = true;
-        runAsync(["bluetoothctl", "connect", address]).then(() => {
+        return runAsync(["bluetoothctl", "connect", address]).then(() => {
             updateDevices();
             isUpdating = false;
         }).catch(e => {
