@@ -124,8 +124,12 @@ func (w *wlClient) connect() error {
 		w.teardown()
 		return err
 	}
+	// writeMu keeps this assignment atomic against the copy paths, which
+	// read the fields under the same mutex inside their write closures.
+	w.writeMu.Lock()
 	w.manager = manager
 	w.device = device
+	w.writeMu.Unlock()
 
 	device.SetDataOfferHandler(func(ev wlr_data_control.ZwlrDataControlDeviceV1DataOfferEvent) {
 		if ev.Id == nil {
@@ -242,6 +246,15 @@ func (w *wlClient) dispatchLoop() error {
 }
 
 func (w *wlClient) teardown() {
+	// Hold writeMu so an in-flight copy either completes on the live
+	// connection or observes the nil fields; it can never dereference a
+	// proxy that is being torn down.
+	w.writeMu.Lock()
+	defer w.writeMu.Unlock()
+	if w.source != nil {
+		w.source.Destroy()
+		w.source = nil
+	}
 	if w.device != nil {
 		w.device.Destroy()
 		w.device = nil
@@ -375,6 +388,12 @@ func (w *wlClient) copyContent(mime string, content []byte) error {
 		return errors.New("empty content")
 	}
 	return w.write(func() error {
+		// The reconnect loop nils these fields in teardown() while the
+		// wlClient stays registered, so a copy that lands in that window
+		// must fail instead of dereferencing a nil proxy.
+		if w.manager == nil || w.device == nil {
+			return errors.New("clipboard connection unavailable")
+		}
 		if w.source != nil {
 			w.source.Destroy()
 			w.source = nil
@@ -437,7 +456,12 @@ func (w *wlClient) copyTextAwait(mime string, content []byte) bool {
 // clearSelection: some compositors don't echo a NULL selection, so the
 // hash must be reset here or re-copies get skipped as unchanged.
 func (w *wlClient) clearSelection() {
-	w.write(func() error { return w.device.SetSelection(nil) })
+	w.write(func() error {
+		if w.device == nil {
+			return nil
+		}
+		return w.device.SetSelection(nil)
+	})
 	w.setLiveHash("")
 }
 
